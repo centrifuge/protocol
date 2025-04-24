@@ -41,6 +41,7 @@ uint8 constant DECIMALS_POOL = 18;
 uint128 constant DENO_USDC = uint128(10 ** DECIMALS_USDC);
 uint128 constant DENO_OTHER_STABLE = uint128(10 ** DECIMALS_OTHER_STABLE);
 uint128 constant DENO_POOL = uint128(10 ** DECIMALS_POOL);
+uint128 constant OTHER_STABLE_PER_POOL = 100;
 uint128 constant MIN_REQUEST_AMOUNT_USDC = DENO_USDC;
 uint128 constant MAX_REQUEST_AMOUNT_USDC = 1e18;
 uint128 constant MIN_REQUEST_AMOUNT_SHARES = DENO_POOL;
@@ -50,9 +51,7 @@ string constant SC_SYMBOL = "ExampleSymbol";
 bytes32 constant SC_SALT = bytes32("ExampleSalt");
 bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
-uint32 constant STORAGE_INDEX_EPOCH_ID = 3;
-uint32 constant STORAGE_INDEX_METRICS = 5;
-uint32 constant STORAGE_INDEX_EPOCH_POINTERS = 8;
+uint32 constant STORAGE_INDEX_METRICS = 10;
 
 contract HubRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -115,15 +114,27 @@ abstract contract ShareClassManagerBaseTest is Test {
         ).toUint128();
     }
 
+    function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
+        return ConversionLib.convertWithPrice(
+            amount,
+            IHubRegistry(hubRegistryMock).decimals(poolId),
+            IHubRegistry(hubRegistryMock).decimals(assetId),
+            _pricePoolPerAsset(assetId).reciprocal()
+        ).toUint128();
+    }
+
     function _calcSharesIssued(AssetId assetId, uint128 depositAmountAsset, D18 pricePoolPerShare)
         internal
+        view
         returns (uint128)
     {
-        return ConversionLib.convertWithPrice(
-            depositAmountAsset,
-            IHubRegistry(hubRegistryMock).decimals(assetId),
-            IHubRegistry(hubRegistryMock).decimals(poolId),
-            _pricePoolPerAsset(assetId) / pricePoolPerShare
+        return pricePoolPerShare.reciprocalMulUint256(
+            ConversionLib.convertWithPrice(
+                depositAmountAsset,
+                IHubRegistry(hubRegistryMock).decimals(assetId),
+                IHubRegistry(hubRegistryMock).decimals(poolId),
+                _pricePoolPerAsset(assetId)
+            )
         ).toUint128();
     }
 
@@ -131,7 +142,7 @@ abstract contract ShareClassManagerBaseTest is Test {
         if (assetId.eq(USDC)) {
             return d18(1, 1);
         } else if (assetId.eq(OTHER_STABLE)) {
-            return d18(1, 2);
+            return d18(1, OTHER_STABLE_PER_POOL);
         } else {
             revert("ShareClassManagerBaseTest._priceAssetPerPool() - Unknown assetId");
         }
@@ -197,7 +208,32 @@ abstract contract ShareClassManagerBaseTest is Test {
     function _assertEpochRedeemAmountsEq(AssetId assetId, uint32 epochId, EpochRedeemAmounts memory expected)
         internal
         view
-    {}
+    {
+        (
+            uint128 pendingShareAmount,
+            uint128 approvedShareAmount,
+            uint128 payoutAssetAmount,
+            D18 pricePoolPerAsset,
+            D18 navPoolPerShare,
+            uint64 revokedAt
+        ) = shareClass.epochRedeemAmounts(scId, assetId, epochId);
+
+        assertEq(pendingShareAmount, expected.pendingShareAmount, "Mismatch: EpochRedeemAmount.pendingShareAmount");
+        assertEq(approvedShareAmount, expected.approvedShareAmount, "Mismatch: EpochRedeemAmount.approvedShareAmount");
+        assertEq(payoutAssetAmount, expected.payoutAssetAmount, "Mismatch: EpochRedeemAmount.payoutAssetAmount");
+        assertEq(
+            pricePoolPerAsset.raw(), expected.pricePoolPerAsset.raw(), "Mismatch: EpochRedeemAmount.pricePoolPerAsset"
+        );
+        assertEq(navPoolPerShare.raw(), expected.navPoolPerShare.raw(), "Mismatch: EpochRedeemAmount.navPoolPerShare");
+        assertEq(revokedAt, expected.revokedAt, "Mismatch: EpochRedeemAmount.issuedAt");
+    }
+
+    function _mockTotalIssuance(uint128 amount) internal {
+        vm.store(
+            address(shareClass), keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))), bytes32(uint256(amount))
+        );
+        assertEq(_totalIssuance(), amount);
+    }
 
     function _totalIssuance() internal view returns (uint128 totalIssuance_) {
         (totalIssuance_,) = shareClass.metrics(scId);
@@ -209,6 +245,14 @@ abstract contract ShareClassManagerBaseTest is Test {
 
     function _nowIssue(AssetId assetId) internal view returns (uint32) {
         return shareClass.nowIssueEpoch(scId, assetId);
+    }
+
+    function _nowRedeem(AssetId assetId) internal view returns (uint32) {
+        return shareClass.nowRedeemEpoch(scId, assetId);
+    }
+
+    function _nowRevoke(AssetId assetId) internal view returns (uint32) {
+        return shareClass.nowRevokeEpoch(scId, assetId);
     }
 }
 
@@ -234,7 +278,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
     function testFile() public {
         address hubRegistryNew = makeAddr("hubRegistryNew");
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IShareClassManager.File("hubRegistry", hubRegistryNew);
         shareClass.file("hubRegistry", hubRegistryNew);
 
@@ -294,14 +338,6 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         vm.assume(salt != bytes32(0));
         vm.assume(salt != SC_SALT);
 
-        // Mock epochId to 5
-        uint32 mockEpochId = 42;
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
-            bytes32(uint256(mockEpochId))
-        );
-
         ShareClassId nextScId = shareClass.previewNextShareClassId(poolId);
 
         emit IShareClassManager.AddShareClass(poolId, nextScId, 2, name, symbol, salt);
@@ -342,6 +378,20 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
         assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
     }
+
+    function testMaxDepositClaims() public {
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), 0);
+
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), 0);
+    }
+
+    function testMaxRedeemClaims() public {
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), 0);
+
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), 0);
+    }
 }
 
 ///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
@@ -350,11 +400,11 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
 
     function _deposit(uint128 depositAmountUsdc_, uint128 approvedAmountUsdc_)
         internal
-        returns (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedAmountPool)
+        returns (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedPool)
     {
         depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        approvedAmountUsdc = uint128(bound(approvedAmountUsdc, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
-        approvedAmountPool = _intoPoolAmount(USDC, approvedAmountUsdc);
+        approvedAmountUsdc = uint128(bound(approvedAmountUsdc_, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
+        approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
 
         shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC));
@@ -366,7 +416,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         assertEq(shareClass.pendingDeposit(scId, USDC), 0);
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 0));
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IShareClassManager.UpdateDepositRequest(
             poolId, scId, USDC, shareClass.nowDepositEpoch(scId, USDC), investor, amount, amount, 0, false
         );
@@ -380,13 +430,13 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
 
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit();
         emit IShareClassManager.UpdateDepositRequest(
             poolId, scId, USDC, shareClass.nowDepositEpoch(scId, USDC), investor, 0, 0, 0, false
         );
-        (uint128 cancelledAmount) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
+        (uint128 cancelledShares) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
-        assertEq(cancelledAmount, amount);
+        assertEq(cancelledShares, amount);
         assertEq(shareClass.pendingDeposit(scId, USDC), 0);
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
     }
@@ -500,7 +550,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         uint128 fuzzApprovedAmountUsdc
     ) public {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
-        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedAmountPool) =
+        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedPool) =
             _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
 
         uint128 shares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
@@ -511,7 +561,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
             shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare);
         assertEq(issuedShareAmount, shares, "Mismatch: return issuedShareAmount");
         assertEq(depositAssetAmount, approvedAmountUsdc, "Mismatch: return depositAssetAmount");
-        assertEq(depositPoolAmount, approvedAmountPool, "Mismatch: return depositPoolAmount");
+        assertEq(depositPoolAmount, approvedPool, "Mismatch: return depositPoolAmount");
 
         assertEq(_totalIssuance(), shares, "Mismatch: totalIssuance");
 
@@ -529,14 +579,23 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         );
     }
 
-    function testFullClaimDepositSingleEpoch() public {
-        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
+    function testClaimDepositZeroApproved() public {
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        shareClass.requestDeposit(poolId, scId, 10, bytes32("investorOther"), USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), 1, d18(1));
 
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1));
+
+        vm.expectEmit();
+        emit IShareClassManager.ClaimDeposit(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testFullClaimDepositSingleEpoch() public {
         uint128 approvedAmountUsdc = 100 * DENO_USDC;
         uint128 depositAmountUsdc = approvedAmountUsdc;
-        uint128 approvedAmountPool = _intoPoolAmount(USDC, approvedAmountUsdc);
-        assertEq(approvedAmountPool, 100 * DENO_POOL);
+        uint128 approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
+        assertEq(approvedPool, 100 * DENO_POOL);
 
         shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC));
@@ -576,11 +635,8 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         uint128 fuzzDepositAmountUsdc,
         uint128 fuzzApprovedAmountUsdc
     ) public {
-        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
-
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
-        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedAmountPool) =
+        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc,) =
             _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
 
         vm.expectRevert(IShareClassManager.IssuanceRequired.selector);
@@ -612,145 +668,196 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc - approvedAmountUsdc, 2));
     }
 
-    /*
-    function testClaimDepositSkipped() public  {
-        uint128 pending = MAX_REQUEST_AMOUNT_USDC;
-        uint32 mockLatestIssuance = 10;
-        uint32 mockEpochId = mockLatestIssuance + 1;
-        shareClass.requestDeposit(poolId, scId, pending, investor, USDC);
+    function testClaimDepositSkippedEpochsNoPayout(uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
 
-        // Mock latestIssuance to 10
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
-            bytes32(
-                (uint256(0)) // latestDepositApproval
-                    | (uint256(0) << 32) // latestRedeemApproval
-                    | (uint256(mockLatestIssuance) << 64) // latestIssuance
-                    | (uint256(0) << 96) // latestRevocation
-            )
-        );
-        // Mock epochId to 11
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
-            bytes32(uint256(mockEpochId))
-        );
+        D18 navPoolPerShare = d18(1e18);
+        uint128 approvedAmountUsdc = 1;
+        uint32 lastUpdate = _nowDeposit(USDC);
 
-    (uint128 payout, uint128 payment, uint128 cancelled) = shareClass.claimDeposit(poolId, scId, investor, USDC);
-        assertEq(cancelled, 0, "no queued cancellation");
-        assertEq(payout + payment, 0);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(pending, mockEpochId));
+        // Other investor should eat up the single approved asset amount
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        shareClass.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve a few epochs without payout
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            shareClass.approveDeposits(
+                poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC)
+            );
+            shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare);
+        }
+
+        // Claim all epochs without expected payout due to low deposit amount
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            vm.expectEmit();
+            emit IShareClassManager.ClaimDeposit(
+                poolId, scId, lastUpdate, investor, USDC, 0, 1, 0, block.timestamp.toUint64()
+            );
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                shareClass.claimDeposit(poolId, scId, investor, USDC);
+
+            assertEq(payout, 0, "Mismatch: payout");
+            assertEq(payment, 0, "Mismatch: payment");
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(canClaimAgain, i < skippedEpochs - 1, "Mismatch: canClaimAgain");
+            lastUpdate += 1;
+            _assertDepositRequestEq(USDC, investor, UserOrder(1, lastUpdate));
+        }
     }
 
-    function testClaimDepositZeroApproved() public {
-        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
-        shareClass.requestDeposit(poolId, scId, 10, bytes32("investorOther"), USDC);
-        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
-        shareClass.issueShares(poolId, scId, USDC, d18(1));
+    function testClaimDepositSkippedEpochsNothingRemaining(uint128 depositAmountUsdc_, uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
 
-        vm.expectEmit();
-        emit IShareClassManager.ClaimDeposit(poolId, scId, 1, investor, USDC, 0, 1, 0);
+        D18 nonZeroPrice = d18(1e18);
+        uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+
+        // Approve one epoch with full payout and a few subsequent ones without payout
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, nonZeroPrice);
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice);
+
+        // Request deposit with another investors to enable approvals after first epoch
+        shareClass.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve more epochs which should all be skipped when investor claims first epoch
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), 1, nonZeroPrice);
+            shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice);
+        }
+
+        // Expect only single claim to be required
+        (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+            shareClass.claimDeposit(poolId, scId, investor, USDC);
+
+        assertNotEq(payout, 0, "Mismatch: payout");
+        assertEq(payment, depositAmountUsdc, "Mismatch: payment");
+        assertEq(cancelled, 0, "Mismatch: cancelled");
+        assertEq(canClaimAgain, false, "Mismatch: canClaimAgain - all claimed");
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 2 + uint32(skippedEpochs)));
+
+        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
         shareClass.claimDeposit(poolId, scId, investor, USDC);
     }
 
-    function testClaimRedeemZeroApproved() public {
-    vm.store(address(shareClass), keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))), bytes32(uint256(11)));
+    function testClaimDepositManyEpochs(uint128 navPoolPerShare_, uint128 depositAmountUsdc_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e10, type(uint128).max / 1e18)));
+        epochs = uint8(bound(epochs, 3, 50));
+        uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        vm.assume(depositAmountUsdc % epochs == 0);
 
-        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
-        shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
-        shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
+        uint128 epochApprovedAmountUsdc = depositAmountUsdc / epochs;
+        uint128 totalShares = 0;
+        uint128 totalPayment = 0;
+        uint128 totalPayout = 0;
 
-        vm.expectEmit();
-        emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, 0, 1, 0);
-        shareClass.claimRedeem(poolId, scId, investor, USDC);
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+
+        // Approve + issue shares for each epoch
+        for (uint256 i = 0; i < epochs; i++) {
+            shareClass.approveDeposits(
+                poolId, scId, USDC, _nowDeposit(USDC), epochApprovedAmountUsdc, _pricePoolPerAsset(USDC)
+            );
+
+            (uint128 issuedShares, uint128 issuedDepositAmountUsdc,) =
+                shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare);
+            totalShares += issuedShares;
+
+            assertEq(issuedDepositAmountUsdc, epochApprovedAmountUsdc, "Mismatch: issued deposit amount");
+        }
+
+        assertEq(shareClass.maxDepositClaims(scId, investor, USDC), epochs);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                shareClass.claimDeposit(poolId, scId, investor, USDC);
+
+            totalPayout += payout;
+            totalPayment += payment;
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(payment, epochApprovedAmountUsdc, "Mismatch: payment");
+            assertEq(canClaimAgain, i < epochs - 1, "Mismatch: canClaimAgain - all claimed");
+        }
+
+        assertEq(totalPayment, depositAmountUsdc, "Mismatch: Total payment");
+        assertEq(totalPayout, totalShares, "Mismatch: Total payout");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochs + 1));
     }
 
-    function testRevokeShareExceedIssuance() public {
-        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
-        shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
-
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.RevokeMoreThanIssued.selector));
-        shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
-    }
-
-    function testQueuedDepositWithoutCancellation(uint128 amount) public  {
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC / 3));
+    function testQueuedDepositWithoutCancellation(uint128 depositAmountUsdc) public {
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC / 3));
         uint32 epochId = 1;
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 claimedShares = usdcToPool(amount);
+        D18 poolPerShare = d18(1, 1);
+        uint128 claimedShares = _calcSharesIssued(USDC, depositAmountUsdc, poolPerShare);
         uint128 queuedAmount = 0;
 
         // Initial deposit request
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(amount, epochId));
-        assertEq(shareClass.pendingDeposit(scId, USDC), amount);
-        shareClass.approveDeposits(poolId, scId, amount, USDC, oracleMock);
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc, epochId));
+        assertEq(shareClass.pendingDeposit(scId, USDC), depositAmountUsdc);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC));
         epochId = 2;
 
         // Expect queued increment due to approval
-        queuedAmount += amount;
+        queuedAmount += depositAmountUsdc;
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, 0, queuedAmount, false
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, 0, queuedAmount, false
         );
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId - 1));
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
         assertEq(shareClass.pendingDeposit(scId, USDC), 0);
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
 
         // Expect queued increment due to approval
-        queuedAmount += amount;
+        queuedAmount += depositAmountUsdc;
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, 0, queuedAmount, false
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, 0, queuedAmount, false
         );
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
 
         // Issue shares + claim -> expect queued to move to pending
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare);
         vm.expectEmit();
-        emit IShareClassManager.ClaimDeposit(poolId, scId, 1, investor, USDC, amount, 0, claimedShares);
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, queuedAmount, queuedAmount, 0, false
+        emit IShareClassManager.ClaimDeposit(
+            poolId, scId, 1, investor, USDC, depositAmountUsdc, 0, claimedShares, block.timestamp.toUint64()
+        );
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, queuedAmount, queuedAmount, 0, false
         );
         shareClass.claimDeposit(poolId, scId, investor, USDC);
 
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId));
+        _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId));
         assertEq(shareClass.pendingDeposit(scId, USDC), queuedAmount);
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
-    function testQueuedDepositWithNonEmptyQueuedCancellation(uint128 amount)
-        public
-
-    {
-        vm.assume(amount % 2 == 0);
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 approvedAssetAmount = amount / 4;
-        uint128 pendingAssetAmount = amount - approvedAssetAmount;
-        uint128 issuedShares = usdcToPool(approvedAssetAmount);
+    function testQueuedDepositWithNonEmptyQueuedCancellation(uint128 depositAmountUsdc) public {
+        vm.assume(depositAmountUsdc % 2 == 0);
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedAssetAmount = depositAmountUsdc / 4;
+        uint128 pendingAssetAmount = depositAmountUsdc - approvedAssetAmount;
+        uint128 issuedShares = _calcSharesIssued(USDC, approvedAssetAmount, poolPerShare);
         uint128 queuedAmount = 0;
         uint32 epochId = 1;
 
         // Initial deposit request
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
-        shareClass.approveDeposits(poolId, scId, approvedAssetAmount, USDC, oracleMock);
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
 
         // Expect queued increment due to approval
         epochId = 2;
-        queuedAmount += amount;
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
+        queuedAmount += depositAmountUsdc;
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-    poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, pendingAssetAmount, queuedAmount, true
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, queuedAmount, true
         );
         (uint128 cancelledPending) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
@@ -762,381 +869,481 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
         // Issue shares + claim -> expect cancel fulfillment
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare);
         vm.expectEmit();
         emit IShareClassManager.ClaimDeposit(
-            poolId, scId, 1, investor, USDC, approvedAssetAmount, pendingAssetAmount, issuedShares
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAssetAmount,
+            pendingAssetAmount,
+            issuedShares,
+            block.timestamp.toUint64()
         );
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, 0, 0, 0, false
-        );
-        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal) =
+        emit IShareClassManager.UpdateDepositRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal, bool canClaimAgain) =
             shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
         assertEq(claimedAssetAmount, approvedAssetAmount, "Claimed asset amount mismatch");
         assertEq(cancelledTotal, pendingAssetAmount + queuedAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
 
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, epochId));
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
         assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
-    function testQueuedDepositWithEmptyQueuedCancellation(uint128 amount) public  {
-        vm.assume(amount % 2 == 0);
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 approvedAssetAmount = amount / 4;
-        uint128 pendingAssetAmount = amount - approvedAssetAmount;
-        uint128 issuedShares = usdcToPool(approvedAssetAmount);
+    function testQueuedDepositWithEmptyQueuedCancellation(uint128 depositAmountUsdc) public {
+        vm.assume(depositAmountUsdc % 2 == 0);
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedAssetAmount = depositAmountUsdc / 4;
+        uint128 pendingAssetAmount = depositAmountUsdc - approvedAssetAmount;
+        uint128 issuedShares = _calcSharesIssued(USDC, approvedAssetAmount, poolPerShare);
         uint32 epochId = 1;
 
         // Initial deposit request
-        shareClass.requestDeposit(poolId, scId, amount, investor, USDC);
-        shareClass.approveDeposits(poolId, scId, approvedAssetAmount, USDC, oracleMock);
+        shareClass.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
         epochId = 2;
 
         // Expect queued increment due to approval
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, amount, pendingAssetAmount, 0, true
+        emit IShareClassManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, 0, true
         );
         (uint128 cancelledPending) = shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
         // Issue shares + claim -> expect cancel fulfillment
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare);
         vm.expectEmit();
         emit IShareClassManager.ClaimDeposit(
-            poolId, scId, 1, investor, USDC, approvedAssetAmount, pendingAssetAmount, issuedShares
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAssetAmount,
+            pendingAssetAmount,
+            issuedShares,
+            block.timestamp.toUint64()
         );
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Deposit, investor, USDC, 0, 0, 0, false
-        );
-        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal) =
+        emit IShareClassManager.UpdateDepositRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal, bool canClaimAgain) =
             shareClass.claimDeposit(poolId, scId, investor, USDC);
         assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
         assertEq(claimedAssetAmount, approvedAssetAmount, "Claimed asset amount mismatch");
         assertEq(cancelledTotal, pendingAssetAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
 
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, epochId));
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
         assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
+}
+
+///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
+contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
+    using MathLib for *;
+
+    function _redeem(uint128 redeemShares_, uint128 approvedShares_, uint128 navPerShare)
+        internal
+        returns (uint128 redeemShares, uint128 approvedShares, uint128 approvedPool, D18 poolPerShare)
+    {
+        redeemShares = uint128(bound(redeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        approvedShares = uint128(bound(approvedShares_, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
+        poolPerShare = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
+        approvedPool = poolPerShare.mulUint128(approvedShares);
+
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
     }
 
-    ///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
-    contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
-    using MathLib for uint128;
-
-    function testRequestRedeem(uint128 amount) public  {
+    function testRequestRedeem(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
 
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, 0));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 0));
 
-        vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, 1, RequestType.Redeem, investor, USDC, amount, amount, 0, false
-        );
+        vm.expectEmit();
+        emit IShareClassManager.UpdateRedeemRequest(poolId, scId, USDC, 1, investor, amount, amount, 0, false);
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
 
         assertEq(shareClass.pendingRedeem(scId, USDC), amount);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(amount, 1));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(amount, 1));
     }
 
-    function testCancelRedeemRequest(uint128 amount) public  {
+    function testCancelRedeemRequest(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
 
-        vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.UpdateRequest(poolId, scId, 1, RequestType.Redeem, investor, USDC, 0, 0, 0, false);
-        (uint128 cancelledAmount) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
+        vm.expectEmit();
+        emit IShareClassManager.UpdateRedeemRequest(poolId, scId, USDC, 1, investor, 0, 0, 0, false);
+        (uint128 cancelledShares) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
-        assertEq(cancelledAmount, amount);
+        assertEq(cancelledShares, amount);
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, 1));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
     }
 
     function testApproveRedeemsSingleAssetManyInvestors(
         uint8 numInvestors,
-        uint128 redeemAmount,
-        uint128 approvedRedeem
-    ) public  {
-        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        approvedRedeem = uint128(bound(approvedRedeem, MIN_REQUEST_AMOUNT_SHARES, redeemAmount));
+        uint128 redeemShares,
+        uint128 approvedShares
+    ) public {
         numInvestors = uint8(bound(numInvestors, 1, 100));
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        approvedShares = uint128(bound(approvedShares, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
 
-        uint128 totalRedeems = 0;
+        uint128 totalRedeem = 0;
         for (uint16 i = 0; i < numInvestors; i++) {
             bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
-            uint128 investorRedeem = redeemAmount + i;
-            totalRedeems += investorRedeem;
+            uint128 investorRedeem = redeemShares + i;
+            totalRedeem += investorRedeem;
             shareClass.requestRedeem(poolId, scId, investorRedeem, investor, USDC);
 
-            assertEq(shareClass.pendingRedeem(scId, USDC), totalRedeems);
+            assertEq(shareClass.pendingRedeem(scId, USDC), totalRedeem);
         }
-        assertEq(shareClass.epochId(poolId), 1);
+        assertEq(_nowRedeem(USDC), 1);
 
-        uint128 pendingRedeems_ = totalRedeems - approvedRedeem;
+        uint128 pendingRedeem = totalRedeem - approvedShares;
 
-        vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.NewEpoch(poolId, 2);
-        vm.expectEmit(true, true, true, true);
-        emit IShareClassManager.ApproveRedeems(poolId, scId, 1, USDC, approvedRedeem, pendingRedeems_);
-        shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
+        vm.expectEmit();
+        emit IShareClassManager.ApproveRedeems(poolId, scId, USDC, 1, approvedShares, pendingRedeem);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
 
-        assertEq(shareClass.pendingRedeem(scId, USDC), pendingRedeems_);
+        assertEq(shareClass.pendingRedeem(scId, USDC), pendingRedeem);
 
         // Only one epoch should have passed
-        assertEq(shareClass.epochId(poolId), 2);
+        assertEq(_nowRedeem(USDC), 2);
 
-        _assertEpochAmountsEq(scId, USDC, 1, EpochAmounts(0, 0, 0, 0, totalRedeems, approvedRedeem, 0));
+        _assertEpochRedeemAmountsEq(
+            USDC, 1, EpochRedeemAmounts(totalRedeem, approvedShares, 0, _pricePoolPerAsset(USDC), d18(0), 0)
+        );
     }
 
-    function testApproveRedeemsTwoAssetsSameEpoch(uint128 redeemAmount, uint128 approvedRedeem)
-        public
-
-    {
-    uint128 redeemAmountUsdc = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        uint128 redeemAmountOther =
-            uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES - 1, MAX_REQUEST_AMOUNT_SHARES - 1));
-        uint128 approvedRedeemUsdc = uint128(bound(approvedRedeem, MIN_REQUEST_AMOUNT_SHARES, redeemAmountUsdc));
-        uint128 approvedRedeemOther = uint128(bound(approvedRedeem, DENO_OTHER_STABLE, redeemAmountOther));
+    function testApproveRedeemsTwoAssetsSameEpoch(uint128 redeemShares, uint128 approvedShares) public {
+        uint128 redeemSharesUsdc = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        uint128 redeemSharesOther =
+            uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES - 1, MAX_REQUEST_AMOUNT_SHARES - 1));
+        uint128 approvedSharesUsdc = uint128(bound(approvedShares, MIN_REQUEST_AMOUNT_SHARES, redeemSharesUsdc));
+        uint128 approvedSharesOther = uint128(bound(approvedShares, DENO_OTHER_STABLE, redeemSharesOther));
         bytes32 investorUsdc = bytes32("investorUsdc");
         bytes32 investorOther = bytes32("investorOther");
-        uint128 pendingUsdc = redeemAmountUsdc - approvedRedeemUsdc;
-        uint128 pendingOther = redeemAmountOther - approvedRedeemOther;
+        uint128 pendingUsdc = redeemSharesUsdc - approvedSharesUsdc;
+        uint128 pendingOther = redeemSharesOther - approvedSharesOther;
 
-        shareClass.requestRedeem(poolId, scId, redeemAmountUsdc, investorUsdc, USDC);
-        shareClass.requestRedeem(poolId, scId, redeemAmountOther, investorOther, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemSharesUsdc, investorUsdc, USDC);
+        shareClass.requestRedeem(poolId, scId, redeemSharesOther, investorOther, OTHER_STABLE);
 
-        (uint128 approvedRedeemUsdc_, uint128 pendingUsdc_) =
-            shareClass.approveRedeems(poolId, scId, approvedRedeemUsdc, USDC);
-        (uint128 approvedRedeemOther_, uint128 pendingOther_) =
-            shareClass.approveRedeems(poolId, scId, approvedRedeemOther, OTHER_STABLE);
+        assertEq(_nowRedeem(USDC), 1);
+        assertEq(_nowRedeem(OTHER_STABLE), 1);
 
-        assertEq(shareClass.epochId(poolId), 2);
-        assertEq(approvedRedeemUsdc_, approvedRedeemUsdc, "approved shares USDC mismatch");
+        uint128 pendingUsdc_ = shareClass.approveRedeems(
+            poolId, scId, USDC, _nowRedeem(USDC), approvedSharesUsdc, _pricePoolPerAsset(USDC)
+        );
+        uint128 pendingOther_ = shareClass.approveRedeems(
+            poolId, scId, OTHER_STABLE, _nowRedeem(OTHER_STABLE), approvedSharesOther, _pricePoolPerAsset(OTHER_STABLE)
+        );
+
+        assertEq(_nowRedeem(USDC), 2);
+        assertEq(_nowRedeem(OTHER_STABLE), 2);
+
         assertEq(pendingUsdc_, pendingUsdc, "pending shares USDC mismatch");
-        assertEq(approvedRedeemOther_, approvedRedeemOther, "approved shares OtherCurrency mismatch");
         assertEq(pendingOther_, pendingOther, "pending shares OtherCurrency mismatch");
 
-        EpochAmounts memory epochAmountsUsdc = EpochAmounts(0, 0, 0, 0, redeemAmountUsdc, approvedRedeemUsdc, 0);
-        EpochAmounts memory epochAmountsOther = EpochAmounts(0, 0, 0, 0, redeemAmountOther, approvedRedeemOther, 0);
-        _assertEpochAmountsEq(scId, USDC, 1, epochAmountsUsdc);
-        _assertEpochAmountsEq(scId, OTHER_STABLE, 1, epochAmountsOther);
+        _assertEpochRedeemAmountsEq(
+            USDC, 1, EpochRedeemAmounts(redeemSharesUsdc, approvedSharesUsdc, 0, _pricePoolPerAsset(USDC), d18(0), 0)
+        );
+        _assertEpochRedeemAmountsEq(
+            OTHER_STABLE,
+            1,
+            EpochRedeemAmounts(redeemSharesOther, approvedSharesOther, 0, _pricePoolPerAsset(OTHER_STABLE), d18(0), 0)
+        );
     }
 
-    function testRevokeSharesSingleEpoch(uint128 navPerShare, uint128 redeemAmount, uint128 approvedRedeem)
-        public
+    function testRevokeSharesSingleEpoch(uint128 navPerShare, uint128 redeemShares, uint128 approvedShares) public {
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        approvedShares = uint128(bound(approvedShares, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
+        D18 poolPerShare = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 assetAmount = _intoAssetAmount(USDC, poolAmount);
 
-    {
-        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        approvedRedeem = uint128(bound(approvedRedeem, MIN_REQUEST_AMOUNT_SHARES, redeemAmount));
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
-        uint128 poolAmount = shareToPoolQuote.mulUint128(approvedRedeem);
-        uint128 assetAmount = poolToUsdc(poolAmount);
+        // Mock total issuance to equal redeemShares
+        _mockTotalIssuance(redeemShares);
 
-        // Mock total issuance to equal redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(redeemAmount))
-        );
-        assertEq(totalIssuance(scId), redeemAmount);
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
 
-        shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
+        assertEq(_totalIssuance(), redeemShares);
+        assertEq(_nowRevoke(USDC), 1);
 
-        assertEq(totalIssuance(scId), redeemAmount);
-        _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 0));
+        (uint128 revokedShares, uint128 revokedAssets, uint128 revokedPool) =
+            shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
+        assertEq(approvedShares, revokedShares, "revoked share amount mismatch");
+        assertEq(assetAmount, revokedAssets, "revoked asset amount mismatch");
+        assertEq(poolAmount, revokedPool, "revoked pool amount mismatch");
 
-        (uint128 payoutAssetAmount, uint128 payoutPoolAmount) =
-            shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        assertEq(assetAmount, payoutAssetAmount, "payout asset amount mismatch");
-        assertEq(poolAmount, payoutPoolAmount, "payout pool amount mismatch");
-
-        assertEq(totalIssuance(scId), redeemAmount - approvedRedeem);
-        _assertEpochPointersEq(scId, USDC, EpochPointers(0, 1, 0, 1));
-
-        _assertEpochAmountsEq(scId, USDC, 1, EpochAmounts(0, 0, 0, 0, redeemAmount, approvedRedeem, assetAmount));
+        assertEq(_totalIssuance(), redeemShares - approvedShares);
+        assertEq(_nowRevoke(USDC), 2);
     }
 
-    function testClaimRedeemSingleEpoch(uint128 navPerShare, uint128 redeemAmount, uint128 approvedRedeem)
+    function testRevokeShareExceedsIssuance() public {
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, _pricePoolPerAsset(USDC));
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.RevokeMoreThanIssued.selector));
+        shareClass.revokeShares(poolId, scId, USDC, 1, d18(1));
+    }
+
+    function testClaimRedeemZeroApproved() public {
+        _mockTotalIssuance(11);
+
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        shareClass.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, _pricePoolPerAsset(USDC));
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1));
+
+        vm.expectEmit();
+        emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
+    }
+
+    function testClaimRedeemSingleEpoch(uint128 redeemShares_, uint128 approvedShares_, uint128 navPoolPerShare_)
         public
-
     {
-        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        approvedRedeem = uint128(bound(approvedRedeem, MIN_REQUEST_AMOUNT_SHARES, redeemAmount));
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
-        uint128 pendingRedeem = redeemAmount - approvedRedeem;
-        uint128 payout = poolToUsdc(shareToPoolQuote.mulUint128(approvedRedeem));
+        (uint128 redeemShares, uint128 approvedShares,, D18 poolPerShare) =
+            _redeem(redeemShares_, approvedShares_, navPoolPerShare_);
+        uint128 pendingShares = redeemShares - approvedShares;
 
-        // Mock total issuance to equal redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(redeemAmount))
+        // Mock total issuance to equal redeemShares
+        _mockTotalIssuance(redeemShares);
+
+        (, uint128 revokedAssets,) = shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
+        assertEq(_totalIssuance(), pendingShares);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemShares, 1));
+
+        vm.expectEmit();
+        emit IShareClassManager.ClaimRedeem(
+            poolId, scId, 1, investor, USDC, approvedShares, pendingShares, revokedAssets, block.timestamp.toUint64()
         );
-        assertEq(totalIssuance(scId), redeemAmount);
-
-        shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        assertEq(totalIssuance(scId), pendingRedeem);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(redeemAmount, 1));
-
-        if (payout > 0) {
-            vm.expectEmit(true, true, true, true);
-    emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, approvedRedeem, pendingRedeem, payout);
-        }
-        (uint128 payoutAssetAmount, uint128 depositShareAmount, uint128 cancelledAmount) =
+        (uint128 claimedAssets, uint128 redeemedShares, uint128 cancelledShares, bool canClaimAgain) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
 
-        assertEq(payout, payoutAssetAmount, "payout asset amount mismatch");
-        assertEq(payout > 0 ? approvedRedeem : 0, depositShareAmount, "payment shares mismatch");
-        _assertRedeemRequestEq(
-            scId, USDC, investor, UserOrder(payout > 0 ? pendingRedeem : pendingRedeem + approvedRedeem, 2)
-        );
-        assertEq(cancelledAmount, 0, "no queued cancellation");
-
-        // Ensure another claim has no impact
-    (payoutAssetAmount, depositShareAmount, cancelledAmount) = shareClass.claimRedeem(poolId, scId, investor, USDC);
-        assertEq(payoutAssetAmount + depositShareAmount, 0, "replay must not be possible");
-        assertEq(cancelledAmount, 0, "no queued cancellation");
+        assertEq(claimedAssets, revokedAssets, "payout asset amount mismatch");
+        assertEq(redeemedShares, revokedAssets > 0 ? approvedShares : 0, "payment shares mismatch");
+        pendingShares = revokedAssets > 0 ? redeemShares - approvedShares : redeemShares;
+        _assertRedeemRequestEq(USDC, investor, UserOrder(pendingShares, 2));
+        assertEq(cancelledShares, 0, "no queued cancellation");
+        assertEq(canClaimAgain, false, "already claimed up to latest revoked epoch");
     }
 
-    function testClaimRedeemSkipped() public  {
-        uint128 pending = MAX_REQUEST_AMOUNT_USDC;
-        uint32 mockLatestRevocation = 10;
-        uint32 mockEpochId = mockLatestRevocation + 1;
-        shareClass.requestRedeem(poolId, scId, pending, investor, USDC);
+    function testClaimRedeemSkippedEpochsNoPayout(uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
 
-        // Mock latestRevocation to 10
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(scId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
-            bytes32(
-                (uint256(0)) // latestDepositApproval
-                    | (uint256(0) << 32) // latestRedeemApproval
-                    | (uint256(0) << 64) // latestIssuance
-                    | (uint256(mockLatestRevocation) << 96) // latestRevocation
-            )
-        );
-        // Mock epochId to 11
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(poolId, uint256(STORAGE_INDEX_EPOCH_ID))),
-            bytes32(uint256(mockEpochId))
-        );
+        D18 navPoolPerShare = d18(1e18);
+        uint128 approvedShares = 1;
+        uint32 lastUpdate = _nowRedeem(USDC);
 
-        (uint128 payout, uint128 payment, uint256 cancelled) = shareClass.claimRedeem(poolId, scId, investor, USDC);
-        assertEq(payout + payment + cancelled, 0);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pending, mockEpochId));
+        // Other investor should eat up the single approved asset amount
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        shareClass.requestRedeem(poolId, scId, MAX_REQUEST_AMOUNT_SHARES, bytes32("bigPockets"), USDC);
+        _mockTotalIssuance(MAX_REQUEST_AMOUNT_SHARES + 1);
+
+        // Approve a few epochs without payout
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+            shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare);
+        }
+
+        // Claim all epochs without expected payout due to low redeem amount
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            vm.expectEmit();
+            emit IShareClassManager.ClaimRedeem(
+                poolId, scId, lastUpdate, investor, USDC, 0, 1, 0, block.timestamp.toUint64()
+            );
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                shareClass.claimRedeem(poolId, scId, investor, USDC);
+
+            assertEq(payout, 0, "Mismatch: payout");
+            assertEq(payment, 0, "Mismatch: payment");
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(canClaimAgain, i < skippedEpochs - 1, "Mismatch: canClaimAgain");
+            lastUpdate += 1;
+            _assertRedeemRequestEq(USDC, investor, UserOrder(1, lastUpdate));
+        }
     }
 
-    function testQueuedRedeemWithoutCancellation(uint128 amount) public  {
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 3));
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 claimedAssetAmount = poolToUsdc(amount);
-        uint128 approvedShareAmount = amount;
+    function testClaimRedeemSkippedEpochsNothingRemaining(uint128 amount, uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
+
+        D18 nonZeroPrice = d18(1e18);
+        uint128 redeemShares = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        _mockTotalIssuance(redeemShares + MAX_REQUEST_AMOUNT_USDC);
+
+        // Other investor should eat up the single approved asset amount
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, nonZeroPrice);
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice);
+
+        // Request redeem with another investors to enable approvals after first epoch
+        shareClass.requestRedeem(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve more epochs which should all be skipped when investor claims first epoch
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, nonZeroPrice);
+            shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice);
+        }
+
+        // Expect only single claim to be required
+        (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+            shareClass.claimRedeem(poolId, scId, investor, USDC);
+
+        assertNotEq(payout, 0, "Mismatch: payout");
+        assertEq(payment, redeemShares, "Mismatch: payment");
+        assertEq(cancelled, 0, "Mismatch: cancelled");
+        assertEq(canClaimAgain, false, "Mismatch: canClaimAgain");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2 + uint32(skippedEpochs)));
+    }
+
+    function testClaimRedeemManyEpochs(uint128 navPoolPerShare_, uint128 totalRedeemShares_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e15, type(uint128).max / 1e18)));
+        epochs = uint8(bound(epochs, 3, 50));
+        uint128 totalRedeemShares =
+            uint128(bound(totalRedeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        vm.assume(totalRedeemShares % epochs == 0);
+
+        uint128 epochApprovedShares = totalRedeemShares / epochs;
+        uint128 totalAssets = 0;
+        uint128 totalPayment = 0;
+        uint128 totalPayout = 0;
+
+        _mockTotalIssuance(totalRedeemShares);
+
+        shareClass.requestRedeem(poolId, scId, totalRedeemShares, investor, USDC);
+
+        // Approve + revoke shares for each epoch
+        for (uint256 i = 0; i < epochs; i++) {
+            shareClass.approveRedeems(
+                poolId, scId, USDC, _nowRedeem(USDC), epochApprovedShares, _pricePoolPerAsset(USDC)
+            );
+
+            (uint128 revokedShares, uint128 revokedAssetAmount,) =
+                shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
+            totalAssets += revokedAssetAmount;
+            assertEq(revokedShares, epochApprovedShares, "Mismatch: revoked shares");
+        }
+
+        assertEq(shareClass.maxRedeemClaims(scId, investor, USDC), epochs);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                shareClass.claimRedeem(poolId, scId, investor, USDC);
+
+            totalPayout += payout;
+            totalPayment += payment;
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(payment, epochApprovedShares, "Mismatch: payment");
+            assertEq(canClaimAgain, i < epochs - 1, "Mismatch: canClaimAgain - all claimed");
+        }
+
+        assertEq(totalPayment, totalRedeemShares, "Mismatch: Total payment");
+        assertEq(totalPayout, totalAssets, "Mismatch: Total payout");
+
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochs + 1));
+    }
+
+    function testQueuedRedeemWithoutCancellation(uint128 redeemShares) public {
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 3));
+        D18 poolPerShare = d18(1, 1);
+        uint128 poolAmount = poolPerShare.mulUint128(redeemShares);
+        uint128 claimedAssetAmount = _intoAssetAmount(USDC, poolAmount);
+        uint128 approvedShares = redeemShares;
         uint128 pendingShareAmount = 0;
         uint128 queuedAmount = 0;
         uint32 epochId = 1;
 
-        // Mock total issuance to equal total approved redeem amount
-        vm.store(
-    address(shareClass), keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))), bytes32(uint256(amount))
-        );
+        // Mock total issuance to equal total approved redeem redeemShares
+        _mockTotalIssuance(redeemShares);
 
         // Initial deposit request
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(amount, epochId));
-        assertEq(shareClass.pendingRedeem(scId, USDC), amount);
-        shareClass.approveRedeems(poolId, scId, amount, USDC);
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemShares, epochId));
+        assertEq(shareClass.pendingRedeem(scId, USDC), redeemShares);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, _pricePoolPerAsset(USDC));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
         epochId = 2;
 
         // Expect queued increment due to approval
-        queuedAmount += amount;
+        queuedAmount += redeemShares;
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId,
-            scId,
-            epochId,
-            RequestType.Redeem,
-            investor,
-            USDC,
-            approvedShareAmount,
-            pendingShareAmount,
-            queuedAmount,
-            false
+        emit IShareClassManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, approvedShares, pendingShareAmount, queuedAmount, false
         );
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(queuedAmount, epochId - 1));
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0);
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
 
         // Expect queued increment due to approval
-        queuedAmount += amount;
+        queuedAmount += redeemShares;
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, 0, queuedAmount, false
+        emit IShareClassManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, 0, queuedAmount, false
         );
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, queuedAmount));
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
 
         // Issue shares + claim -> expect queued to move to pending
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
         pendingShareAmount = queuedAmount;
         vm.expectEmit();
-        emit IShareClassManager.ClaimRedeem(poolId, scId, 1, investor, USDC, amount, 0, claimedAssetAmount);
-        emit IShareClassManager.UpdateRequest(
-    poolId, scId, epochId, RequestType.Redeem, investor, USDC, pendingShareAmount, pendingShareAmount, 0, false
+        emit IShareClassManager.ClaimRedeem(
+            poolId, scId, 1, investor, USDC, redeemShares, 0, claimedAssetAmount, block.timestamp.toUint64()
+        );
+        emit IShareClassManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, pendingShareAmount, pendingShareAmount, 0, false
         );
         shareClass.claimRedeem(poolId, scId, investor, USDC);
 
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pendingShareAmount, epochId));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(pendingShareAmount, epochId));
         assertEq(shareClass.pendingRedeem(scId, USDC), pendingShareAmount, "pending redeem mismatch");
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedDepositRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
-    function testQueuedRedeemWithNonEmptyQueuedCancellation(uint128 amount)
-        public
-
-    {
-        vm.assume(amount % 2 == 0);
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 approvedShareAmount = amount / 4;
-        uint128 pendingShareAmount = amount - approvedShareAmount;
-        uint128 revokedAssetAmount = poolToUsdc(approvedShareAmount);
+    function testQueuedRedeemWithNonEmptyQueuedCancellation(uint128 redeemShares) public {
+        vm.assume(redeemShares % 2 == 0);
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedShares = redeemShares / 4;
+        uint128 pendingShareAmount = redeemShares - approvedShares;
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
         uint128 queuedAmount = 0;
         uint32 epochId = 1;
 
-        // Mock total issuance to equal total approved redeem amount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(approvedShareAmount))
-        );
+        // Mock total issuance to equal total approved redeem redeemShares
+        _mockTotalIssuance(approvedShares);
 
         // Initial deposit request
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, approvedShareAmount, USDC);
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
         epochId = 2;
 
         // Expect queued increment due to approval
-        queuedAmount += amount;
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
+        queuedAmount += redeemShares;
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-    poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, pendingShareAmount, queuedAmount, true
+        emit IShareClassManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, queuedAmount, true
         );
         (uint128 cancelledPending) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
@@ -1148,405 +1355,168 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Issue shares + claim -> expect cancel fulfillment
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
         vm.expectEmit();
         emit IShareClassManager.ClaimRedeem(
-            poolId, scId, 1, investor, USDC, approvedShareAmount, pendingShareAmount, revokedAssetAmount
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedShares,
+            pendingShareAmount,
+            revokedAssetAmount,
+            block.timestamp.toUint64()
         );
-    emit IShareClassManager.UpdateRequest(poolId, scId, epochId, RequestType.Redeem, investor, USDC, 0, 0, 0, false);
-        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal) =
+        emit IShareClassManager.UpdateRedeemRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal, bool canClaimAgain) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed asset amount mismatch");
-        assertEq(claimedShareAmount, approvedShareAmount, "Claimed share amount mismatch");
+        assertEq(claimedShareAmount, approvedShares, "Claimed share amount mismatch");
         assertEq(cancelledTotal, pendingShareAmount + queuedAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
 
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, epochId));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending deposit mismatch");
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
 
-    function testQueuedRedeemWithEmptyQueuedCancellation(uint128 amount) public  {
-        vm.assume(amount % 2 == 0);
-        amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
-        D18 shareToPoolQuote = d18(1, 1);
-        uint128 approvedShareAmount = amount / 4;
-        uint128 pendingShareAmount = amount - approvedShareAmount;
-        uint128 revokedAssetAmount = poolToUsdc(approvedShareAmount);
+    function testQueuedRedeemWithEmptyQueuedCancellation(uint128 redeemShares) public {
+        vm.assume(redeemShares % 2 == 0);
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedShares = redeemShares / 4;
+        uint128 pendingShareAmount = redeemShares - approvedShares;
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
         uint32 epochId = 1;
 
-        // Mock total issuance to equal total approved redeem amount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(approvedShareAmount))
-        );
+        // Mock total issuance to equal total approved redeem redeemShares
+        _mockTotalIssuance(approvedShares);
 
         // Initial redeem request
-        shareClass.requestRedeem(poolId, scId, amount, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, approvedShareAmount, USDC);
+        shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
         epochId = 2;
 
         // Expect queued increment due to approval
         vm.expectEmit();
-        emit IShareClassManager.UpdateRequest(
-            poolId, scId, epochId, RequestType.Redeem, investor, USDC, amount, pendingShareAmount, 0, true
+        emit IShareClassManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, 0, true
         );
         (uint128 cancelledPending) = shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
         assertEq(cancelledPending, 0, "Cancellation queued");
 
         // Issue shares + claim -> expect cancel fulfillment
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare);
         vm.expectEmit();
         emit IShareClassManager.ClaimRedeem(
-            poolId, scId, 1, investor, USDC, approvedShareAmount, pendingShareAmount, revokedAssetAmount
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedShares,
+            pendingShareAmount,
+            revokedAssetAmount,
+            block.timestamp.toUint64()
         );
-    emit IShareClassManager.UpdateRequest(poolId, scId, epochId, RequestType.Redeem, investor, USDC, 0, 0, 0, false);
-        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal) =
+        emit IShareClassManager.UpdateRedeemRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal, bool canClaimAgain) =
             shareClass.claimRedeem(poolId, scId, investor, USDC);
         assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed share amount mismatch");
-        assertEq(claimedShareAmount, approvedShareAmount, "Claimed asset amount mismatch");
+        assertEq(claimedShareAmount, approvedShares, "Claimed asset amount mismatch");
         assertEq(cancelledTotal, pendingShareAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
 
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(0, epochId));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
-        _assertQueuedRedeemRequestEq(scId, USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
-    */
 }
-/*
+
 ///@dev Contains all tests which require transient storage to reset between calls
-contract ShareClassManagerTransientTest is ShareClassManagerBaseTest {
-    using MathLib for uint128;
-
-    function testIssueSharesManyEpochs(
-        uint8 maxEpochId,
-        uint128 navPerShare_,
-        uint128 depositAmount,
-        uint128 approvedUSDC
-    ) public  {
-        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC / 100));
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare_, 1e15, type(uint128).max / 1e18)));
-        maxEpochId = uint8(bound(maxEpochId, 3, 50));
-        approvedUSDC = uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC, depositAmount));
-        uint128 shares = 0;
-        uint128 pendingUSDC = depositAmount;
-        uint128 approvedPool = usdcToPool(approvedUSDC);
-
-        // Bump up latestApproval epochs
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
-            _resetTransientEpochIncrement();
-            shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-            shareClass.approveDeposits(poolId, scId, approvedUSDC, USDC, oracleMock);
-
-            pendingUSDC += depositAmount - approvedUSDC;
-        }
-        assertEq(totalIssuance(scId), 0);
-
-        // Assert issued events
-        uint128 totalIssuance_;
-
-        pendingUSDC = depositAmount;
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            pendingUSDC += depositAmount - approvedUSDC;
-            uint128 epochShares = shareToPoolQuote.reciprocalMulUint128(approvedPool);
-            totalIssuance_ += epochShares;
-            uint128 nav = shareToPoolQuote.mulUint128(totalIssuance_);
-
-            vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.IssueShares(poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, epochShares);
-        }
-
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        _assertEpochPointersEq(scId, USDC, EpochPointers(maxEpochId - 1, 0, maxEpochId - 1, 0));
-
-        // Ensure each epoch is issued separately
-        pendingUSDC = depositAmount;
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            uint128 epochShares = shareToPoolQuote.reciprocalMulUint128(approvedPool);
-            shares += epochShares;
-
-            _assertEpochAmountsEq(
-                scId, USDC, i, EpochAmounts(pendingUSDC, approvedUSDC, approvedPool, epochShares, 0, 0, 0)
-            );
-            pendingUSDC += depositAmount - approvedUSDC;
-        }
-        assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
-        (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
-        assertEq(navPerShare.inner(), 0);
-        assertEq(issuance, shares, "totalIssuance mismatch");
-
-        // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ApprovalRequired.selector));
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-    }
-
-    function testClaimDepositManyEpochs(
-        uint8 maxEpochId,
-        uint128 navPerShare,
-        uint128 depositAmount,
-        uint128 maxApproval
-    ) public  {
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare, 1e10, type(uint128).max / 1e18)));
-        maxEpochId = uint8(bound(maxEpochId, 3, 50));
-        depositAmount =
-            maxEpochId * uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC / 100));
-        maxApproval = uint128(bound(maxApproval, MIN_REQUEST_AMOUNT_USDC, depositAmount));
-        uint128 pending = depositAmount;
-        uint128 epochApprovedUSDC = maxApproval / maxEpochId;
-        uint128 epochApprovedPool = usdcToPool(epochApprovedUSDC);
-        uint128 totalApprovedUSDC = 0;
-        uint128 shares = 0;
-
-        shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-
-        // Approve many epochs and issue shares
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            shareClass.approveDeposits(poolId, scId, epochApprovedUSDC, USDC, oracleMock);
-            totalApprovedUSDC += epochApprovedUSDC;
-            shares += shareToPoolQuote.reciprocalMulUint128(epochApprovedPool);
-            pending = depositAmount - epochApprovedUSDC;
-            _resetTransientEpochIncrement();
-        }
-        shareClass.issueShares(poolId, scId, USDC, shareToPoolQuote);
-        assertEq(totalIssuance(scId), shares, "totalIssuance mismatch");
-
-        // Ensure each epoch is claimed separately
-        pending = depositAmount;
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            uint128 epochShares = shareToPoolQuote.reciprocalMulUint128(epochApprovedPool);
-
-            if (epochShares > 0) {
-                pending -= epochApprovedUSDC;
-            }
-            vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.ClaimDeposit(
-                poolId, scId, i, investor, USDC, epochApprovedUSDC, pending, epochShares
-            );
-        }
-
-        (uint128 userShares, uint128 payment,) = shareClass.claimDeposit(poolId, scId, investor, USDC);
-        assertEq(totalApprovedUSDC + pending, depositAmount, "approved + pending must equal request amount");
-        assertEq(shares, userShares, "shares mismatch");
-        assertEq(totalApprovedUSDC, payment, "payment mismatch");
-
-        UserOrder memory userOrder = UserOrder(pending, maxEpochId);
-        _assertDepositRequestEq(scId, USDC, investor, userOrder);
-    }
-
-    function testRevokeSharesManyEpochs(
-        uint8 maxEpochId,
-        uint128 navPerShare_,
-        uint128 redeemAmount,
-        uint128 approvedRedeem
-    ) public  {
-        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        approvedRedeem = uint128(bound(approvedRedeem, MIN_REQUEST_AMOUNT_SHARES, redeemAmount));
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare_, 1e15, type(uint128).max / 1e18)));
-        maxEpochId = uint8(bound(maxEpochId, 3, 50));
-        uint128 totalIssuance_ = maxEpochId * redeemAmount;
-        uint128 redeemedShares = 0;
-        uint128 pendingRedeems = redeemAmount;
-
-        // Mock total issuance to equal total redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(totalIssuance_))
-        );
-
-        // Bump up latestApproval epochs
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
-            _resetTransientEpochIncrement();
-            shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-            shareClass.approveRedeems(poolId, scId, approvedRedeem, USDC);
-        }
-        assertEq(totalIssuance(scId), totalIssuance_);
-
-        // Assert revoked events
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            totalIssuance_ -= approvedRedeem;
-            uint128 nav = shareToPoolQuote.mulUint128(totalIssuance_);
-            pendingRedeems += redeemAmount - approvedRedeem;
-            uint128 revokedAssetAmount = poolToUsdc(shareToPoolQuote.mulUint128(approvedRedeem));
-
-            vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.RevokeShares(
-                poolId, scId, i, nav, shareToPoolQuote, totalIssuance_, approvedRedeem, revokedAssetAmount
-            );
-        }
-
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        _assertEpochPointersEq(scId, USDC, EpochPointers(0, maxEpochId - 1, 0, maxEpochId - 1));
-
-        // Ensure each epoch was revoked separately
-        pendingRedeems = redeemAmount;
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            redeemedShares += approvedRedeem;
-            uint128 revokedAssetAmount = poolToUsdc(shareToPoolQuote.mulUint128(approvedRedeem));
-
-            _assertEpochAmountsEq(
-                scId, USDC, i, EpochAmounts(0, 0, 0, 0, pendingRedeems, approvedRedeem, revokedAssetAmount)
-            );
-            pendingRedeems += redeemAmount - approvedRedeem;
-        }
-        assertEq(totalIssuance(scId), totalIssuance_);
-        (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
-        assertEq(navPerShare.inner(), 0);
-        assertEq(issuance, totalIssuance_);
-
-        // Ensure another issuance reverts
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ApprovalRequired.selector));
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-    }
-
-    function testClaimRedeemManyEpochs(
-        uint8 maxEpochId,
-        uint128 navPerShare,
-        uint128 redeemAmount,
-        uint128 epochApproved
-    ) public  {
-        maxEpochId = uint8(bound(maxEpochId, 3, 50));
-        D18 shareToPoolQuote = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
-        redeemAmount = maxEpochId * uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        epochApproved = uint128(bound(epochApproved, MIN_REQUEST_AMOUNT_SHARES, redeemAmount / maxEpochId));
-        uint128 pendingRedeem = redeemAmount;
-        uint128 totalApproved = 0;
-        uint128 payout = 0;
-
-        // Mock total issuance to equal total redeemAmount
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(redeemAmount))
-        );
-
-        shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-
-        // Approve many epochs and revoke shares
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            shareClass.approveRedeems(poolId, scId, epochApproved, USDC);
-            totalApproved += epochApproved;
-            pendingRedeem -= epochApproved;
-            _resetTransientEpochIncrement();
-        }
-        shareClass.revokeShares(poolId, scId, USDC, shareToPoolQuote, oracleMock);
-        assertEq(totalIssuance(scId), pendingRedeem, "totalIssuance mismatch");
-
-        // Ensure each epoch is claimed separately
-        pendingRedeem = redeemAmount;
-        for (uint8 i = 1; i < maxEpochId; i++) {
-            uint128 epochPayout = poolToUsdc(shareToPoolQuote.mulUint128(epochApproved));
-
-            if (epochPayout > 0) {
-                payout += epochPayout;
-                pendingRedeem -= epochApproved;
-            }
-            vm.expectEmit(true, true, true, true);
-            emit IShareClassManager.ClaimRedeem(
-                poolId, scId, i, investor, USDC, epochApproved, pendingRedeem, epochPayout
-            );
-        }
-        (uint128 payoutAssetAmount, uint128 depositShareAmount,) = shareClass.claimRedeem(poolId, scId, investor, USDC);
-
-        assertEq(totalApproved + pendingRedeem, redeemAmount, "approved + pending must equal request amount");
-        assertEq(payout, payoutAssetAmount, "payout asset amount mismatch");
-        assertEq(totalApproved, depositShareAmount, "payment shares mismatch");
-
-        UserOrder memory userOrder = UserOrder(pendingRedeem, maxEpochId);
-        _assertRedeemRequestEq(scId, USDC, investor, userOrder);
-    }
+contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
+    using MathLib for *;
 
     function testDepositsWithRedeemsFullFlow(
         uint128 navPerShare_,
-        uint128 depositRequest,
-        uint128 redeemRequest,
-        uint128 depositApproval,
-        uint128 redeemApproval
-    ) public  {
+        uint128 depositRequestUsdc,
+        uint128 redeemRequestShares,
+        uint128 depositApprovedUsdc,
+        uint128 redeemApprovedShares
+    ) public {
         D18 navPerShareDeposit = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.inner())));
-        uint128 shares = navPerShareDeposit.reciprocalMulUint128(usdcToPool(MAX_REQUEST_AMOUNT_USDC));
-        depositRequest = uint128(bound(depositRequest, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        redeemRequest = uint128(bound(redeemRequest, MIN_REQUEST_AMOUNT_SHARES, shares));
-        depositApproval = uint128(bound(depositRequest, MIN_REQUEST_AMOUNT_USDC, depositRequest));
-        redeemApproval = uint128(bound(redeemRequest, MIN_REQUEST_AMOUNT_SHARES, redeemRequest));
-        EpochAmounts memory epochAmounts = EpochAmounts(0, 0, 0, 0, 0, 0, 0);
+        uint128 shares = navPerShareDeposit.reciprocalMulUint128(_intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC));
+        depositRequestUsdc = uint128(bound(depositRequestUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        redeemRequestShares = uint128(bound(redeemRequestShares, MIN_REQUEST_AMOUNT_SHARES, shares));
+        depositApprovedUsdc = uint128(bound(depositRequestUsdc, MIN_REQUEST_AMOUNT_USDC, depositRequestUsdc));
+        redeemApprovedShares = uint128(bound(redeemRequestShares, MIN_REQUEST_AMOUNT_SHARES, redeemRequestShares));
 
         // Step 1: Do initial deposit flow with 100% deposit approval rate to add sufficient shares for later redemption
-        uint32 epochId = 2;
+        uint32 epochId = 1;
         shareClass.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, investor, USDC);
-        shareClass.approveDeposits(poolId, scId, MAX_REQUEST_AMOUNT_USDC, USDC, oracleMock);
-        shareClass.issueShares(poolId, scId, USDC, navPerShareDeposit);
-        shareClass.claimDeposit(poolId, scId, investor, USDC);
-
-        assertEq(totalIssuance(scId), shares);
-        assertEq(shareClass.epochId(poolId), 2);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(0, 2));
-        _assertEpochAmountsEq(
-            scId,
+        shareClass.approveDeposits(poolId, scId, USDC, epochId, MAX_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC));
+        shareClass.issueShares(poolId, scId, USDC, epochId, navPerShareDeposit);
+        _assertEpochInvestAmountsEq(
             USDC,
-            1,
-            EpochAmounts(
-                MAX_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC, usdcToPool(MAX_REQUEST_AMOUNT_USDC), shares, 0, 0, 0
+            epochId,
+            EpochInvestAmounts(
+                MAX_REQUEST_AMOUNT_USDC,
+                MAX_REQUEST_AMOUNT_USDC,
+                _intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC),
+                _pricePoolPerAsset(USDC),
+                navPerShareDeposit,
+                block.timestamp.toUint64()
             )
         );
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+        assertEq(_totalIssuance(), shares, "1Mismatch in issuance");
+
+        epochId += 1;
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
 
         // Step 2a: Deposit + redeem at same
-        _resetTransientEpochIncrement();
-        shareClass.requestDeposit(poolId, scId, depositRequest, investor, USDC);
-        shareClass.requestRedeem(poolId, scId, redeemRequest, investor, USDC);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(depositRequest, epochId));
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(redeemRequest, epochId));
+        shareClass.requestDeposit(poolId, scId, depositRequestUsdc, investor, USDC);
+        shareClass.requestRedeem(poolId, scId, redeemRequestShares, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositRequestUsdc, epochId));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemRequestShares, epochId - 1));
 
         // Step 2b: Approve deposits
-        epochAmounts.depositPending = depositRequest;
-        epochAmounts.depositApproved = depositApproval;
-        shareClass.approveDeposits(poolId, scId, depositApproval, USDC, oracleMock);
-        epochAmounts.depositPool = usdcToPool(depositApproval);
-        _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
+        shareClass.approveDeposits(poolId, scId, USDC, epochId, depositApprovedUsdc, _pricePoolPerAsset(USDC));
 
         // Step 2c: Approve redeems
-        epochAmounts.redeemPending = redeemRequest;
-        epochAmounts.redeemApproved = redeemApproval;
-        shareClass.approveRedeems(poolId, scId, redeemApproval, USDC);
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(depositRequest, epochId));
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(redeemRequest, epochId));
-        _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
+        shareClass.approveRedeems(poolId, scId, USDC, epochId - 1, redeemApprovedShares, _pricePoolPerAsset(USDC));
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositRequestUsdc, epochId));
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemRequestShares, epochId - 1));
 
         // Step 2d: Issue shares
-        shareClass.issueShares(poolId, scId, USDC, navPerShareDeposit);
-        epochAmounts.depositShares = navPerShareDeposit.reciprocalMulUint128(usdcToPool(depositRequest));
-        shares += epochAmounts.depositShares;
-        assertEq(totalIssuance(scId), shares);
-        _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
+        shareClass.issueShares(poolId, scId, USDC, epochId, navPerShareDeposit);
+        uint128 depositIssuedShares = navPerShareDeposit.reciprocalMulUint128(_intoPoolAmount(USDC, depositRequestUsdc));
+        shares += depositIssuedShares;
+        assertEq(_totalIssuance(), shares, "2Mismatch in issuance");
 
         // Step 2e: Revoke shares
-        shareClass.revokeShares(poolId, scId, USDC, navPerShareRedeem, oracleMock);
-        shares -= epochAmounts.redeemApproved;
+        shareClass.revokeShares(poolId, scId, USDC, epochId - 1, navPerShareRedeem);
+        shares -= redeemApprovedShares;
         (uint128 issuance, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(issuance, shares);
-        // @dev navPerShare should be 0 since we are using updateShareClass(..) to set it
-        assertEq(navPerShare.inner(), 0);
-        epochAmounts.redeemAssets = poolToUsdc(navPerShareRedeem.mulUint128(redeemApproval));
-        _assertEpochAmountsEq(scId, USDC, epochId, epochAmounts);
+        assertEq(issuance, shares, "Mismatch in metrics issuance");
+        assertEq(navPerShare.inner(), 0, "Metrics nav should only be set in updateShareClass");
 
         // Step 2f: Claim deposit and redeem
         epochId += 1;
-        (, uint128 claimDepositAssetPaymentAmount,) = shareClass.claimDeposit(poolId, scId, investor, USDC);
-        (, uint128 claimRedeemSharePaymentAmount,) = shareClass.claimRedeem(poolId, scId, investor, USDC);
-uint128 pendingDeposit = claimDepositAssetPaymentAmount == 0 ? 0 : depositRequest - epochAmounts.depositApproved;
-        _assertDepositRequestEq(scId, USDC, investor, UserOrder(pendingDeposit, epochId));
-        uint128 pendingRedeem =
-            claimRedeemSharePaymentAmount == 0 ? redeemRequest : redeemRequest - epochAmounts.redeemApproved;
-        _assertRedeemRequestEq(scId, USDC, investor, UserOrder(pendingRedeem, epochId));
-        _assertEpochAmountsEq(scId, USDC, 2, epochAmounts);
-        _assertEpochAmountsEq(scId, USDC, epochId, EpochAmounts(0, 0, 0, 0, 0, 0, 0));
+        (uint128 depositPayout, uint128 depositPayment,,) = shareClass.claimDeposit(poolId, scId, investor, USDC);
+        (, uint128 redeemPayment,,) = shareClass.claimRedeem(poolId, scId, investor, USDC);
+
+        uint128 pendingDeposit = depositRequestUsdc - depositApprovedUsdc;
+        assertEq(depositPayment, depositApprovedUsdc, "Mismatch in deposit payment");
+        assertEq(depositPayout, depositIssuedShares, "Mismatch in deposit payout");
+        _assertDepositRequestEq(USDC, investor, UserOrder(pendingDeposit, epochId));
+
+        uint128 pendingRedeem = redeemRequestShares - redeemApprovedShares;
+        assertEq(redeemPayment, redeemApprovedShares, "Mismatch in redeem payment");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(pendingRedeem, epochId - 1));
     }
 }
 
@@ -1554,86 +1524,103 @@ uint128 pendingDeposit = claimDepositAssetPaymentAmount == 0 ? 0 : depositReques
 contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest {
     using MathLib for uint128;
 
+    uint128 constant MIN_REQUEST_AMOUNT_OTHER_STABLE = DENO_OTHER_STABLE;
+    uint128 constant MAX_REQUEST_AMOUNT_OTHER_STABLE = 1e24;
     bytes32 constant INVESTOR_A = bytes32("investorA");
     bytes32 constant INVESTOR_B = bytes32("investorB");
     bytes32 constant INVESTOR_C = bytes32("investorC");
 
-    function _approveAllDepositsAndIssue(uint128 expectedShareIssuance, D18 navPerShare) private {
-        shareClass.approveDeposits(poolId, scId, MAX_REQUEST_AMOUNT_USDC, USDC, oracleMock);
-        shareClass.issueShares(poolId, scId, USDC, navPerShare);
-        assertEq(totalIssuance(scId), expectedShareIssuance, "Mismatch in expected shares");
+    function _approveAllDepositsAndIssue(uint128 approvedAssetAmount, uint128 expectedShareIssuance, D18 navPerShare)
+        private
+    {
+        shareClass.approveDeposits(
+            poolId, scId, OTHER_STABLE, _nowDeposit(OTHER_STABLE), approvedAssetAmount, _pricePoolPerAsset(OTHER_STABLE)
+        );
+        shareClass.issueShares(poolId, scId, OTHER_STABLE, _nowIssue(OTHER_STABLE), navPerShare);
+        assertEq(_totalIssuance(), expectedShareIssuance, "Mismatch in expected shares");
     }
 
-    /// @dev Investors cannot claim the single issued share atom (one of smallest denomination of share)
-    function testClaimDepositSingleShareAtom() public  {
-        uint128 approvedAssetAmount = DENO_USDC;
+    /// @dev Investors cannot claim the single issued share atom (one of smallest denomination of share) but still pay
+    function testClaimDepositSingleShareAtom() public {
+        uint128 approvedAssetAmount = DENO_OTHER_STABLE;
         uint128 issuedShares = 1;
-        D18 navPerShare = d18(usdcToPool(approvedAssetAmount), issuedShares);
+        uint128 depositAmountA = 1;
+        uint128 depositAmountB = approvedAssetAmount - depositAmountA;
+        D18 navPerShare = d18(_intoPoolAmount(OTHER_STABLE, approvedAssetAmount), issuedShares);
 
-        shareClass.requestDeposit(poolId, scId, 1, INVESTOR_A, USDC);
-        shareClass.requestDeposit(poolId, scId, approvedAssetAmount - 1, INVESTOR_B, USDC);
-        _approveAllDepositsAndIssue(issuedShares, navPerShare);
+        shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA, uint128 cancelledA) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB, uint128 cancelledB) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB, uint128 cancelledB,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_B, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
         assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token atom surplus");
-        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim single share atom");
+        assertEq(paymentA, depositAmountA, "Payment A should never be zero");
+        assertEq(paymentB, depositAmountB, "Payment B should never be zero");
         assertEq(cancelledA + cancelledB, 0, "No queued cancellation");
-        assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero");
+        assertEq(shareClass.pendingDeposit(scId, OTHER_STABLE), 0, "Pending deposit should be zero");
 
-        _assertDepositRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
-        _assertDepositRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedAssetAmount - 1, 2));
+        _assertDepositRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
+        _assertDepositRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
     }
 
     /// @dev Investors can claim 50% rounded down of an uneven number of shares => 1 share atom surplus in system
-    function testClaimDepositEvenInvestorsUnevenClaimable() public  {
-        uint128 approvedAssetAmount = 100 * DENO_USDC;
+    function testClaimDepositEvenInvestorsUnevenClaimable() public {
+        uint128 approvedAssetAmount = 100 * DENO_OTHER_STABLE;
         uint128 issuedShares = 11;
-        D18 navPerShare = d18(usdcToPool(approvedAssetAmount), issuedShares);
+        uint128 depositAmountA = 49 * approvedAssetAmount / 100;
+        uint128 depositAmountB = 51 * approvedAssetAmount / 100;
+        D18 navPerShare = d18(_intoPoolAmount(OTHER_STABLE, approvedAssetAmount), issuedShares);
 
-        shareClass.requestDeposit(poolId, scId, 49 * approvedAssetAmount / 100, INVESTOR_A, USDC);
-        shareClass.requestDeposit(poolId, scId, 51 * approvedAssetAmount / 100, INVESTOR_B, USDC);
-        _approveAllDepositsAndIssue(issuedShares, navPerShare);
+        shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA, uint128 cancelledA) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB, uint128 cancelledB) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB, uint128 cancelledB,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_B, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
         assertEq(claimedA + claimedB + 1, issuedShares, "System should have 1 share class token atom surplus");
-        assert(paymentA != paymentB);
+        assertEq(paymentA, depositAmountA, "Payment A should never be zero");
+        assertEq(paymentB, depositAmountB, "Payment B should never be zero");
         assertEq(cancelledA + cancelledB, 0, "No queued cancellation");
     }
 
     /// @dev Investors can claim 1/3 of an even number of shares => 1 share atom surplus in system
-    function testClaimDepositUnevenInvestorsEvenClaimable() public  {
-        uint128 approvedAssetAmount = 100 * DENO_USDC;
+    function testClaimDepositUnevenInvestorsEvenClaimable() public {
+        uint128 approvedAssetAmount = 100 * DENO_OTHER_STABLE;
         uint128 issuedShares = 10;
-        D18 navPerShare = d18(usdcToPool(approvedAssetAmount), issuedShares);
+        uint128 depositAmountA = 30 * approvedAssetAmount / 100;
+        uint128 depositAmountB = 31 * approvedAssetAmount / 100;
+        uint128 depositAmountC = 39 * approvedAssetAmount / 100;
+        D18 navPerShare = d18(_intoPoolAmount(OTHER_STABLE, approvedAssetAmount), issuedShares);
 
-        shareClass.requestDeposit(poolId, scId, 30 * approvedAssetAmount / 100, INVESTOR_A, USDC);
-        shareClass.requestDeposit(poolId, scId, 31 * approvedAssetAmount / 100, INVESTOR_B, USDC);
-        shareClass.requestDeposit(poolId, scId, 39 * approvedAssetAmount / 100, INVESTOR_C, USDC);
-        _approveAllDepositsAndIssue(issuedShares, navPerShare);
+        shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountC, INVESTOR_C, OTHER_STABLE);
+        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA, uint128 cancelledA) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB, uint128 cancelledB) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_B, USDC);
-        (uint128 claimedC, uint128 paymentC, uint128 cancelledC) =
-            shareClass.claimDeposit(poolId, scId, INVESTOR_C, USDC);
+        (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB, uint128 cancelledB,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_B, OTHER_STABLE);
+        (uint128 claimedC, uint128 paymentC, uint128 cancelledC,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_C, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed shares should be equal");
         assertEq(claimedB, claimedC, "Claimed shares should be equal");
         assertEq(
             claimedA + claimedB + claimedC + 1, issuedShares, "System should have 1 share class token atom surplus"
         );
-        assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
+        assertEq(paymentA, depositAmountA, "Payment A should never be zero");
+        assertEq(paymentB, depositAmountB, "Payment B should never be zero");
+        assertEq(paymentC, depositAmountC, "Payment C should never be zero");
         assertEq(cancelledA + cancelledB + cancelledC, 0, "No queued cancellation");
     }
 }
@@ -1646,109 +1633,128 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
     bytes32 constant INVESTOR_A = bytes32("investorA");
     bytes32 constant INVESTOR_B = bytes32("investorB");
     bytes32 constant INVESTOR_C = bytes32("investorC");
-    uint128 TOTAL_ISSUANCE = 1000 * DENO_POOL;
+
+    uint128 constant TOTAL_ISSUANCE = 1000 * DENO_POOL;
+
+    // 100 OTHER_STABLE = 1 POOL leads to max OTHER_STABLE precision of 100
+    // NOTE: If 1 OTHER_STABLE equalled 100 POOL, max OTHER_STABLE precision would be 1
+    // This originates from the price conversion which does base * exponentQuote / exponentBase
+    uint128 constant MAX_OTHER_STABLE_PRECISION = OTHER_STABLE_PER_POOL;
 
     function setUp() public override {
         ShareClassManagerBaseTest.setUp();
 
-        // Mock total issuance such that we can redeem
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(scId, uint256(STORAGE_INDEX_METRICS))),
-            bytes32(uint256(TOTAL_ISSUANCE))
-        );
+        _mockTotalIssuance(TOTAL_ISSUANCE);
     }
 
-    function _approveAllRedeemsAndRevoke(uint128 approvedShareAmount, uint128 expectedAssetPayout, D18 navPerShare)
+    function _approveAllRedeemsAndRevoke(uint128 approvedShares, uint128 expectedAssetPayout, D18 navPerShare)
         private
     {
-        shareClass.approveRedeems(poolId, scId, approvedShareAmount, USDC);
-        (uint128 assetPayout,) = shareClass.revokeShares(poolId, scId, USDC, navPerShare, oracleMock);
-        assertEq(totalIssuance(scId), TOTAL_ISSUANCE - approvedShareAmount, "Mismatch in expected shares");
-        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should have decreased");
+        shareClass.approveRedeems(
+            poolId, scId, OTHER_STABLE, _nowRedeem(OTHER_STABLE), approvedShares, _pricePoolPerAsset(OTHER_STABLE)
+        );
+        (, uint128 assetPayout,) =
+            shareClass.revokeShares(poolId, scId, OTHER_STABLE, _nowRevoke(OTHER_STABLE), navPerShare);
+        assertEq(_totalIssuance(), TOTAL_ISSUANCE - approvedShares, "Mismatch in expected shares");
+        assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should have decreased");
         assertEq(assetPayout, expectedAssetPayout, "Mismatch in expected asset payout");
     }
 
     /// @dev Investors cannot claim anything despite non-zero pending amounts
-    function testClaimRedeemSingleAssetAtom() public  {
-        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
-        uint128 assetPayout = 1;
-        uint128 poolPayout = usdcToPool(assetPayout);
-        D18 navPerShare = d18(poolPayout, approvedShareAmount); // = 1e18
+    function testClaimRedeemSingleAssetAtom() public {
+        uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE; // 1e6
+        uint128 assetPayout = MAX_OTHER_STABLE_PRECISION; // 100
+        uint128 redeemAmountA = 1;
+        uint128 redeemAmountB = approvedShares - redeemAmountA;
+        uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout); // 1
+        D18 navPerShare = d18(poolPayout, approvedShares); // = 1e18
 
-        shareClass.requestRedeem(poolId, scId, 1, INVESTOR_A, USDC);
-        shareClass.requestRedeem(poolId, scId, approvedShareAmount - 1, INVESTOR_B, USDC);
-        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+        shareClass.requestRedeem(poolId, scId, redeemAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllRedeemsAndRevoke(approvedShares, assetPayout, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA,) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB,) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedA, uint128 paymentA,,) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB,,) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Both investors should have claimed same amount");
         assertEq(claimedA + claimedB, 0, "Claimed amount should be zero for both investors");
-        assertEq(paymentA + paymentB, 0, "Payment should be zero since neither investor could claim anything");
-        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero");
+        assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
+        assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
+        assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should be zero");
 
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(1, 2));
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(approvedShareAmount - 1, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
     }
 
-    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount => 1 asset amount surplus in
+    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount => asset amount surplus in
     /// system
-    function testClaimRedeemEvenInvestorsUnevenClaimable() public  {
-        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
-        uint128 assetPayout = 11;
-        uint128 poolPayout = usdcToPool(assetPayout);
-        D18 navPerShare = d18(poolPayout, approvedShareAmount);
+    function testClaimRedeemEvenInvestorsUnevenClaimable() public {
+        uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE;
+        uint128 assetPayout = 11 * MAX_OTHER_STABLE_PRECISION; // 1100
+        uint128 redeemAmountA = 49 * approvedShares / 100;
+        uint128 redeemAmountB = 51 * approvedShares / 100;
+        uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout); // 11
+        D18 navPerShare = d18(poolPayout, approvedShares);
 
-        shareClass.requestRedeem(poolId, scId, 49 * approvedShareAmount / 100, INVESTOR_A, USDC);
-        shareClass.requestRedeem(poolId, scId, 51 * approvedShareAmount / 100, INVESTOR_B, USDC);
-        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+        shareClass.requestRedeem(poolId, scId, redeemAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllRedeemsAndRevoke(approvedShares, assetPayout, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA, uint128 cancelledA) =
-            shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB, uint128 cancelledB) =
-            shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
+        (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
+            shareClass.claimRedeem(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB, uint128 cancelledB,) =
+            shareClass.claimRedeem(poolId, scId, INVESTOR_B, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
-        assertEq(claimedA + claimedB + 1, assetPayout, "System should have 1 asset amount atom surplus");
-        assert(paymentA != paymentB);
-        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should not have reset");
+        assertEq(
+            claimedA + claimedB + 1 * MAX_OTHER_STABLE_PRECISION,
+            assetPayout,
+            "System should have 1 max asset precision amount surplus"
+        );
+        assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
+        assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
+        assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should not have reset");
         assertEq(cancelledA + cancelledB, 0, "No queued cancellation");
 
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(0, 2));
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
     }
 
-    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount => 1 asset amount surplus in
+    /// @dev Investors can claim 50% rounded down of an uneven number of asset amount =>  asset amount surplus in
     /// system
-    function testClaimRedeemUnevenInvestorsEvenClaimable() public  {
-        uint128 approvedShareAmount = DENO_POOL / DENO_USDC;
-        uint128 assetPayout = 10;
-        uint128 poolPayout = usdcToPool(assetPayout);
-        D18 navPerShare = d18(poolPayout, approvedShareAmount);
+    function testClaimRedeemUnevenInvestorsEvenClaimable() public {
+        uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE;
+        uint128 assetPayout = 10 * MAX_OTHER_STABLE_PRECISION; // 1000
+        uint128 redeemAmountA = 30 * approvedShares / 100;
+        uint128 redeemAmountB = 31 * approvedShares / 100;
+        uint128 redeemAmountC = 39 * approvedShares / 100;
+        uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout); // 10
+        D18 navPerShare = d18(poolPayout, approvedShares);
 
-        shareClass.requestRedeem(poolId, scId, 30 * approvedShareAmount / 100, INVESTOR_A, USDC);
-        shareClass.requestRedeem(poolId, scId, 31 * approvedShareAmount / 100, INVESTOR_B, USDC);
-        shareClass.requestRedeem(poolId, scId, 39 * approvedShareAmount / 100, INVESTOR_C, USDC);
-        _approveAllRedeemsAndRevoke(approvedShareAmount, assetPayout, navPerShare);
+        shareClass.requestRedeem(poolId, scId, redeemAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemAmountB, INVESTOR_B, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemAmountC, INVESTOR_C, OTHER_STABLE);
+        _approveAllRedeemsAndRevoke(approvedShares, assetPayout, navPerShare);
 
-        (uint128 claimedA, uint128 paymentA, uint128 cancelledA) =
-            shareClass.claimRedeem(poolId, scId, INVESTOR_A, USDC);
-        (uint128 claimedB, uint128 paymentB, uint128 cancelledB) =
-            shareClass.claimRedeem(poolId, scId, INVESTOR_B, USDC);
-        (uint128 claimedC, uint128 paymentC, uint128 cancelledC) =
-            shareClass.claimRedeem(poolId, scId, INVESTOR_C, USDC);
+        (uint128 claimedA, uint128 paymentA,,) = shareClass.claimRedeem(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedB, uint128 paymentB,,) = shareClass.claimRedeem(poolId, scId, INVESTOR_B, OTHER_STABLE);
+        (uint128 claimedC, uint128 paymentC,,) = shareClass.claimRedeem(poolId, scId, INVESTOR_C, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
         assertEq(claimedB, claimedC, "Claimed asset amount should be equal");
-        assertEq(claimedA + claimedB + claimedC + 1, assetPayout, "System should have 1 asset amount atom surplus");
-        assert(paymentA != paymentB && paymentB != paymentC && paymentC != paymentA);
-        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should not have reset");
-        assertEq(cancelledA + cancelledB + cancelledC, 0, "No queued cancellation");
+        assertEq(
+            claimedA + claimedB + claimedC + 1 * MAX_OTHER_STABLE_PRECISION,
+            assetPayout,
+            "System should have 1 max asset precision amount surplus"
+        );
+        assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
+        assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
+        assertEq(paymentC, redeemAmountC, "Payment C should never be zero");
+        assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should not have reset");
 
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_A, UserOrder(0, 2));
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_B, UserOrder(0, 2));
-        _assertRedeemRequestEq(scId, USDC, INVESTOR_C, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
+        _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_C, UserOrder(0, 2));
     }
 }
 
@@ -1758,6 +1764,7 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
 
     ShareClassId wrongShareClassId = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + 42));
     address unauthorized = makeAddr("unauthorizedAddress");
+    uint32 epochId = 1;
 
     function testFile(bytes32 what) public {
         vm.assume(what != "hubRegistry");
@@ -1803,80 +1810,38 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
 
     function testApproveDepositsWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.approveDeposits(poolId, wrongShareClassId, 1, USDC, IERC7726(address(this)));
+        shareClass.approveDeposits(poolId, wrongShareClassId, USDC, epochId, 1, d18(1, 1));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        shareClass.approveDeposits(poolId, wrongShareClassId, 1, USDC, IERC7726(address(this)));
+        shareClass.approveDeposits(poolId, wrongShareClassId, USDC, epochId, 1, d18(1, 1));
     }
 
     function testApproveRedeemsWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.approveRedeems(poolId, wrongShareClassId, 1, USDC);
+        shareClass.approveRedeems(poolId, wrongShareClassId, USDC, epochId, 1, _pricePoolPerAsset(USDC));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        shareClass.approveRedeems(poolId, wrongShareClassId, 1, USDC);
+        shareClass.approveRedeems(poolId, wrongShareClassId, USDC, epochId, 1, _pricePoolPerAsset(USDC));
     }
 
     function testIssueSharesWrongShareClassId() public {
-        // Mock latestDepositApproval to epoch 1
-        vm.store(
-            address(shareClass),
-keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORAGE_INDEX_EPOCH_POINTERS))))),
-            bytes32(
-                (uint256(1)) // latestDepositApproval
-                    | (uint256(0) << 32) // latestRedeemApproval
-                    | (uint256(0) << 64) // latestIssuance
-                    | (uint256(0) << 96) // latestRevocation
-            )
-        );
-
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.issueShares(poolId, wrongShareClassId, USDC, d18(1));
+        shareClass.issueShares(poolId, wrongShareClassId, USDC, epochId, d18(1));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        shareClass.issueShares(poolId, wrongShareClassId, USDC, d18(1));
-    }
-
-    function testIssueSharesUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.issueSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        shareClass.issueSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), 0);
+        shareClass.issueShares(poolId, wrongShareClassId, USDC, epochId, d18(1));
     }
 
     function testRevokeSharesWrongShareClassId() public {
-        // Mock latestRedeemApproval to epoch 1
-        vm.store(
-            address(shareClass),
-            keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, STORAGE_INDEX_EPOCH_POINTERS)))),
-            bytes32(
-                (uint256(0)) // latestDepositApproval
-                    | (uint256(1) << 32) // latestRedeemApproval
-                    | (uint256(0) << 64) // latestIssuance
-                    | (uint256(0) << 96) // latestRevocation
-            )
-        );
-
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.revokeShares(poolId, wrongShareClassId, USDC, d18(1), oracleMock);
+        shareClass.revokeShares(poolId, wrongShareClassId, USDC, epochId, d18(1));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
-        shareClass.revokeShares(poolId, wrongShareClassId, USDC, d18(1), oracleMock);
-    }
-
-    function testRevokeSharesUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.revokeSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), oracleMock, 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(unauthorized);
-        shareClass.revokeSharesUntilEpoch(poolId, wrongShareClassId, USDC, d18(1), oracleMock, 0);
+        shareClass.revokeShares(poolId, wrongShareClassId, USDC, epochId, d18(1));
     }
 
     function testClaimDepositWrongShareClassId() public {
@@ -1884,24 +1849,14 @@ keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORA
         shareClass.claimDeposit(poolId, wrongShareClassId, investor, USDC);
     }
 
-    function testClaimDepositUntilEpochWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.claimDepositUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
-    }
-
     function testClaimRedeemWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimRedeem(poolId, wrongShareClassId, investor, USDC);
     }
 
-    function testClaimRedeemUntilEpochWrongShareClassId() public {
+    function testUpdatePricePerShareWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.claimRedeemUntilEpoch(poolId, wrongShareClassId, investor, USDC, 0);
-    }
-
-    function testUpdateShareClassWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updateShareClass(poolId, wrongShareClassId, d18(1), "");
+        shareClass.updatePricePerShare(poolId, wrongShareClassId, d18(1));
     }
 
     function testUpdateMetadataWrongShareClassId() public {
@@ -1911,52 +1866,32 @@ keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORA
 
     function testIncreaseIssuanceWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, 0);
     }
 
     function testDecreaseIssuanceWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, d18(0), 0);
+        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, 0);
     }
 
     function testDecreaseOverFlow() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.DecreaseMoreThanIssued.selector));
-        shareClass.decreaseShareClassIssuance(poolId, scId, d18(0), 1);
+        shareClass.decreaseShareClassIssuance(poolId, scId, 1);
     }
 
     function testIssueSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ApprovalRequired.selector));
-        shareClass.issueShares(poolId, scId, USDC, d18(1));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
+        shareClass.issueShares(poolId, scId, USDC, epochId + 1, d18(1));
     }
 
     function testRevokeSharesBeforeApproval() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ApprovalRequired.selector));
-        shareClass.revokeShares(poolId, scId, USDC, d18(1), oracleMock);
-    }
-
-    function testIssueSharesUntilEpochNotFound() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
-        shareClass.issueSharesUntilEpoch(poolId, scId, USDC, d18(1), 2);
-    }
-
-    function testRevokeSharesUntilEpochNotFound() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
-        shareClass.revokeSharesUntilEpoch(poolId, scId, USDC, d18(1), oracleMock, 2);
-    }
-
-    function testClaimDepositUntilEpochNotFound() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
-        shareClass.claimDepositUntilEpoch(poolId, scId, investor, USDC, 2);
-    }
-
-    function testClaimRedeemUntilEpochNotFound() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotFound.selector));
-        shareClass.claimRedeemUntilEpoch(poolId, scId, investor, USDC, 2);
+        shareClass.revokeShares(poolId, scId, USDC, epochId + 1, d18(1));
     }
 
     function testRequestDepositRequiresClaim() public {
         shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
-        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
+        shareClass.approveDeposits(poolId, scId, USDC, epochId, 1, d18(1, 1));
         shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.CancellationQueued.selector));
@@ -1965,47 +1900,35 @@ keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORA
 
     function testRequestRedeemCancellationQueued() public {
         shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, epochId, 1, _pricePoolPerAsset(USDC));
         shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.CancellationQueued.selector));
         shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
     }
 
-    function testApproveDepositsAlreadyApproved() public {
-        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
-        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
-
-        vm.expectRevert(IShareClassManager.AlreadyApproved.selector);
-        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
-    }
-
-    function testApproveRedeemsAlreadyApproved() public {
-        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
-
-        vm.expectRevert(IShareClassManager.AlreadyApproved.selector);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
+    function testApproveDepositsZeroPending() public {
+        vm.expectRevert(IShareClassManager.InsufficientPending.selector);
+        shareClass.approveDeposits(poolId, scId, USDC, epochId, 1, d18(1, 1));
     }
 
     function testApproveDepositsZeroApproval() public {
-        vm.expectRevert(IShareClassManager.ZeroApprovalAmount.selector);
-        shareClass.approveDeposits(poolId, scId, 0, USDC, oracleMock);
-    }
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
 
-    function testApproveDepositsZeroPending() public {
         vm.expectRevert(IShareClassManager.ZeroApprovalAmount.selector);
-        shareClass.approveDeposits(poolId, scId, 1, USDC, oracleMock);
+        shareClass.approveDeposits(poolId, scId, USDC, epochId, 0, d18(0));
     }
 
     function testApproveRedeemsZeroApproval() public {
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+
         vm.expectRevert(IShareClassManager.ZeroApprovalAmount.selector);
-        shareClass.approveRedeems(poolId, scId, 0, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, epochId, 0, _pricePoolPerAsset(USDC));
     }
 
     function testApproveRedeemsZeroPending() public {
-        vm.expectRevert(IShareClassManager.ZeroApprovalAmount.selector);
-        shareClass.approveRedeems(poolId, scId, 1, USDC);
+        vm.expectRevert(IShareClassManager.InsufficientPending.selector);
+        shareClass.approveRedeems(poolId, scId, USDC, epochId, 1, _pricePoolPerAsset(USDC));
     }
 
     function testAddShareClassInvalidNameEmpty() public {
@@ -2063,10 +1986,68 @@ keccak256(abi.encode(USDC, keccak256(abi.encode(wrongShareClassId, uint256(STORA
         shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, bytes32(0), bytes(""));
     }
 
-    function testUpdateMetadataSaltAlreadyUsed() public {
-        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
-        vm.expectRevert(IShareClassManager.AlreadyUsedSalt.selector);
-        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT, bytes(""));
+    function testApproveDepositEpochNotInSequence() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 3, 1));
+        shareClass.approveDeposits(poolId, scId, USDC, 3, 0, d18(0));
+    }
+
+    function testApproveRedeemEpochNotInSequence() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 3, 1));
+        shareClass.approveRedeems(poolId, scId, USDC, 3, 0, d18(0));
+    }
+
+    function testIssueSharesEpochNotInSequence() public {
+        shareClass.requestDeposit(poolId, scId, 1000, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.approveDeposits(poolId, scId, USDC, 2, 500, d18(1e18));
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 2, 1));
+        shareClass.issueShares(poolId, scId, USDC, 2, d18(0));
+    }
+
+    function testRevokeSharesEpochNotInSequence() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestRedeem(poolId, scId, 1000, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.approveRedeems(poolId, scId, USDC, 2, 500, d18(1e18));
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 2, 1));
+        shareClass.revokeShares(poolId, scId, USDC, 2, d18(0));
+    }
+
+    function testClaimDepositEpochNotFound() public {
+        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testClaimRedeemEpochNotFound() public {
+        vm.expectRevert(IShareClassManager.NoOrderFound.selector);
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
+    }
+
+    function testClaimDepositIssuanceRequired() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestDeposit(poolId, scId, 1000, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.issueShares(poolId, scId, USDC, 1, d18(1e18));
+
+        bytes32 investor2 = bytes32("investor2");
+        shareClass.requestDeposit(poolId, scId, 1000, investor2, USDC);
+
+        vm.expectRevert(IShareClassManager.IssuanceRequired.selector);
+        shareClass.claimDeposit(poolId, scId, investor2, USDC);
+    }
+
+    function testClaimRedeemRevocationRequired() public {
+        _mockTotalIssuance(1000);
+        shareClass.requestRedeem(poolId, scId, 1000, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, 1, 500, d18(1e18));
+        shareClass.revokeShares(poolId, scId, USDC, 1, d18(1e18));
+
+        bytes32 investor2 = bytes32("investor2");
+        shareClass.requestRedeem(poolId, scId, 1000, investor2, USDC);
+
+        vm.expectRevert(IShareClassManager.RevocationRequired.selector);
+        shareClass.claimRedeem(poolId, scId, investor2, USDC);
     }
 }
-*/

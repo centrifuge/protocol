@@ -108,16 +108,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     {
         _pay();
 
-        uint128 totalShares;
-        uint128 totalTokens;
+        uint128 totalPayoutShareAmount;
+        uint128 totalPaymentAssetAmount;
         uint128 totalCancelledAssetAmount;
 
         for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 shares, uint128 tokens, uint128 cancelledAssetAmount, bool canClaimAgain) =
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
                 shareClassManager.claimDeposit(poolId, scId, investor, assetId);
 
-            totalShares += shares;
-            totalTokens += tokens;
+            totalPayoutShareAmount += payoutShareAmount;
+            totalPaymentAssetAmount += paymentAssetAmount;
             totalCancelledAssetAmount = cancelledAssetAmount;
 
             if (!canClaimAgain) {
@@ -125,7 +125,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
             }
         }
 
-        sender.sendFulfilledDepositRequest(poolId, scId, assetId, investor, totalTokens, totalShares);
+        sender.sendFulfilledDepositRequest(
+            poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount
+        );
 
         // If cancellation was queued, notify about delayed cancellation
         if (totalCancelledAssetAmount > 0) {
@@ -140,16 +142,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     {
         _pay();
 
-        uint128 totalShares;
-        uint128 totalTokens;
+        uint128 totalPayoutAssetAmount;
+        uint128 totalPaymentShareAmount;
         uint128 totalCancelledShareAmount;
 
         for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 tokens, uint128 shares, uint128 cancelledShareAmount, bool canClaimAgain) =
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount, bool canClaimAgain) =
                 shareClassManager.claimRedeem(poolId, scId, investor, assetId);
 
-            totalShares += shares;
-            totalTokens += tokens;
+            totalPayoutAssetAmount += payoutAssetAmount;
+            totalPaymentShareAmount += paymentShareAmount;
             totalCancelledShareAmount = cancelledShareAmount;
 
             if (!canClaimAgain) {
@@ -157,7 +159,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
             }
         }
 
-        sender.sendFulfilledRedeemRequest(poolId, scId, assetId, investor, totalTokens, totalShares);
+        sender.sendFulfilledRedeemRequest(
+            poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount
+        );
 
         // If cancellation was queued, notify about delayed cancellation
         if (totalCancelledShareAmount > 0) {
