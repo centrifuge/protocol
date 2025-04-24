@@ -225,7 +225,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 ghostBalOfEscrow;
         address asset = vault.asset();
         // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(escrow)) - tokenBalanceOfEscrowAtFork; // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(escrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
