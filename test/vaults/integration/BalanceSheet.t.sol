@@ -171,8 +171,7 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
-            uint64(block.timestamp)
+            d18(100, 5)
         );
         balanceSheet.deposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
@@ -196,8 +195,7 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
-            uint64(block.timestamp)
+            d18(100, 5)
         );
         balanceSheet.noteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
@@ -231,8 +229,7 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
-            uint64(block.timestamp)
+            d18(100, 5)
         );
         balanceSheet.withdraw(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)

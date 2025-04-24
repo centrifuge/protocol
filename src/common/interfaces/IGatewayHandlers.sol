@@ -147,6 +147,34 @@ interface IPoolManagerGatewayHandler {
 
 /// @notice Interface for CV methods related to async investments called by messages
 interface IInvestmentManagerGatewayHandler {
+    /// @notice Signal from the Hub that an asynchronous investment order has been approved
+    ///
+    /// @dev This message needs to trigger making the asset amounts available to the pool-share-class.
+    function approvedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external;
+
+    /// @notice Signal from the Hub that an asynchronous investment order has been finalized. Shares have been issued.
+    ///
+    /// @dev This message needs to trigger minting the new amount of shares.
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external;
+
+    /// @notice Signal from the Hub that an asynchronous redeem order has been finalized.
+    ///
+    /// @dev This messages needs to trigger reserving the asset amount for claims of redemptions by users.
+    function revokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external;
+
     // --- Deposits ---
     /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
@@ -284,8 +312,4 @@ interface IBalanceSheetGatewayHandler {
 
     function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
         external;
-
-    function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
-
-    function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
 }

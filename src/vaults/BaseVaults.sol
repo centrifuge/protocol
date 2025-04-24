@@ -29,6 +29,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     uint256 internal constant REQUEST_ID = 0;
 
     IRoot public immutable root;
+    /// @dev this naming MUST NEVER change - due to legacy v2 vaults
     IBaseInvestmentManager public manager;
     IPoolEscrowProvider internal _poolEscrowProvider;
 
@@ -79,8 +80,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
-        // TODO: Redundant due to filing?
-        manager = manager_;
+        manager = IBaseInvestmentManager(manager_);
         _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
@@ -92,7 +92,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
-        else if (what == "poolEscrowProvider") _poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -206,7 +205,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     }
 }
 
-abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
+abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     IAsyncRedeemManager public asyncRedeemManager;
 
     constructor(IAsyncRedeemManager asyncRequests_) {
@@ -224,7 +223,7 @@ abstract contract AsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 
         require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
 
-        address escrow = address(_poolEscrowProvider.escrow(poolId));
+        address escrow = address(manager.globalEscrow());
         try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
         catch {
             // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set

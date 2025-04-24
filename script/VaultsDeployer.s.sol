@@ -17,6 +17,7 @@ import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
@@ -31,6 +32,7 @@ contract VaultsDeployer is CommonDeployer {
     PoolManager public poolManager;
     PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
+    Escrow public vaultsGlobalEscrow;
     VaultRouter public vaultRouter;
     AsyncVaultFactory public asyncVaultFactory;
     SyncDepositVaultFactory public syncDepositVaultFactory;
@@ -45,13 +47,15 @@ contract VaultsDeployer is CommonDeployer {
 
         poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
+        vaultsGlobalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
-        asyncRequests = new AsyncRequests(address(root), deployer);
-        syncRequests = new SyncRequests(address(root), deployer);
+        asyncRequests = new AsyncRequests(IEscrow(vaultsGlobalEscrow), address(root), deployer);
+        syncRequests = new SyncRequests(IEscrow(vaultsGlobalEscrow), address(root), deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, deployer);
         syncDepositVaultFactory =
-            new SyncDepositVaultFactory(address(root), syncRequests, asyncRequests, poolEscrowFactory, deployer);
+            new SyncDepositVaultFactory(address(root), syncRequests, asyncRequests, poolEscrowFactory, deployer)
+        ;
         IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;
@@ -104,10 +108,12 @@ contract VaultsDeployer is CommonDeployer {
         // Rely async investment manager
         balanceSheet.rely(address(asyncRequests));
         messageDispatcher.rely(address(asyncRequests));
+        vaultsGlobalEscrow.rely(address(asyncRequests));
 
         // Rely sync investment manager
         balanceSheet.rely(address(syncRequests));
         asyncRequests.rely(address(syncRequests));
+        vaultsGlobalEscrow.rely(address(syncRequests));
 
         // Rely BalanceSheet
         messageDispatcher.rely(address(balanceSheet));
@@ -120,6 +126,7 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.rely(address(root));
         poolEscrowFactory.rely(address(root));
         routerEscrow.rely(address(root));
+        vaultsGlobalEscrow.rely(address(root));
         IAuth(asyncVaultFactory).rely(address(root));
         IAuth(syncDepositVaultFactory).rely(address(root));
         IAuth(tokenFactory).rely(address(root));

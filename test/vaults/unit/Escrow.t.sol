@@ -129,17 +129,6 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "holdings should be 500 after deposit");
     }
 
-    function _testNoteDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
-        address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-
-        vm.expectEmit();
-        emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
-        escrow.noteDeposit(scId, asset, tokenId, 300);
-
-        assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after noting deposit");
-    }
-
     function _testReserveIncrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
@@ -240,12 +229,6 @@ contract PoolEscrowTestERC20 is PoolEscrowTestBase {
         _testDeposit(poolId, scId, tokenId);
     }
 
-    function testNoteDeposit(PoolId poolId, ShareClassId scId) public {
-        _testNoteDeposit(poolId, scId, tokenId);
-
-        assertEq(erc20.balanceOf(address(escrow)), 0, "Escrow should not hold any tokens after noting");
-    }
-
     function testReserveIncrease(PoolId poolId, ShareClassId scId) public {
         _testReserveIncrease(poolId, scId, tokenId);
     }
@@ -270,12 +253,6 @@ contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
         _testDeposit(poolId, scId, tokenId);
 
         assertEq(erc6909.balanceOf(address(escrow), tokenId), 0, "Escrow should not hold any tokens after noting");
-    }
-
-    function testNoteDeposit(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testNoteDeposit(poolId, scId, tokenId);
     }
 
     function testReserveIncrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {

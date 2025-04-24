@@ -60,7 +60,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     // --- IInvestmentManager impl ---
     function escrow() public view returns (address) {
-        return address(_poolEscrowProvider.escrow(poolId));
+        return address(manager.globalEscrow());
     }
 
     /// @inheritdoc IInvestmentManager

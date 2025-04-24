@@ -11,7 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {BaseVault, BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -27,7 +27,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 ///         deposit and redeem orders are submitted to the pools to be included in the execution of the following epoch.
 ///         After execution users can use the deposit, mint, redeem and withdraw functions to get their shares
 ///         and/or assets from the pools.
-contract AsyncVault is AsyncRedeemVault, IAsyncVault {
+contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     constructor(
         PoolId poolId_,
         ShareClassId scId_,
@@ -39,7 +39,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         IPoolEscrowProvider poolEscrowProvider
     )
         BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
-        AsyncRedeemVault(manager_)
+        BaseAsyncRedeemVault(manager_)
     {}
 
     // --- ERC-7540 methods ---
@@ -54,10 +54,11 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
 
         require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
 
+        address escrow = address(manager.globalEscrow());
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
+            SafeTransferLib.safeTransferFrom(asset, owner, escrow, assets);
         } else {
-            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId)), tokenId, assets);
+            IERC6909(asset).transferFrom(owner, escrow, tokenId, assets);
         }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
@@ -104,7 +105,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
 
     // --- ERC165 support ---
     /// @inheritdoc IERC165
-    function supportsInterface(bytes4 interfaceId) public pure override(AsyncRedeemVault, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure override(BaseAsyncRedeemVault, IERC165) returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId
             || interfaceId == type(IERC7540CancelDeposit).interfaceId || super.supportsInterface(interfaceId);
     }
