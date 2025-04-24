@@ -1228,27 +1228,27 @@ contract GatewayTestEndBatching is GatewayTest {
         assertEq(gateway.isBatching(), false);
     }
 
-    // function testSendTwoMessageBatchingUsingTransactionPayment() public {
-    //     gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
+    function testSendTwoMessageBatchingUsingTransactionPayment() public {
+        gateway.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
-    //     bytes memory message1 = MessageKind.WithPoolA1.asBytes();
-    //     bytes memory message2 = MessageKind.WithPoolA2.asBytes();
-    //     bytes memory batch = bytes.concat(message1, message2);
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.WithPoolA2.asBytes();
+        bytes memory batch = bytes.concat(message1, message2);
 
-    //     gateway.startBatching();
-    //     gateway.send(REMOTE_CENT_ID, message1);
-    //     gateway.send(REMOTE_CENT_ID, message2);
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message1);
+        gateway.send(REMOTE_CENT_ID, message2);
 
-    //     uint256 payment =
-    //         MESSAGE_GAS_LIMIT * 2 * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
-    //     gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        uint256 payment =
+            MESSAGE_GAS_LIMIT * 2 * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
+        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
 
-    //     _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
+        _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
 
-    //     gateway.endBatching();
+        gateway.endBatching();
 
-    //     assertEq(TRANSIENT_REFUND.balance, 1234);
-    //     assertEq(gateway.fuel(), 0);
-    //     assertEq(gateway.transactionRefund(), address(0));
-    // }
+        assertEq(TRANSIENT_REFUND.balance, 1234);
+        assertEq(gateway.fuel(), 0);
+        assertEq(gateway.transactionRefund(), address(0));
+    }
 }
