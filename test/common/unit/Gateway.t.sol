@@ -1008,6 +1008,8 @@ contract GatewayTestSend is GatewayTest {
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
+        vm.expectEmit();
+        emit IGateway.RepayBatch(REMOTE_CENT_ID, message);
         gateway.repay(REMOTE_CENT_ID, message);
     }
 
