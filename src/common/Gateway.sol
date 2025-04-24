@@ -395,6 +395,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         IRecoverable refund = subsidy[poolId].refund;
         if (!poolId.isNull() && address(refund) != address(0)) {
             uint256 refundBalance = address(refund).balance;
+            if (refundBalance == 0) return;
 
             // Send to the gateway GLOBAL_POT
             refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
