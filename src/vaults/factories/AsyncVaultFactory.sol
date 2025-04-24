@@ -10,24 +10,21 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
 contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    IAsyncRedeemManager public immutable asyncRedeemManager;
+    IAsyncRequests public immutable asyncRequests;
     IPoolEscrowProvider public immutable poolEscrowProvider;
 
-    constructor(
-        address root_,
-        IAsyncRedeemManager asyncRedeemManager_,
-        IPoolEscrowProvider poolEscrowProvider_,
-        address deployer
-    ) Auth(deployer) {
+    constructor(address root_, IAsyncRequests asyncRequests_, IPoolEscrowProvider poolEscrowProvider_, address deployer)
+        Auth(deployer)
+    {
         root = root_;
-        asyncRedeemManager = asyncRedeemManager_;
+        asyncRequests = asyncRequests_;
         poolEscrowProvider = poolEscrowProvider_;
     }
 
@@ -40,11 +37,10 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        AsyncVault vault =
-            new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRedeemManager, poolEscrowProvider);
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRequests, poolEscrowProvider);
 
         vault.rely(root);
-        vault.rely(address(asyncRedeemManager));
+        vault.rely(address(asyncRequests));
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
             vault.rely(wards_[i]);
