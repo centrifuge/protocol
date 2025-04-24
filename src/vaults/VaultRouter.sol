@@ -12,12 +12,15 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -39,14 +42,18 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     IMessageDispatcher public immutable messageDispatcher;
 
     /// @inheritdoc IVaultRouter
-    mapping(address controller => mapping(address vault => uint256 amount)) public lockedRequests;
+    mapping(address controller => mapping(IBaseVault vault => uint256 amount)) public lockedRequests;
 
-    constructor(address escrow_, address gateway_, address poolManager_, IMessageDispatcher messageDispatcher_)
-        Auth(msg.sender)
-    {
+    constructor(
+        address escrow_,
+        IGateway gateway_,
+        IPoolManager poolManager_,
+        IMessageDispatcher messageDispatcher_,
+        address deployer
+    ) Auth(deployer) {
         escrow = IEscrow(escrow_);
-        gateway = IGateway(gateway_);
-        poolManager = IPoolManager(poolManager_);
+        gateway = gateway_;
+        poolManager = poolManager_;
         messageDispatcher = messageDispatcher_;
     }
 
@@ -68,17 +75,17 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     // --- Enable interactions with the vault ---
-    function enable(address vault) public payable protected {
-        IAsyncVault(vault).setEndorsedOperator(msg.sender, true);
+    function enable(IBaseVault vault) public payable protected {
+        vault.setEndorsedOperator(msg.sender, true);
     }
 
-    function disable(address vault) external payable protected {
-        IAsyncVault(vault).setEndorsedOperator(msg.sender, false);
+    function disable(IBaseVault vault) external payable protected {
+        vault.setEndorsedOperator(msg.sender, false);
     }
 
     // --- Deposit ---
     /// @inheritdoc IVaultRouter
-    function requestDeposit(address vault, uint256 amount, address controller, address owner)
+    function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
         payable
         protected
@@ -87,15 +94,15 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (owner == address(this)) {
-            _approveMax(vaultDetails.asset, vaultDetails.tokenId, vault);
+            _approveMax(vaultDetails.asset, vaultDetails.tokenId, address(vault));
         }
 
         _pay();
-        IAsyncVault(vault).requestDeposit(amount, controller, owner);
+        vault.requestDeposit(amount, controller, owner);
     }
 
     /// @inheritdoc IVaultRouter
-    function lockDepositRequest(address vault, uint256 amount, address controller, address owner)
+    function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner)
         public
         payable
         protected
@@ -116,7 +123,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function enableLockDepositRequest(address vault, uint256 amount) external payable protected {
+    function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable protected {
         enable(vault);
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
@@ -134,7 +141,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function unlockDepositRequest(address vault, address receiver) external payable protected {
+    function unlockDepositRequest(IBaseVault vault, address receiver) external payable protected {
         uint256 lockedRequest = lockedRequests[msg.sender][vault];
         require(lockedRequest != 0, NoLockedBalance());
         lockedRequests[msg.sender][vault] = 0;
@@ -152,7 +159,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function executeLockedDepositRequest(address vault, address controller) external payable protected {
+    function executeLockedDepositRequest(IAsyncVault vault, address controller) external payable protected {
         uint256 lockedRequest = lockedRequests[controller][vault];
         require(lockedRequest != 0, NoLockedRequest());
         lockedRequests[controller][vault] = 0;
@@ -169,71 +176,75 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         }
 
         _pay();
-        _approveMax(vaultDetails.asset, vaultDetails.tokenId, vault);
-        IAsyncVault(vault).requestDeposit(lockedRequest, controller, address(this));
+        _approveMax(vaultDetails.asset, vaultDetails.tokenId, address(vault));
+        vault.requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
-    function claimDeposit(address vault, address receiver, address controller) external payable protected {
+    function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
-        uint256 maxMint = IAsyncVault(vault).maxMint(controller);
-        IAsyncVault(vault).mint(maxMint, receiver, controller);
+        uint256 maxMint = vault.maxMint(controller);
+        vault.mint(maxMint, receiver, controller);
     }
 
     /// @inheritdoc IVaultRouter
-    function cancelDepositRequest(address vault) external payable protected {
+    function cancelDepositRequest(IAsyncVault vault) external payable protected {
         _pay();
-        IAsyncVault(vault).cancelDepositRequest(REQUEST_ID, msg.sender);
+        vault.cancelDepositRequest(REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
-    function claimCancelDepositRequest(address vault, address receiver, address controller)
+    function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller)
         external
         payable
         protected
     {
         _canClaim(vault, receiver, controller);
-        IAsyncVault(vault).claimCancelDepositRequest(REQUEST_ID, receiver, controller);
+        vault.claimCancelDepositRequest(REQUEST_ID, receiver, controller);
     }
 
     // --- Redeem ---
     /// @inheritdoc IVaultRouter
-    function requestRedeem(address vault, uint256 amount, address controller, address owner)
+    function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
         payable
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         _pay();
-        IAsyncVault(vault).requestRedeem(amount, controller, owner);
+        vault.requestRedeem(amount, controller, owner);
     }
 
     /// @inheritdoc IVaultRouter
-    function claimRedeem(address vault, address receiver, address controller) external payable protected {
+    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
-        uint256 maxWithdraw = IAsyncVault(vault).maxWithdraw(controller);
+        uint256 maxWithdraw = vault.maxWithdraw(controller);
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (vaultDetails.isWrapper && controller != msg.sender) {
             // Auto-unwrap if permissionlessly claiming for another controller
-            IAsyncVault(vault).withdraw(maxWithdraw, address(this), controller);
+            vault.withdraw(maxWithdraw, address(this), controller);
             unwrap(vaultDetails.asset, maxWithdraw, receiver);
         } else {
-            IAsyncVault(vault).withdraw(maxWithdraw, receiver, controller);
+            vault.withdraw(maxWithdraw, receiver, controller);
         }
     }
 
     /// @inheritdoc IVaultRouter
-    function cancelRedeemRequest(address vault) external payable protected {
+    function cancelRedeemRequest(IAsyncVault vault) external payable protected {
         _pay();
-        IAsyncVault(vault).cancelRedeemRequest(REQUEST_ID, msg.sender);
+        vault.cancelRedeemRequest(REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
-    function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable protected {
+    function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller)
+        external
+        payable
+        protected
+    {
         _canClaim(vault, receiver, controller);
-        IAsyncVault(vault).claimCancelRedeemRequest(REQUEST_ID, receiver, controller);
+        vault.claimCancelRedeemRequest(REQUEST_ID, receiver, controller);
     }
 
     // --- ERC20 permits ---
@@ -268,8 +279,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     // --- View Methods ---
     /// @inheritdoc IVaultRouter
-    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address) {
-        return IShareToken(IPoolManager(poolManager).shareToken(poolId, scId)).vault(asset);
+    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
+        return IPoolManager(poolManager).shareToken(poolId, scId).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter
@@ -278,13 +289,13 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function hasPermissions(address vault, address controller) external view returns (bool) {
-        return IAsyncVault(vault).isPermissioned(controller);
+    function hasPermissions(IBaseVault vault, address controller) external view returns (bool) {
+        return vault.isPermissioned(controller);
     }
 
     /// @inheritdoc IVaultRouter
-    function isEnabled(address vault, address controller) public view returns (bool) {
-        return IAsyncVault(vault).isOperator(controller, address(this));
+    function isEnabled(IBaseVault vault, address controller) public view returns (bool) {
+        return vault.isOperator(controller, address(this));
     }
 
     /// @notice Gives the max approval to `to` for spending the given `asset` if not already approved.
@@ -306,7 +317,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     /// @notice Ensures msg.sender is either the controller, or can permissionlessly claim
     ///         on behalf of the controller.
-    function _canClaim(address vault, address receiver, address controller) internal view {
+    function _canClaim(IBaseVault vault, address receiver, address controller) internal view {
         require(controller == msg.sender || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
     }
 }

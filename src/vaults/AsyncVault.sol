@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseVault, AsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import "src/vaults/interfaces/IERC7575.sol";
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
@@ -22,14 +30,18 @@ import "src/vaults/interfaces/IERC7575.sol";
 ///         and/or assets from the pools.
 contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     constructor(
-        uint64 poolId_,
-        bytes16 scId_,
+        PoolId poolId_,
+        ShareClassId scId_,
         address asset_,
         uint256 tokenId_,
-        address token_,
+        IShareToken token_,
         address root_,
-        address manager_
-    ) BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_) AsyncRedeemVault(manager_) {}
+        IAsyncRedeemManager manager_,
+        IPoolEscrowProvider poolEscrowProvider
+    )
+        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
+        AsyncRedeemVault(manager_)
+    {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
@@ -41,14 +53,12 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
             InsufficientBalance()
         );
 
-        require(
-            asyncManager().requestDeposit(address(this), assets, controller, owner, msg.sender), RequestDepositFailed()
-        );
+        require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
 
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, asyncManager().escrow(), assets);
+            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
         } else {
-            IERC6909(asset).transferFrom(owner, asyncManager().escrow(), tokenId, assets);
+            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId)), tokenId, assets);
         }
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
@@ -57,7 +67,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC7540Deposit
     function pendingDepositRequest(uint256, address controller) public view returns (uint256 pendingAssets) {
-        pendingAssets = asyncManager().pendingDepositRequest(address(this), controller);
+        pendingAssets = asyncManager().pendingDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
@@ -69,18 +79,18 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     /// @inheritdoc IERC7540CancelDeposit
     function cancelDepositRequest(uint256, address controller) external {
         _validateController(controller);
-        asyncManager().cancelDepositRequest(address(this), controller, msg.sender);
+        asyncManager().cancelDepositRequest(this, controller, msg.sender);
         emit CancelDepositRequest(controller, REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IERC7540CancelDeposit
     function pendingCancelDepositRequest(uint256, address controller) public view returns (bool isPending) {
-        isPending = asyncManager().pendingCancelDepositRequest(address(this), controller);
+        isPending = asyncManager().pendingCancelDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540CancelDeposit
     function claimableCancelDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
-        claimableAssets = asyncManager().claimableCancelDepositRequest(address(this), controller);
+        claimableAssets = asyncManager().claimableCancelDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540CancelDeposit
@@ -89,7 +99,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         returns (uint256 assets)
     {
         _validateController(controller);
-        assets = asyncManager().claimCancelDepositRequest(address(this), receiver, controller);
+        assets = asyncManager().claimCancelDepositRequest(this, receiver, controller);
         emit CancelDepositClaim(controller, receiver, REQUEST_ID, msg.sender, assets);
     }
 
@@ -103,13 +113,13 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
     // --- ERC-4626 methods ---
     /// @inheritdoc IERC7575
     function maxDeposit(address controller) public view returns (uint256 maxAssets) {
-        maxAssets = asyncManager().maxDeposit(address(this), controller);
+        maxAssets = asyncManager().maxDeposit(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
     function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
-        shares = asyncManager().deposit(address(this), assets, receiver, controller);
+        shares = asyncManager().deposit(this, assets, receiver, controller);
         emit Deposit(controller, receiver, assets, shares);
     }
 
@@ -122,13 +132,13 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC7575
     function maxMint(address controller) public view returns (uint256 maxShares) {
-        maxShares = asyncManager().maxMint(address(this), controller);
+        maxShares = asyncManager().maxMint(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
     function mint(uint256 shares, address receiver, address controller) public returns (uint256 assets) {
         _validateController(controller);
-        assets = asyncManager().mint(address(this), shares, receiver, controller);
+        assets = asyncManager().mint(this, shares, receiver, controller);
         emit Deposit(controller, receiver, assets, shares);
     }
 
@@ -139,7 +149,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
     function asyncManager() public view returns (IAsyncRequests) {
-        return IAsyncRequests(address(IAsyncRedeemVault(address(this)).asyncRedeemManager()));
+        return IAsyncRequests(address(IAsyncRedeemVault(this).asyncRedeemManager()));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert

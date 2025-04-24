@@ -3,13 +3,17 @@ pragma solidity >=0.5.0;
 
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+
 interface IVaultRouter is IMulticall {
     // --- Events ---
     event LockDepositRequest(
-        address indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
+        IBaseVault indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
     );
-    event UnlockDepositRequest(address indexed vault, address indexed controller, address indexed receiver);
-    event ExecuteLockedDepositRequest(address indexed vault, address indexed controller, address sender);
+    event UnlockDepositRequest(IBaseVault indexed vault, address indexed controller, address indexed receiver);
+    event ExecuteLockedDepositRequest(IBaseVault indexed vault, address indexed controller, address sender);
 
     error InvalidOwner();
     error NoLockedBalance();
@@ -21,17 +25,17 @@ interface IVaultRouter is IMulticall {
 
     /// @notice Check how much of the `vault`'s asset is locked for the current `controller`.
     /// @dev    This is a getter method
-    function lockedRequests(address controller, address vault) external view returns (uint256 amount);
+    function lockedRequests(address controller, IBaseVault vault) external view returns (uint256 amount);
 
     // --- Manage permissionless claiming ---
     /// @notice Enable permissionless claiming
     /// @dev    After this is called, anyone can claim tokens to msg.sender.
     ///         Even any requests submitted directly to the vault (not through the VaultRouter) will be
     ///         permissionlessly claimable through the VaultRouter, until `disable()` is called.
-    function enable(address vault) external payable;
+    function enable(IBaseVault vault) external payable;
 
     /// @notice Disable permissionless claiming
-    function disable(address vault) external payable;
+    function disable(IBaseVault vault) external payable;
 
     // --- Deposit ---
     /// @notice Check `IERC7540Deposit.requestDeposit`.
@@ -42,7 +46,7 @@ interface IVaultRouter is IMulticall {
     /// @param  amount Check @param IERC7540Deposit.requestDeposit.assets
     /// @param  controller Check @param IERC7540Deposit.requestDeposit.controller
     /// @param  owner Check @param IERC7540Deposit.requestDeposit.owner
-    function requestDeposit(address vault, uint256 amount, address controller, address owner) external payable;
+    function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Locks `amount` of `vault`'s asset in an escrow before actually sending a deposit LockDepositRequest
     ///         There are users that would like to interact with the protocol but don't have permissions yet. They can
@@ -73,7 +77,7 @@ interface IVaultRouter is IMulticall {
     /// @param  amount Amount to invest
     /// @param  controller Address of the owner of the position
     /// @param  owner Where the  funds to be deposited will be take from
-    function lockDepositRequest(address vault, uint256 amount, address controller, address owner) external payable;
+    function lockDepositRequest(IBaseVault vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Helper method to lock a deposit request, and enable permissionless claiming of that vault in 1 call.
     /// @dev    It starts interaction with the vault by calling `open`.
@@ -83,25 +87,25 @@ interface IVaultRouter is IMulticall {
     ///         else  amount is treat as an underlying asset one and it is wrapped.
     /// @param  vault Address of the vault
     /// @param  amount Amount to be deposited
-    function enableLockDepositRequest(address vault, uint256 amount) external payable;
+    function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable;
 
     /// @notice Unlocks all deposited assets of the current caller for a given vault
     ///
     /// @param  vault Address of the vault for which funds were locked
     /// @param  receiver Address of the received of the unlocked funds
-    function unlockDepositRequest(address vault, address receiver) external payable;
+    function unlockDepositRequest(IBaseVault vault, address receiver) external payable;
 
     /// @notice After the controller is given permissions, anyone can call this method and
     ///         actually request a deposit with the locked funds on the behalf of the `controller`
     /// @param  vault The vault for which funds are locked
     /// @param  controller Owner of the deposit position
-    function executeLockedDepositRequest(address vault, address controller) external payable;
+    function executeLockedDepositRequest(IAsyncVault vault, address controller) external payable;
 
     /// @notice Check IERC7540Deposit.mint
     /// @param  vault Address of the vault
     /// @param  receiver Check IERC7540Deposit.mint.receiver
     /// @param  controller Check IERC7540Deposit.mint.owner
-    function claimDeposit(address vault, address receiver, address controller) external payable;
+    function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- Redeem ---
     /// @notice Check `IERC7540CancelDeposit.cancelDepositRequest`.
@@ -109,14 +113,14 @@ interface IVaultRouter is IMulticall {
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
-    function cancelDepositRequest(address vault) external payable;
+    function cancelDepositRequest(IAsyncVault vault) external payable;
 
     /// @notice Check IERC7540CancelDeposit.claimCancelDepositRequest
     ///
     /// @param  vault Address of the vault
     /// @param  receiver Check  IERC7540CancelDeposit.claimCancelDepositRequest.receiver
     /// @param  controller Check  IERC7540CancelDeposit.claimCancelDepositRequest.controller
-    function claimCancelDepositRequest(address vault, address receiver, address controller) external payable;
+    function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- Redeem ---
     /// @notice Check `IERC7540Redeem.requestRedeem`.
@@ -127,7 +131,7 @@ interface IVaultRouter is IMulticall {
     /// @param  amount Check @param IERC7540Redeem.requestRedeem.shares
     /// @param  controller Check @param IERC7540Redeem.requestRedeem.controller
     /// @param  owner Check @param IERC7540Redeem.requestRedeem.owner
-    function requestRedeem(address vault, uint256 amount, address controller, address owner) external payable;
+    function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Check IERC7575.withdraw
     /// @dev    If the underlying vault asset is a wrapped one,
@@ -136,21 +140,21 @@ interface IVaultRouter is IMulticall {
     /// @param  vault Address of the vault
     /// @param  receiver Check IERC7575.withdraw.receiver
     /// @param  controller Check IERC7575.withdraw.owner
-    function claimRedeem(address vault, address receiver, address controller) external payable;
+    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable;
 
     /// @notice Check `IERC7540CancelRedeem.cancelRedeemRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
-    function cancelRedeemRequest(address vault) external payable;
+    function cancelRedeemRequest(IAsyncVault vault) external payable;
 
     /// @notice Check IERC7540CancelRedeem.claimableCancelRedeemRequest
     ///
     /// @param  vault Address of the vault
     /// @param  receiver Check  IERC7540CancelRedeem.claimCancelRedeemRequest.receiver
     /// @param  controller Check  IERC7540CancelRedeem.claimCancelRedeemRequest.controller
-    function claimCancelRedeemRequest(address vault, address receiver, address controller) external payable;
+    function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- ERC20 permit ---
     /// @notice Check IERC20.permit
@@ -176,7 +180,7 @@ interface IVaultRouter is IMulticall {
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault
-    function getVault(uint64 poolId, bytes16 scId, address asset) external view returns (address);
+    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 
     /// @notice Check IGateway.estimate
     ///         If the destination and source chain ID are the same, this will always return 0.
@@ -188,8 +192,8 @@ interface IVaultRouter is IMulticall {
     /// @param vault Address of the `vault` the `user` wants to operate on
     /// @param user Address of the `user` that will operates on the `vault`
     /// @return Whether `user` has permissions to operate on `vault`
-    function hasPermissions(address vault, address user) external view returns (bool);
+    function hasPermissions(IBaseVault vault, address user) external view returns (bool);
 
     /// @notice Returns whether the controller has called `enable()` for the given `vault`
-    function isEnabled(address vault, address controller) external view returns (bool);
+    function isEnabled(IBaseVault vault, address controller) external view returns (bool);
 }

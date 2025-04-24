@@ -28,7 +28,9 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice Register a new pool.
     /// @return PoolId Id to identify the new pool.
-    function registerPool(address manager, uint16 centrifugeId, AssetId currency) external returns (PoolId);
+    function registerPool(uint48 poolId, address manager, uint16 centrifugeId, AssetId currency)
+        external
+        returns (PoolId);
 
     /// @notice allow/disallow an address as a manager for the pool
     function updateManager(PoolId poolId, address newManager, bool canManage) external;

@@ -9,10 +9,13 @@ import {d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
@@ -39,7 +42,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function unlinkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({
@@ -48,7 +51,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     kind: uint8(VaultUpdateKind.Unlink)
                 }).serialize()
             }).serialize()
@@ -56,7 +59,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({
@@ -65,7 +68,7 @@ contract MockCentrifugeChain is Test {
                 target: bytes32(bytes20(address(poolManager))),
                 payload: MessageLib.UpdateContractVaultUpdate({
                     vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     kind: uint8(VaultUpdateKind.Link)
                 }).serialize()
             }).serialize()
@@ -73,7 +76,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(IBaseVault(vault));
 
         execute(
             MessageLib.UpdateContract({
@@ -81,13 +84,14 @@ contract MockCentrifugeChain is Test {
                 scId: scId,
                 target: bytes32(bytes20(address(syncRequests))),
                 payload: MessageLib.UpdateContractSyncDepositMaxReserve({
-                    assetId: vaultDetails.assetId,
+                    assetId: vaultDetails.assetId.raw(),
                     maxReserve: maxReserve
                 }).serialize()
             }).serialize()
         );
     }
 
+    /// @dev Simulates incoming NotifyShareClass message with prepended UpdateRestrictionMember message for pool escrow
     function addShareClass(
         uint64 poolId,
         bytes16 scId,
@@ -108,8 +112,19 @@ contract MockCentrifugeChain is Test {
                 hook: bytes32(bytes20(hook))
             }).serialize()
         );
+
+        updateMemberPoolEscrow(poolId, scId);
     }
 
+    /// @dev Updates escrow as member to enable minting, burning and transfers on deposit and redeem
+    ///
+    /// @dev Implicitly called by addShareClass
+    function updateMemberPoolEscrow(uint64 poolId, bytes16 scId) public {
+        address escrow = address(poolManager.poolEscrowFactory().escrow(PoolId.wrap(poolId)));
+        updateMember(poolId, scId, escrow, type(uint64).max);
+    }
+
+    /// @dev Simulates incoming NotifyShareClass message with prepended UpdateRestrictionMember message for pool escrow
     function addShareClass(
         uint64 poolId,
         bytes16 scId,
@@ -129,6 +144,8 @@ contract MockCentrifugeChain is Test {
                 hook: bytes32(bytes20(hook))
             }).serialize()
         );
+
+        updateMemberPoolEscrow(poolId, scId);
     }
 
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {
@@ -340,7 +357,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function execute(bytes memory message) public {
-        bytes memory proof = MessageLib.MessageProof({hash: keccak256(message)}).serialize();
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
         for (uint256 i = 0; i < adapters.length; i++) {
             AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
         }

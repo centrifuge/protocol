@@ -62,8 +62,8 @@ contract TestFile is TestCommon {
         holdings.file("hubRegistry", newHubRegistryAddr);
     }
 
-    function testErrFileUnrecognizedWhat() public {
-        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedWhat.selector));
+    function testErrFileUnrecognizedParam() public {
+        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedParam.selector));
         holdings.file("unrecongnizedWhat", newHubRegistryAddr);
     }
 }
@@ -194,11 +194,12 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 50);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, true, 50);
         mockGetQuote(itemValuation, 20, 250);
-        int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
+        (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 50);
+        assert(isPositive);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amountValue, 250);
@@ -210,11 +211,13 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, -50);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, false, 50);
         mockGetQuote(itemValuation, 20, 150);
-        int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
 
-        assertEq(diff, -50);
+        (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
+
+        assertEq(diff, 50);
+        assert(!isPositive);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amountValue, 150);
@@ -226,11 +229,12 @@ contract TestUpdate is TestCommon {
         holdings.increase(POOL_A, SC_1, ASSET_A, customValuation, 20);
 
         vm.expectEmit();
-        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, 0);
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, true, 0);
         mockGetQuote(itemValuation, 20, 200);
-        int128 diff = holdings.update(POOL_A, SC_1, ASSET_A);
+        (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 0);
+        assert(isPositive);
 
         (, uint128 amountValue,,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amountValue, 200);

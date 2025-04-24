@@ -3,8 +3,15 @@ pragma solidity 0.8.28;
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "forge-std/Test.sol";
+
+contract TestMessageProofCompatibility is Test {
+    function testMessageProofCompatibility() public pure {
+        assertEq(uint8(MessageType._MessageProof), MessageProofLib.MESSAGE_PROOF_ID);
+    }
+}
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
 //       I = deserialize º serialize
@@ -12,19 +19,10 @@ import "forge-std/Test.sol";
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
-    function testMessageProof(bytes32 hash_) public pure {
-        MessageLib.MessageProof memory a = MessageLib.MessageProof({hash: hash_});
-        MessageLib.MessageProof memory b = MessageLib.deserializeMessageProof(a.serialize());
-
-        assertEq(a.hash, b.hash);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testInitiateMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.InitiateMessageRecovery memory a =
-            MessageLib.InitiateMessageRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.InitiateMessageRecovery memory b = MessageLib.deserializeInitiateMessageRecovery(a.serialize());
+    function testInitiateRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
+        MessageLib.InitiateRecovery memory a =
+            MessageLib.InitiateRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
+        MessageLib.InitiateRecovery memory b = MessageLib.deserializeInitiateRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);
@@ -33,10 +31,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageLength(), a.serialize().length);
     }
 
-    function testDisputeMessageRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.DisputeMessageRecovery memory a =
-            MessageLib.DisputeMessageRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.DisputeMessageRecovery memory b = MessageLib.deserializeDisputeMessageRecovery(a.serialize());
+    function testDisputeRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
+        MessageLib.DisputeRecovery memory a =
+            MessageLib.DisputeRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
+        MessageLib.DisputeRecovery memory b = MessageLib.deserializeDisputeRecovery(a.serialize());
 
         assertEq(a.hash, b.hash);
         assertEq(a.adapter, b.adapter);

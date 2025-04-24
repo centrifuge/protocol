@@ -20,6 +20,7 @@ import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -35,34 +36,32 @@ contract SyncDepositTestHelper is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId(), syncVault.trancheId(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.inner(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId(), syncVault.trancheId(), assetId, pricePoolPerAsset.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(),
+            syncVault.scId().raw(),
+            assetId,
+            pricePoolPerAsset.inner(),
+            uint64(block.timestamp)
         );
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 priceAssetPerShare) internal {
-        PoolId poolId = PoolId.wrap(vault.poolId());
-        ShareClassId scId = ShareClassId.wrap(vault.trancheId());
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 pricePoolPerAsset)
+        internal
+    {
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
         uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(address(vault));
-        (D18 price,) = poolManager.pricePoolPerShare(poolId.raw(), scId.raw(), false);
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, self, price, shares);
+        emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            poolId,
-            scId,
-            vault.asset(),
-            vaultDetails.tokenId,
-            syncRequests.escrow(),
-            depositAssetAmount,
-            priceAssetPerShare,
-            timestamp
+            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset, timestamp
         );
     }
 }
@@ -90,10 +89,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        address asyncVault_ =
-            syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.trancheId(), assetId);
+        IBaseVault asyncVault_ =
+            syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        AsyncVault asyncVault = AsyncVault(asyncVault_);
+        AsyncVault asyncVault = AsyncVault(address(asyncVault_));
 
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);
@@ -103,30 +102,32 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(self), type(uint256).max, "syncVault.maxDeposit(self), type(uint256).max");
         assertEq(syncVault.maxMint(self), type(uint256).max, "syncVault.maxMint(self), type(uint256).max");
 
-        // Will fail - user did not give asset allowance to syncVault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        syncVault.deposit(amount, self);
-        erc20.approve(address(syncVault), amount);
-
         // Will fail - user not member: can not send funds
         vm.expectRevert(IHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);
-        centrifugeChain.updateMember(syncVault.poolId(), syncVault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
         assertEq(syncVault.isPermissioned(self), true);
+
+        // Will fail - user did not give asset allowance to syncVault
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        syncVault.deposit(amount, self);
+        erc20.approve(address(syncVault), amount);
 
         // Will fail - above max reserve
         centrifugeChain.updateMaxReserve(
-            syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount / 2)
+            syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
         vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
         syncVault.deposit(amount, self);
 
-        centrifugeChain.updateMaxReserve(syncVault.poolId(), syncVault.trancheId(), address(syncVault), uint128(amount));
+        centrifugeChain.updateMaxReserve(
+            syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount)
+        );
 
-        _assertDepositEvents(syncVault, shares.toUint128(), priceAssetPerShare);
+        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
         assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");

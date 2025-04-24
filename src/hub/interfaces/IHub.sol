@@ -3,15 +3,20 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -46,7 +51,7 @@ interface IHub {
     event File(bytes32 what, address addr);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @notice Dispatched when the pool is already unlocked.
     /// It means when calling to `execute()` inside `execute()`.
@@ -54,6 +59,14 @@ interface IHub {
 
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotManager();
+
+    function gateway() external view returns (IGateway);
+    function holdings() external view returns (IHoldings);
+    function accounting() external view returns (IAccounting);
+    function hubRegistry() external view returns (IHubRegistry);
+    function sender() external view returns (IPoolMessageSender);
+    function shareClassManager() external view returns (IShareClassManager);
+    function transientValuation() external view returns (ITransientValuation);
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
@@ -64,7 +77,7 @@ interface IHub {
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
     /// @return PoolId The id of the new pool.
-    function createPool(address admin, AssetId currency) external payable returns (PoolId);
+    function createPool(uint48 poolId, address admin, AssetId currency) external payable returns (PoolId);
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
@@ -79,16 +92,16 @@ interface IHub {
     /// @notice Notify to a CV instance that a new share class is available
     /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
-    /// @dev The receiving chainId is derived from the provided assetId
-    /// @param chainId Chain to where the share price is notified
+    /// @dev The receiving centrifugeId is derived from the provided assetId
+    /// @param centrifugeId Chain to where the share price is notified
     /// @param scId Identifier of the share class
-    function notifySharePrice(PoolId poolId, uint16 chainId, ShareClassId scId) external payable;
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
-    /// @dev The receiving chainId is derived from the provided assetId
+    /// @dev The receiving centrifugeId is derived from the provided assetId
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
@@ -155,7 +168,7 @@ interface IHub {
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    function updateRestriction(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
+    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable;
 
@@ -165,8 +178,8 @@ interface IHub {
     /// @param payload content of the update to execute.
     function updateContract(
         PoolId poolId,
-        uint16 centrifugeId,
         ShareClassId scId,
+        uint16 centrifugeId,
         bytes32 target,
         bytes calldata payload
     ) external payable;

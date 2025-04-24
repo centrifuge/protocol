@@ -15,6 +15,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 contract BalanceSheetTest is BaseTest {
     using MessageLib for *;
@@ -31,56 +32,59 @@ contract BalanceSheetTest is BaseTest {
         defaultPricePerShare = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId =
-            AssetId.wrap(poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId));
-        poolManager.addPool(POOL_A.raw());
+        assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
+        poolManager.addPool(POOL_A);
         poolManager.addShareClass(
-            POOL_A.raw(),
-            defaultShareClassId,
-            "testShareClass",
-            "tsc",
-            defaultDecimals,
-            bytes32(""),
-            restrictedTransfers
+            POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictedTransfers
         );
         poolManager.updatePricePoolPerShare(
-            POOL_A.raw(), defaultShareClassId, defaultPricePerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePerShare.raw(), uint64(block.timestamp)
         );
         poolManager.updatePricePoolPerAsset(
-            POOL_A.raw(), defaultShareClassId, assetId.raw(), defaultPricePerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePerShare.raw(), uint64(block.timestamp)
         );
         poolManager.updateRestriction(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
         // In order for allowances to work during issuance, the balanceSheet must be canManage to transfer
         poolManager.updateRestriction(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(balanceSheet).toBytes32(), validUntil: MAX_UINT64})
                 .serialize()
         );
+        // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
+        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A);
+        vm.prank(address(poolManager));
+        escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }
 
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(syncRequests) && nonWard != address(gateway)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
+            nonWard != address(root) && nonWard != address(asyncRequests) && nonWard != address(syncRequests)
+                && nonWard != address(gateway) && nonWard != address(messageProcessor)
+                && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
-        new BalanceSheet(address(escrow));
+        new BalanceSheet(address(this));
 
         // values set correctly
-        assertEq(address(balanceSheet.escrow()), address(escrow));
         assertEq(address(balanceSheet.gateway()), address(gateway));
         assertEq(address(balanceSheet.poolManager()), address(poolManager));
+        assertEq(address(balanceSheet.sender()), address(messageDispatcher));
+        assertEq(address(balanceSheet.sharePriceProvider()), address(syncRequests));
+        assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(balanceSheet.wards(address(root)), 1);
+        assertEq(balanceSheet.wards(address(asyncRequests)), 1);
+        assertEq(balanceSheet.wards(address(syncRequests)), 1);
         assertEq(balanceSheet.wards(address(messageProcessor)), 1);
+        assertEq(balanceSheet.wards(address(messageDispatcher)), 1);
         assertEq(balanceSheet.wards(nonWard), 0);
     }
 
@@ -98,6 +102,10 @@ contract BalanceSheetTest is BaseTest {
         assertEq(address(balanceSheet.gateway()), randomUser);
         balanceSheet.file("sender", randomUser);
         assertEq(address(balanceSheet.sender()), randomUser);
+        balanceSheet.file("sharePriceProvider", randomUser);
+        assertEq(address(balanceSheet.sharePriceProvider()), randomUser);
+        balanceSheet.file("poolEscrowProvider", randomUser);
+        assertEq(address(balanceSheet.poolEscrowProvider()), randomUser);
 
         // remove self from wards
         balanceSheet.deny(self);
@@ -121,8 +129,8 @@ contract BalanceSheetTest is BaseTest {
         emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, true);
 
         balanceSheet.update(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: true}).serialize()
         );
 
@@ -134,8 +142,8 @@ contract BalanceSheetTest is BaseTest {
         emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, false);
 
         balanceSheet.update(
-            POOL_A.raw(),
-            defaultShareClassId,
+            POOL_A,
+            defaultTypedShareClassId,
             MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: false}).serialize()
         );
 
@@ -182,7 +190,38 @@ contract BalanceSheetTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), 0);
         (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
         assertEq(increase, defaultAmount);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow())), defaultAmount);
+        assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(POOL_A))), defaultAmount);
+    }
+
+    function testNoteDeposit() public {
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.deposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+        );
+
+        vm.expectEmit();
+        emit IBalanceSheet.Deposit(
+            POOL_A,
+            defaultTypedShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            d18(100, 5),
+            uint64(block.timestamp)
+        );
+        balanceSheet.noteDeposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+        );
+
+        // Ensure no balance transfer occurred but escrow holding was incremented nevertheless
+        assertEq(erc20.balanceOf(address(this)), 0);
+        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(POOL_A))), 0);
+        assertEq(
+            poolEscrowFactory.escrow(POOL_A).availableBalanceOf(defaultTypedShareClassId, address(erc20), erc20TokenId),
+            defaultAmount
+        );
     }
 
     function testWithdraw() public {
@@ -215,7 +254,7 @@ contract BalanceSheetTest is BaseTest {
 
         assertEq(erc20.balanceOf(address(this)), defaultAmount);
         assertEq(decrease, defaultAmount);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow())), 0);
+        assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(POOL_A))), 0);
     }
 
     function testIssue() public {
@@ -225,7 +264,7 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
@@ -245,8 +284,7 @@ contract BalanceSheetTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 
         vm.prank(randomUser);
@@ -433,7 +471,7 @@ contract BalanceSheetTest is BaseTest {
     function testTransferSharesFrom() public {
         testIssue();
 
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
+        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
 
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 

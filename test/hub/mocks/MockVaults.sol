@@ -70,7 +70,11 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint16 centrifugeId, bytes memory data, uint256, address) external payable {
+    function send(uint16 centrifugeId, bytes memory data, uint256, address)
+        external
+        payable
+        returns (bytes32 adapterData)
+    {
         lastChainDestinations.push(centrifugeId);
 
         while (data.length > 0) {
@@ -81,6 +85,8 @@ contract MockVaults is Test, Auth, IAdapter {
 
             data = data.slice(messageLength, data.length - messageLength);
         }
+
+        adapterData = bytes32("");
     }
 
     function updateHoldingAmount(

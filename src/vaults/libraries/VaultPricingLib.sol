@@ -2,9 +2,10 @@
 pragma solidity 0.8.28;
 
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IBaseVault} from "src/vaults/interfaces/IERC7540.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 library VaultPricingLib {
     using MathLib for uint256;

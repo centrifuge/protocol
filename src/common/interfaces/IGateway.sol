@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
+
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
@@ -11,15 +13,6 @@ uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
-    /// @notice Identifies a Batch
-    struct BatchLocator {
-        /// @notice chain associated to the batch
-        uint16 centrifugeId;
-        /// @notice pools associated to the batch.
-        /// NOTE: poolId == 0 represent a batch of messages pool-unrelated
-        PoolId poolId;
-    }
-
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -46,28 +39,43 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
         uint96 value;
         /// @notice Address where to refund the remaining gas
-        address refund;
+        IRecoverable refund;
     }
 
     // --- Events ---
-    event PrepareMessage(uint16 centrifugeId, PoolId poolId, bytes message);
-    event SendBatch(uint16 centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event SendProof(uint16 centrifugeId, bytes32 batchId, bytes32 batchHash, IAdapter adapter);
-    event ProcessBatch(uint16 centrifugeId, bytes32 batchId, bytes batch, IAdapter adapter);
-    event ProcessProof(uint16 centrifugeId, bytes32 batchId, bytes32 batchHash, IAdapter adapter);
-    event ExecuteMessage(uint16 centrifugeId, bytes message);
-    event FailMessage(uint16 centrifugeId, bytes message, bytes error);
+    event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event SendBatch(
+        uint16 indexed centrifugeId,
+        bytes32 payloadId,
+        bytes batch,
+        IAdapter adapter,
+        bytes32 adapterData,
+        address refund,
+        bool underpaid
+    );
+    event SendProof(
+        uint16 indexed centrifugeId,
+        bytes32 payloadId,
+        bytes32 batchHash,
+        IAdapter adapter,
+        bytes32 adapterData,
+        bool underpaid
+    );
+    event HandleBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
+    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
     event RecoverMessage(IAdapter adapter, bytes message);
     event RecoverProof(IAdapter adapter, bytes32 batchHash);
-    event InitiateMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event DisputeMessageRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event ExecuteMessageRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+    event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
 
-    event SetRefundAddress(PoolId poolId, address refund);
+    event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -92,19 +100,19 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     error InvalidAdapter();
 
     /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
-    error RecoveryMessageRecovered();
+    error RecoveryPayloadRecovered();
 
     /// @notice Dispatched when the gateway tries to handle a proof from a non proof adapter.
     error NonProofAdapter();
 
-    /// @notice Dispatched when the gateway tries to handle a message from a non message adapter.
-    error NonMessageAdapter();
+    /// @notice Dispatched when the gateway tries to handle a batch from a non message adapter.
+    error NonBatchAdapter();
 
     /// @notice Dispatched when a recovery message is executed without being initiated.
-    error MessageRecoveryNotInitiated();
+    error RecoveryNotInitiated();
 
     /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
-    error MessageRecoveryChallengePeriodNotEnded();
+    error RecoveryChallengePeriodNotEnded();
 
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();
@@ -137,7 +145,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Set the refund address for message associated to a poolId
-    function setRefundAddress(PoolId poolId, address refund) external;
+    function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 
     /// @notice Pay upfront to later be able to subsidize messages associated to a pool
     function subsidizePool(PoolId poolId) external payable;
@@ -163,7 +171,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeMessageRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
+    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
 
     // --- Helpers ---
     /// @notice A view method of the current quorum.abi

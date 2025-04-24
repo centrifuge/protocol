@@ -55,7 +55,9 @@ interface IHoldings {
     );
 
     /// @notice Emitted when the holding is updated
-    event Update(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, int128 diffValue);
+    event Update(
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
+    );
 
     /// @notice Emitted when a holding valuation is updated
     event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
@@ -66,7 +68,7 @@ interface IHoldings {
     );
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @notice Item was not found for a required action
     error HoldingNotFound();
@@ -109,8 +111,11 @@ interface IHoldings {
         returns (uint128 value);
 
     /// @notice Reset the value of a holding using the current valuation.
+    /// @return isPositive Indicates whether the diffValue is positive or negative
     /// @return diffValue The difference in value after the new valuation.
-    function update(PoolId poolId, ShareClassId scId, AssetId assetId) external returns (int128 diffValue);
+    function update(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        returns (bool isPositive, uint128 diffValue);
 
     /// @notice Updates the valuation method used for this holding.
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external;

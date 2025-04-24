@@ -6,6 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian, IGateway} from "src/common/Guardian.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -252,7 +253,7 @@ contract AdminTest is BaseTest {
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         bytes memory message = MessageLib.NotifyPool(1).serialize();
-        bytes memory proof = _formatMessageProof(message);
+        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
 
         // Only send through 2 out of 3 adapters
         _send(adapter1, message);
@@ -261,32 +262,27 @@ contract AdminTest is BaseTest {
         // Initiate recovery
         _send(
             adapter1,
-            MessageLib.InitiateMessageRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID)
-                .serialize()
+            MessageLib.InitiateRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID).serialize()
         );
 
-        vm.expectRevert(IGateway.MessageRecoveryChallengePeriodNotEnded.selector);
-        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
+        vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
+        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeMessageRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(IGateway.MessageRecoveryNotInitiated.selector);
-        gateway.executeMessageRecovery(OTHER_CHAIN_ID, adapter3, proof);
+        vm.expectRevert(IGateway.RecoveryNotInitiated.selector);
+        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
     }
 
     function _send(MockAdapter adapter, bytes memory message) internal {
         vm.prank(address(adapter));
         gateway.handle(OTHER_CHAIN_ID, message);
-    }
-
-    function _formatMessageProof(bytes memory message) internal pure returns (bytes memory) {
-        return MessageLib.MessageProof(keccak256(message)).serialize();
     }
 }

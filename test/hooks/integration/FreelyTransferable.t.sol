@@ -19,7 +19,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         centrifugeChain.updatePricePoolPerShare(
-            vault.poolId(), vault.trancheId(), defaultPrice, uint64(block.timestamp)
+            vault.poolId().raw(), vault.scId().raw(), defaultPrice, uint64(block.timestamp)
         );
 
         // Anyone can deposit
@@ -34,7 +34,12 @@ contract RedeemTest is BaseTest {
         vm.stopPrank();
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(investor)),
+            assetId,
+            uint128(amount),
+            uint128(amount)
         );
 
         vm.prank(investor);
@@ -50,7 +55,7 @@ contract RedeemTest is BaseTest {
         vm.prank(investor);
         vault.requestRedeem(amount / 2, investor, investor);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
         (isMember,) = hook.isMember(address(shareToken), investor);
         assertEq(isMember, true);
 
@@ -59,7 +64,7 @@ contract RedeemTest is BaseTest {
         uint128 fulfillment = uint128(amount / 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment
         );
 
         vm.prank(investor);

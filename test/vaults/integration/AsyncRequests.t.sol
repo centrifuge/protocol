@@ -6,9 +6,10 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IERC7540.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -17,15 +18,15 @@ interface VaultLike {
 }
 
 contract AsyncRequestsHarness is AsyncRequests {
-    constructor(address root, address escrow) AsyncRequests(root, escrow) {}
+    constructor(address root, address deployer) AsyncRequests(root, deployer) {}
 
-    function calculatePrice(address vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
-        if (vault == address(0)) {
+    function calculatePrice(IBaseVault vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
+        if (address(vault) == address(0)) {
             return VaultPricingLib.calculatePrice(address(0), shares, address(0), 0, assets);
         }
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-        address shareToken = IAsyncVault(vault).share();
+        address shareToken = vault.share();
         return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 }
@@ -40,11 +41,13 @@ contract AsyncRequestsTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequests(address(root), address(escrow));
+        new AsyncRequests(address(root), address(this));
 
         // values set correctly
-        assertEq(address(asyncRequests.escrow()), address(escrow));
+        assertEq(address(asyncRequests.sender()), address(messageDispatcher));
         assertEq(address(asyncRequests.poolManager()), address(poolManager));
+        assertEq(address(asyncRequests.balanceSheet()), address(balanceSheet));
+        assertEq(address(asyncRequests.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(asyncRequests.wards(address(root)), 1);
@@ -72,6 +75,8 @@ contract AsyncRequestsTest is BaseTest {
         assertEq(address(asyncRequests.poolManager()), randomUser);
         asyncRequests.file("balanceSheet", randomUser);
         assertEq(address(asyncRequests.balanceSheet()), randomUser);
+        asyncRequests.file("poolEscrowProvider", randomUser);
+        assertEq(address(asyncRequests.poolEscrowProvider()), randomUser);
 
         // remove self from wards
         asyncRequests.deny(self);
@@ -82,8 +87,8 @@ contract AsyncRequestsTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(escrow));
-        assertEq(harness.calculatePrice(address(0), 1, 0), 0);
-        assertEq(harness.calculatePrice(address(0), 0, 1), 0);
+        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(this));
+        assertEq(harness.calculatePrice(IBaseVault(address(0)), 1, 0), 0);
+        assertEq(harness.calculatePrice(IBaseVault(address(0)), 0, 1), 0);
     }
 }
