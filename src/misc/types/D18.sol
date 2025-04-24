@@ -23,7 +23,7 @@ function sub(D18 d1, D18 d2) pure returns (D18) {
 /// - nominator (decimal): 50e18
 /// - denominator (decimal):  2e19
 /// - result (decimal): 25e17
-function divD8(D18 d1, D18 d2) pure returns (D18) {
+function divD18(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), 1e18, D18.unwrap(d2)).toUint128());
 }
 
@@ -31,7 +31,7 @@ function divD8(D18 d1, D18 d2) pure returns (D18) {
 /// - value1 (decimal): 50e18
 /// - value2 (decimal):  2e19
 /// - result (decimal): 100e19
-function mulD8(D18 d1, D18 d2) pure returns (D18) {
+function mulD18(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), D18.unwrap(d2), 1e18).toUint128());
 }
 
@@ -103,10 +103,10 @@ function raw(D18 d) pure returns (uint128) {
 using {
     add as +,
     sub as -,
-    divD8 as /,
+    divD18 as /,
     inner,
     eq,
-    mulD8 as *,
+    mulD18 as *,
     mulUint128,
     mulUint256,
     reciprocalMulUint128,

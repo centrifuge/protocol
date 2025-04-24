@@ -24,7 +24,7 @@ contract TestCases is BaseTest {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
-        hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -52,8 +52,8 @@ contract TestCases is BaseTest {
         );
         hub.updateContract{value: GAS}(
             poolId,
-            CHAIN_CV,
             scId,
+            CHAIN_CV,
             bytes32("target"),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32("factory"),
@@ -99,7 +99,7 @@ contract TestCases is BaseTest {
         IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
 
         vm.startPrank(FM);
-        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
+        hub.approveDeposits{value: GAS}(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
         hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
         vm.stopPrank();
 
@@ -138,7 +138,7 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        hub.revokeShares{value: GAS}(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
         vm.stopPrank();
 
         vm.prank(ANY);
@@ -214,7 +214,7 @@ contract TestCases is BaseTest {
         hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
-        hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
+        hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV);
         vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);

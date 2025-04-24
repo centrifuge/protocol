@@ -151,7 +151,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable {
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable {
         _protectedAndPaid(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
@@ -164,7 +164,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, uint16 centrifugeId, ShareClassId scId) public payable {
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable {
         _protectedAndPaid(poolId);
 
         (, D18 poolPerShare) = shareClassManager.shareClassPrice(poolId, scId);
@@ -229,7 +229,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint128 maxApproval,
         IERC7726 valuation
     ) external payable {
-        _protected(poolId);
+        _protectedAndPaid(poolId);
 
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
@@ -259,7 +259,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         external
         payable
     {
-        _protected(poolId);
+        _protectedAndPaid(poolId);
 
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
@@ -268,7 +268,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function updateRestriction(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
+    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable
     {
@@ -283,8 +283,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     /// @inheritdoc IHub
     function updateContract(
         PoolId poolId,
-        uint16 centrifugeId,
         ShareClassId scId,
+        uint16 centrifugeId,
         bytes32 target,
         bytes calldata payload
     ) external payable {
