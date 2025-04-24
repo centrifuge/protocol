@@ -134,7 +134,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address source)
+    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address)
         public
         auth
         returns (bool)
