@@ -16,7 +16,6 @@ import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
@@ -36,7 +35,7 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         uint256 tokenId_,
         IShareToken token_,
         address root_,
-        IAsyncRedeemManager manager_,
+        IAsyncRequests manager_,
         IPoolEscrowProvider poolEscrowProvider
     )
         BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
