@@ -11,79 +11,79 @@ import {AsyncVaultProperties} from "../properties/AsyncVaultProperties.sol";
 abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultProperties {
 
     /// === Overridden Implementations === ///
-    function asyncVault_3(address asyncVaultTarget) public override {
+    function asyncVault_3(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_3(asyncVaultTarget);
     }
 
-    function asyncVault_4(address asyncVaultTarget) public override {
+    function asyncVault_4(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_4(asyncVaultTarget);
     }
 
-    function asyncVault_5(address asyncVaultTarget) public override {
+    function asyncVault_5(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_5(asyncVaultTarget);
     }
 
-    function asyncVault_6_deposit(address asyncVaultTarget, uint256 amt) public override {
+    function asyncVault_6_deposit(address asyncVaultTarget, uint256 amt) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_deposit(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_mint(address asyncVaultTarget, uint256 amt) public override {
+    function asyncVault_6_mint(address asyncVaultTarget, uint256 amt) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_mint(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_withdraw(address asyncVaultTarget, uint256 amt) public override {
+    function asyncVault_6_withdraw(address asyncVaultTarget, uint256 amt) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_withdraw(asyncVaultTarget, amt);
     }
 
-    function asyncVault_6_redeem(address asyncVaultTarget, uint256 amt) public override {
+    function asyncVault_6_redeem(address asyncVaultTarget, uint256 amt) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_6_redeem(asyncVaultTarget, amt);
     }
 
-    function asyncVault_7(address asyncVaultTarget, uint256 shares) public override {
+    function asyncVault_7(address asyncVaultTarget, uint256 shares) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_7(asyncVaultTarget, shares);
     }
 
-    function asyncVault_8(address asyncVaultTarget) public override {
+    function asyncVault_8(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_8(asyncVaultTarget);
     }
 
-    function asyncVault_9_deposit(address asyncVaultTarget) public override {
+    function asyncVault_9_deposit(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_deposit(asyncVaultTarget);
     }
 
-    function asyncVault_9_mint(address asyncVaultTarget) public override {
+    function asyncVault_9_mint(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_mint(asyncVaultTarget);
     }
 
-    function asyncVault_9_withdraw(address asyncVaultTarget) public override {
+    function asyncVault_9_withdraw(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_withdraw(asyncVaultTarget);
     }
 
-    function asyncVault_9_redeem(address asyncVaultTarget) public override {
+    function asyncVault_9_redeem(address asyncVaultTarget) statelessTest public override {
         _centrifugeSpecificPreChecks();
 
         AsyncVaultProperties.asyncVault_9_redeem(asyncVaultTarget);
