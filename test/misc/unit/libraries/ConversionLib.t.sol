@@ -65,7 +65,7 @@ contract ConversionLibFuzzTest is Test {
         uint256 result = ConversionLib.assetToShareAmount(
             assetAmount, assetDecimals, SHARE_DECIMALS, pricePoolPerAsset, pricePoolPerShare
         );
-        
+
         assertEq(result, expectedShareAmount, "assetToShareAmount failed");
     }
 
@@ -87,7 +87,9 @@ contract ConversionLibFuzzTest is Test {
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerShare, pricePoolPerAsset
         );
 
-        assertApproxEqAbs(assetRoundTrip, assetAmount, MIN_PRICE * 10, "Asset->Share->Asset roundtrip target precision excess");
+        assertApproxEqAbs(
+            assetRoundTrip, assetAmount, MIN_PRICE * 10, "Asset->Share->Asset roundtrip target precision excess"
+        );
     }
 
     /// NOTE: Solely serves to represent the horrible precision for this round trip due to reciprocal multiplication

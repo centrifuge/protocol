@@ -149,7 +149,9 @@ contract TestCases is BaseTest {
         hub.approveRedeems(
             poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
         );
-        hub.revokeShares{value: GAS}(poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE);
+        hub.revokeShares{value: GAS}(
+            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
+        );
         vm.stopPrank();
 
         vm.prank(ANY);
