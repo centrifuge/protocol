@@ -30,15 +30,15 @@ import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 ///         Supports processing multiple duplicate messages in parallel by storing counts of messages
 ///         and proofs that have been received. Also implements a retry method for failed messages.
 contract Gateway is Auth, Recoverable, IGateway {
-    using ArrayLib for uint16[8];
     using BytesLib for bytes;
     using MathLib for uint256;
-    using TransientStorageLib for bytes32;
     using MessageProofLib for *;
+    using ArrayLib for uint16[8];
+    using TransientStorageLib for bytes32;
 
-    PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     uint8 public constant MAX_ADAPTER_COUNT = 8;
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
+    PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
@@ -327,20 +327,20 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
 
         // Send batch and proofs
-        for (uint256 i; i < adapters_.length; i++) {
-            bytes32 adapterData = adapters_[i].send{value: data.gasCost[i]}(
+        for (uint256 j; j < adapters_.length; j++) {
+            bytes32 adapterData = adapters_[j].send{value: data.gasCost[j]}(
                 centrifugeId,
-                i == PRIMARY_ADAPTER_ID - 1 ? batch : data.batchHash.serializeMessageProof(),
+                j == PRIMARY_ADAPTER_ID - 1 ? batch : data.batchHash.serializeMessageProof(),
                 data.batchGasLimit,
                 transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund)
             );
 
-            if (i == PRIMARY_ADAPTER_ID - 1) {
+            if (j == PRIMARY_ADAPTER_ID - 1) {
                 emit SendBatch(
                     centrifugeId,
                     data.payloadId,
                     batch,
-                    adapters_[i],
+                    adapters_[j],
                     adapterData,
                     transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund)
                 );
@@ -349,7 +349,7 @@ contract Gateway is Auth, Recoverable, IGateway {
                     centrifugeId,
                     data.payloadId,
                     data.batchHash,
-                    adapters_[i],
+                    adapters_[j],
                     adapterData
                 );
             }
@@ -377,15 +377,16 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         // Reset before external call
         uint256 fuel_ = fuel;
+        address transactionRefund_ = transactionRefund;
         fuel = 0;
         transactionRefund = address(0);
 
         if (fuel_ > 0) {
-            (bool success,) = payable(transactionRefund).call{value: fuel_}(new bytes(0));
+            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund, fuel_);
+                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
             }
         }
     }
