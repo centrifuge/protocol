@@ -325,7 +325,6 @@ contract Gateway is Auth, Recoverable, IGateway {
                 return false;
             }
         }
-        delete total;
 
         // Send batch and proofs
         for (uint256 i; i < adapters_.length; i++) {
@@ -376,18 +375,19 @@ contract Gateway is Auth, Recoverable, IGateway {
     function _refundTransaction() internal {
         if (transactionRefund == address(0)) return;
 
-        if (fuel > 0) {
-            (bool success,) = payable(transactionRefund).call{value: fuel}(new bytes(0));
+        // Reset before external call
+        uint256 fuel_ = fuel;
+        fuel = 0;
+        transactionRefund = address(0);
+
+        if (fuel_ > 0) {
+            (bool success,) = payable(transactionRefund).call{value: fuel_}(new bytes(0));
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund, fuel);
+                _subsidizePool(GLOBAL_POT, transactionRefund, fuel_);
             }
-
-            fuel = 0;
         }
-
-        transactionRefund = address(0);
     }
 
     function _requestPoolFunding(PoolId poolId) internal {
