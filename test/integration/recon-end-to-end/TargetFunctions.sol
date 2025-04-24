@@ -159,7 +159,6 @@ abstract contract TargetFunctions is
     function shortcut_approve_and_issue_shares(
         uint64 poolId,
         bytes16 scId,
-        uint32 isoCode,
         uint128 maxApproval, 
         bool isIdentityValuation,
         uint128 navPerShare
@@ -177,7 +176,6 @@ abstract contract TargetFunctions is
     function shortcut_approve_and_revoke_shares(
         uint64 poolId,
         bytes16 scId,
-        uint32 isoCode,
         uint128 maxApproval,
         uint128 navPerShare,
         bool isIdentityValuation
