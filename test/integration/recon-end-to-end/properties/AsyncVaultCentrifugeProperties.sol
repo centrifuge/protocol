@@ -6,6 +6,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {Setup} from "test/integration/recon-end-to-end/Setup.sol";
 import {AsyncVaultProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultProperties.sol";
@@ -13,6 +14,7 @@ import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 /// @dev ERC-7540 Properties used by Centrifuge
 /// See `AsyncVaultProperties` for more properties that can be re-used in your project
 abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultProperties {
+    using CastLib for *;
 
     /// === Overridden Implementations === ///
     function asyncVault_3(address asyncVaultTarget) public override {
@@ -99,6 +101,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always maxDeposit if they have > 0 assets and are approved
     /// @dev Property: user can always deposit an amount between 1 and maxDeposit have > 0 assets and are approved
     /// @dev Property: maxDeposit should decrease by the amount deposited
+    /// @dev Property: depositing maxDeposit leaves a user with 0 orders
     function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public  {
         uint256 maxDepositBefore = vault.maxDeposit(address(this));
         require(maxDepositBefore > 0, "must be able to deposit");
@@ -114,7 +117,15 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         try vault.deposit(depositAmount, _getActor()) {
             uint256 maxDepositAfter = vault.maxDeposit(address(this));
             uint256 difference = maxDepositBefore - depositAmount;
+            
             t(difference == maxDepositAfter, "rounding error in maxDeposit");
+            
+            if(depositAmount == maxDepositBefore) {
+                (,,,,,, uint128 claimableCancelDepositRequest,,,) = asyncRequests.investments(address(vault), _getActor());
+                (uint256 pendingDeposit, ) = shareClassManager.depositRequest(scId, assetId, _getActor().toBytes32());
+                eq(claimableCancelDepositRequest, 0, "claimableCancelDepositRequest should be 0 after maxDeposit");
+                eq(pendingDeposit, 0, "pendingDeposit should be 0 after maxDeposit");
+            }
         }
         catch {
             t(latestDepositApproval < depositAmount, "reverts on deposit for approved amount");
