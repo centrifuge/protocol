@@ -207,6 +207,10 @@ contract BaseTest is VaultsDeployer, Test {
         );
         vaultAddress = IShareToken(poolManager.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
+
+        uint256 gasPerMessage = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        gateway.setRefundAddress(POOL_A, gateway);
+        gateway.subsidizePool{value: gasPerMessage * 100}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)

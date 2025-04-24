@@ -167,14 +167,14 @@ contract DepositTest is BaseTest {
         gateway.setRefundAddress(POOL_A, gateway);
         gateway.subsidizePool{value: gasPerMessage}(POOL_A);
 
-        (uint256 value,) = gateway.subsidy(POOL_A);
-        assertEq(value, gasPerMessage);
+        (uint256 preSubsidy,) = gateway.subsidy(POOL_A);
+        assertEq(preSubsidy, gasPerMessage);
 
         // One outgoing requestDeposit message
         _testDepositMint(amount, false);
 
-        (value,) = gateway.subsidy(POOL_A);
-        assertEq(value, 0);
+        (uint256 postSubsidy,) = gateway.subsidy(POOL_A);
+        assertEq(postSubsidy - preSubsidy, gasPerMessage);
     }
 
     function testPartialDepositExecutions() public {
