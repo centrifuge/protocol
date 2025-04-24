@@ -8,6 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -101,6 +102,7 @@ contract TestEndToEnd is Test {
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
     uint64 constant GAS = 10 wei;
+    uint256 constant DEFAULT_SUBSIDY = 100 ether;
 
     address immutable FM = makeAddr("FM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
@@ -234,6 +236,10 @@ contract TestEndToEnd is Test {
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
+
+        vm.stopPrank();
+        vm.deal(address(this), DEFAULT_SUBSIDY);
+        cv.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(poolId);
     }
 
     /// forge-config: default.isolate = true
