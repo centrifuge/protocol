@@ -318,13 +318,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
         uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
         
         uint256 differenceInAssets = totalAssets - actualAssets;
         uint256 differenceInShares = vault.convertToShares(differenceInAssets);
 
         // precondition: check if the difference is greater than one share
-        if (differenceInShares > (10 ** token.decimals() - 1)) {
+        if (differenceInShares > (10 ** token.decimals()) - 1) {
             lte(totalAssets, actualAssets, "totalAssets > actualAssets");
         }
     }
@@ -343,12 +343,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
         uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
         uint256 difference = totalAssets - actualAssets;
 
         uint256 differenceInShares = vault.convertToShares(difference);
 
-        if (differenceInShares > 1e18 - 1) {
+        if (differenceInShares > (10 ** token.decimals()) - 1) {
             return int256(difference);
         }
 
