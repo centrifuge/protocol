@@ -96,16 +96,16 @@ interface IHub {
     /// @notice Notify to a CV instance that a new share class is available
     /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes32 hook) external payable;
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
-    /// @dev The receiving chainId is derived from the provided assetId
-    /// @param chainId Chain to where the share price is notified
+    /// @dev The receiving centrifugeId is derived from the provided assetId
+    /// @param centrifugeId Chain to where the share price is notified
     /// @param scId Identifier of the share class
-    function notifySharePrice(PoolId poolId, uint16 chainId, ShareClassId scId) external payable;
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
-    /// @dev The receiving chainId is derived from the provided assetId
+    /// @dev The receiving centrifugeId is derived from the provided assetId
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
@@ -181,7 +181,7 @@ interface IHub {
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    function updateRestriction(PoolId poolId, uint16 centrifugeId, ShareClassId scId, bytes calldata payload)
+    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable;
 
@@ -191,8 +191,8 @@ interface IHub {
     /// @param payload content of the update to execute.
     function updateContract(
         PoolId poolId,
-        uint16 centrifugeId,
         ShareClassId scId,
+        uint16 centrifugeId,
         bytes32 target,
         bytes calldata payload
     ) external payable;

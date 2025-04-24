@@ -94,42 +94,42 @@ contract D18Test is Test {
         assertEq(divisor.reciprocalMulUint256(multiplier), multiplier * 1e18 / divisor.inner());
     }
 
-    function testMulD8() public pure {
+    function testMulD18() public pure {
         D18 left = d18(50e18);
         D18 right = d18(2e19);
 
-        assertEq(mulD8(left, right).inner(), 100e19);
+        assertEq(mulD18(left, right).inner(), 100e19);
     }
 
-    function testFuzzMulD8(uint128 left_, uint128 right_) public pure {
+    function testFuzzMulD18(uint128 left_, uint128 right_) public pure {
         D18 left = d18(uint128(bound(left_, 1, type(uint128).max)));
         D18 right = d18(uint128(bound(right_, 0, type(uint128).max / left.inner())));
 
-        assertEq(mulD8(left, right).inner(), left.inner() * right.inner() / 1e18);
+        assertEq(mulD18(left, right).inner(), left.inner() * right.inner() / 1e18);
     }
 
-    function testDivD8() public pure {
+    function testDivD18() public pure {
         D18 numerator = d18(50e18);
         D18 denominator = d18(2e19);
 
-        assertEq(divD8(numerator, denominator).inner(), 25e17);
+        assertEq(divD18(numerator, denominator).inner(), 25e17);
     }
 
-    function testFuzzDivD8(uint128 numerator_, uint128 denominator_) public pure {
+    function testFuzzDivD18(uint128 numerator_, uint128 denominator_) public pure {
         D18 numerator = d18(uint128(bound(numerator_, 1, 1e20)));
         D18 denominator = d18(uint128(bound(denominator_, 1, 1e20)));
 
-        assertEq(divD8(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
+        assertEq(divD18(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
     }
 
-    function testEqD8() public pure {
+    function testEqD18() public pure {
         D18 a = d18(5234);
 
         assert(eq(a, a));
         assert(!eq(a, d18(5235)));
     }
 
-    function testRawD8() public pure {
+    function testRawD18() public pure {
         uint128 a_ = 3245252;
         D18 a = d18(a_);
 
