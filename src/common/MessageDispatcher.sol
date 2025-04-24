@@ -5,7 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
@@ -355,6 +355,30 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendEnableAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.enableAssetsQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.EnableAssetsQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendEnableSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.enableSharesQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.EnableSharesQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {
@@ -540,15 +564,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint128 shares, bool isIssuance)
-        external
-        auth
-    {
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
+        // TODO: Remove price in Hub
+        D18 price = d18(1, 1);
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.increaseShareIssuance(poolId, scId, price, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.decreaseShareIssuance(poolId, scId, price, shares);
             }
         } else {
             gateway.send(
@@ -556,7 +579,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    pricePerShare: pricePoolPerShare.raw(),
                     shares: shares,
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance

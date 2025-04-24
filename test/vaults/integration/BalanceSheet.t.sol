@@ -114,7 +114,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectEmit();
@@ -127,7 +127,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectEmit();
@@ -142,25 +142,28 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
     }
 
     // --- IBalanceSheet ---
     function testDeposit() public {
+        balanceSheet.enableAssetsQueue(POOL_A, defaultTypedShareClassId, true);
+
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         erc20.mint(address(this), defaultAmount);
         erc20.approve(address(balanceSheet), defaultAmount);
+
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
             POOL_A,
@@ -169,15 +172,16 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
+            defaultPricePerShare,
             uint64(block.timestamp)
         );
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         assertEq(erc20.balanceOf(address(this)), 0);
-        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(defaultAmount));
+        (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        assertEq(increase, defaultAmount);
         assertEq(erc20.balanceOf(address(balanceSheet.escrow())), defaultAmount);
     }
 
@@ -187,7 +191,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.withdraw(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         assertEq(erc20.balanceOf(address(this)), 0);
@@ -200,37 +204,43 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
+            defaultPricePerShare,
             uint64(block.timestamp)
         );
         balanceSheet.withdraw(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
+        (, uint128 decrease) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+
         assertEq(erc20.balanceOf(address(this)), defaultAmount);
-        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(0));
+        assertEq(decrease, defaultAmount);
         assertEq(erc20.balanceOf(address(balanceSheet.escrow())), 0);
     }
 
     function testIssue() public {
+        balanceSheet.enableSharesQueue(POOL_A, defaultTypedShareClassId, true);
+
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         IERC20 token = IERC20(poolManager.shareToken(POOL_A.raw(), defaultShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
+        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount);
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount));
+        assertEq(increase, defaultAmount);
 
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount * 2);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
 
+        (uint128 increase2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 3));
+        assertEq(increase2, defaultAmount * 3);
     }
 
     function testRevoke() public {
@@ -241,29 +251,48 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
         emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
+        (, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 2));
+        assertEq(decrease, defaultAmount);
 
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount * 2);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
 
+        (, uint128 decrease2) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), 0);
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), 0);
+        assertEq(decrease2, defaultAmount * 3);
     }
 
     function testQueuedShares() public {
-        testIssue();
+        testRevoke();
 
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(defaultAmount * 3));
+        DispatcherSpy dispatcherSpy = new DispatcherSpy();
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares.selector)
+        );
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares_result.selector)
+        );
+
+        // Add extra issuance to have an unequal number
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        (uint128 increase, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+
+        assertEq(increase, defaultAmount * 4);
+        assertEq(decrease, defaultAmount * 3);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -271,13 +300,31 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
-        assertEq(balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId), int128(0));
+        (uint128 increaseAfter, uint128 decreaseAfter) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(increaseAfter, 0);
+        assertEq(decreaseAfter, 0);
+        (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
+        assertEq(shares, defaultAmount);
+        assertEq(isIssuance, true);
     }
 
     function testQueuedAssets() public {
         testDeposit();
 
-        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(defaultAmount));
+        DispatcherSpy dispatcherSpy = new DispatcherSpy();
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateHoldingAmount.selector)
+        );
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateHoldingAmount_result.selector)
+        );
+
+        (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        assertEq(increase, defaultAmount);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -285,7 +332,102 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
 
-        assertEq(balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId), int128(0));
+        (uint128 increaseAfter,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        assertEq(increaseAfter, 0);
+        (uint128 amount, bool isIncrease) =
+            DispatcherSpy(address(balanceSheet.sender())).sendUpdateHoldingAmount_result();
+        assertEq(amount, defaultAmount);
+        assertEq(isIncrease, true);
+    }
+
+    function testAssetsQueueDisabled() public {
+        DispatcherSpy dispatcherSpy = new DispatcherSpy();
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateHoldingAmount.selector)
+        );
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateHoldingAmount_result.selector)
+        );
+
+        erc20.mint(address(this), defaultAmount);
+        erc20.approve(address(balanceSheet), defaultAmount);
+
+        balanceSheet.deposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
+        );
+
+        (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        assertEq(increase, 0);
+        (uint128 amount, bool isIncrease) =
+            DispatcherSpy(address(balanceSheet.sender())).sendUpdateHoldingAmount_result();
+        assertEq(amount, defaultAmount);
+        assertEq(isIncrease, true);
+
+        balanceSheet.withdraw(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount / 2
+        );
+
+        (, uint128 decrease) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        assertEq(decrease, 0);
+        (uint128 amount2, bool isIncrease2) =
+            DispatcherSpy(address(balanceSheet.sender())).sendUpdateHoldingAmount_result();
+        assertEq(amount2, defaultAmount / 2);
+        assertEq(isIncrease2, false);
+    }
+
+    function testSharesQueueDisabled() public {
+        DispatcherSpy dispatcherSpy = new DispatcherSpy();
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares.selector)
+        );
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares_result.selector)
+        );
+
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+
+        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(increase, 0);
+        (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
+        assertEq(shares, defaultAmount);
+        assertEq(isIssuance, true);
+    }
+
+    function testSubmitWithQueueDisabled() public {
+        DispatcherSpy dispatcherSpy = new DispatcherSpy();
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares.selector)
+        );
+        vm.mockFunction(
+            address(balanceSheet.sender()),
+            address(dispatcherSpy),
+            abi.encodeWithSelector(DispatcherSpy.sendUpdateShares_result.selector)
+        );
+
+        // Issue with queue enabled
+        balanceSheet.enableSharesQueue(POOL_A, defaultTypedShareClassId, true);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+
+        // Submit with queue disabled
+        balanceSheet.enableSharesQueue(POOL_A, defaultTypedShareClassId, false);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
+
+        // Shares should remain in the queue and not be submitted
+        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(increase, defaultAmount);
+        (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
+        assertEq(shares, 0);
+        assertEq(isIssuance, false);
     }
 
     function testTransferSharesFrom() public {
@@ -303,5 +445,45 @@ contract BalanceSheetTest is BaseTest {
 
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
         assertEq(token.balanceOf(address(1)), defaultAmount);
+    }
+}
+
+contract DispatcherSpy {
+    function sendUpdateShares(PoolId, ShareClassId, uint128 shares, bool isIssuance) external {
+        bytes32 slot = keccak256("dispatchedShares");
+        bytes32 slot2 = keccak256("dispatchedSharesIsIssuance");
+        assembly {
+            sstore(slot, shares)
+            sstore(slot2, isIssuance)
+        }
+    }
+
+    function sendUpdateShares_result() external view returns (uint128 shares, bool isIssuance) {
+        bytes32 slot = keccak256("dispatchedShares");
+        bytes32 slot2 = keccak256("dispatchedSharesIsIssuance");
+        assembly {
+            shares := sload(slot)
+            isIssuance := sload(slot2)
+        }
+    }
+
+    function sendUpdateHoldingAmount(PoolId, ShareClassId, AssetId, address, uint128 amount, D18, bool isIncrease)
+        external
+    {
+        bytes32 slot = keccak256("dispatchedHoldingAmount");
+        bytes32 slot2 = keccak256("dispatchedHoldingAmountIsIncrease");
+        assembly {
+            sstore(slot, amount)
+            sstore(slot2, isIncrease)
+        }
+    }
+
+    function sendUpdateHoldingAmount_result() external view returns (uint128 amount, bool inIncrease) {
+        bytes32 slot = keccak256("dispatchedHoldingAmount");
+        bytes32 slot2 = keccak256("dispatchedHoldingAmountIsIncrease");
+        assembly {
+            amount := sload(slot)
+            inIncrease := sload(slot2)
+        }
     }
 }

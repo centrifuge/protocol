@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
@@ -165,8 +165,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             } else {
                 balanceSheet.triggerWithdraw(
@@ -174,27 +173,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             }
         } else if (kind == MessageType.TriggerUpdateShares) {
             MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
             if (m.isIssuance) {
                 balanceSheet.triggerIssueShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
                 );
             } else {
                 balanceSheet.triggerRevokeShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
                 );
             }
         } else if (kind == MessageType.UpdateHoldingAmount) {
@@ -208,15 +198,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.isIncrease
             );
         } else if (kind == MessageType.UpdateShares) {
+            // TODO: Remove price from hub
+            D18 price = d18(1, 1);
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
-                hub.increaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), price, m.shares);
             } else {
-                hub.decreaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), price, m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
@@ -234,6 +222,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
+        } else if (kind == MessageType.EnableSharesQueue) {
+            MessageLib.EnableSharesQueue memory m = message.deserializeEnableSharesQueue();
+            balanceSheet.enableSharesQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
+        } else if (kind == MessageType.EnableAssetsQueue) {
+            MessageLib.EnableAssetsQueue memory m = message.deserializeEnableAssetsQueue();
+            balanceSheet.enableAssetsQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
         } else {
             revert InvalidMessage(uint8(kind));
         }
