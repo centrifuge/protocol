@@ -14,8 +14,9 @@ contract TestCases is BaseTest {
         cv.registerAsset(USDC_C2, 6);
         cv.registerAsset(EUR_STABLE_C2, 12);
 
+        poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        poolId = guardian.createPool(1, FM, USD);
+        guardian.createPool(poolId, FM, USD);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 

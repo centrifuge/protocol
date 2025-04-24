@@ -73,12 +73,15 @@ contract TestEndToEnd is Test {
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
         (HubDeployer ch, VaultsDeployer cv) = _getDeploys(sameChain);
+        uint16 chChainId = ch.messageDispatcher().localCentrifugeId();
         uint16 cvChainId = cv.messageDispatcher().localCentrifugeId();
 
         IGuardian guardian = ch.guardian();
         AssetId usd = deployA.USD();
+        PoolId poolId = ch.hubRegistry().poolId(chChainId, 1);
+
         vm.prank(address(guardian.safe()));
-        PoolId poolId = guardian.createPool(1, FM, usd);
+        guardian.createPool(poolId, FM, usd);
 
         vm.startPrank(FM);
         ch.hub().notifyPool{value: GAS}(poolId, cvChainId);
