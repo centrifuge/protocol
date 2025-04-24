@@ -293,12 +293,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount)
+    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, D18 pricePoolPerAsset)
         external
         auth
     {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            balanceSheet.approvedDeposits(poolId, scId, assetId, assetAmount);
+            investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -306,16 +306,37 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    assetAmount: assetAmount
+                    assetAmount: assetAmount,
+                    pricePoolPerAsset: pricePoolPerAsset.raw()
                 }).serialize()
             );
         }
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
+    function sendIssuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare)
+    external
+    auth
+    {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            balanceSheet.revokedShares(poolId, scId, assetId, assetAmount);
+            investmentManager.issuedShares(poolId, scId, assetId, shareAmount, pricePoolPerShare);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.IssuedShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    shareAmount: shareAmount,
+                    pricePoolPerShare: pricePoolPerShare.raw()
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount, D18 pricePoolPerShare) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -323,7 +344,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    assetAmount: assetAmount
+                    assetAmount: assetAmount,
+                    shareAmount: shareAmount,
+                    pricePoolPerShare: pricePoolPerShare.raw()
                 }).serialize()
             );
         }

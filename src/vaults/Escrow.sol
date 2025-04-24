@@ -56,6 +56,22 @@ contract Escrow is Auth, IEscrow {
             emit Approve(asset, tokenId, spender, 0);
         }
     }
+
+    /// @inheritdoc IPoolEscrow
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
+        emit AuthTransferTo(asset, tokenId, receiver, amount);
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransfer(asset, receiver, amount);
+        } else {
+            IERC6909(asset).transfer(receiver, tokenId, amount);
+        }
+    }
+
+    /// @inheritdoc IPoolEscrow
+    function authTransferTo(address asset, address receiver, uint256 amount) external auth {
+        emit AuthTransferTo(asset, receiver, amount);
+        SafeTransferLib.safeTransfer(asset, receiver, amount);
+    }
 }
 
 /// @title  Escrow
@@ -77,12 +93,9 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
 
     /// @inheritdoc IPoolEscrow
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        _deposit(scId, asset, tokenId, value, true);
-    }
+        holding[scId][asset][tokenId].total += value.toUint128();
 
-    /// @inheritdoc IPoolEscrow
-    function noteDeposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external auth {
-        _deposit(scId, asset, tokenId, value, false);
+        emit Deposit(asset, tokenId, poolId, scId, value);
     }
 
     /// @inheritdoc IPoolEscrow
@@ -120,21 +133,5 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         Holding storage holding_ = holding[scId][asset][tokenId];
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;
-    }
-
-    function _deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value, bool checkSufficiency) internal {
-        uint128 holding_ = holding[scId][asset][tokenId].total;
-
-        // Leave out check for deposits which transfer funds post escrow.deposit due to security concerns
-        if (checkSufficiency) {
-            uint256 balance = tokenId == 0
-                ? IERC20(asset).balanceOf(address(this))
-                : IERC6909(asset).balanceOf(address(this), tokenId);
-            require(balance >= holding_ + value, InsufficientDeposit());
-        }
-
-        holding[scId][asset][tokenId].total += value.toUint128();
-
-        emit Deposit(asset, tokenId, poolId, scId, value);
     }
 }

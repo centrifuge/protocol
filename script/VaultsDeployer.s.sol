@@ -30,6 +30,7 @@ contract VaultsDeployer is CommonDeployer {
     PoolManager public poolManager;
     PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
+    Escrow public vaultsGlobalEscrow;
     VaultRouter public vaultRouter;
     address public asyncVaultFactory;
     address public syncDepositVaultFactory;
@@ -44,10 +45,11 @@ contract VaultsDeployer is CommonDeployer {
 
         poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
+        vaultsGlobalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = address(new TokenFactory{salt: SALT}(address(root), deployer));
 
-        asyncRequests = new AsyncRequests(address(root), deployer);
-        syncRequests = new SyncRequests(address(root), deployer);
+        asyncRequests = new AsyncRequests(address(vaultsGlobalEscrow), address(root), deployer);
+        syncRequests = new SyncRequests(address(vaultsGlobalEscrow), address(root), deployer);
         asyncVaultFactory =
             address(new AsyncVaultFactory(address(root), address(asyncRequests), poolEscrowFactory, deployer));
         syncDepositVaultFactory = address(
@@ -108,10 +110,12 @@ contract VaultsDeployer is CommonDeployer {
         // Rely async investment manager
         balanceSheet.rely(address(asyncRequests));
         messageDispatcher.rely(address(asyncRequests));
+        vaultsGlobalEscrow.rely(address(asyncRequests));
 
         // Rely sync investment manager
         balanceSheet.rely(address(syncRequests));
         asyncRequests.rely(address(syncRequests));
+        vaultsGlobalEscrow.rely(address(syncRequests));
 
         // Rely BalanceSheet
         messageDispatcher.rely(address(balanceSheet));
@@ -124,6 +128,7 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.rely(address(root));
         poolEscrowFactory.rely(address(root));
         routerEscrow.rely(address(root));
+        vaultsGlobalEscrow.rely(address(root));
         IAuth(asyncVaultFactory).rely(address(root));
         IAuth(syncDepositVaultFactory).rely(address(root));
         IAuth(tokenFactory).rely(address(root));

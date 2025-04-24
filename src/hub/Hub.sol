@@ -233,7 +233,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (uint128 approvedAssetAmount,) =
             shareClassManager.approveDeposits(poolId, scId, maxApproval, paymentAssetId, valuation);
 
-        sender.sendApprovedDeposits(poolId, scId, paymentAssetId, approvedAssetAmount);
+        // TODO: Fix price once SCM refactor is in
+        sender.sendApprovedDeposits(poolId, scId, paymentAssetId, approvedAssetAmount, d18(1,1));
     }
 
     /// @inheritdoc IHub
@@ -251,6 +252,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _protected(poolId);
 
         shareClassManager.issueShares(poolId, scId, depositAssetId, navPerShare);
+
+        // TODO: Fix shareAmount once SCM refactor is in
+        sender.sendIssuedShares(poolId, scId, 0, navPerShare);
     }
 
     /// @inheritdoc IHub
@@ -263,7 +267,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (uint128 payoutAssetAmount,) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, navPerShare, valuation);
 
-        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount);
+        // TODO: Fix shareAmount once SCM refactor is in
+        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount, 0, navPerShare);
     }
 
     /// @inheritdoc IHub

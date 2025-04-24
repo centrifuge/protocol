@@ -37,7 +37,6 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
 
-    /// @notice Overloaded increase with asset transfer
     function deposit(
         PoolId poolId,
         ShareClassId scId,
@@ -48,7 +47,6 @@ interface IBalanceSheet {
         D18 pricePoolPerAsset
     ) external;
 
-    /// @notice Overloaded increase without asset transfer
     function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
@@ -72,4 +70,7 @@ interface IBalanceSheet {
     function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
+
+    function noteRevoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
+        external;
 }

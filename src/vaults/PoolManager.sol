@@ -522,38 +522,14 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function _approvePool(address vault, PoolId poolId, IShareToken shareToken_, address asset, uint256 tokenId)
         internal
     {
-        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId.raw());
-
-        // Give pool manager infinite approval for asset
-        // in the escrow to transfer to the user on transfer
-        escrow.approveMax(asset, tokenId, address(this));
-
-        // Give balance sheet manager infinite approval for asset
-        // in the escrow to transfer to the user on transfer
-        escrow.approveMax(asset, tokenId, balanceSheet);
-
         address manager = address(IBaseVault(vault).manager());
-        _approveManager(escrow, manager, shareToken_, asset, tokenId);
+        IAuth(address(shareToken_)).rely(manager);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
         (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            _approveManager(escrow, secondaryVaultManager, shareToken_, asset, tokenId);
+            IAuth(address(shareToken_)).rely(secondaryVaultManager);
         }
-    }
-
-    /// @dev Sets up approval permissions for the given vault manager
-    function _approveManager(
-        IPoolEscrow escrow,
-        address manager,
-        IShareToken shareToken_,
-        address asset,
-        uint256 tokenId
-    ) internal {
-        IAuth(address(shareToken_)).rely(manager);
-
-        escrow.approveMax(address(shareToken_), manager);
-        escrow.approveMax(asset, tokenId, manager);
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

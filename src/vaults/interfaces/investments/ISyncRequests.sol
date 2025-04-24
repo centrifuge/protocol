@@ -15,12 +15,12 @@ interface ISyncRequests is ISyncDepositManager, ISharePriceProvider, IUpdateCont
     );
 
     error ExceedsMaxDeposit();
+    error ExceedsMaxMint();
     error AssetNotAllowed();
     error VaultDoesNotExist();
     error VaultAlreadyExists();
     error ShareTokenDoesNotExist();
     error AssetMismatch();
-    error ExceedsMaxReserve();
 
     /// @notice Sets the valuation for a specific pool, share class and asset.
     ///

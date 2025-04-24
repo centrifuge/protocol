@@ -19,6 +19,14 @@ interface IEscrow {
     /// @param value The new total allowance
     event Approve(address indexed asset, uint256 indexed tokenId, address indexed spender, uint256 value);
 
+    /// @notice Emitted when an authTransferTo is made
+    /// @dev Needed as allowances increase attack surface
+    event AuthTransferTo(address indexed asset, uint256 indexed tokenId, address reciver, uint256 value);
+
+    /// @notice Emitted when an authTransferTo is made
+    /// @dev Needed as allowances increase attack surface
+    event AuthTransferTo(address indexed asset, address reciver, uint256 value);
+
     // --- Token approvals ---
     /// @notice sets the allowance of `spender` to `type(uint256).max` if it is currently 0
     function approveMax(address asset, uint256 tokenId, address spender) external;
@@ -31,6 +39,12 @@ interface IEscrow {
 
     /// @notice sets the allowance of `spender` to 0
     function unapprove(address asset, address spender) external;
+
+    /// @notice
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 value) external;
+
+    /// @notice
+    function authTransferTo(address asset, address receiver, uint256 value) external;
 }
 
 struct Holding {
@@ -110,17 +124,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to deposit
     function deposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
-
-    /// @notice Notices the deposit of `value` of `asset` in underlying `poolId` and given `scId`
-    ///
-    /// @dev NOTE: Assumes to not perform sufficiency checks in order to support scenarios in which the actual transfer
-    /// occurs after noting a deposit for security reasons.
-    ///
-    /// @param scId The id of the share class
-    /// @param asset The address of the asset to be deposited
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param value The amount to deposit
-    function noteDeposit(bytes16 scId, address asset, uint256 tokenId, uint256 value) external;
 
     /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST ensure that reserved amounts are not withdrawn

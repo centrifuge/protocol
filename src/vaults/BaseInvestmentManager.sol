@@ -18,6 +18,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;
@@ -26,8 +27,11 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
     IPoolManager public poolManager;
     IPoolEscrowProvider public poolEscrowProvider;
+    /// @inheritdoc IBaseInvestmentManager
+    IEscrow public globalEscrow;
 
-    constructor(address root_, address deployer) Auth(deployer) {
+    constructor(IPoolEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
+        globalEscrow = globalEscrow_;
         root = root_;
     }
 
@@ -70,6 +74,11 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         (, lastUpdated) = poolManager.priceAssetPerShare(
             PoolId.wrap(vault_.poolId()), ShareClassId.wrap(vault_.scId()), vaultDetails.assetId, false
         );
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
+    function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
+        return poolEscrowProvider.escrow(poolId.raw());
     }
 
     function _convertToShares(

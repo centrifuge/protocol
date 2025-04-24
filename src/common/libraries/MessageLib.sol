@@ -1083,6 +1083,7 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         uint128 assetAmount;
+        uint128 pricePoolPerAsset;
     }
 
     function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
@@ -1092,12 +1093,39 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            pricePoolPerAsset: data.toUint128(57)
         });
     }
 
     function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount, t.pricePoolPerAsset);
+    }
+
+    //---------------------------------------
+    //    IssuedShares
+    //---------------------------------------
+
+    struct IssuedShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
+    }
+
+    function deserializeIssuedShares(bytes memory data) internal pure returns (IssuedShares memory) {
+        require(messageType(data) == MessageType.IssuedShares, UnknownMessageType());
+
+        return IssuedShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            shareAmount: data.toUint128(25),
+            pricePoolPerShare: data.toUint128(41)
+        });
+    }
+
+    function serialize(IssuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.IssuedShares, t.poolId, t.scId, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------
@@ -1108,6 +1136,8 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
         uint128 assetAmount;
     }
 
@@ -1118,12 +1148,14 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            shareAmount: data.toUint128(57),
+            pricePoolPerShare: data.toUint128(73)
         });
     }
 
     function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------

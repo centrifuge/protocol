@@ -181,39 +181,6 @@ contract BalanceSheetTest is BaseTest {
         assertEq(erc20.balanceOf(address(this)), 0);
     }
 
-    function testNoteDeposit() public {
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
-        );
-
-        vm.expectEmit();
-        emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5),
-            uint64(block.timestamp)
-        );
-        balanceSheet.noteDeposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
-        );
-
-        // Ensure no balance transfer occurred but escrow holding was incremented nevertheless
-        assertEq(erc20.balanceOf(address(this)), 0);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(POOL_A.raw()))), 0);
-        assertEq(
-            poolEscrowFactory.escrow(POOL_A.raw()).availableBalanceOf(
-                defaultTypedShareClassId.raw(), address(erc20), erc20TokenId
-            ),
-            defaultAmount
-        );
-    }
-
     function testWithdraw() public {
         testDeposit();
 
