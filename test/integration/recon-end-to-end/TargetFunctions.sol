@@ -156,6 +156,42 @@ abstract contract TargetFunctions is
         assetId = _assetId;
     }
 
+    function shortcut_approve_and_issue_shares(
+        uint64 poolId,
+        bytes16 scId,
+        uint32 isoCode,
+        uint128 maxApproval, 
+        bool isIdentityValuation,
+        uint128 navPerShare
+    ) public  {
+        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
+        hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
+        hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
+
+        // reset the epoch increment to 0 so that the next approval is in a "new tx"
+        _resetEpochIncrement();
+    }
+
+    function shortcut_approve_and_revoke_shares(
+        uint64 poolId,
+        bytes16 scId,
+        uint32 isoCode,
+        uint128 maxApproval,
+        uint128 navPerShare,
+        bool isIdentityValuation
+    ) public  {        
+        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+        
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
+        hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
+        hub_revokeShares(poolId, scId, navPerShare, valuation);
+
+        // reset the epoch increment to 0 so that the next approval is in a "new tx"
+        _resetEpochIncrement();
+    }
+
     /// === Transient Valuation === ///
     function transientValuation_setPrice(address base, address quote, uint128 price) public {
         transientValuation.setPrice(base, quote, D18.wrap(price));

@@ -9,6 +9,7 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
+// forge test --match-contract CryticToFoundry --match-path test/integration/recon-end-to-end/CryticToFoundry.sol -vv
 contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function setUp() public {
         setup();
@@ -51,14 +52,26 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        vault_deposit(1e18 - 1);
+        transientValuation_setPrice_clamped(poolId, 1e18);
 
-        vault_requestRedeem(1e18 - 1, 0);
+        hub_approveDeposits(poolId, scId, assetId, 1e18, transientValuation);
+        hub_issueShares(poolId, scId, assetId, 1e18);
+       
+        // need to call claimDeposit first to mint the shares
+        hub_claimDeposit_clamped(poolId, 0);
 
-        // asyncRequests_fulfillRedeemRequest(1e18, 1e18 - 1, 0);
+        vault_deposit(1e18);
 
-        // // can only redeem the 1e18 assets
-        // vault_withdraw(1e18, 0);
+        vault_requestRedeem(1e18, 0);
+
+        shareClassManager.setEpochIncrement(0);
+
+        hub_approveRedeems(poolId, scId, assetId, 1e18);
+        hub_revokeShares(poolId, scId, 1e18, transientValuation);
+        
+        hub_claimRedeem_clamped(poolId, 0);
+
+        vault_withdraw(1e18, 0);
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {

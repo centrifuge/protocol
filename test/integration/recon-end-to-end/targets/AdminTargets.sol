@@ -76,6 +76,24 @@ abstract contract AdminTargets is
         hub_approveDeposits(poolId.raw(), scId.raw(), paymentAssetId.raw(), maxApproval, valuation);
     }
 
+    /// @dev Resets the epoch increment for the share class so there can be multiple approvals in the same transaction but simulate as though they are in different transactions
+    function hub_approveDeposits_resetEpochIncrement(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
+        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
+        
+        _resetEpochIncrement();
+    }
+
+    function hub_approveDeposits_resetEpochIncrement_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval, bool isIdentityValuation) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        AssetId paymentAssetId = hubRegistry.currency(poolId);
+        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+        hub_approveDeposits_resetEpochIncrement(poolId.raw(), scId.raw(), paymentAssetId.raw(), maxApproval, valuation);
+    }
+
     function hub_approveRedeems(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -94,6 +112,28 @@ abstract contract AdminTargets is
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         hub_approveRedeems(poolId.raw(), scId.raw(), payoutAssetId.raw(), maxApproval);
+    }
+
+    function hub_approveRedeems_resetEpochIncrement(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
+        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        
+        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
+
+        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
+        uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
+        approvedRedemptions += approvedAssetAmount;
+
+        _resetEpochIncrement();
+    }
+
+    function hub_approveRedeems_resetEpochIncrement_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        AssetId payoutAssetId = hubRegistry.currency(poolId);
+        hub_approveRedeems_resetEpochIncrement(poolId.raw(), scId.raw(), payoutAssetId.raw(), maxApproval);
     }
 
     function hub_createAccount(uint64 poolIdAsUint, uint32 accountAsInt, bool isDebitNormal) public {

@@ -262,12 +262,19 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     }
 
 
+    /// === Helper Functions === ///
+
     /// @dev Returns a random actor from the list of actors
     /// @dev This is useful for cases where we want to have caller and recipient be different actors
     /// @param entropy The determines which actor is chosen from the array
     function _getRandomActor(uint256 entropy) internal view returns (address randomActor) {
         address[] memory actorsArray = _getActors();
         randomActor = actorsArray[entropy % actorsArray.length];
+    }
+
+    /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
+    function _resetEpochIncrement() internal {
+        shareClassManager.setEpochIncrement(0);
     }
 
     // MOCK++
