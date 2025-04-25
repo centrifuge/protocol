@@ -21,9 +21,6 @@ import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.s
 /// be deployed per legacy vault and allows a seamless interaction between Centrifuge V2 vaults and Centrifuge V3
 /// infrastructure. Thereby, allowing to migrate existing vaults to the new system.
 contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManager {
-    // No TokenId in legacy
-    uint256 constant LEGACY_TOKEN_ID = 0;
-
     uint64 public immutable legacyPoolId;
     bytes16 public immutable legacyTrancheId;
     ILegacyVault public immutable legacyVault;
@@ -38,7 +35,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         IShareToken token,
         address root,
         IAsyncRequests manager
-    ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager) {
+    ) AsyncVault(poolId, scId, asset, token, root, manager) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
         require(
             legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())

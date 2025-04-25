@@ -19,9 +19,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     IAsyncRequests public immutable asyncRequests;
 
-    constructor(address root_, IAsyncRequests asyncRequests_, address deployer)
-        Auth(deployer)
-    {
+    constructor(address root_, IAsyncRequests asyncRequests_, address deployer) Auth(deployer) {
         root = root_;
         asyncRequests = asyncRequests_;
     }
@@ -35,7 +33,8 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRequests);
+        require(tokenId == 0, UnsupportedTokenId());
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequests);
 
         vault.rely(root);
         vault.rely(address(asyncRequests));

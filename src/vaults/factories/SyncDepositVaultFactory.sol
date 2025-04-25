@@ -41,9 +41,9 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        SyncDepositVault vault = new SyncDepositVault(
-            poolId, scId, asset, tokenId, token, root, syncDepositManager, asyncRedeemManager
-        );
+        require(tokenId == 0, UnsupportedTokenId());
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
 
         vault.rely(root);
         vault.rely(address(syncDepositManager));

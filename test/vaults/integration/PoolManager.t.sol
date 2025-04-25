@@ -845,49 +845,6 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, true);
     }
 
-    function testDeployVaultWithoutLinkERC6909(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        uint256 tokenId = decimals;
-        address asset = address(new MockERC6909());
-
-        // Check event except for vault address which cannot be known
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
-        vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, tokenId, asyncVaultFactory, IBaseVault(address(0)));
-        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
-
-        _assertDeployedVault(address(vault), assetId, asset, tokenId, false);
-    }
-
-    function testDeployVaultWithLinkERC6909(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        uint256 tokenId = decimals;
-        address asset = address(new MockERC6909());
-
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
-        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
-
-        vm.expectEmit(true, true, true, false);
-        emit IPoolManager.LinkVault(poolId, scId, asset, tokenId, vault);
-        poolManager.linkVault(poolId, scId, assetId, vault);
-
-        _assertDeployedVault(address(vault), assetId, asset, tokenId, true);
-    }
-
     function testDeploVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
         vm.expectRevert(IPoolManager.ShareTokenDoesNotExist.selector);
         poolManager.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), asyncVaultFactory);
