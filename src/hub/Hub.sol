@@ -227,17 +227,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
         _protectedAndPaid(poolId);
 
-        sender.sendSetSharesQueue(centrifugeId, poolId, scId, enabled);
-    }
-
-    /// @inheritdoc IHub
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
-        _protectedAndPaid(poolId);
-
-        sender.sendSetAssetsQueue(centrifugeId, poolId, scId, enabled);
+        sender.sendSetQueue(centrifugeId, poolId, scId, enabled);
     }
 
     /// @inheritdoc IHub

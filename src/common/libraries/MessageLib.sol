@@ -47,8 +47,7 @@ enum MessageType {
     TriggerUpdateShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
-    SetSharesQueue,
-    SetAssetsQueue
+    SetQueue
 }
 
 enum UpdateRestrictionType {
@@ -123,8 +122,7 @@ library MessageLib {
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 = 
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
-        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) +
-        (26 << (uint8(MessageType.SetAssetsQueue) - 32) * 8);
+        (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -153,8 +151,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to SetAssetsQueue contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetAssetsQueue)) {
+        // All messages from NotifyPool to SetQueue contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetQueue)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -1224,40 +1222,21 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    SetSharesQueue
+    //    SetQueue
     //---------------------------------------
 
-    struct SetSharesQueue {
+    struct SetQueue {
         uint64 poolId;
         bytes16 scId;
         bool enabled;
     }
 
-    function deserializeSetSharesQueue(bytes memory data) internal pure returns (SetSharesQueue memory) {
-        require(messageType(data) == MessageType.SetSharesQueue, UnknownMessageType());
-        return SetSharesQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    function deserializeSetQueue(bytes memory data) internal pure returns (SetQueue memory) {
+        require(messageType(data) == MessageType.SetQueue, UnknownMessageType());
+        return SetQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
     }
 
-    function serialize(SetSharesQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetSharesQueue, t.poolId, t.scId, t.enabled);
-    }
-
-    //---------------------------------------
-    //    SetAssetsQueue
-    //---------------------------------------
-
-    struct SetAssetsQueue {
-        uint64 poolId;
-        bytes16 scId;
-        bool enabled;
-    }
-
-    function deserializeSetAssetsQueue(bytes memory data) internal pure returns (SetAssetsQueue memory) {
-        require(messageType(data) == MessageType.SetAssetsQueue, UnknownMessageType());
-        return SetAssetsQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
-    }
-
-    function serialize(SetAssetsQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetAssetsQueue, t.poolId, t.scId, t.enabled);
+    function serialize(SetQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetQueue, t.poolId, t.scId, t.enabled);
     }
 }
