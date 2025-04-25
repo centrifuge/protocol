@@ -82,10 +82,14 @@ interface IHub {
     function createPool(PoolId poolId, address admin, AssetId currency) external payable;
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
+    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable;
 
     /// @notice Claim a redemption for an investor address located in the chain where the asset belongs
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) external payable;
+    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
+        external
+        payable;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
@@ -126,39 +130,55 @@ interface IHub {
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
     /// @param scId Identifier of the share class
-    /// @param paymentAssetId Identifier of the asset locked for the deposit request
-    /// @param maxApproval Sum of deposit request amounts in asset amount which is desired to be approved
-    /// @param valuation Used to transform between payment assets and pool currency
+    /// @param depositAssetId Identifier of the asset locked for the deposit request
+    /// @param nowDepositEpochId The epoch for which deposits will be approved.
+    /// @param approvedAssetAmount Ampunt of assets that will be approved
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId,
-        AssetId paymentAssetId,
-        uint128 maxApproval,
-        IERC7726 valuation
-    ) external payable;
+        AssetId depositAssetId,
+        uint32 nowDepositEpochId,
+        uint128 approvedAssetAmount
+    ) external payable returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
     /// @param scId Identifier of the share class
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param maxApproval Sum of redeem request amounts in share class token amount which is desired to be approved
-    function approveRedeems(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, uint128 maxApproval)
-        external
-        payable;
+    /// @param nowRedeemEpochId The epoch for which redemptions will be approved.
+    /// @param approvedShareAmount Amount of shares that will be approved
+    function approveRedeems(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        uint32 nowRedeemEpochId,
+        uint128 approvedShareAmount
+    ) external payable returns (uint128 pendingShareAmount);
 
     /// @notice Emits new shares for the given identifier based on the provided NAV per share.
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
-    /// @param navPerShare Total value of assets of the share class per share
-    function issueShares(PoolId poolId, ShareClassId id, AssetId depositAssetId, D18 navPerShare) external payable;
+    /// @param nowIssueEpochId The epoch for which shares will be issued.
+    /// @param navPoolPerShare Total value of assets of the share class per share
+    function issueShares(
+        PoolId poolId,
+        ShareClassId id,
+        AssetId depositAssetId,
+        uint32 nowIssueEpochId,
+        D18 navPoolPerShare
+    ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     /// deposit asset id.
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
-    /// @param navPerShare Total value of assets of the share class per share
-    /// @param valuation Used to transform between payout assets and pool currency
-    function revokeShares(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, D18 navPerShare, IERC7726 valuation)
-        external
-        payable;
+    /// @param nowRevokeEpochId The epoch for which shares will be issued.
+    /// @param navPoolPerShare Total value of assets of the share class per share
+    function revokeShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        uint32 nowRevokeEpochId,
+        D18 navPoolPerShare
+    ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -180,13 +200,9 @@ interface IHub {
     ) external payable;
 
     /// @notice Update the price per share of a share class
-    /// @dev the provide price does not need to be the final price of the share class. This price can be retrieved via
-    /// the IShareClassManager.shareClassPrice() method
     /// @param scId The share class identifier
-    /// @param pricePerShare The new price per share
-    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 pricePerShare, bytes calldata data)
-        external
-        payable;
+    /// @param pricePoolPerShare The new price per share
+    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will register the different accounts used for holdings.

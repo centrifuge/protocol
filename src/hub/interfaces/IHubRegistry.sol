@@ -56,6 +56,9 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice compute a pool ID given an ID postfix
     function poolId(uint16 centrifugeId, uint48 postfix) external view returns (PoolId poolId);
 
+    /// @notice returns the decimals for an asset
+    function decimals(AssetId assetId) external view returns (uint8);
+
     /// @notice returns the decimals for a pool
     function decimals(PoolId poolId) external view returns (uint8);
 

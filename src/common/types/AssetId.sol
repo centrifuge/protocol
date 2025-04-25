@@ -29,4 +29,8 @@ function newAssetId(uint32 isoCode) pure returns (AssetId) {
     return AssetId.wrap(isoCode);
 }
 
-using {isNull, addr, raw, centrifugeId} for AssetId global;
+function eq(AssetId a, AssetId b) pure returns (bool) {
+    return a.raw() == b.raw();
+}
+
+using {isNull, addr, raw, centrifugeId, eq} for AssetId global;
