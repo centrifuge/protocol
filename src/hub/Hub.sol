@@ -227,17 +227,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
         _protectedAndPaid(poolId);
 
-        sender.sendSetSharesQueue(centrifugeId, poolId, scId, enabled);
-    }
-
-    /// @inheritdoc IHub
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
-        _protectedAndPaid(poolId);
-
-        sender.sendSetAssetsQueue(centrifugeId, poolId, scId, enabled);
+        sender.sendSetQueue(centrifugeId, poolId, scId, enabled);
     }
 
     /// @inheritdoc IHub
@@ -248,6 +241,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        shareClassManager.updateMetadata(poolId, scId, name, symbol);
+    }
+
+    /// @inheritdoc IHub
     function updateManager(PoolId poolId, address who, bool canManage) external payable {
         _protected(poolId);
 
@@ -255,16 +258,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function addShareClass(
-        PoolId poolId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata data
-    ) external payable {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
+        external
+        payable
+    {
         _protected(poolId);
 
-        shareClassManager.addShareClass(poolId, name, symbol, salt, data);
+        shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
     /// @inheritdoc IHub
@@ -294,14 +294,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     ) external payable returns (uint128 pendingShareAmount) {
         _protected(poolId);
 
-        (pendingShareAmount) = shareClassManager.approveRedeems(
-            poolId,
-            scId,
-            payoutAssetId,
-            nowRedeemEpochId,
-            approvedShareAmount,
-            _pricePoolPerAsset(poolId, scId, payoutAssetId)
-        );
+        D18 price = _pricePoolPerAsset(poolId, scId, payoutAssetId);
+        (pendingShareAmount) =
+            shareClassManager.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price);
     }
 
     /// @inheritdoc IHub

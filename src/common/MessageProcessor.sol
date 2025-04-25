@@ -264,12 +264,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
-        } else if (kind == MessageType.SetSharesQueue) {
-            MessageLib.SetSharesQueue memory m = message.deserializeSetSharesQueue();
-            balanceSheet.setSharesQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
-        } else if (kind == MessageType.SetAssetsQueue) {
-            MessageLib.SetAssetsQueue memory m = message.deserializeSetAssetsQueue();
-            balanceSheet.setAssetsQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
+        } else if (kind == MessageType.SetQueue) {
+            MessageLib.SetQueue memory m = message.deserializeSetQueue();
+            balanceSheet.setQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
         } else {
             revert InvalidMessage(uint8(kind));
         }

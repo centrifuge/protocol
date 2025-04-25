@@ -1,5 +1,6 @@
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   "claimDeposit": "1241005",
   "enable": "60975",
   "lockDepositRequest": "92339",
@@ -12,4 +13,11 @@
   "requestDeposit": "563134",
   "requestRedeem": "2103617"
 >>>>>>> 0236f82b (toooooo much)
+=======
+  "claimDeposit": "1241266",
+  "enable": "60975",
+  "lockDepositRequest": "92339",
+  "requestDeposit": "562449",
+  "requestRedeem": "2149981"
+>>>>>>> origin/main
 }

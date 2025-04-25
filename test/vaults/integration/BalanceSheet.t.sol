@@ -149,7 +149,7 @@ contract BalanceSheetTest is BaseTest {
 
     // --- IBalanceSheet ---
     function testDeposit() public {
-        balanceSheet.setAssetsQueue(POOL_A, defaultTypedShareClassId, true);
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -242,7 +242,7 @@ contract BalanceSheetTest is BaseTest {
     }
 
     function testIssue() public {
-        balanceSheet.setSharesQueue(POOL_A, defaultTypedShareClassId, true);
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -437,11 +437,11 @@ contract BalanceSheetTest is BaseTest {
         );
 
         // Issue with queue enabled
-        balanceSheet.setSharesQueue(POOL_A, defaultTypedShareClassId, true);
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         // Submit with queue disabled
-        balanceSheet.setSharesQueue(POOL_A, defaultTypedShareClassId, false);
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
         // Shares should remain in the queue and not be submitted

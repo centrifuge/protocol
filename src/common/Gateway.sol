@@ -371,7 +371,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(underpaid[centrifugeId][batchHash] > 0, NotUnderpaidBatch());
 
         PoolId poolId = processor.messagePoolId(batch);
-        if (msg.value > 0) this.subsidizePool{value: msg.value}(poolId);
+        if (msg.value > 0) subsidizePool(poolId);
 
         require(_send(centrifugeId, poolId, batch), InsufficientFundsForRepayment());
         underpaid[centrifugeId][batchHash]--;

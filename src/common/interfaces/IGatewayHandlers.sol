@@ -292,7 +292,5 @@ interface IBalanceSheetGatewayHandler {
 
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
-    function setAssetsQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
-
-    function setSharesQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 }

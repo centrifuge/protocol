@@ -21,8 +21,8 @@ address constant ESCROW_HOOK_ID = address(uint160(uint8(0xce)));
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
 ///           Deposit request:      address(0)      -> address(user)
-///           Deposit claim:        address(escrow) -> address(user)
-///           Redeem request:       address(user)   -> address(escrow)
+///           Deposit claim:        ESCROW_HOOK_ID  -> address(user)
+///           Redeem request:       address(user)   -> ESCROW_HOOK_ID
 ///           Redeem claim:         address(user)   -> address(0)
 ///           Cross-chain transfer: address(user)   -> address(uint160(chainId))
 interface IHook is IERC165 {

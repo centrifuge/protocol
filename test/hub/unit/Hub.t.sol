@@ -110,7 +110,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.addShareClass(POOL_A, "", "", bytes32(0), bytes(""));
+        hub.addShareClass(POOL_A, "", "", bytes32(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
@@ -175,10 +175,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.sendTriggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetSharesQueue(0, POOL_A, ShareClassId.wrap(0), true);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetAssetsQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.sendSetQueue(0, POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

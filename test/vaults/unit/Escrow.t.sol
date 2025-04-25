@@ -33,11 +33,9 @@ contract EscrowTestBase is Test {
     }
 }
 
-contract EscrowTestERC20 is EscrowTestBase {
-}
+contract EscrowTestERC20 is EscrowTestBase {}
 
-contract EscrowTestERC6909 is EscrowTestBase {
-}
+contract EscrowTestERC6909 is EscrowTestBase {}
 
 contract PoolEscrowTestBase is EscrowTestBase {
     function _testDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {

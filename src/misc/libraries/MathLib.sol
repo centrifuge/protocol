@@ -176,12 +176,6 @@ library MathLib {
         return uint128(value);
     }
 
-    /// @notice Safe type conversion from uint256 to int128.
-    function toInt128(uint256 value) internal pure returns (int128) {
-        require(value <= uint128(type(int128).max), Int128_Overflow());
-        return int128(uint128(value));
-    }
-
     /// @notice Returns the smallest of two numbers.
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? b : a;

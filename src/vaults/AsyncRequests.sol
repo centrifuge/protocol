@@ -208,7 +208,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 /* pricePoolPerShare */) external auth {
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 /* pricePoolPerShare */ )
+        external
+        auth
+    {
         // TODO: Expose transient price setting in BS
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
     }

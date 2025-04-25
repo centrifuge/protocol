@@ -320,9 +320,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
         // NOTE:
         // - Transfer is handled by the vault to the pool escrow afterwards
-        balanceSheet.noteDeposit(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount
-        );
+        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount);
     }
 
     function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
