@@ -29,11 +29,11 @@ import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MathLib for uint256;
 
-    IHoldings public immutable holdings;
-    IAccounting public immutable accounting;
     IHubRegistry public immutable hubRegistry;
 
     IGateway public gateway;
+    IHoldings public holdings;
+    IAccounting public accounting;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
 
@@ -61,6 +61,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _auth();
 
         if (what == "sender") sender = IPoolMessageSender(data);
+        else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
