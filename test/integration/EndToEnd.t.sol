@@ -210,7 +210,7 @@ contract TestEndToEnd is Test {
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        h.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32("salt"), bytes(""));
+        h.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32("salt"));
         h.hub.notifyPool{value: GAS}(poolId, cv.centrifugeId);
         h.hub.notifyShareClass{value: GAS}(poolId, scId, cv.centrifugeId, cv.freelyTransferable.toBytes32());
 

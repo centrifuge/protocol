@@ -22,9 +22,6 @@ struct HoldingAccount {
 }
 
 interface IHoldings {
-    /// @notice Emitted when a call to `file()` was performed.
-    event File(bytes32 indexed what, address addr);
-
     /// @notice Emitted when a holding is created
     event Create(
         PoolId indexed,
@@ -68,9 +65,6 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
 
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedParam();
-
     /// @notice Item was not found for a required action
     error HoldingNotFound();
 
@@ -82,12 +76,6 @@ interface IHoldings {
 
     /// @notice AssetId is not valid.
     error WrongAssetId();
-
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
-    /// @param data New value given to the `what` parameter
-    function file(bytes32 what, address data) external;
 
     /// @notice Creates a new holding in a pool using a valuation
     function create(

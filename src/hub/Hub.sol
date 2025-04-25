@@ -241,6 +241,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        shareClassManager.updateMetadata(poolId, scId, name, symbol);
+    }
+
+    /// @inheritdoc IHub
     function updateManager(PoolId poolId, address who, bool canManage) external payable {
         _protected(poolId);
 
@@ -248,16 +258,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function addShareClass(
-        PoolId poolId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata data
-    ) external payable {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
+        external
+        payable
+    {
         _protected(poolId);
 
-        shareClassManager.addShareClass(poolId, name, symbol, salt, data);
+        shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
     /// @inheritdoc IHub
@@ -270,13 +277,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     ) external payable returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
         _protectedAndPaid(poolId);
 
+        D18 price = _pricePoolPerAsset(poolId, scId, depositAssetId);
         (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
-            poolId,
-            scId,
-            depositAssetId,
-            nowDepositEpochId,
-            approvedAssetAmount,
-            _pricePoolPerAsset(poolId, scId, depositAssetId)
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, price
         );
 
         sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount);
@@ -292,14 +295,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     ) external payable returns (uint128 pendingShareAmount) {
         _protected(poolId);
 
-        (pendingShareAmount) = shareClassManager.approveRedeems(
-            poolId,
-            scId,
-            payoutAssetId,
-            nowRedeemEpochId,
-            approvedShareAmount,
-            _pricePoolPerAsset(poolId, scId, payoutAssetId)
-        );
+        D18 price = _pricePoolPerAsset(poolId, scId, payoutAssetId);
+        (pendingShareAmount) =
+            shareClassManager.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price);
     }
 
     /// @inheritdoc IHub
