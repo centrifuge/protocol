@@ -26,14 +26,13 @@ contract SyncDepositVault is BaseSyncDepositVault, AsyncRedeemVault {
         PoolId poolId_,
         ShareClassId scId_,
         address asset_,
-        uint256 tokenId_,
         IShareToken token_,
         address root_,
         ISyncDepositManager syncDepositManager_,
         IAsyncRedeemManager asyncRedeemManager_,
         IPoolEscrowProvider poolEscrowProvider_
     )
-        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, syncDepositManager_, poolEscrowProvider_)
+        BaseVault(poolId_, scId_, asset_, token_, root_, syncDepositManager_, poolEscrowProvider_)
         BaseSyncDepositVault(syncDepositManager_)
         AsyncRedeemVault(asyncRedeemManager_)
     {}
