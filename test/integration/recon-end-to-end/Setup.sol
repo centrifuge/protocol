@@ -63,6 +63,7 @@ import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
 import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
+import {EscrowWrapper} from "test/hub/fuzzing/recon-hub/utils/EscrowWrapper.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
@@ -73,7 +74,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
 
-    Escrow public escrow; // NOTE: Restriction Manager will query it
+    EscrowWrapper public escrow; // NOTE: Restriction Manager will query it
     AsyncRequests asyncRequests;
     SyncRequests syncRequests;
     PoolManager poolManager;
@@ -172,7 +173,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
     function setupVaults() internal {
         // Dependencies
-        escrow = new Escrow(address(this));
+        escrow = new EscrowWrapper(address(this));
         root = new Root(48 hours, address(this));
         root.endorse(address(escrow));
         gateway = new MockGateway();

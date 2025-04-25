@@ -8,6 +8,7 @@ import {console2} from "forge-std/console2.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
@@ -344,53 +345,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(differenceAfter, differenceBefore, "insolvency decreased");
     }
 
-    // === OPTIMIZATION TESTS === // 
-
-    /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
-    function optimize_totalAssets_solvency() public view returns (int256) {
-        uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
-        uint256 difference = totalAssets - actualAssets;
-
-        uint256 differenceInShares = vault.convertToShares(difference);
-
-        if (differenceInShares > (10 ** token.decimals()) - 1) {
-            return int256(difference);
-        }
-
-        return 0;
-    }
-    
-
-    // == UTILITY == //
-
-    /// @dev Lists out all system addresses, used to check that no dust is left behind
-    /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
-    /// sound
-    function _getSystemAddresses() internal view returns (address[] memory systemAddresses) {
-        // uint256 SYSTEM_ADDRESSES_LENGTH = GOV_FUZZING ? 10 : 8;
-        uint256 SYSTEM_ADDRESSES_LENGTH = 8;
-
-        systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
-        
-        // NOTE: Skipping escrow which can have non-zero bal
-        systemAddresses[0] = address(vaultFactory);
-        systemAddresses[1] = address(tokenFactory);
-        systemAddresses[2] = address(asyncRequests);
-        systemAddresses[3] = address(poolManager);
-        systemAddresses[4] = address(vault);
-        systemAddresses[5] = address(vault.asset());
-        systemAddresses[6] = address(token);
-        systemAddresses[7] = address(restrictedTransfers);
-
-        // if (GOV_FUZZING) {
-        //     systemAddresses[8] = address(gateway);
-        //     systemAddresses[9] = address(root);
-        // }
-        
-        return systemAddresses;
-    }
-
     function property_soundness_processed_deposits() public {
         address[] memory actors = _getActors();
 
@@ -434,7 +388,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             gte(requestRedeeemed[actors[i]], cancelledRedemptions[actors[i]] + redemptionsProcessed[actors[i]], "property_cancelled_and_processed_redemptions_soundness Actor Requests must be gte than cancelled + processed amounts");
         }
     }
-
 
     function property_solvency_deposit_requests() public {
         address[] memory actors = _getActors();
@@ -497,8 +450,70 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
+    function property_escrow_solvency() public {
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId _poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(_poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId _scId = shareClassManager.previewShareClassId(_poolId, j);
+                AssetId _assetId = hubRegistry.currency(_poolId);
+
+                uint256 holding = escrow.getHolding(_poolId.raw(), _scId.raw(), _assetId.addr(), _assetId.raw());
+                uint256 reserved = escrow.getReservedAmount(_poolId.raw(), _scId.raw(), _assetId.addr(), _assetId.raw());
+
+                gte(holding, reserved, "holding must be greater than reserved");
+            }
+        }
+    }
+
+    // === OPTIMIZATION TESTS === // 
+
+    /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
+    function optimize_totalAssets_solvency() public view returns (int256) {
+        uint256 totalAssets = vault.totalAssets();
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
+        uint256 difference = totalAssets - actualAssets;
+
+        uint256 differenceInShares = vault.convertToShares(difference);
+
+        if (differenceInShares > (10 ** token.decimals()) - 1) {
+            return int256(difference);
+        }
+
+        return 0;
+    }
+
     
     /// === HELPERS === ///
+
+    /// @dev Lists out all system addresses, used to check that no dust is left behind
+    /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
+    /// sound
+    function _getSystemAddresses() internal view returns (address[] memory systemAddresses) {
+        // uint256 SYSTEM_ADDRESSES_LENGTH = GOV_FUZZING ? 10 : 8;
+        uint256 SYSTEM_ADDRESSES_LENGTH = 8;
+
+        systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
+        
+        // NOTE: Skipping escrow which can have non-zero bal
+        systemAddresses[0] = address(vaultFactory);
+        systemAddresses[1] = address(tokenFactory);
+        systemAddresses[2] = address(asyncRequests);
+        systemAddresses[3] = address(poolManager);
+        systemAddresses[4] = address(vault);
+        systemAddresses[5] = address(vault.asset());
+        systemAddresses[6] = address(token);
+        systemAddresses[7] = address(restrictedTransfers);
+
+        // if (GOV_FUZZING) {
+        //     systemAddresses[8] = address(gateway);
+        //     systemAddresses[9] = address(root);
+        // }
+        
+        return systemAddresses;
+    }
+
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
     function _canDonate(address to) internal view returns (bool) {
