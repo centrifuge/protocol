@@ -578,13 +578,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IVaultMessageSender
     function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
-        // TODO: Remove price in Hub
-        D18 price = d18(1, 1);
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, price, shares);
+                hub.increaseShareIssuance(poolId, scId, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, price, shares);
+                hub.decreaseShareIssuance(poolId, scId, shares);
             }
         } else {
             gateway.send(

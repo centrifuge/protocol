@@ -228,13 +228,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.isIncrease
             );
         } else if (kind == MessageType.UpdateShares) {
-            // TODO: Remove price from hub
-            D18 price = d18(1, 1);
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
-                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), price, m.shares);
+                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {
-                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), price, m.shares);
+                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
