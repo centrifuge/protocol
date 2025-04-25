@@ -60,6 +60,9 @@ interface IHub {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotManager();
 
+    /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
+    error InvalidPoolId();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -76,8 +79,7 @@ interface IHub {
 
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    /// @return PoolId The id of the new pool.
-    function createPool(uint48 poolId, address admin, AssetId currency) external payable returns (PoolId);
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable;
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)

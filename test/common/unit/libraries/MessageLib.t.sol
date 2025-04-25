@@ -522,29 +522,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testTriggerRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 shares)
-        public
-        pure
-    {
-        MessageLib.TriggerRedeemRequest memory a = MessageLib.TriggerRedeemRequest({
-            poolId: poolId,
-            scId: scId,
-            investor: investor,
-            assetId: assetId,
-            shares: shares
-        });
-        MessageLib.TriggerRedeemRequest memory b = MessageLib.deserializeTriggerRedeemRequest(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.shares, b.shares);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
     function testUpdateHoldingAmount(
         uint64 poolId,
         bytes16 scId,

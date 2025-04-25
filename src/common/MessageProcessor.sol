@@ -186,15 +186,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.cancelledShares
             );
-        } else if (kind == MessageType.TriggerRedeemRequest) {
-            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-            investmentManager.triggerRedeemRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.shares
-            );
         } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
             MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
 

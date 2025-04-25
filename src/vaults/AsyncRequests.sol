@@ -134,13 +134,13 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address source)
+    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address)
         public
         auth
         returns (bool)
     {
-        uint128 _shares = shares.toUint128();
-        require(_shares != 0, ZeroAmountNotAllowed());
+        uint128 shares_ = shares.toUint128();
+        require(shares_ != 0, ZeroAmountNotAllowed());
 
         // You cannot redeem using a disallowed asset, instead another vault will have to be used
         require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vault_.asset(), vault_), AssetNotAllowed());
@@ -151,21 +151,13 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
             TransferNotAllowed()
         );
 
-        return _processRedeemRequest(vault_, _shares, controller, source, false);
-    }
-
-    /// @dev    triggered indicates if the the _processRedeemRequest call was triggered from centrifugeChain
-    function _processRedeemRequest(IBaseVault vault_, uint128 shares, address controller, address, bool triggered)
-        internal
-        returns (bool)
-    {
         AsyncInvestmentState storage state = investments[vault_][controller];
-        require(state.pendingCancelRedeemRequest != true || triggered, CancellationIsPending());
+        require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
 
-        state.pendingRedeemRequest = state.pendingRedeemRequest + shares;
+        state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        sender.sendRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId, shares);
+        sender.sendRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId, shares_);
 
         return true;
     }
@@ -291,45 +283,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
         vault_.onCancelRedeemClaimable(user, shares);
-    }
-
-    /// @inheritdoc IInvestmentManagerGatewayHandler
-    function triggerRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        public
-        auth
-    {
-        require(shares != 0, ShareTokenAmountIsZero());
-        IAsyncVault vault_ = vault[poolId][scId][assetId];
-
-        // If there's any unclaimed deposits, claim those first
-        AsyncInvestmentState storage state = investments[vault_][user];
-        uint128 tokensToTransfer = shares;
-        if (state.maxMint >= shares) {
-            // The full redeem request is covered by the claimable amount
-            tokensToTransfer = 0;
-            state.maxMint = state.maxMint - shares;
-        } else if (state.maxMint != 0) {
-            // The redeem request is only partially covered by the claimable amount
-            tokensToTransfer = shares - state.maxMint;
-            state.maxMint = 0;
-        }
-
-        require(_processRedeemRequest(vault_, shares, user, msg.sender, true), FailedRedeemRequest());
-
-        // Transfer the token token amount that was not covered by tokens still in escrow for claims,
-        // from user to escrow (lock share class tokens in escrow)
-        if (tokensToTransfer != 0) {
-            require(
-                IShareToken(vault_.share()).authTransferFrom(
-                    user, user, address(poolEscrowProvider.escrow(poolId)), tokensToTransfer
-                ),
-                ShareTokenTransferFailed()
-            );
-        }
-
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        emit TriggerRedeemRequest(poolId.raw(), scId.raw(), user, asset, tokenId, shares);
-        vault_.onRedeemRequest(user, user, shares);
     }
 
     // --- Sync investment handlers ---

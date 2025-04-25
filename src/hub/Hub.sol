@@ -91,10 +91,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function createPool(uint48 poolId_, address admin, AssetId currency) external payable returns (PoolId poolId) {
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable {
         _auth();
 
-        poolId = hubRegistry.registerPool(poolId_, admin, sender.localCentrifugeId(), currency);
+        require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
+        hubRegistry.registerPool(poolId, admin, currency);
     }
 
     //----------------------------------------------------------------------------------------------
