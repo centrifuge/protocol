@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "test/hub/integration/BaseTest.sol";
+import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 
 contract TestCases is BaseTest {
     using CastLib for string;
@@ -9,6 +10,13 @@ contract TestCases is BaseTest {
     using MathLib for *;
     using MessageLib for *;
     using PricingLib for *;
+
+    TransientValuation transientValuation;
+
+    function setUp() public override {
+        super.setUp();
+        transientValuation = new TransientValuation(hubRegistry);
+    }
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {

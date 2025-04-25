@@ -5,7 +5,6 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";

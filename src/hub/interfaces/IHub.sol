@@ -3,7 +3,6 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -73,7 +72,6 @@ interface IHub {
     function hubRegistry() external view returns (IHubRegistry);
     function sender() external view returns (IPoolMessageSender);
     function shareClassManager() external view returns (IShareClassManager);
-    function transientValuation() external view returns (ITransientValuation);
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
