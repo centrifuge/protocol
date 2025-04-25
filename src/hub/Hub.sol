@@ -91,10 +91,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function createPool(uint48 poolId_, address admin, AssetId currency) external payable returns (PoolId poolId) {
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable {
         _auth();
 
-        poolId = hubRegistry.registerPool(poolId_, admin, sender.localCentrifugeId(), currency);
+        require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
+        hubRegistry.registerPool(poolId, admin, currency);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -209,6 +210,34 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
         sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
+    }
+
+    /// @inheritdoc IHub
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendTriggerSubmitQueuedShares(centrifugeId, poolId, scId);
+    }
+
+    /// @inheritdoc IHub
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendTriggerSubmitQueuedAssets(poolId, scId, assetId);
+    }
+
+    /// @inheritdoc IHub
+    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendSetSharesQueue(centrifugeId, poolId, scId, enabled);
+    }
+
+    /// @inheritdoc IHub
+    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendSetAssetsQueue(centrifugeId, poolId, scId, enabled);
     }
 
     /// @inheritdoc IHub
@@ -556,14 +585,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /*pricePerShare*/ uint128 amount) external {
+    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
         _auth();
 
         shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, D18, /*pricePerShare*/ uint128 amount) external {
+    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
         _auth();
 
         shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);

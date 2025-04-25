@@ -312,15 +312,16 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+        // TODO: Enable transient price setting in BS
+        // Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, priceData.poolPerShare, shares);
+        balanceSheet.issue(poolId, scId, receiver, shares);
 
         // NOTE:
         // - Transfer is handled by the vault to the pool escrow afterwards
         balanceSheet.noteDeposit(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount, priceData.poolPerAsset
+            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount
         );
     }
 

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
@@ -186,15 +186,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.cancelledShares
             );
-        } else if (kind == MessageType.TriggerRedeemRequest) {
-            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-            investmentManager.triggerRedeemRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.shares
-            );
         } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
             MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
 
@@ -204,8 +195,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             } else {
                 balanceSheet.triggerWithdraw(
@@ -213,27 +203,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
                     ShareClassId.wrap(m.scId),
                     AssetId.wrap(m.assetId),
                     m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
+                    m.amount
                 );
             }
         } else if (kind == MessageType.TriggerUpdateShares) {
             MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
             if (m.isIssuance) {
                 balanceSheet.triggerIssueShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
                 );
             } else {
                 balanceSheet.triggerRevokeShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
+                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
                 );
             }
         } else if (kind == MessageType.UpdateHoldingAmount) {
@@ -249,13 +230,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
-                hub.increaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {
-                hub.decreaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
@@ -281,6 +258,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.shareAmount,
                 D18.wrap(m.pricePoolPerShare)
             );
+        } else if (kind == MessageType.TriggerSubmitQueuedShares) {
+            MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();
+            balanceSheet.submitQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
+        } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
+            MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
+            balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
+        } else if (kind == MessageType.SetSharesQueue) {
+            MessageLib.SetSharesQueue memory m = message.deserializeSetSharesQueue();
+            balanceSheet.setSharesQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
+        } else if (kind == MessageType.SetAssetsQueue) {
+            MessageLib.SetAssetsQueue memory m = message.deserializeSetAssetsQueue();
+            balanceSheet.setAssetsQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
         } else {
             revert InvalidMessage(uint8(kind));
         }

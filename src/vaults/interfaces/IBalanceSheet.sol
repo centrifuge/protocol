@@ -35,15 +35,9 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
 
-    function deposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) external;
+    /// @notice Overloaded increase with asset transfer
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
+        external;
 
     function noteDeposit(
         PoolId poolId,
@@ -51,8 +45,7 @@ interface IBalanceSheet {
         address asset,
         uint256 tokenId,
         address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
+        uint128 amount
     ) external;
 
     function withdraw(
@@ -61,14 +54,14 @@ interface IBalanceSheet {
         address asset,
         uint256 tokenId,
         address receiver,
-        uint128 amount,
-        D18 pricePoolPerAsset
+        uint128 amount
     ) external;
 
-    function issue(PoolId poolId, ShareClassId scId, address to, D18 pricePoolPerShare, uint128 shares) external;
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
-    function revoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares) external;
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
-    function noteRevoke(PoolId poolId, ShareClassId scId, address from, D18 pricePoolPerShare, uint128 shares)
-        external;
+    function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
+
+    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
 }

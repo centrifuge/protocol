@@ -57,7 +57,8 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(1, msg.sender, USD);
+        PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
+        hub.createPool(poolId, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -117,7 +118,7 @@ contract LocalhostDeployer is FullDeployer {
         vault.mint(1_000_000e18, msg.sender);
 
         // Withdraw principal
-        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, d18(1, 1));
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
 
         // Update price, deposit principal + yield
         hub.updatePricePerShare(poolId, scId, d18(11, 10));
@@ -125,7 +126,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         token.approve(address(balanceSheet), 1_100_000e18);
-        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6, d18(11, 10));
+        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6);
 
         // Make sender a member to submit redeem request
         hub.updateRestriction(
@@ -150,7 +151,8 @@ contract LocalhostDeployer is FullDeployer {
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hub.createPool(2, msg.sender, USD);
+        PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
+        hub.createPool(poolId, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 

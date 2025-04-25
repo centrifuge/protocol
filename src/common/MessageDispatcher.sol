@@ -5,7 +5,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
@@ -365,6 +365,54 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @inheritdoc IPoolMessageSender
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.submitQueuedShares(poolId, scId);
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.TriggerSubmitQueuedShares({poolId: poolId.raw(), scId: scId.raw()}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            balanceSheet.submitQueuedAssets(poolId, scId, assetId);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.TriggerSubmitQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()})
+                    .serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.setAssetsQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.SetAssetsQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.setSharesQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.SetSharesQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {
@@ -565,19 +613,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address receiver,
-        D18 pricePoolPerShare,
-        uint128 shares,
-        bool isIssuance
-    ) external auth {
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.increaseShareIssuance(poolId, scId, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.decreaseShareIssuance(poolId, scId, shares);
             }
         } else {
             gateway.send(
@@ -585,8 +626,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    who: receiver.toBytes32(),
-                    pricePerShare: pricePoolPerShare.raw(),
                     shares: shares,
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance

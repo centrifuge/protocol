@@ -60,6 +60,9 @@ interface IHub {
     /// @notice Dispatched when the pool can not be unlocked by the caller
     error NotManager();
 
+    /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
+    error InvalidPoolId();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -76,8 +79,7 @@ interface IHub {
 
     /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
     /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    /// @return PoolId The id of the new pool.
-    function createPool(uint48 poolId, address admin, AssetId currency) external payable returns (PoolId);
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable;
 
     /// @notice Claim a deposit for an investor address located in the chain where the asset belongs
     function claimDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
@@ -177,6 +179,19 @@ interface IHub {
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+
+    /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
+
+    /// @notice  Tell the BalanceSheet to send a message back with the queued deposits/withdrawals.
+    /// @param assetId Identifier of the asset which has queued deposits/withdrawals
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+
+    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
+    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+
+    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
+    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.

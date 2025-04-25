@@ -201,9 +201,10 @@ contract TestEndToEnd is Test {
         assetId = newAssetId(cv.centrifugeId, 1);
 
         // Configure Pool
+        poolId = h.hubRegistry.poolId(h.centrifugeId, 1);
 
         vm.startPrank(address(h.guardian.safe()));
-        poolId = h.guardian.createPool(1, FM, USD);
+        h.guardian.createPool(poolId, FM, USD);
 
         scId = h.shareClassManager.previewNextShareClassId(poolId);
 

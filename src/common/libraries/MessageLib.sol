@@ -41,12 +41,15 @@ enum MessageType {
     CancelRedeemRequest,
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
-    TriggerRedeemRequest,
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
     TriggerUpdateHoldingAmount,
-    TriggerUpdateShares
+    TriggerUpdateShares,
+    TriggerSubmitQueuedShares,
+    TriggerSubmitQueuedAssets,
+    SetSharesQueue,
+    SetAssetsQueue
 }
 
 enum UpdateRestrictionType {
@@ -110,14 +113,20 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (98  << uint8(MessageType.UpdateShares) * 8) +
+        (50  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
         (1  << uint8(MessageType.IssuedShares) * 8) +
         (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (90  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
+        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+
+    // forgefmt: disable-next-item
+    uint256 constant MESSAGE_LENGTHS_2 = 
+        (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
+        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) +
+        (26 << (uint8(MessageType.SetAssetsQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -131,7 +140,9 @@ library MessageLib {
         uint8 kind = message.toUint8(0);
         require(kind <= uint8(type(MessageType).max), UnknownMessageType());
 
-        length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
+        length = (kind <= 31)
+            ? uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]))
+            : uint16(uint8(bytes32(MESSAGE_LENGTHS_2)[63 - kind]));
 
         // Spetial treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
@@ -144,8 +155,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to TriggetUpdateShares contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerUpdateShares)) {
+        // All messages from NotifyPool to SetAssetsQueue contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetAssetsQueue)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -972,33 +983,6 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TriggerRedeemRequest
-    //---------------------------------------
-
-    struct TriggerRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 shares;
-    }
-
-    function deserializeTriggerRedeemRequest(bytes memory data) internal pure returns (TriggerRedeemRequest memory) {
-        require(messageType(data) == MessageType.TriggerRedeemRequest, UnknownMessageType());
-        return TriggerRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            shares: data.toUint128(73)
-        });
-    }
-
-    function serialize(TriggerRedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shares);
-    }
-
-    //---------------------------------------
     //    UpdateHoldingAmount
     //---------------------------------------
 
@@ -1049,8 +1033,6 @@ library MessageLib {
     struct UpdateShares {
         uint64 poolId;
         bytes16 scId;
-        bytes32 who;
-        uint128 pricePerShare;
         uint128 shares;
         uint64 timestamp;
         bool isIssuance;
@@ -1062,18 +1044,14 @@ library MessageLib {
         return UpdateShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            who: data.toBytes32(25),
-            pricePerShare: data.toUint128(57),
-            shares: data.toUint128(73),
-            timestamp: data.toUint64(89),
-            isIssuance: data.toBool(97)
+            shares: data.toUint128(25),
+            timestamp: data.toUint64(41),
+            isIssuance: data.toBool(49)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.UpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.timestamp, t.isIssuance
-        );
+        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance);
     }
 
     //---------------------------------------
@@ -1217,7 +1195,6 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
-        uint128 pricePerShare;
         uint128 shares;
         bool isIssuance;
     }
@@ -1229,15 +1206,96 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            pricePerShare: data.toUint128(57),
-            shares: data.toUint128(73),
-            isIssuance: data.toBool(89)
+            shares: data.toUint128(57),
+            isIssuance: data.toBool(73)
         });
     }
 
     function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.pricePerShare, t.shares, t.isIssuance
-        );
+        return abi.encodePacked(MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance);
+    }
+
+    //---------------------------------------
+    //    TriggerSubmitQueuedShares
+    //---------------------------------------
+
+    struct TriggerSubmitQueuedShares {
+        uint64 poolId;
+        bytes16 scId;
+    }
+
+    function deserializeTriggerSubmitQueuedShares(bytes memory data)
+        internal
+        pure
+        returns (TriggerSubmitQueuedShares memory)
+    {
+        require(messageType(data) == MessageType.TriggerSubmitQueuedShares, UnknownMessageType());
+        return TriggerSubmitQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
+    }
+
+    function serialize(TriggerSubmitQueuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerSubmitQueuedShares, t.poolId, t.scId);
+    }
+
+    //---------------------------------------
+    //    TriggerSubmitQueuedAssets
+    //---------------------------------------
+
+    struct TriggerSubmitQueuedAssets {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+    }
+
+    function deserializeTriggerSubmitQueuedAssets(bytes memory data)
+        internal
+        pure
+        returns (TriggerSubmitQueuedAssets memory)
+    {
+        require(messageType(data) == MessageType.TriggerSubmitQueuedAssets, UnknownMessageType());
+        return
+            TriggerSubmitQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
+    }
+
+    function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerSubmitQueuedAssets, t.poolId, t.scId, t.assetId);
+    }
+
+    //---------------------------------------
+    //    SetSharesQueue
+    //---------------------------------------
+
+    struct SetSharesQueue {
+        uint64 poolId;
+        bytes16 scId;
+        bool enabled;
+    }
+
+    function deserializeSetSharesQueue(bytes memory data) internal pure returns (SetSharesQueue memory) {
+        require(messageType(data) == MessageType.SetSharesQueue, UnknownMessageType());
+        return SetSharesQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    }
+
+    function serialize(SetSharesQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetSharesQueue, t.poolId, t.scId, t.enabled);
+    }
+
+    //---------------------------------------
+    //    SetAssetsQueue
+    //---------------------------------------
+
+    struct SetAssetsQueue {
+        uint64 poolId;
+        bytes16 scId;
+        bool enabled;
+    }
+
+    function deserializeSetAssetsQueue(bytes memory data) internal pure returns (SetAssetsQueue memory) {
+        require(messageType(data) == MessageType.SetAssetsQueue, UnknownMessageType());
+        return SetAssetsQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    }
+
+    function serialize(SetAssetsQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetAssetsQueue, t.poolId, t.scId, t.enabled);
     }
 }

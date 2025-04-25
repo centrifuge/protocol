@@ -75,10 +75,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), D18.wrap(0), 0);
+        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), D18.wrap(0), 0);
+        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.stopPrank();
     }
@@ -167,6 +167,18 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.sendTriggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.sendTriggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.sendSetSharesQueue(0, POOL_A, ShareClassId.wrap(0), true);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.sendSetAssetsQueue(0, POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

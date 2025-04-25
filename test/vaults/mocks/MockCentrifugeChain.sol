@@ -196,20 +196,6 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function triggerIncreaseRedeemOrder(uint64 poolId, bytes16 scId, address investor, uint128 assetId, uint128 amount)
-        public
-    {
-        execute(
-            MessageLib.TriggerRedeemRequest({
-                poolId: poolId,
-                scId: scId,
-                investor: investor.toBytes32(),
-                assetId: assetId,
-                shares: amount
-            }).serialize()
-        );
-    }
-
     function incomingTransferShares(uint64 poolId, bytes16 scId, address destinationAddress, uint128 amount) public {
         execute(
             MessageLib.TransferShares({

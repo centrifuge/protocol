@@ -27,10 +27,7 @@ interface IHubRegistry is IERC6909Decimals {
     function registerAsset(AssetId assetId, uint8 decimals_) external;
 
     /// @notice Register a new pool.
-    /// @return PoolId Id to identify the new pool.
-    function registerPool(uint48 poolId, address manager, uint16 centrifugeId, AssetId currency)
-        external
-        returns (PoolId);
+    function registerPool(PoolId poolId, address manager, AssetId currency) external;
 
     /// @notice allow/disallow an address as a manager for the pool
     function updateManager(PoolId poolId, address newManager, bool canManage) external;
@@ -55,6 +52,9 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice returns whether the account is a manager
     function manager(PoolId poolId, address who) external view returns (bool);
+
+    /// @notice compute a pool ID given an ID postfix
+    function poolId(uint16 centrifugeId, uint48 postfix) external view returns (PoolId poolId);
 
     /// @notice returns the decimals for an asset
     function decimals(AssetId assetId) external view returns (uint8);
