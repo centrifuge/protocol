@@ -31,7 +31,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     /// @dev this naming MUST NEVER change - due to legacy v2 vaults
     IBaseInvestmentManager public manager;
-    IPoolEscrowProvider internal _poolEscrowProvider;
 
     /// @inheritdoc IBaseVault
     PoolId public immutable poolId;
@@ -70,8 +69,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         uint256 tokenId_,
         IShareToken token_,
         address root_,
-        IBaseInvestmentManager manager_,
-        IPoolEscrowProvider poolEscrowProvider_
+        IBaseInvestmentManager manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
         scId = scId_;
@@ -81,7 +79,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
         manager = IBaseInvestmentManager(manager_);
-        _poolEscrowProvider = poolEscrowProvider_;
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -355,7 +352,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         shares = syncDepositManager.deposit(this, assets, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
         // happen before depositing in the manager
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(manager.poolEscrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
@@ -373,7 +370,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(this, shares, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(_poolEscrowProvider.escrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(manager.poolEscrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

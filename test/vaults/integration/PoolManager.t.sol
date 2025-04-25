@@ -579,7 +579,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         address asset = address(oldVault.asset());
 
         AsyncVaultFactory newVaultFactory =
-            new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, address(this));
+            new AsyncVaultFactory(address(root), asyncRequests, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));

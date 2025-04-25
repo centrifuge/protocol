@@ -35,10 +35,9 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         uint256 tokenId_,
         IShareToken token_,
         address root_,
-        IAsyncRequests manager_,
-        IPoolEscrowProvider poolEscrowProvider
+        IAsyncRequests manager_
     )
-        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
+        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_)
         BaseAsyncRedeemVault(manager_)
     {}
 

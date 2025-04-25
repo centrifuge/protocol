@@ -18,14 +18,12 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     IAsyncRequests public immutable asyncRequests;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
 
-    constructor(address root_, IAsyncRequests asyncRequests_, IPoolEscrowProvider poolEscrowProvider_, address deployer)
+    constructor(address root_, IAsyncRequests asyncRequests_, address deployer)
         Auth(deployer)
     {
         root = root_;
         asyncRequests = asyncRequests_;
-        poolEscrowProvider = poolEscrowProvider_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -37,7 +35,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRequests, poolEscrowProvider);
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRequests);
 
         vault.rely(root);
         vault.rely(address(asyncRequests));

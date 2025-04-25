@@ -37,9 +37,8 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         IShareToken token,
         address root,
-        IAsyncRequests manager,
-        IPoolEscrowProvider poolEscrowProvider
-    ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager, poolEscrowProvider) {
+        IAsyncRequests manager
+    ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
         require(
             legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())
