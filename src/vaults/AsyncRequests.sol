@@ -352,7 +352,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AsyncInvestmentState storage state = investments[vault_][controller];
         uint128 shares_ = shares.toUint128();
 
-        assets = uint256(_shareToAssetAmount(vault_, shares_, state.depositPrice, MathLib.Rounding.Down));
+        assets = uint256(_shareToAssetAmount(vault_, shares_, state.depositPrice, MathLib.Rounding.Up));
         _processDeposit(state, shares_, shares_, vault_, receiver);
     }
 
@@ -398,7 +398,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint128 assets_ = assets.toUint128();
         _processRedeem(state, assets_, assets_, vault_, receiver, controller);
 
-        shares = uint256(_assetToShareAmount(vault_, assets_, state.redeemPrice, MathLib.Rounding.Down));
+        shares = uint256(_assetToShareAmount(vault_, assets_, state.redeemPrice, MathLib.Rounding.Up));
     }
 
     function _processRedeem(
