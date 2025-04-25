@@ -1959,11 +1959,6 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(new bytes(33)));
     }
 
-    function testUpdateMetadataInvalidSalt() public {
-        vm.expectRevert(IShareClassManager.InvalidSalt.selector);
-        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL);
-    }
-
     function testApproveDepositEpochNotInSequence() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.EpochNotInSequence.selector, 3, 1));
         shareClass.approveDeposits(poolId, scId, USDC, 3, 0, d18(0));

@@ -577,7 +577,10 @@ contract ShareClassManager is Auth, IShareClassManager {
         ShareClassMetadata storage meta = metadata[scId_];
 
         // Ensure that the salt is not being updated or is being set for the first time
-        require(salt == bytes32(0) || (salt != bytes32(0) && meta.salt == bytes32(0)), InvalidSalt());
+        require(
+            (salt == bytes32(0) && meta.salt != bytes32(0)) || (salt != bytes32(0) && meta.salt == bytes32(0)),
+            InvalidSalt()
+        );
 
         if (salt != bytes32(0) && meta.salt == bytes32(0)) {
             require(!salts[salt], AlreadyUsedSalt());
