@@ -77,6 +77,7 @@ contract VaultsDeployer is CommonDeployer {
     function _vaultsRegister() private {
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("routerEscrow", address(routerEscrow));
+        register("vaultsGlobalEscrow", address(vaultsGlobalEscrow));
         register("restrictedTransfers", address(restrictedTransfers));
         register("freelyTransferable", address(freelyTransferable));
         register("tokenFactory", address(tokenFactory));
@@ -205,6 +206,7 @@ contract VaultsDeployer is CommonDeployer {
         balanceSheet.deny(deployer);
         poolEscrowFactory.deny(deployer);
         routerEscrow.deny(deployer);
+        vaultsGlobalEscrow.deny(deployer);
         vaultRouter.deny(deployer);
     }
 }
