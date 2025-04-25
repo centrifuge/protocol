@@ -195,6 +195,24 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable {
+        _protectedAndPaid(poolId);
+
+        (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
+
+        emit NotifySharePrice(centrifugeId, poolId, scId, name, symbol);
+        sender.sendNotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
+    }
+
+    /// @inheritdoc IHub
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) public payable {
+        _protectedAndPaid(poolId);
+
+        emit UpdateShareHook(centrifugeId, poolId, scId, hook);
+        sender.sendUpdateShareHook(centrifugeId, poolId, scId, hook);
+    }
+
+    /// @inheritdoc IHub
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable {
         _protectedAndPaid(poolId);
 

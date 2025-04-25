@@ -114,6 +114,41 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
+    function sendNotifyShareMetadata(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol
+    ) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.updateShareMetadata(poolId, scId, name, symbol);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.NotifyShareMetadata({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    name: name,
+                    symbol: symbol.toBytes32()
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.updateShareHook(poolId, scId, hook.toAddress());
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.UpdateShareHook({poolId: poolId.raw(), scId: scId.raw(), hook: hook}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
     function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
         external
         auth

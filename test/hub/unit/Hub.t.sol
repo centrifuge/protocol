@@ -98,6 +98,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
