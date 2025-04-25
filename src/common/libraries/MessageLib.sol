@@ -104,6 +104,9 @@ library MessageLib {
         (73  << uint8(MessageType.TransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
+        (73  << uint8(MessageType.ApprovedDeposits) * 8) +
+        (57  << uint8(MessageType.IssuedShares) * 8) +
+        (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -114,15 +117,12 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (57  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (1  << uint8(MessageType.IssuedShares) * 8) +
-        (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
-        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+        (74 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 = 
+    uint256 constant MESSAGE_LENGTHS_2 =
+        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 

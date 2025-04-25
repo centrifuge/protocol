@@ -42,27 +42,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
 
-        _mint(address(escrow), tokenId, 300);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 500);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 600);
-
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
         escrow.deposit(scId, asset, tokenId, 300);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after deposit");
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 200);
-
-        _mint(address(escrow), tokenId, 200);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 201);
 
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 200);
