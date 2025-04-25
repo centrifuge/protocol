@@ -255,7 +255,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
         }
 
-        // TODO: More specific error would be great here
         escrow.authTransferTo(asset, tokenId, receiver, amount);
     }
 

@@ -122,7 +122,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 

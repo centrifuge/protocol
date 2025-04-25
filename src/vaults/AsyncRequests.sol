@@ -336,8 +336,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         uint128 sharesUp = _calculateShares(vault_, assets.toUint128(), state.depositPrice, MathLib.Rounding.Up);
         uint128 sharesDown = _calculateShares(vault_, assets.toUint128(), state.depositPrice, MathLib.Rounding.Down);
-        _processDeposit(state, sharesUp, sharesDown, vault_, receiver);
         shares = uint256(sharesDown);
+        _processDeposit(state, sharesUp, sharesDown, vault_, receiver);
     }
 
     /// @inheritdoc IDepositManager
@@ -348,9 +348,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     {
         AsyncInvestmentState storage state = investments[vault_][controller];
         uint128 shares_ = shares.toUint128();
-        _processDeposit(state, shares_, shares_, vault_, receiver);
-
         assets = uint256(_calculateAssets(vault_, shares_, state.depositPrice, MathLib.Rounding.Down));
+        _processDeposit(state, shares_, shares_, vault_, receiver);
     }
 
     function _processDeposit(
