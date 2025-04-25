@@ -74,6 +74,13 @@ enum RequestType {
     Redeem
 }
 
+struct EpochId {
+    uint32 deposit;
+    uint32 redeem;
+    uint32 issue;
+    uint32 revoke;
+}
+
 interface IShareClassManager {
     /// Events
     event File(bytes32 what, address who);
