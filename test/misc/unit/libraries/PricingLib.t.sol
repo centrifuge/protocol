@@ -60,7 +60,7 @@ contract PurePricingLibTest is Test {
         uint128 pricePoolPerAsset_,
         uint128 pricePoolPerShare_
     ) public pure {
-        assetDecimals = uint8(bound(assetDecimals, 6, MAX_ASSET_DECIMALS));
+        assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         assetAmount = uint128(bound(assetAmount, 10 ** assetDecimals, MAX_AMOUNT));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
@@ -85,15 +85,15 @@ contract PurePricingLibTest is Test {
         uint64 pricePoolPerAsset_,
         uint64 pricePoolPerShare_
     ) public pure {
-        assetDecimals = uint8(bound(assetDecimals, MAX_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         assetAmount = uint128(bound(assetAmount, 10 ** assetDecimals, MAX_AMOUNT));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
 
-        uint128 shareAmount = PricingLib.assetToShareAmount(
+        uint256 shareAmount = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, ROUNDING_DOWN
         );
-        uint128 assetRoundTrip = PricingLib.shareToAssetAmount(
+        uint256 assetRoundTrip = PricingLib.shareToAssetAmount(
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, ROUNDING_DOWN
         );
 
@@ -183,8 +183,8 @@ contract PurePricingLibTest is Test {
         assertEq(result, expected, "Rounding edge case 2 (small price) failed");
 
         // Max baseAmount
-        baseAmount = type(uint64).max;
-        price = d18(type(uint32).max);
+        baseAmount = type(uint128).max;
+        price = d18(type(uint64).max);
         result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
         expected = price.mulUint256(baseAmount * (10 ** (quoteDecimals - baseDecimals)), ROUNDING_DOWN);
         assertEq(result, expected, "Rounding edge case 3 (max baseAmount) failed");
