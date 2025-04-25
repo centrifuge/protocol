@@ -198,21 +198,20 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         ShareClassId scId,
         AssetId assetId,
         uint128 assetAmount,
-        D18 /* pricePoolPerAsset */ // TODO: Expose transient price setting in BS
+        D18 pricePoolPerAsset
     ) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
 
+        balanceSheet.setPricePoolPerAsset(poolId, scId, pricePoolPerAsset);
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 /* pricePoolPerShare */ )
-        external
-        auth
-    {
-        // TODO: Expose transient price setting in BS
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
+        balanceSheet.setPricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
     }
 
@@ -223,7 +222,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         AssetId assetId,
         uint128 assetAmount,
         uint128 shareAmount,
-        D18 /* pricePoolPerShare */ // TODO: Expose transient price setting in BS
+        D18 pricePoolPerShare
     ) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
@@ -233,6 +232,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         // Need to transfer to the balanceSheet so that it can burn from itself
         globalEscrow.authTransferTo(vault_.share(), address(balanceSheet), shareAmount);
+
+        balanceSheet.setPricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.revoke(poolId, scId, address(balanceSheet), shareAmount);
     }
 
@@ -428,8 +429,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        // TODO: Enable transient pricing for BS
-        // (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
+        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
+        balanceSheet.setPricePoolPerAsset(poolId, scId, pricePoolPerAsset);
+
         poolEscrowProvider.escrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }

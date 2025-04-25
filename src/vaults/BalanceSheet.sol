@@ -217,13 +217,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.deposit(scId, asset, tokenId, amount);
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset);
+        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId);
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].increase += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true);
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset_, true);
         }
     }
 
@@ -249,13 +249,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.withdraw(scId, asset, tokenId, amount);
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset);
+        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId);
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].decrease += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset_, false);
         }
 
         escrow.authTransferTo(asset, tokenId, receiver, amount);
@@ -275,8 +275,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     function _noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
-        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
-        emit Revoke(poolId, scId, from, pricePoolPerShare, shares);
+        emit Revoke(poolId, scId, from, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
             queuedShares[poolId][scId].decrease += shares;
