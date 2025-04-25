@@ -181,6 +181,19 @@ interface IHub {
         D18 navPoolPerShare
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
+    /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
+
+    /// @notice  Tell the BalanceSheet to send a message back with the queued deposits/withdrawals.
+    /// @param assetId Identifier of the asset which has queued deposits/withdrawals
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+
+    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
+    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+
+    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
+    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.

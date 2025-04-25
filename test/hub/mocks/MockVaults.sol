@@ -118,8 +118,6 @@ contract MockVaults is Test, Auth, IAdapter {
             MessageLib.UpdateShares({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
-                who: bytes32(0),
-                pricePerShare: d18(1, 1).raw(),
                 shares: amount,
                 timestamp: 0,
                 isIssuance: isIssuance

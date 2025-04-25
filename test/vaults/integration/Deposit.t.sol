@@ -770,13 +770,7 @@ contract DepositTest is BaseTest {
         asset.mint(address(poolEscrowFactory.escrow(poolId)), assetAmount);
 
         balanceSheet.deposit(
-            poolId,
-            scId,
-            address(asset),
-            0,
-            address(poolEscrowFactory.escrow(poolId)),
-            assetAmount.toUint128(),
-            d18(0) // NOTE: Price irrelevant here
+            poolId, scId, address(asset), 0, address(poolEscrowFactory.escrow(poolId)), assetAmount.toUint128()
         );
     }
 }
