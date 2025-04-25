@@ -246,7 +246,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        Prices memory prices = sharePriceProvider.prices(poolId, scId, assetId, asset, tokenId);
+        Prices memory prices = sharePriceProvider.prices(poolId, scId, assetId);
 
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.deposit(scId, asset, tokenId, assetAmount);

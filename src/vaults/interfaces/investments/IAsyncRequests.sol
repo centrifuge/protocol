@@ -14,8 +14,10 @@ struct AsyncInvestmentState {
     /// @dev Assets that can be claimed using `withdraw()`
     uint128 maxWithdraw;
     /// @dev Weighted average price of deposits, used to convert maxMint to maxDeposit
+    /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
     uint256 depositPrice;
     /// @dev Weighted average price of redemptions, used to convert maxWithdraw to maxRedeem
+    /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
     uint256 redeemPrice;
     /// @dev Remaining deposit request in assets
     uint128 pendingDepositRequest;

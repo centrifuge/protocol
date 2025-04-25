@@ -5,8 +5,8 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
-import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -65,7 +65,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = ConversionLib.convertWithPrice(
+        amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         ).toUint128();
 
@@ -84,7 +84,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        amountValue = ConversionLib.convertWithPrice(
+        amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         ).toUint128();
 

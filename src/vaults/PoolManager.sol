@@ -20,6 +20,7 @@ import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
@@ -458,15 +459,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         view
         returns (D18 price, uint64 computedAt)
     {
-        (Price memory poolPerAsset, Price memory poolPerShare) = _poolPer(poolId, scId, assetId);
-
-        if (checkValidity) {
-            require(poolPerAsset.isValid(), InvalidPrice());
-            require(poolPerShare.isValid(), InvalidPrice());
-        }
+        (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
 
         // (POOL_UNIT/SHARE_UNIT) / (POOL_UNIT/ASSET_UNIT) = ASSET_UNIT/SHARE_UNIT
-        price = poolPerShare.asPrice() / poolPerAsset.asPrice();
+        price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
         computedAt = poolPerShare.computedAt;
     }
 
@@ -492,7 +488,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         view
         returns (D18 price, uint64 computedAt)
     {
-        (Price memory poolPerAsset,) = _poolPer(poolId, scId, assetId);
+        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
 
         if (checkValidity) {
             require(poolPerAsset.isValid(), InvalidPrice());
@@ -502,7 +498,17 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         computedAt = poolPerAsset.computedAt;
     }
 
-    function _poolPer(PoolId poolId, ShareClassId scId, AssetId assetId)
+    /// @inheritdoc IPoolManager
+    function pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
+        public
+        view
+        returns (D18 pricePoolPerAsset_, D18 pricePoolPerShare_)
+    {
+        (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
+        return (poolPerAsset.asPrice(), poolPerShare.asPrice());
+    }
+
+    function _pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         internal
         view
         returns (Price memory poolPerAsset, Price memory poolPerShare)
@@ -512,6 +518,11 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         (address asset, uint256 tokenId) = idToAsset(assetId);
         poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         poolPerShare = shareClass.pricePoolPerShare;
+
+        if (checkValidity) {
+            require(poolPerAsset.isValid(), InvalidPrice());
+            require(poolPerShare.isValid(), InvalidPrice());
+        }
     }
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a

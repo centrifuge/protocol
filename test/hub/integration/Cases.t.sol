@@ -8,7 +8,7 @@ contract TestCases is BaseTest {
     using CastLib for bytes32;
     using MathLib for *;
     using MessageLib for *;
-    using ConversionLib for *;
+    using PricingLib for *;
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -125,7 +125,7 @@ contract TestCases is BaseTest {
         assertEq(m1.assetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(
             m1.shareAmount,
-            ConversionLib.convertWithPrice(
+            PricingLib.convertWithPrice(
                 APPROVED_INVESTOR_AMOUNT,
                 hubRegistry.decimals(USDC_C2),
                 hubRegistry.decimals(poolId),
@@ -142,7 +142,7 @@ contract TestCases is BaseTest {
 
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
-        uint128 revokedAssetAmount = ConversionLib.convertWithPrice(
+        uint128 revokedAssetAmount = PricingLib.convertWithPrice(
             APPROVED_SHARE_AMOUNT, hubRegistry.decimals(poolId), hubRegistry.decimals(USDC_C2), NAV_PER_SHARE
         ).toUint128();
 

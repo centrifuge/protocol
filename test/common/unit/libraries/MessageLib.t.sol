@@ -321,11 +321,9 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testUpdateContractValuation(uint128 assetId, bytes32 valuation) public pure {
-        MessageLib.UpdateContractValuation memory a =
-            MessageLib.UpdateContractValuation({assetId: assetId, valuation: valuation});
+        MessageLib.UpdateContractValuation memory a = MessageLib.UpdateContractValuation({valuation: valuation});
         MessageLib.UpdateContractValuation memory b = MessageLib.deserializeUpdateContractValuation(a.serialize());
 
-        assertEq(a.assetId, b.assetId);
         assertEq(a.valuation, b.valuation);
         // This message is a submessage and has not static message length defined
     }

@@ -144,7 +144,7 @@ contract DepositTest is BaseTest {
 
         // mint the rest
         vault.mint(vault.maxMint(self), self);
-        assertEq(shareToken.balanceOf(self), shares - vault.maxMint(self));
+        assertApproxEqAbs(shareToken.balanceOf(self), shares - vault.maxMint(self), 2);
         assertTrue(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))) <= 1);
         assertTrue(vault.maxMint(self) <= 1);
 

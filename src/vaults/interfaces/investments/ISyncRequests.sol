@@ -11,9 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 interface ISyncRequests is ISyncDepositManager, ISharePriceProvider, IUpdateContract {
-    event SetValuation(
-        PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, address oracle
-    );
+    event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
@@ -26,15 +24,12 @@ interface ISyncRequests is ISyncDepositManager, ISharePriceProvider, IUpdateCont
     error AssetMismatch();
     error ExceedsMaxReserve();
 
-    /// @notice Sets the valuation for a specific pool, share class and asset.
+    /// @notice Sets the valuation for a specific pool and share class.
     ///
     /// @param poolId The id of the pool
     /// @param scId The id of the share class
-    /// @param asset The address of the asset
-    /// @param tokenId The asset token id, i.e. 0 for ERC20, or the token id for ERC6909
     /// @param valuation The address of the valuation contract
-    function setValuation(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address valuation)
-        external;
+    function setValuation(PoolId poolId, ShareClassId scId, address valuation) external;
 
     /// @notice Sets the max reserve for a specific pool, share class and asset.
     ///
