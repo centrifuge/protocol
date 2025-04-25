@@ -8,7 +8,6 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
@@ -30,13 +29,13 @@ import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MathLib for uint256;
 
+    IHubRegistry public immutable hubRegistry;
+
     IGateway public gateway;
     IHoldings public holdings;
     IAccounting public accounting;
-    IHubRegistry public hubRegistry;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
-    ITransientValuation public transientValuation;
 
     constructor(
         IShareClassManager shareClassManager_,
@@ -44,7 +43,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         IAccounting accounting_,
         IHoldings holdings_,
         IGateway gateway_,
-        ITransientValuation transientValuation_,
         address deployer
     ) Auth(deployer) {
         shareClassManager = shareClassManager_;
@@ -52,7 +50,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         accounting = accounting_;
         holdings = holdings_;
         gateway = gateway_;
-        transientValuation = transientValuation_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -65,10 +62,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
-        else if (what == "hubRegistry") hubRegistry = IHubRegistry(data);
+        else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
-        else if (what == "accounting") accounting = IAccounting(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
