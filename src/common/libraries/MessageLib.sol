@@ -24,8 +24,8 @@ enum MessageType {
     NotifyShareClass,
     NotifyPricePoolPerShare,
     NotifyPricePoolPerAsset,
-    UpdateShareClassMetadata,
-    UpdateShareClassHook,
+    NotifyShareMetadata,
+    UpdateShareHook,
     TransferShares,
     UpdateRestriction,
     UpdateContract,
@@ -98,8 +98,8 @@ library MessageLib {
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
-        (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
-        (57  << uint8(MessageType.UpdateShareClassHook) * 8) +
+        (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
+        (57  << uint8(MessageType.UpdateShareHook) * 8) +
         (73  << uint8(MessageType.TransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
@@ -402,23 +402,19 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateShareClassMetadata
+    //    NotifyShareMetadata
     //---------------------------------------
 
-    struct UpdateShareClassMetadata {
+    struct NotifyShareMetadata {
         uint64 poolId;
         bytes16 scId;
         string name; // Fixed to 128 bytes
         bytes32 symbol; // utf8
     }
 
-    function deserializeUpdateShareClassMetadata(bytes memory data)
-        internal
-        pure
-        returns (UpdateShareClassMetadata memory)
-    {
-        require(messageType(data) == MessageType.UpdateShareClassMetadata, UnknownMessageType());
-        return UpdateShareClassMetadata({
+    function deserializeNotifyShareMetadata(bytes memory data) internal pure returns (NotifyShareMetadata memory) {
+        require(messageType(data) == MessageType.NotifyShareMetadata, UnknownMessageType());
+        return NotifyShareMetadata({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             name: data.slice(25, 128).bytes128ToString(),
@@ -426,29 +422,29 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateShareClassMetadata memory t) internal pure returns (bytes memory) {
+    function serialize(NotifyShareMetadata memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateShareClassMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
+            MessageType.NotifyShareMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
         );
     }
 
     //---------------------------------------
-    //    UpdateShareClassHook
+    //    UpdateShareHook
     //---------------------------------------
 
-    struct UpdateShareClassHook {
+    struct UpdateShareHook {
         uint64 poolId;
         bytes16 scId;
         bytes32 hook;
     }
 
-    function deserializeUpdateShareClassHook(bytes memory data) internal pure returns (UpdateShareClassHook memory) {
-        require(messageType(data) == MessageType.UpdateShareClassHook, UnknownMessageType());
-        return UpdateShareClassHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
+    function deserializeUpdateShareHook(bytes memory data) internal pure returns (UpdateShareHook memory) {
+        require(messageType(data) == MessageType.UpdateShareHook, UnknownMessageType());
+        return UpdateShareHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
     }
 
-    function serialize(UpdateShareClassHook memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShareClassHook, t.poolId, t.scId, t.hook);
+    function serialize(UpdateShareHook memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShareHook, t.poolId, t.scId, t.hook);
     }
 
     //---------------------------------------

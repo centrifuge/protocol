@@ -162,7 +162,7 @@ contract MockCentrifugeChain is Test {
         public
     {
         execute(
-            MessageLib.UpdateShareClassMetadata({
+            MessageLib.NotifyShareMetadata({
                 poolId: poolId,
                 scId: scId,
                 name: tokenName,
@@ -172,7 +172,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function updateShareHook(uint64 poolId, bytes16 scId, address hook) public {
-        execute(MessageLib.UpdateShareClassHook({poolId: poolId, scId: scId, hook: bytes32(bytes20(hook))}).serialize());
+        execute(MessageLib.UpdateShareHook({poolId: poolId, scId: scId, hook: bytes32(bytes20(hook))}).serialize());
     }
 
     function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public {
