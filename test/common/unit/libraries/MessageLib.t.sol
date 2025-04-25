@@ -717,10 +717,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testEnableSharesQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
-        MessageLib.EnableSharesQueue memory a =
-            MessageLib.EnableSharesQueue({poolId: poolId, scId: scId, enabled: enabled});
-        MessageLib.EnableSharesQueue memory b = MessageLib.deserializeEnableSharesQueue(a.serialize());
+    function testSetSharesQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
+        MessageLib.SetSharesQueue memory a = MessageLib.SetSharesQueue({poolId: poolId, scId: scId, enabled: enabled});
+        MessageLib.SetSharesQueue memory b = MessageLib.deserializeSetSharesQueue(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -730,10 +729,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testEnableAssetsQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
-        MessageLib.EnableAssetsQueue memory a =
-            MessageLib.EnableAssetsQueue({poolId: poolId, scId: scId, enabled: enabled});
-        MessageLib.EnableAssetsQueue memory b = MessageLib.deserializeEnableAssetsQueue(a.serialize());
+    function testSetAssetsQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
+        MessageLib.SetAssetsQueue memory a = MessageLib.SetAssetsQueue({poolId: poolId, scId: scId, enabled: enabled});
+        MessageLib.SetAssetsQueue memory b = MessageLib.deserializeSetAssetsQueue(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);

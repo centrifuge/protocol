@@ -48,8 +48,8 @@ enum MessageType {
     TriggerUpdateShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
-    EnableSharesQueue,
-    EnableAssetsQueue
+    SetSharesQueue,
+    SetAssetsQueue
 }
 
 enum UpdateRestrictionType {
@@ -125,8 +125,8 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_2 = 
         (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) + 
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
-        (26 << (uint8(MessageType.EnableSharesQueue) - 32) * 8) + 
-        (26 << (uint8(MessageType.EnableAssetsQueue) - 32) * 8);
+        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) + 
+        (26 << (uint8(MessageType.SetAssetsQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -155,8 +155,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to EnableAssetsQueue contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.EnableAssetsQueue)) {
+        // All messages from NotifyPool to SetAssetsQueue contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetAssetsQueue)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -1253,40 +1253,40 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    EnableSharesQueue
+    //    SetSharesQueue
     //---------------------------------------
 
-    struct EnableSharesQueue {
+    struct SetSharesQueue {
         uint64 poolId;
         bytes16 scId;
         bool enabled;
     }
 
-    function deserializeEnableSharesQueue(bytes memory data) internal pure returns (EnableSharesQueue memory) {
-        require(messageType(data) == MessageType.EnableSharesQueue, UnknownMessageType());
-        return EnableSharesQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    function deserializeSetSharesQueue(bytes memory data) internal pure returns (SetSharesQueue memory) {
+        require(messageType(data) == MessageType.SetSharesQueue, UnknownMessageType());
+        return SetSharesQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
     }
 
-    function serialize(EnableSharesQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.EnableSharesQueue, t.poolId, t.scId, t.enabled);
+    function serialize(SetSharesQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetSharesQueue, t.poolId, t.scId, t.enabled);
     }
 
     //---------------------------------------
-    //    EnableAssetsQueue
+    //    SetAssetsQueue
     //---------------------------------------
 
-    struct EnableAssetsQueue {
+    struct SetAssetsQueue {
         uint64 poolId;
         bytes16 scId;
         bool enabled;
     }
 
-    function deserializeEnableAssetsQueue(bytes memory data) internal pure returns (EnableAssetsQueue memory) {
-        require(messageType(data) == MessageType.EnableAssetsQueue, UnknownMessageType());
-        return EnableAssetsQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    function deserializeSetAssetsQueue(bytes memory data) internal pure returns (SetAssetsQueue memory) {
+        require(messageType(data) == MessageType.SetAssetsQueue, UnknownMessageType());
+        return SetAssetsQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
     }
 
-    function serialize(EnableAssetsQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.EnableAssetsQueue, t.poolId, t.scId, t.enabled);
+    function serialize(SetAssetsQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetAssetsQueue, t.poolId, t.scId, t.enabled);
     }
 }

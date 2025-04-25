@@ -192,12 +192,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// --- IBalanceSheetHandler ---
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function enableSharesQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+    function setSharesQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queuedSharesEnabled[poolId][scId] = enabled;
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function enableAssetsQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+    function setAssetsQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queuedAssetsEnabled[poolId][scId] = enabled;
     }
 
