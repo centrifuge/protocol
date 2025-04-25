@@ -188,10 +188,7 @@ interface IHub {
     function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
-
-    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.

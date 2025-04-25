@@ -175,10 +175,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.sendTriggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetSharesQueue(0, POOL_A, ShareClassId.wrap(0), true);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetAssetsQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.sendSetQueue(0, POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }
