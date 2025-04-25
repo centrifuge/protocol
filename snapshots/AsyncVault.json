@@ -1,14 +1,3 @@
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-  "fulfillDepositRequest": "991959",
-  "requestDeposit": "525283"
-=======
-  "fulfillDepositRequest": "945557",
-  "requestDeposit": "471826"
->>>>>>> 0236f82b (toooooo much)
-=======
-  "fulfillDepositRequest": "992297",
-  "requestDeposit": "525305"
->>>>>>> origin/main
+  "requestDeposit": "520038"
 }

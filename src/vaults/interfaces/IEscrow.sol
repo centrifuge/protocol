@@ -17,6 +17,9 @@ interface IEscrow {
     /// @dev Needed as allowances increase attack surface
     event AuthTransferTo(address indexed asset, address reciver, uint256 value);
 
+    /// @notice Emitted when the escrow has insufficient balance for an action - virtual or actual balance
+    error InsufficientBalance(address asset, uint256 tokenId, uint256 value, uint256 balance);
+
     /// @notice
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 value) external;
 
@@ -90,9 +93,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
 
     /// @notice Dispatched when the outstanding reserved amount is insufficient for the decrease
     error InsufficientReservedAmount();
-
-    /// @notice Dispatched when the balance of the escrow is insufficient for the withdrawal
-    error InsufficientBalance();
 
     // --- Functions ---
     /// @notice Deposits `value` of `asset` in underlying `poolId` and given `scId`

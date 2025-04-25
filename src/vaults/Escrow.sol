@@ -21,16 +21,37 @@ contract Escrow is Auth, IEscrow {
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
         emit AuthTransferTo(asset, tokenId, receiver, amount);
         if (tokenId == 0) {
-            SafeTransferLib.safeTransfer(asset, receiver, amount);
+            try IERC20(asset).transfer(receiver, amount) returns (bool success) {
+                if (!success) {
+                    uint256 balance = IERC20(asset).balanceOf(address(this));
+                    revert InsufficientBalance(asset, tokenId, amount, balance);
+                }
+            } catch {
+                uint256 balance = IERC20(asset).balanceOf(address(this));
+                revert InsufficientBalance(asset, tokenId, amount, balance);
+            }
         } else {
-            IERC6909(asset).transfer(receiver, tokenId, amount);
+            try IERC6909(asset).transfer(receiver, tokenId, amount) {
+                // Transfer succeeded
+            } catch {
+                uint256 balance = IERC6909(asset).balanceOf(address(this), tokenId);
+                revert InsufficientBalance(asset, tokenId, amount, balance);
+            }
         }
     }
 
     /// @inheritdoc IEscrow
     function authTransferTo(address asset, address receiver, uint256 amount) external auth {
         emit AuthTransferTo(asset, receiver, amount);
-        SafeTransferLib.safeTransfer(asset, receiver, amount);
+        try IERC20(asset).transfer(receiver, amount) returns (bool success) {
+            if (!success) {
+                uint256 balance = IERC20(asset).balanceOf(address(this));
+                revert InsufficientBalance(asset, 0, amount, balance);
+            }
+        } catch {
+            uint256 balance = IERC20(asset).balanceOf(address(this));
+            revert InsufficientBalance(asset, 0, amount, balance);
+        }
     }
 }
 
@@ -61,7 +82,8 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     /// @inheritdoc IPoolEscrow
     function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         Holding storage holding_ = holding[scId][asset][tokenId];
-        require(holding_.total - holding_.reserved >= value, InsufficientBalance());
+        uint256 balance = holding_.total - holding_.reserved;
+        require(balance >= value, InsufficientBalance(asset, tokenId, value, balance));
 
         holding_.total -= value.toUint128();
 
