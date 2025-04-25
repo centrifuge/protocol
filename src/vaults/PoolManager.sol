@@ -46,7 +46,14 @@ import {PoolEscrow} from "src/vaults/Escrow.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is ReentrancyProtection, Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+contract PoolManager is
+    ReentrancyProtection,
+    Auth,
+    Recoverable,
+    IPoolManager,
+    IUpdateContract,
+    IPoolManagerGatewayHandler
+{
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -107,8 +114,8 @@ contract PoolManager is ReentrancyProtection, Auth, Recoverable, IPoolManager, I
     /// @inheritdoc IPoolManager
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
-        protected
         payable
+        protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(

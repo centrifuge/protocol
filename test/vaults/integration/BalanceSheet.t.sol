@@ -31,7 +31,7 @@ contract BalanceSheetTest is BaseTest {
         super.setUp();
         defaultAmount = 100;
         defaultPricePoolPerShare = d18(1, 1);
-        defaultPricePoolPerAsset = d18(1,1);
+        defaultPricePoolPerAsset = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
@@ -189,7 +189,13 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, defaultPricePoolPerAsset
+            POOL_A,
+            defaultTypedShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            defaultPricePoolPerAsset
         );
         balanceSheet.noteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
@@ -247,7 +253,9 @@ contract BalanceSheetTest is BaseTest {
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount);
+        emit IBalanceSheet.Issue(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
@@ -275,7 +283,9 @@ contract BalanceSheetTest is BaseTest {
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount);
+        emit IBalanceSheet.Revoke(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         (, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
