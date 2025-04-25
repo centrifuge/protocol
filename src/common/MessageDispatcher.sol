@@ -354,25 +354,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
         if (centrifugeId == localCentrifugeId) {
-            balanceSheet.setAssetsQueue(poolId, scId, enabled);
+            balanceSheet.setQueue(poolId, scId, enabled);
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.SetAssetsQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IPoolMessageSender
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        if (centrifugeId == localCentrifugeId) {
-            balanceSheet.setSharesQueue(poolId, scId, enabled);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.SetSharesQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
+                MessageLib.SetQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
             );
         }
     }
