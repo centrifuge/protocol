@@ -34,7 +34,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     uint32 constant META_NAME_LENGTH = 128;
     uint32 constant META_SYMBOL_LENGTH = 32;
 
-    IHubRegistry public hubRegistry;
+    IHubRegistry public immutable hubRegistry;
 
     // Share classes
     mapping(bytes32 salt => bool) public salts;
@@ -68,18 +68,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         hubRegistry = hubRegistry_;
     }
 
-    function file(bytes32 what, address data) external auth {
-        require(what == "hubRegistry", UnrecognizedFileParam());
-        hubRegistry = IHubRegistry(data);
-        emit File(what, data);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Administration methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt, bytes calldata)
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
         auth
         returns (ShareClassId scId_)
@@ -329,25 +323,19 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         ShareClassMetrics storage m = metrics[scId_];
         m.navPerShare = navPoolPerShare;
-        emit UpdateShareClass(
-            poolId, scId_, navPoolPerShare.mulUint128(m.totalIssuance), navPoolPerShare, m.totalIssuance
-        );
+        emit UpdateShareClass(poolId, scId_, navPoolPerShare);
     }
 
     /// @inheritdoc IShareClassManager
-    function updateMetadata(
-        PoolId poolId,
-        ShareClassId scId_,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata
-    ) external auth {
+    function updateMetadata(PoolId poolId, ShareClassId scId_, string calldata name, string calldata symbol)
+        external
+        auth
+    {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        _updateMetadata(scId_, name, symbol, salt);
+        _updateMetadata(scId_, name, symbol, bytes32(0));
 
-        emit UpdateMetadata(poolId, scId_, name, symbol, salt);
+        emit UpdateMetadata(poolId, scId_, name, symbol);
     }
 
     /// @inheritdoc IShareClassManager
@@ -586,23 +574,19 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint256 symbolLen = bytes(symbol).length;
         require(symbolLen > 0 && symbolLen <= 32, InvalidMetadataSymbol());
 
-        require(salt != bytes32(0), InvalidSalt());
-
         ShareClassMetadata storage meta = metadata[scId_];
 
-        // Ensure that the salt remains unchanged if it's already set,
-        // or that it is being set for the first time.
-        require(salt == meta.salt || meta.salt == bytes32(0), InvalidSalt());
+        // Ensure that the salt is not being updated or is being set for the first time
+        require(salt == bytes32(0) || (salt != bytes32(0) && meta.salt == bytes32(0)), InvalidSalt());
 
-        // If this is the first time setting the metadata, ensure the salt wasn't already used.
-        if (meta.salt == bytes32(0)) {
+        if (salt != bytes32(0) && meta.salt == bytes32(0)) {
             require(!salts[salt], AlreadyUsedSalt());
             salts[salt] = true;
+            meta.salt = salt;
         }
 
         meta.name = name;
         meta.symbol = symbol;
-        meta.salt = salt;
     }
 
     function _postClaimUpdateQueued(
@@ -793,7 +777,7 @@ contract ShareClassManager is Auth, IShareClassManager {
             poolId,
             scId_,
             assetId,
-            epochId[scId_][assetId].deposit + 1,
+            nowDepositEpoch(scId_, assetId),
             investor,
             userOrder.pending,
             pendingTotal,
@@ -820,7 +804,7 @@ contract ShareClassManager is Auth, IShareClassManager {
             poolId,
             scId_,
             assetId,
-            epochId[scId_][assetId].redeem + 1,
+            nowRedeemEpoch(scId_, assetId),
             investor,
             userOrder.pending,
             pendingTotal,

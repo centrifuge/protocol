@@ -220,6 +220,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        shareClassManager.updateMetadata(poolId, scId, name, symbol);
+    }
+
+    /// @inheritdoc IHub
     function updateManager(PoolId poolId, address who, bool canManage) external payable {
         _protected(poolId);
 
@@ -227,16 +237,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function addShareClass(
-        PoolId poolId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata data
-    ) external payable {
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
+        external
+        payable
+    {
         _protected(poolId);
 
-        shareClassManager.addShareClass(poolId, name, symbol, salt, data);
+        shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
     /// @inheritdoc IHub

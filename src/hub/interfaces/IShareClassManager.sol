@@ -83,11 +83,10 @@ struct EpochId {
 
 interface IShareClassManager {
     /// Events
-    event File(bytes32 what, address who);
     event AddShareClass(
         PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index, string name, string symbol, bytes32 salt
     );
-    event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol, bytes32 salt);
+    event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
     event ApproveDeposits(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -150,9 +149,7 @@ interface IShareClassManager {
         uint64 revokedAt
     );
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, uint32 indexed index);
-    event UpdateShareClass(
-        PoolId indexed poolId, ShareClassId indexed scId, uint128 nav, D18 navPoolPerShare, uint128 totalIssuance
-    );
+    event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 navPoolPerShare);
     event UpdateDepositRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -184,7 +181,6 @@ interface IShareClassManager {
     error IssuanceRequired();
     error AlreadyIssued();
     error RevocationRequired();
-    error UnrecognizedFileParam();
     error ZeroApprovalAmount();
     error InvalidMetadataSize();
     error InvalidMetadataName();
@@ -387,15 +383,10 @@ interface IShareClassManager {
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
     /// @param salt The salt used for deploying the share class tokens
-    /// @param data Additional data of the new share class
     /// @return scId Identifier of the newly added share class
-    function addShareClass(
-        PoolId poolId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata data
-    ) external returns (ShareClassId scId);
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
+        external
+        returns (ShareClassId scId);
 
     /// @notice Updates the price pool unit per share unit of a share class
     ///
@@ -410,16 +401,7 @@ interface IShareClassManager {
     /// @param scId Identifier of the share class
     /// @param name The name of the share class
     /// @param symbol The symbol of the share class
-    /// @param salt The salt used for deploying the share class tokens
-    /// @param metadata Encoded additional metadata of the new share class
-    function updateMetadata(
-        PoolId poolId,
-        ShareClassId scId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata metadata
-    ) external;
+    function updateMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol) external;
 
     /// @notice Returns the number of share classes for the given pool
     ///
