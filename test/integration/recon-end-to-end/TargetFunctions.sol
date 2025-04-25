@@ -156,6 +156,39 @@ abstract contract TargetFunctions is
         assetId = _assetId;
     }
 
+    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
+        poolManager_updatePricePoolPerShare(pricePoolPerShare, type(uint64).max);
+        poolManager_updateMember(type(uint64).max);
+        
+        vault_requestDeposit(amount, toEntropy);
+
+        if(!isIdentityValuation) {
+            transientValuation_setPrice_clamped(poolId, priceValuation);
+        }
+        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+
+        shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), isIdentityValuation, navPerShare);
+       
+        hub_claimDeposit(poolId, scId, assetId);
+
+        vault_deposit(amount);
+    }
+
+    function shortcut_redeem_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 shares, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
+        vault_requestRedeem(shares, toEntropy);
+
+        _resetEpochIncrement();
+
+        hub_approveRedeems(poolId, scId, assetId, uint128(shares));
+        hub_revokeShares(poolId, scId, navPerShare, transientValuation);
+        
+        hub_claimRedeem(poolId, scId, assetId);
+
+        vault_withdraw(shares, toEntropy);
+    }
+
+
+    /// === POOL ADMIN SHORTCUTS === ///
     function shortcut_approve_and_issue_shares(
         uint64 poolId,
         bytes16 scId,

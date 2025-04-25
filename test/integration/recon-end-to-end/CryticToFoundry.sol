@@ -44,6 +44,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         vault_deposit(1e18);
     }
 
+    function test_vault_deposit_and_fulfill_shortcut() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
+        
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, false, 0);
+    }
+
     function test_vault_deposit_and_redeem() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
@@ -72,6 +78,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_claimRedeem_clamped(poolId, 0);
 
         vault_withdraw(1e18, 0);
+    }
+
+    function test_vault_redeem_and_fulfill_shortcut() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
+
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, false, 0);
+
+        shortcut_redeem_and_claim(1e18, 1e18, 1e18, 1e18, false, 0);
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {
