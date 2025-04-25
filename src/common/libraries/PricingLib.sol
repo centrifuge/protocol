@@ -229,7 +229,7 @@ library PricingLib {
     /// @dev Returns the asset price per share denominated in ASSET_UNIT/SHARE_UNIT
     ///
     /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
-    /// conversion relying on pricePoolPerShare and pricePoolPerAsset
+    /// conversion relying on pricePoolPerShare and pricePoolPerAsset.
     function priceAssetPerShare(D18 pricePoolPerShare, D18 pricePoolPerAsset)
         internal
         pure

@@ -253,6 +253,9 @@ interface IPoolManager {
     /// defined as ASSET_UNIT/SHARE_UNIT.
     /// @dev Conditionally checks if price is valid.
     ///
+    /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
+    /// conversion relying on pricePoolPerShare and pricePoolPerAsset. See PricingLib for more information.
+    ///
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price

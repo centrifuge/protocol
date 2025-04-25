@@ -485,7 +485,6 @@ contract PoolManager is
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
 
-        // (POOL_UNIT/SHARE_UNIT) / (POOL_UNIT/ASSET_UNIT) = ASSET_UNIT/SHARE_UNIT
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
         computedAt = poolPerShare.computedAt;
     }
