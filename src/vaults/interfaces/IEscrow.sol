@@ -9,19 +9,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 /// @title  Escrow for holding assets
 interface IEscrow {
     // --- Events ---
-    /// @notice Emitted when an approval is made
-    /// @param asset The address of the asset
-    /// @param spender The address of the spender
-    /// @param value The new total allowance
-    event Approve(address indexed asset, address indexed spender, uint256 value);
-
-    /// @notice Emitted when an approval is made
-    /// @param asset The address of the asset
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param spender The address of the spender
-    /// @param value The new total allowance
-    event Approve(address indexed asset, uint256 indexed tokenId, address indexed spender, uint256 value);
-
     /// @notice Emitted when an authTransferTo is made
     /// @dev Needed as allowances increase attack surface
     event AuthTransferTo(address indexed asset, uint256 indexed tokenId, address reciver, uint256 value);
@@ -29,19 +16,6 @@ interface IEscrow {
     /// @notice Emitted when an authTransferTo is made
     /// @dev Needed as allowances increase attack surface
     event AuthTransferTo(address indexed asset, address reciver, uint256 value);
-
-    // --- Token approvals ---
-    /// @notice sets the allowance of `spender` to `type(uint256).max` if it is currently 0
-    function approveMax(address asset, uint256 tokenId, address spender) external;
-
-    /// @notice sets the allowance of `spender` to `type(uint256).max` if it is currently 0
-    function approveMax(address asset, address spender) external;
-
-    /// @notice sets the allowance of `spender` to 0
-    function unapprove(address asset, uint256 tokenId, address spender) external;
-
-    /// @notice sets the allowance of `spender` to 0
-    function unapprove(address asset, address spender) external;
 
     /// @notice
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 value) external;

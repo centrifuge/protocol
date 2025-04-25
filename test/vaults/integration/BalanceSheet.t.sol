@@ -55,10 +55,6 @@ contract BalanceSheetTest is BaseTest {
             MessageLib.UpdateRestrictionMember({user: address(balanceSheet).toBytes32(), validUntil: MAX_UINT64})
                 .serialize()
         );
-        // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
-        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A);
-        vm.prank(address(poolManager));
-        escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }
 
     // Deployment

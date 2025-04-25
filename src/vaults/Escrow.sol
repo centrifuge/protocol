@@ -17,47 +17,6 @@ import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
 
-    // --- Token approvals ---
-    /// @inheritdoc IEscrow
-    function approveMax(address asset, address spender) external auth {
-        if (IERC20(asset).allowance(address(this), spender) == 0) {
-            SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-            emit Approve(asset, spender, type(uint256).max);
-        }
-    }
-
-    /// @inheritdoc IEscrow
-    function approveMax(address asset, uint256 tokenId, address spender) external auth {
-        if (tokenId == 0) {
-            if (IERC20(asset).allowance(address(this), spender) == 0) {
-                SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-                emit Approve(asset, spender, type(uint256).max);
-            }
-        } else {
-            if (IERC6909(asset).allowance(address(this), spender, tokenId) == 0) {
-                IERC6909(asset).approve(spender, tokenId, type(uint256).max);
-                emit Approve(asset, tokenId, spender, type(uint256).max);
-            }
-        }
-    }
-
-    /// @inheritdoc IEscrow
-    function unapprove(address asset, address spender) external auth {
-        SafeTransferLib.safeApprove(asset, spender, 0);
-        emit Approve(asset, spender, 0);
-    }
-
-    /// @inheritdoc IEscrow
-    function unapprove(address asset, uint256 tokenId, address spender) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeApprove(asset, spender, 0);
-            emit Approve(asset, spender, 0);
-        } else {
-            IERC6909(asset).approve(spender, tokenId, 0);
-            emit Approve(asset, tokenId, spender, 0);
-        }
-    }
-
     /// @inheritdoc IEscrow
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
         emit AuthTransferTo(asset, tokenId, receiver, amount);

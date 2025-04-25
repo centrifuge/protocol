@@ -34,65 +34,9 @@ contract EscrowTestBase is Test {
 }
 
 contract EscrowTestERC20 is EscrowTestBase {
-    function testApproveMax() public {
-        assertEq(erc20.allowance(address(escrow), spender), 0);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.approveMax(address(erc20), spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc20), spender, type(uint256).max);
-        escrow.approveMax(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), type(uint256).max);
-    }
-
-    function testUnapprove() public {
-        escrow.approveMax(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), type(uint256).max);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.unapprove(address(erc20), spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc20), spender, 0);
-        escrow.unapprove(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), 0);
-    }
 }
 
 contract EscrowTestERC6909 is EscrowTestBase {
-    function testApproveMaxERC6909(uint8 decimals_) public {
-        uint256 tokenId = uint256(bound(decimals_, 2, 18));
-
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), 0);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.approveMax(address(erc6909), tokenId, spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc6909), tokenId, spender, type(uint256).max);
-        escrow.approveMax(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), type(uint256).max);
-    }
-
-    function testUnapproveERC6909(uint8 decimals_) public {
-        uint256 tokenId = uint256(bound(decimals_, 2, 18));
-
-        escrow.approveMax(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), type(uint256).max);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.unapprove(address(erc6909), tokenId, spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc6909), tokenId, spender, 0);
-        escrow.unapprove(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), 0);
-    }
 }
 
 contract PoolEscrowTestBase is EscrowTestBase {
