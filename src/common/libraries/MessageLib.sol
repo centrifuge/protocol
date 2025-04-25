@@ -117,7 +117,7 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
+        (90 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
         (74 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
@@ -1146,7 +1146,6 @@ library MessageLib {
         uint128 assetId;
         bytes32 who;
         uint128 amount;
-        uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
     }
 
@@ -1163,21 +1162,13 @@ library MessageLib {
             assetId: data.toUint128(25),
             who: data.toBytes32(41),
             amount: data.toUint128(73),
-            pricePerUnit: data.toUint128(89),
-            isIncrease: data.toBool(105)
+            isIncrease: data.toBool(89)
         });
     }
 
     function serialize(TriggerUpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TriggerUpdateHoldingAmount,
-            t.poolId,
-            t.scId,
-            t.assetId,
-            t.who,
-            t.amount,
-            t.pricePerUnit,
-            t.isIncrease
+            MessageType.TriggerUpdateHoldingAmount, t.poolId, t.scId, t.assetId, t.who, t.amount, t.isIncrease
         );
     }
 

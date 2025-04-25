@@ -225,6 +225,34 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
+    function sendTriggerUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address who,
+        uint128 amount,
+        bool isIncrease
+    ) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendTriggerUpdateHoldingAmount(poolId, scId, assetId, who, amount, isIncrease);
+    }
+
+    /// @inheritdoc IHub
+    function sendTriggerUpdateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        address who,
+        uint128 shares,
+        bool isIssuance
+    ) public payable {
+        _protectedAndPaid(poolId);
+
+        sender.sendTriggerUpdateShares(centrifugeId, poolId, scId, who, shares, isIssuance);
+    }
+
+    /// @inheritdoc IHub
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
         _protectedAndPaid(poolId);
 

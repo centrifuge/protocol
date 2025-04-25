@@ -641,7 +641,6 @@ contract TestMessageLibIdentities is Test {
         uint128 assetId,
         bytes32 who,
         uint128 amount,
-        uint128 pricePerUnit,
         bool isIncrease
     ) public pure {
         MessageLib.TriggerUpdateHoldingAmount memory a = MessageLib.TriggerUpdateHoldingAmount({
@@ -650,7 +649,6 @@ contract TestMessageLibIdentities is Test {
             assetId: assetId,
             who: who,
             amount: amount,
-            pricePerUnit: pricePerUnit,
             isIncrease: isIncrease
         });
 
@@ -661,7 +659,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
-        assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.isIncrease, b.isIncrease);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
