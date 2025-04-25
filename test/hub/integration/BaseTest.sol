@@ -70,7 +70,6 @@ contract BaseTest is HubDeployer, Test {
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
-        vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(hubRegistry), "HubRegistry");
         vm.label(address(accounting), "Accounting");

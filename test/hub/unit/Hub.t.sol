@@ -19,7 +19,6 @@ import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {Hub} from "src/hub/Hub.sol";
 
 contract TestCommon is Test {
@@ -35,9 +34,8 @@ contract TestCommon is Test {
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
-    ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
-    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, transientValuation, address(this));
+    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, address(this));
 
     function setUp() public {
         vm.mockCall(
