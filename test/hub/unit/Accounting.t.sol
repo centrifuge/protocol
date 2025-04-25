@@ -206,27 +206,27 @@ contract AccountingTest is Test {
 
     function testJournalId() public {
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.unlock(POOL_A);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.lock();
 
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.unlock(POOL_A);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.lock();
 
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_B, (uint256(POOL_B.raw()) << 64) | 1);
+        emit IAccounting.StartJournalId(POOL_B, (uint256(POOL_B.raw()) << 128) | 1);
         accounting.unlock(POOL_B);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_B, (uint256(POOL_B.raw()) << 64) | 1);
+        emit IAccounting.EndJournalId(POOL_B, (uint256(POOL_B.raw()) << 128) | 1);
         accounting.lock();
     }
 }

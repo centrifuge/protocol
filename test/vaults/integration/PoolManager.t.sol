@@ -578,8 +578,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         ShareClassId scId = oldVault.scId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory =
-            new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, address(this));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
@@ -749,59 +748,12 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         }
     }
 
-    function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
-        address vaultManager = address(IBaseVault(vaultAddress).manager());
-        address escrow_ = address(poolEscrowFactory.escrow(poolId));
-        IShareToken token_ = poolManager.shareToken(poolId, scId);
-
-        assertEq(
-            IERC20(token_).allowance(escrow_, vaultManager),
-            type(uint256).max,
-            "Escrow to VaultManager share token allowance missing"
-        );
-
-        if (tokenId == 0) {
-            assertEq(
-                IERC20(asset).allowance(escrow_, address(poolManager)),
-                type(uint256).max,
-                "Escrow to PoolManager ERC20 Asset allowance missing"
-            );
-            assertEq(
-                IERC20(asset).allowance(escrow_, address(balanceSheet)),
-                type(uint256).max,
-                "Escrow to BalanceSheet ERC20 Asset allowance missing"
-            );
-            assertEq(
-                IERC20(asset).allowance(escrow_, vaultManager),
-                type(uint256).max,
-                "Escrow to VaultManager ERC20 Asset allowance missing"
-            );
-        } else {
-            assertEq(
-                IERC6909(asset).allowance(escrow_, address(poolManager), tokenId),
-                type(uint256).max,
-                "Escrow to PoolManager ERC6909 Asset allowance missing"
-            );
-            assertEq(
-                IERC6909(asset).allowance(escrow_, address(balanceSheet), tokenId),
-                type(uint256).max,
-                "Escrow to BalanceSheet ERC6909 Asset allowance missing"
-            );
-            assertEq(
-                IERC6909(asset).allowance(escrow_, vaultManager, tokenId),
-                type(uint256).max,
-                "Escrow to VaultManager ERC6909 Asset allowance missing"
-            );
-        }
-    }
-
     function _assertDeployedVault(address vaultAddress, AssetId assetId, address asset, uint256 tokenId, bool isLinked)
         internal
         view
     {
         _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
         _assertShareSetup(vaultAddress, isLinked);
-        _assertAllowance(vaultAddress, asset, tokenId);
     }
 
     function testDeployVaultWithoutLinkERC20(
@@ -843,49 +795,6 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         poolManager.linkVault(poolId, scId, assetId, vault);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, true);
-    }
-
-    function testDeployVaultWithoutLinkERC6909(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        uint256 tokenId = decimals;
-        address asset = address(new MockERC6909());
-
-        // Check event except for vault address which cannot be known
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
-        vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, tokenId, asyncVaultFactory, IBaseVault(address(0)));
-        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
-
-        _assertDeployedVault(address(vault), assetId, asset, tokenId, false);
-    }
-
-    function testDeployVaultWithLinkERC6909(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        uint256 tokenId = decimals;
-        address asset = address(new MockERC6909());
-
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
-        IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
-
-        vm.expectEmit(true, true, true, false);
-        emit IPoolManager.LinkVault(poolId, scId, asset, tokenId, vault);
-        poolManager.linkVault(poolId, scId, assetId, vault);
-
-        _assertDeployedVault(address(vault), assetId, asset, tokenId, true);
     }
 
     function testDeploVaultInvalidShare(PoolId poolId, ShareClassId scId) public {

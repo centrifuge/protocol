@@ -9,31 +9,22 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 /// @title  Escrow for holding assets
 interface IEscrow {
     // --- Events ---
-    /// @notice Emitted when an approval is made
-    /// @param asset The address of the asset
-    /// @param spender The address of the spender
-    /// @param value The new total allowance
-    event Approve(address indexed asset, address indexed spender, uint256 value);
+    /// @notice Emitted when an authTransferTo is made
+    /// @dev Needed as allowances increase attack surface
+    event AuthTransferTo(address indexed asset, uint256 indexed tokenId, address reciver, uint256 value);
 
-    /// @notice Emitted when an approval is made
-    /// @param asset The address of the asset
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param spender The address of the spender
-    /// @param value The new total allowance
-    event Approve(address indexed asset, uint256 indexed tokenId, address indexed spender, uint256 value);
+    /// @notice Emitted when an authTransferTo is made
+    /// @dev Needed as allowances increase attack surface
+    event AuthTransferTo(address indexed asset, address reciver, uint256 value);
 
-    // --- Token approvals ---
-    /// @notice sets the allowance of `spender` to `type(uint256).max` if it is currently 0
-    function approveMax(address asset, uint256 tokenId, address spender) external;
+    /// @notice Emitted when the escrow has insufficient balance for an action - virtual or actual balance
+    error InsufficientBalance(address asset, uint256 tokenId, uint256 value, uint256 balance);
 
-    /// @notice sets the allowance of `spender` to `type(uint256).max` if it is currently 0
-    function approveMax(address asset, address spender) external;
+    /// @notice
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 value) external;
 
-    /// @notice sets the allowance of `spender` to 0
-    function unapprove(address asset, uint256 tokenId, address spender) external;
-
-    /// @notice sets the allowance of `spender` to 0
-    function unapprove(address asset, address spender) external;
+    /// @notice
+    function authTransferTo(address asset, address receiver, uint256 value) external;
 }
 
 struct Holding {
@@ -103,9 +94,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @notice Dispatched when the outstanding reserved amount is insufficient for the decrease
     error InsufficientReservedAmount();
 
-    /// @notice Dispatched when the balance of the escrow is insufficient for the withdrawal
-    error InsufficientBalance();
-
     // --- Functions ---
     /// @notice Deposits `value` of `asset` in underlying `poolId` and given `scId`
     ///
@@ -117,17 +105,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to deposit
     function deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external;
-
-    /// @notice Notices the deposit of `value` of `asset` in underlying `poolId` and given `scId`
-    ///
-    /// @dev NOTE: Assumes to not perform sufficiency checks in order to support scenarios in which the actual transfer
-    /// occurs after noting a deposit for security reasons.
-    ///
-    /// @param scId The id of the share class
-    /// @param asset The address of the asset to be deposited
-    /// @param tokenId The id of the asset - 0 for ERC20
-    /// @param value The amount to deposit
-    function noteDeposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external;
 
     /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST ensure that reserved amounts are not withdrawn

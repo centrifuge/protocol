@@ -48,7 +48,7 @@ contract RedeemTest is BaseTest {
         // success
         centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
         vault.requestRedeem(amount, address(this), address(this));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), amount);
         assertEq(vault.pendingRedeemRequest(0, self), amount);
         assertEq(vault.claimableRedeemRequest(0, self), 0);
 
@@ -66,7 +66,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.maxRedeem(self), amount); // max deposit
         assertEq(vault.pendingRedeemRequest(0, self), 0);
         assertEq(vault.claimableRedeemRequest(0, self), amount);
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), 0);
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
@@ -77,8 +77,9 @@ contract RedeemTest is BaseTest {
         vault.redeem(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertEq(shareToken.balanceOf(self), 0);
-        assertTrue(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))) <= 1);
-        assertTrue(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))) <= 1);
+
+        assertTrue(shareToken.balanceOf(address(globalEscrow)) <= 1);
+        assertTrue(erc20.balanceOf(address(globalEscrow)) <= 1);
 
         assertApproxEqAbs(erc20.balanceOf(self), (amount / 2), 1);
         assertApproxEqAbs(erc20.balanceOf(investor), (amount / 2), 1);
@@ -105,7 +106,7 @@ contract RedeemTest is BaseTest {
         );
 
         vault.requestRedeem(amount, address(this), address(this));
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), amount);
         assertGt(vault.pendingRedeemRequest(0, self), 0);
 
         // trigger executed collectRedeem
@@ -117,7 +118,7 @@ contract RedeemTest is BaseTest {
         // assert withdraw & redeem values adjusted
         assertEq(vault.maxWithdraw(self), assets); // max deposit
         assertEq(vault.maxRedeem(self), amount); // max deposit
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), 0);
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
@@ -182,7 +183,8 @@ contract RedeemTest is BaseTest {
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), amount);
         assertEq(shareToken.balanceOf(self), amount);
 
         // check message was send out to centchain
@@ -207,7 +209,8 @@ contract RedeemTest is BaseTest {
             vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
         );
 
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(globalEscrow)), amount);
         assertEq(shareToken.balanceOf(self), amount);
         assertEq(vault.claimableCancelRedeemRequest(0, self), amount);
         assertEq(vault.pendingCancelRedeemRequest(0, self), false);

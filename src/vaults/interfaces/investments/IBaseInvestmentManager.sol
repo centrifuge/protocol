@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 interface IBaseInvestmentManager {
     // --- Events ---
@@ -27,4 +29,10 @@ interface IBaseInvestmentManager {
 
     /// @notice Returns the PoolManager contract address.
     function poolManager() external view returns (IPoolManager poolManager);
+
+    /// @notice The global escrow used for funds that are not yet free to be used for a specific pool
+    function globalEscrow() external view returns (IEscrow escrow);
+
+    /// @notice Escrow per pool. Funds are associated to a specific pool
+    function poolEscrow(PoolId poolId) external view returns (IPoolEscrow);
 }

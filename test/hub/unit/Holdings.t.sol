@@ -54,29 +54,6 @@ contract TestCommon is Test {
     }
 }
 
-contract TestFile is TestCommon {
-    address constant newHubRegistryAddr = address(42);
-
-    function testSuccess() public {
-        vm.expectEmit();
-        emit IHoldings.File("hubRegistry", newHubRegistryAddr);
-        holdings.file("hubRegistry", newHubRegistryAddr);
-
-        assertEq(address(holdings.hubRegistry()), newHubRegistryAddr);
-    }
-
-    function testErrNotAuthorized() public {
-        vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.file("hubRegistry", newHubRegistryAddr);
-    }
-
-    function testErrFileUnrecognizedParam() public {
-        vm.expectRevert(abi.encodeWithSelector(IHoldings.FileUnrecognizedParam.selector));
-        holdings.file("unrecongnizedWhat", newHubRegistryAddr);
-    }
-}
-
 contract TestCreate is TestCommon {
     function testSuccess() public {
         HoldingAccount[] memory accounts = new HoldingAccount[](2);

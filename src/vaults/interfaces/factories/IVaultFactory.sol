@@ -9,6 +9,8 @@ import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 interface IVaultFactory {
+    error UnsupportedTokenId();
+
     /// @notice Deploys new vault for `poolId`, `scId` and `asset`.
     ///
     /// @param poolId Id of the pool. Id is one of the already supported pools.

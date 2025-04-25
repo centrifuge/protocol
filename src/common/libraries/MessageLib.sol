@@ -24,11 +24,14 @@ enum MessageType {
     NotifyShareClass,
     NotifyPricePoolPerShare,
     NotifyPricePoolPerAsset,
-    UpdateShareClassMetadata,
-    UpdateShareClassHook,
+    NotifyShareMetadata,
+    UpdateShareHook,
     TransferShares,
     UpdateRestriction,
     UpdateContract,
+    ApprovedDeposits,
+    IssuedShares,
+    RevokedShares,
     // -- Investment manager messages
     DepositRequest,
     RedeemRequest,
@@ -41,14 +44,11 @@ enum MessageType {
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
-    ApprovedDeposits,
-    RevokedShares,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
-    SetSharesQueue,
-    SetAssetsQueue
+    SetQueue
 }
 
 enum UpdateRestrictionType {
@@ -99,11 +99,14 @@ library MessageLib {
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
-        (185 << uint8(MessageType.UpdateShareClassMetadata) * 8) +
-        (57  << uint8(MessageType.UpdateShareClassHook) * 8) +
+        (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
+        (57  << uint8(MessageType.UpdateShareHook) * 8) +
         (73  << uint8(MessageType.TransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
+        (73  << uint8(MessageType.ApprovedDeposits) * 8) +
+        (57  << uint8(MessageType.IssuedShares) * 8) +
+        (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -114,17 +117,14 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (57  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (57  << uint8(MessageType.RevokedShares) * 8) +
-        (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
-        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+        (90 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
+        (74 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 = 
+    uint256 constant MESSAGE_LENGTHS_2 =
+        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
-        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) +
-        (26 << (uint8(MessageType.SetAssetsQueue) - 32) * 8);
+        (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -153,8 +153,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to SetAssetsQueue contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetAssetsQueue)) {
+        // All messages from NotifyPool to SetQueue contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetQueue)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -404,23 +404,19 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateShareClassMetadata
+    //    NotifyShareMetadata
     //---------------------------------------
 
-    struct UpdateShareClassMetadata {
+    struct NotifyShareMetadata {
         uint64 poolId;
         bytes16 scId;
         string name; // Fixed to 128 bytes
         bytes32 symbol; // utf8
     }
 
-    function deserializeUpdateShareClassMetadata(bytes memory data)
-        internal
-        pure
-        returns (UpdateShareClassMetadata memory)
-    {
-        require(messageType(data) == MessageType.UpdateShareClassMetadata, UnknownMessageType());
-        return UpdateShareClassMetadata({
+    function deserializeNotifyShareMetadata(bytes memory data) internal pure returns (NotifyShareMetadata memory) {
+        require(messageType(data) == MessageType.NotifyShareMetadata, UnknownMessageType());
+        return NotifyShareMetadata({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             name: data.slice(25, 128).bytes128ToString(),
@@ -428,29 +424,29 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateShareClassMetadata memory t) internal pure returns (bytes memory) {
+    function serialize(NotifyShareMetadata memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateShareClassMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
+            MessageType.NotifyShareMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
         );
     }
 
     //---------------------------------------
-    //    UpdateShareClassHook
+    //    UpdateShareHook
     //---------------------------------------
 
-    struct UpdateShareClassHook {
+    struct UpdateShareHook {
         uint64 poolId;
         bytes16 scId;
         bytes32 hook;
     }
 
-    function deserializeUpdateShareClassHook(bytes memory data) internal pure returns (UpdateShareClassHook memory) {
-        require(messageType(data) == MessageType.UpdateShareClassHook, UnknownMessageType());
-        return UpdateShareClassHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
+    function deserializeUpdateShareHook(bytes memory data) internal pure returns (UpdateShareHook memory) {
+        require(messageType(data) == MessageType.UpdateShareHook, UnknownMessageType());
+        return UpdateShareHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
     }
 
-    function serialize(UpdateShareClassHook memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShareClassHook, t.poolId, t.scId, t.hook);
+    function serialize(UpdateShareHook memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateShareHook, t.poolId, t.scId, t.hook);
     }
 
     //---------------------------------------
@@ -1060,6 +1056,7 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         uint128 assetAmount;
+        uint128 pricePoolPerAsset;
     }
 
     function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
@@ -1069,12 +1066,41 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            pricePoolPerAsset: data.toUint128(57)
         });
     }
 
     function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(
+            MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount, t.pricePoolPerAsset
+        );
+    }
+
+    //---------------------------------------
+    //    IssuedShares
+    //---------------------------------------
+
+    struct IssuedShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
+    }
+
+    function deserializeIssuedShares(bytes memory data) internal pure returns (IssuedShares memory) {
+        require(messageType(data) == MessageType.IssuedShares, UnknownMessageType());
+
+        return IssuedShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            shareAmount: data.toUint128(25),
+            pricePoolPerShare: data.toUint128(41)
+        });
+    }
+
+    function serialize(IssuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.IssuedShares, t.poolId, t.scId, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------
@@ -1085,6 +1111,8 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
         uint128 assetAmount;
     }
 
@@ -1095,12 +1123,16 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            shareAmount: data.toUint128(57),
+            pricePoolPerShare: data.toUint128(73)
         });
     }
 
     function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(
+            MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount, t.shareAmount, t.pricePoolPerShare
+        );
     }
 
     //---------------------------------------
@@ -1113,7 +1145,6 @@ library MessageLib {
         uint128 assetId;
         bytes32 who;
         uint128 amount;
-        uint128 pricePerUnit;
         bool isIncrease; // Signals whether this is an increase or a decrease
     }
 
@@ -1130,21 +1161,13 @@ library MessageLib {
             assetId: data.toUint128(25),
             who: data.toBytes32(41),
             amount: data.toUint128(73),
-            pricePerUnit: data.toUint128(89),
-            isIncrease: data.toBool(105)
+            isIncrease: data.toBool(89)
         });
     }
 
     function serialize(TriggerUpdateHoldingAmount memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TriggerUpdateHoldingAmount,
-            t.poolId,
-            t.scId,
-            t.assetId,
-            t.who,
-            t.amount,
-            t.pricePerUnit,
-            t.isIncrease
+            MessageType.TriggerUpdateHoldingAmount, t.poolId, t.scId, t.assetId, t.who, t.amount, t.isIncrease
         );
     }
 
@@ -1223,40 +1246,21 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    SetSharesQueue
+    //    SetQueue
     //---------------------------------------
 
-    struct SetSharesQueue {
+    struct SetQueue {
         uint64 poolId;
         bytes16 scId;
         bool enabled;
     }
 
-    function deserializeSetSharesQueue(bytes memory data) internal pure returns (SetSharesQueue memory) {
-        require(messageType(data) == MessageType.SetSharesQueue, UnknownMessageType());
-        return SetSharesQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
+    function deserializeSetQueue(bytes memory data) internal pure returns (SetQueue memory) {
+        require(messageType(data) == MessageType.SetQueue, UnknownMessageType());
+        return SetQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
     }
 
-    function serialize(SetSharesQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetSharesQueue, t.poolId, t.scId, t.enabled);
-    }
-
-    //---------------------------------------
-    //    SetAssetsQueue
-    //---------------------------------------
-
-    struct SetAssetsQueue {
-        uint64 poolId;
-        bytes16 scId;
-        bool enabled;
-    }
-
-    function deserializeSetAssetsQueue(bytes memory data) internal pure returns (SetAssetsQueue memory) {
-        require(messageType(data) == MessageType.SetAssetsQueue, UnknownMessageType());
-        return SetAssetsQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
-    }
-
-    function serialize(SetAssetsQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetAssetsQueue, t.poolId, t.scId, t.enabled);
+    function serialize(SetQueue memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetQueue, t.poolId, t.scId, t.enabled);
     }
 }

@@ -20,19 +20,16 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
     ISyncDepositManager public immutable syncDepositManager;
     IAsyncRedeemManager public immutable asyncRedeemManager;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
 
     constructor(
         address root_,
         ISyncDepositManager syncDepositManager_,
         IAsyncRedeemManager asyncRedeemManager_,
-        IPoolEscrowProvider poolEscrowProvider_,
         address deployer
     ) Auth(deployer) {
         root = root_;
         syncDepositManager = syncDepositManager_;
         asyncRedeemManager = asyncRedeemManager_;
-        poolEscrowProvider = poolEscrowProvider_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -44,9 +41,9 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        SyncDepositVault vault = new SyncDepositVault(
-            poolId, scId, asset, tokenId, token, root, syncDepositManager, asyncRedeemManager, poolEscrowProvider
-        );
+        require(tokenId == 0, UnsupportedTokenId());
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
 
         vault.rely(root);
         vault.rely(address(syncDepositManager));

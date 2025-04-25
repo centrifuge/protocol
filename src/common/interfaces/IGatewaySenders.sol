@@ -56,6 +56,18 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
+    function sendNotifyShareMetadata(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external;
+
+    /// @notice Creates and send the message
     function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 pricePerShare)
         external;
 
@@ -115,10 +127,52 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
+    function sendApprovedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external;
+
+    // @notice Creates and send the message
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external;
 
     /// @notice Creates and send the message
-    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external;
+    function sendRevokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendTriggerUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address who,
+        uint128 amount,
+        bool isIncrease
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendTriggerUpdateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        address who,
+        uint128 shares,
+        bool isIssuance
+    ) external;
 
     /// @notice Creates and send the message
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
@@ -127,10 +181,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Creates and send the message
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
-
-    /// @notice Creates and send the message
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
 }
 
 /// @notice Interface for dispatch-only gateway

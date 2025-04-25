@@ -98,6 +98,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
@@ -110,7 +116,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.addShareClass(POOL_A, "", "", bytes32(0), bytes(""));
+        hub.addShareClass(POOL_A, "", "", bytes32(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
@@ -169,16 +175,19 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.sendTriggerUpdateHoldingAmount(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), address(0), 0, false);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.sendTriggerUpdateShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0, false);
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.sendTriggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.sendTriggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetSharesQueue(0, POOL_A, ShareClassId.wrap(0), true);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetAssetsQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.sendSetQueue(0, POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

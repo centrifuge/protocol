@@ -131,6 +131,6 @@ contract Accounting is Auth, IAccounting {
     }
 
     function _generateJournalId(PoolId poolId) internal returns (uint256) {
-        return uint256((uint128(poolId.raw()) << 64) | ++_poolJournalIdCounter[poolId]);
+        return uint256((uint256(poolId.raw()) << 128) | ++_poolJournalIdCounter[poolId]);
     }
 }

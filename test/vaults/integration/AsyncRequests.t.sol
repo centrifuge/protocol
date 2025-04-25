@@ -7,6 +7,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
@@ -20,7 +21,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestsHarness is AsyncRequests {
-    constructor(address root, address deployer) AsyncRequests(root, deployer) {}
+    constructor(IEscrow globalEscrow, address root, address deployer) AsyncRequests(globalEscrow, root, deployer) {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
@@ -50,7 +51,7 @@ contract AsyncRequestsTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequests(address(root), address(this));
+        new AsyncRequests(globalEscrow, address(root), address(this));
 
         // values set correctly
         assertEq(address(asyncRequests.sender()), address(messageDispatcher));
@@ -96,7 +97,7 @@ contract AsyncRequestsTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestsHarness harness = new AsyncRequestsHarness(address(root), address(this));
+        AsyncRequestsHarness harness = new AsyncRequestsHarness(globalEscrow, address(root), address(this));
         assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0), 0);
         assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1), 0);
     }

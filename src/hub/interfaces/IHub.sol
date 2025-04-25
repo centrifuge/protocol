@@ -38,6 +38,10 @@ enum AccountType {
 interface IHub {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
+    event NotifySharePrice(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
+    );
+    event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
     event NotifySharePrice(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare);
     event NotifyAssetPrice(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
@@ -100,6 +104,12 @@ interface IHub {
     /// @param hook The hook address of the share class
     function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
 
+    /// @notice Notify to a CV instance that share metadata has updated
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
+
+    /// @notice Update on a CV instance the hook of a share token
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
+
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
     /// @dev The receiving centrifugeId is derived from the provided assetId
     /// @param centrifugeId Chain to where the share price is notified
@@ -115,17 +125,18 @@ interface IHub {
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
 
+    /// @notice Update name & symbol of share class
+    function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
+        external
+        payable;
+
     /// @notice Allow/disallow an account to interact as pool manager
     function updateManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Add a new share class to the pool
-    function addShareClass(
-        PoolId poolId,
-        string calldata name,
-        string calldata symbol,
-        bytes32 salt,
-        bytes calldata data
-    ) external payable;
+    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
+        external
+        payable;
 
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -180,6 +191,26 @@ interface IHub {
         D18 navPoolPerShare
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
+    /// @notice Tells the BalanceSheet to deposit/withdraw assets.
+    function sendTriggerUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address who,
+        uint128 amount,
+        bool isIncrease
+    ) external payable;
+
+    /// @notice Tells the BalanceSheet to issue/revoke shares.
+    function sendTriggerUpdateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        address who,
+        uint128 shares,
+        bool isIssuance
+    ) external payable;
+
     /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
 
@@ -188,10 +219,7 @@ interface IHub {
     function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function sendSetSharesQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
-
-    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function sendSetAssetsQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.

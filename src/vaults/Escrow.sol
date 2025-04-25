@@ -11,51 +11,31 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
 
-    // --- Token approvals ---
     /// @inheritdoc IEscrow
-    function approveMax(address asset, address spender) external auth {
-        if (IERC20(asset).allowance(address(this), spender) == 0) {
-            SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-            emit Approve(asset, spender, type(uint256).max);
-        }
-    }
-
-    /// @inheritdoc IEscrow
-    function approveMax(address asset, uint256 tokenId, address spender) external auth {
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
+        emit AuthTransferTo(asset, tokenId, receiver, amount);
         if (tokenId == 0) {
-            if (IERC20(asset).allowance(address(this), spender) == 0) {
-                SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-                emit Approve(asset, spender, type(uint256).max);
-            }
+            uint256 balance = IERC20(asset).balanceOf(address(this));
+            require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
+            SafeTransferLib.safeTransfer(asset, receiver, amount);
         } else {
-            if (IERC6909(asset).allowance(address(this), spender, tokenId) == 0) {
-                IERC6909(asset).approve(spender, tokenId, type(uint256).max);
-                emit Approve(asset, tokenId, spender, type(uint256).max);
-            }
+            uint256 balance = IERC6909(asset).balanceOf(address(this), tokenId);
+            require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
+            IERC6909(asset).transfer(receiver, tokenId, amount);
         }
     }
 
     /// @inheritdoc IEscrow
-    function unapprove(address asset, address spender) external auth {
-        SafeTransferLib.safeApprove(asset, spender, 0);
-        emit Approve(asset, spender, 0);
-    }
-
-    /// @inheritdoc IEscrow
-    function unapprove(address asset, uint256 tokenId, address spender) external auth {
-        if (tokenId == 0) {
-            SafeTransferLib.safeApprove(asset, spender, 0);
-            emit Approve(asset, spender, 0);
-        } else {
-            IERC6909(asset).approve(spender, tokenId, 0);
-            emit Approve(asset, tokenId, spender, 0);
-        }
+    function authTransferTo(address asset, address receiver, uint256 amount) external auth {
+        emit AuthTransferTo(asset, receiver, amount);
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        require(balance >= amount, InsufficientBalance(asset, 0, amount, balance));
+        SafeTransferLib.safeTransfer(asset, receiver, amount);
     }
 }
 
@@ -78,18 +58,16 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
 
     /// @inheritdoc IPoolEscrow
     function deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
-        _deposit(scId, asset, tokenId, value, true);
-    }
+        holding[scId][asset][tokenId].total += value.toUint128();
 
-    /// @inheritdoc IPoolEscrow
-    function noteDeposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
-        _deposit(scId, asset, tokenId, value, false);
+        emit Deposit(asset, tokenId, poolId, scId, value);
     }
 
     /// @inheritdoc IPoolEscrow
     function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
         Holding storage holding_ = holding[scId][asset][tokenId];
-        require(holding_.total - holding_.reserved >= value, InsufficientBalance());
+        uint256 balance = holding_.total - holding_.reserved;
+        require(balance >= value, InsufficientBalance(asset, tokenId, value, balance));
 
         holding_.total -= value.toUint128();
 
@@ -121,23 +99,5 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
         Holding storage holding_ = holding[scId][asset][tokenId];
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;
-    }
-
-    function _deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value, bool checkSufficiency)
-        internal
-    {
-        uint128 holding_ = holding[scId][asset][tokenId].total;
-
-        // Leave out check for deposits which transfer funds post escrow.deposit due to security concerns
-        if (checkSufficiency) {
-            uint256 balance = tokenId == 0
-                ? IERC20(asset).balanceOf(address(this))
-                : IERC6909(asset).balanceOf(address(this), tokenId);
-            require(balance >= holding_ + value, InsufficientDeposit());
-        }
-
-        holding[scId][asset][tokenId].total += value.toUint128();
-
-        emit Deposit(asset, tokenId, poolId, scId, value);
     }
 }

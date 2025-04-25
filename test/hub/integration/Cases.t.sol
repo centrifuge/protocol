@@ -23,7 +23,7 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
         hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
         hub.createAccount(poolId, AccountId.wrap(0x01), true);

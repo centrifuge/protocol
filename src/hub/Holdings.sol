@@ -16,23 +16,15 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 contract Holdings is Auth, IHoldings {
-    using MathLib for uint256; // toInt128()
+    using MathLib for uint256;
+
+    IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
-    IHubRegistry public hubRegistry;
-
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
-    }
-
-    /// @inheritdoc IHoldings
-    function file(bytes32 what, address data) external auth {
-        if (what == "hubRegistry") hubRegistry = IHubRegistry(data);
-        else revert FileUnrecognizedParam();
-
-        emit File(what, data);
     }
 
     /// @inheritdoc IHoldings
