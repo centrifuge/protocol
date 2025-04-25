@@ -114,7 +114,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, true);
+        emit IBalanceSheet.UpdateManager(POOL_A, randomUser, true);
 
         balanceSheet.update(
             POOL_A,
@@ -127,7 +127,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, false);
+        emit IBalanceSheet.UpdateManager(POOL_A, randomUser, false);
 
         balanceSheet.update(
             POOL_A,

@@ -10,7 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
-    event UpdateManager(PoolId indexed poolId, ShareClassId indexed scId, address who, bool canManage);
+    event UpdateManager(PoolId indexed poolId, address who, bool canManage);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,

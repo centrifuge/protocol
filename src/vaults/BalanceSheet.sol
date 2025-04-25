@@ -42,7 +42,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IVaultMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
 
-    mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public manager;
+    mapping(PoolId => mapping(address => bool)) public manager;
 
     mapping(PoolId poolId => mapping(ShareClassId scId => bool)) public queueEnabled;
     mapping(PoolId poolId => mapping(ShareClassId scId => QueueAmount)) public queuedShares;
@@ -51,8 +51,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     constructor(address deployer) Auth(deployer) {}
 
     /// @dev Check if the msg.sender has managers
-    modifier authOrManager(PoolId poolId, ShareClassId scId) {
-        require(wards[msg.sender] == 1 || manager[poolId][scId][msg.sender], IAuth.NotAuthorized());
+    modifier authOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
         _;
     }
 
@@ -67,7 +67,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// --- IUpdateContract Implementation ---
-    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external auth {
+    function update(PoolId poolId, ShareClassId, /* scId */ bytes calldata payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateManager)) {
@@ -75,9 +75,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
             address who = m.who.toAddress();
 
-            manager[poolId][scId][who] = m.canManage;
+            manager[poolId][who] = m.canManage;
 
-            emit UpdateManager(poolId, scId, who, m.canManage);
+            emit UpdateManager(poolId, who, m.canManage);
         } else {
             revert UnknownUpdateContractType();
         }
@@ -87,7 +87,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
         external
-        authOrManager(poolId, scId)
+        authOrManager(poolId)
     {
         IShareToken token = IShareToken(poolManager.shareToken(poolId, scId));
         token.authTransferFrom(from, from, to, amount);
@@ -96,7 +96,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
         external
-        authOrManager(poolId, scId)
+        authOrManager(poolId)
     {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
         _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
@@ -112,7 +112,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address provider,
         uint128 amount
-    ) external authOrManager(poolId, scId) {
+    ) external authOrManager(poolId) {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
         _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
     }
@@ -125,21 +125,18 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external authOrManager(poolId, scId) {
+    ) external authOrManager(poolId) {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
         _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId, scId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
         _issue(poolId, scId, to, shares);
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
-        external
-        authOrManager(poolId, scId)
-    {
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external authOrManager(poolId) {
         _noteRevoke(poolId, scId, from, shares);
         _executeRevoke(poolId, scId, from, shares);
     }
@@ -148,7 +145,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @dev This function is mostly useful to keep higher level integrations CEI adherent.
     function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
         external
-        authOrManager(poolId, scId)
+        authOrManager(poolId)
     {
         _noteRevoke(poolId, scId, from, shares);
     }
@@ -190,15 +187,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        authOrManager(poolId, scId)
-    {
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
         _submitQueuedAssets(poolId, scId, assetId);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId, scId) {
+    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
         _submitQueuedShares(poolId, scId);
     }
 
