@@ -396,14 +396,11 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
         IPoolEscrow(address(poolEscrowProvider.escrow(poolId))).reserveDecrease(
             scId, vaultDetails.asset, vaultDetails.tokenId, assets
         );
 
-        balanceSheet.withdraw(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets, pricePoolPerAsset
-        );
+        balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
     /// @inheritdoc IAsyncDepositManager
