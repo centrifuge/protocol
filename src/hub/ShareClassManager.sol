@@ -161,7 +161,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         approvedPoolAmount = PricingLib.convertWithPrice(
             approvedAssetAmount, hubRegistry.decimals(depositAssetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        ).toUint128();
+        );
 
         // Update epoch data
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowDepositEpochId];
@@ -342,7 +342,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         // have an excess of a share class tokens which cannot be claimed by anyone.
         // This excess is at most n-1 share tokens for an epoch with n claimable users.
         if (paymentAssetAmount > 0) {
-            uint256 paymentPoolAmount = PricingLib.convertWithPrice(
+            uint128 paymentPoolAmount = PricingLib.convertWithPrice(
                 paymentAssetAmount,
                 hubRegistry.decimals(depositAssetId),
                 hubRegistry.decimals(poolId),

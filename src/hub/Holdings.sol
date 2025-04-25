@@ -67,7 +67,7 @@ contract Holdings is Auth, IHoldings {
 
         amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        ).toUint128();
+        );
 
         holding_.assetAmount += amount_;
         holding_.assetAmountValue += amountValue;
@@ -86,7 +86,7 @@ contract Holdings is Auth, IHoldings {
 
         amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        ).toUint128();
+        );
 
         holding_.assetAmount -= amount_;
         holding_.assetAmountValue -= amountValue;

@@ -111,7 +111,7 @@ abstract contract ShareClassManagerBaseTest is Test {
             IHubRegistry(hubRegistryMock).decimals(assetId),
             IHubRegistry(hubRegistryMock).decimals(poolId),
             _pricePoolPerAsset(assetId)
-        ).toUint128();
+        );
     }
 
     function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
@@ -120,7 +120,7 @@ abstract contract ShareClassManagerBaseTest is Test {
             IHubRegistry(hubRegistryMock).decimals(poolId),
             IHubRegistry(hubRegistryMock).decimals(assetId),
             _pricePoolPerAsset(assetId).reciprocal()
-        ).toUint128();
+        );
     }
 
     function _calcSharesIssued(AssetId assetId, uint128 depositAmountAsset, D18 pricePoolPerShare)
