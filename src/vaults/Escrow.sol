@@ -11,7 +11,6 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 contract Escrow is Auth, IEscrow {
@@ -21,37 +20,22 @@ contract Escrow is Auth, IEscrow {
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
         emit AuthTransferTo(asset, tokenId, receiver, amount);
         if (tokenId == 0) {
-            try IERC20(asset).transfer(receiver, amount) returns (bool success) {
-                if (!success) {
-                    uint256 balance = IERC20(asset).balanceOf(address(this));
-                    revert InsufficientBalance(asset, tokenId, amount, balance);
-                }
-            } catch {
-                uint256 balance = IERC20(asset).balanceOf(address(this));
-                revert InsufficientBalance(asset, tokenId, amount, balance);
-            }
+            uint256 balance = IERC20(asset).balanceOf(address(this));
+            require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
+            SafeTransferLib.safeTransfer(asset, receiver, amount);
         } else {
-            try IERC6909(asset).transfer(receiver, tokenId, amount) {
-                // Transfer succeeded
-            } catch {
-                uint256 balance = IERC6909(asset).balanceOf(address(this), tokenId);
-                revert InsufficientBalance(asset, tokenId, amount, balance);
-            }
+            uint256 balance = IERC6909(asset).balanceOf(address(this), tokenId);
+            require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
+            IERC6909(asset).transfer(receiver, tokenId, amount);
         }
     }
 
     /// @inheritdoc IEscrow
     function authTransferTo(address asset, address receiver, uint256 amount) external auth {
         emit AuthTransferTo(asset, receiver, amount);
-        try IERC20(asset).transfer(receiver, amount) returns (bool success) {
-            if (!success) {
-                uint256 balance = IERC20(asset).balanceOf(address(this));
-                revert InsufficientBalance(asset, 0, amount, balance);
-            }
-        } catch {
-            uint256 balance = IERC20(asset).balanceOf(address(this));
-            revert InsufficientBalance(asset, 0, amount, balance);
-        }
+        uint256 balance = IERC20(asset).balanceOf(address(this));
+        require(balance >= amount, InsufficientBalance(asset, 0, amount, balance));
+        SafeTransferLib.safeTransfer(asset, receiver, amount);
     }
 }
 

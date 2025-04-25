@@ -294,6 +294,7 @@ contract MockCentrifugeChain is Test {
     ) public {
         // NOTE: Currently, hardcoding pricePoolPerAsset to 1
         isApprovedDeposits(poolId, scId, assetId, assets, d18(1, 1));
+        isIssuedShares(poolId, scId, shares, d18(1, 1));
 
         execute(
             MessageLib.FulfilledDepositRequest({
@@ -341,6 +342,18 @@ contract MockCentrifugeChain is Test {
                 assetId: assetId,
                 assetAmount: assets,
                 pricePoolPerAsset: pricePoolPerAsset.raw()
+            }).serialize()
+        );
+    }
+
+    /// @dev Impicitly called by isFulfilledDepositRequest
+    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 shares, D18 pricePoolPerShare) public {
+        execute(
+            MessageLib.IssuedShares({
+                poolId: poolId,
+                scId: scId,
+                shareAmount: shares,
+                pricePoolPerShare: pricePoolPerShare.raw()
             }).serialize()
         );
     }
