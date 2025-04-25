@@ -12,6 +12,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -45,7 +46,7 @@ import {PoolEscrow} from "src/vaults/Escrow.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+contract PoolManager is ReentrancyProtection, Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -103,6 +104,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     /// @inheritdoc IPoolManager
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
+        protected
         payable
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
