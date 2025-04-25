@@ -130,6 +130,8 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount)
         );
 
+        balanceSheet.setPricePoolPerAsset(syncVault.poolId(), syncVault.scId(), pricePoolPerAsset);
+
         _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
         syncVault.deposit(amount, self);
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
