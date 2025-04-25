@@ -11,7 +11,12 @@ contract TestCases is BaseTest {
     using MessageLib for *;
     using ConversionLib for *;
 
-    TransientValuation transientValuation = new TransientValuation(hubRegistry);
+    TransientValuation transientValuation;
+
+    function setUp() public override {
+        super.setUp();
+        transientValuation = new TransientValuation(hubRegistry);
+    }
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {

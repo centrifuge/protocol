@@ -57,7 +57,7 @@ contract BaseTest is HubDeployer, Test {
         wire(CHAIN_CV, cv, address(this));
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         // Pre deployment
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
 
