@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
@@ -21,6 +22,7 @@ import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.s
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
+    using CastLib for address;
     using MessageLib for *;
 
     function run() public {
@@ -93,7 +95,7 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
-        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.updatePricePerShare(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
@@ -101,20 +103,50 @@ contract LocalhostDeployer is FullDeployer {
         IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
-        uint128 investAmount = 1_000_000e6;
-        token.approve(address(vault), investAmount);
-        vault.requestDeposit(investAmount, msg.sender, msg.sender);
+        token.approve(address(vault), 1_000_000e6);
+        vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
+        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
 
-        hub.approveDeposits(poolId, scId, assetId, investAmount, valuation);
-        hub.issueShares(poolId, scId, assetId, navPerShare);
-
-        hub.claimDeposit(poolId, scId, assetId, bytes32(bytes20(msg.sender)));
+        uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
+        hub.claimDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
 
         // Claim deposit request
-        vault.mint(investAmount, msg.sender);
+        vault.mint(1_000_000e18, msg.sender);
+
+        // Withdraw principal
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6, d18(1, 1));
+
+        // Update price, deposit principal + yield
+        hub.updatePricePerShare(poolId, scId, d18(11, 10));
+        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
+
+        token.approve(address(balanceSheet), 1_100_000e18);
+        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6, d18(11, 10));
+
+        // Make sender a member to submit redeem request
+        hub.updateRestriction(
+            poolId,
+            scId,
+            centrifugeId,
+            MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
+                .serialize()
+        );
+
+        // Submit redeem request
+        vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
+
+        // Fulfill redeem request
+        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
+
+        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
+
+        // Claim redeem request
+        vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
@@ -156,7 +188,7 @@ contract LocalhostDeployer is FullDeployer {
             }).serialize()
         );
 
-        hub.updatePricePoolPerShare(poolId, scId, navPerShare, "");
+        hub.updatePricePerShare(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 

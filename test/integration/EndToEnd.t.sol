@@ -221,7 +221,7 @@ contract TestEndToEnd is Test {
             poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
         );
 
-        h.hub.updatePricePoolPerShare(poolId, scId, IDENTITY_PRICE, "");
+        h.hub.updatePricePerShare(poolId, scId, IDENTITY_PRICE);
         h.hub.notifySharePrice{value: GAS}(poolId, scId, cv.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(poolId, scId, assetId);
 
@@ -255,13 +255,13 @@ contract TestEndToEnd is Test {
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
         vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
 
+        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
         vm.startPrank(FM);
-        IERC7726 valuation = h.holdings.valuation(poolId, scId, assetId);
-        h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, INVESTOR_A_AMOUNT, valuation);
-        h.hub.issueShares(poolId, scId, assetId, IDENTITY_PRICE);
+        h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, depositEpochId, INVESTOR_A_AMOUNT);
+        h.hub.issueShares(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
-        h.hub.claimDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32());
+        h.hub.claimDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), 1);
 
         //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
 
