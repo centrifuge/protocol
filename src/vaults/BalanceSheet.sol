@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
@@ -11,6 +10,8 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
@@ -150,6 +151,14 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         _noteRevoke(poolId, scId, from, shares);
     }
 
+    function setPricePoolPerAsset(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId)), value.raw());
+    }
+
+    function setPricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
+    }
+
     /// --- IBalanceSheetHandler ---
     /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
@@ -253,8 +262,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) internal {
-        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
-        emit Issue(poolId, scId, to, pricePoolPerShare, shares);
+        emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
             queuedShares[poolId][scId].increase += shares;
@@ -318,5 +326,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         queue.increase = 0;
         queue.decrease = 0;
+    }
+
+    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId) internal view returns (D18) {
+        return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId))));
+    }
+
+    function _pricePoolPerShare(PoolId poolId, ShareClassId scId) internal view returns (D18) {
+        return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
     }
 }

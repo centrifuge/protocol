@@ -64,4 +64,8 @@ interface IBalanceSheet {
     function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+
+    function setPricePoolPerAsset(PoolId poolId, ShareClassId scId, D18 value) external;
+
+    function setPricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
 }
