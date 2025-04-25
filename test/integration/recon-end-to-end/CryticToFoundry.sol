@@ -85,7 +85,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, false, 0);
 
-        shortcut_redeem_and_claim(1e18, 1e18, 1e18, 1e18, false, 0);
+        shortcut_redeem_and_claim(1e18, 1e18, false, 0);
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {

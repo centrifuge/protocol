@@ -165,7 +165,6 @@ abstract contract TargetFunctions is
         if(!isIdentityValuation) {
             transientValuation_setPrice_clamped(poolId, priceValuation);
         }
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
 
         shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), isIdentityValuation, navPerShare);
        
@@ -174,13 +173,12 @@ abstract contract TargetFunctions is
         vault_deposit(amount);
     }
 
-    function shortcut_redeem_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 shares, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
+    function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
         _resetEpochIncrement();
 
-        hub_approveRedeems(poolId, scId, assetId, uint128(shares));
-        hub_revokeShares(poolId, scId, navPerShare, transientValuation);
+        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), navPerShare, isIdentityValuation);
         
         hub_claimRedeem(poolId, scId, assetId);
 
