@@ -191,6 +191,26 @@ interface IHub {
         D18 navPoolPerShare
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
+    /// @notice Tells the BalanceSheet to deposit/withdraw assets.
+    function sendTriggerUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address who,
+        uint128 amount,
+        bool isIncrease
+    ) external payable;
+
+    /// @notice Tells the BalanceSheet to issue/revoke shares.
+    function sendTriggerUpdateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        address who,
+        uint128 shares,
+        bool isIssuance
+    ) external payable;
+
     /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
 
