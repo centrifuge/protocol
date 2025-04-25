@@ -168,13 +168,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateShareClassMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol)
-        public
-        pure
-    {
-        MessageLib.UpdateShareClassMetadata memory a =
-            MessageLib.UpdateShareClassMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
-        MessageLib.UpdateShareClassMetadata memory b = MessageLib.deserializeUpdateShareClassMetadata(a.serialize());
+    function testNotifyShareMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol) public pure {
+        MessageLib.NotifyShareMetadata memory a =
+            MessageLib.NotifyShareMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
+        MessageLib.NotifyShareMetadata memory b = MessageLib.deserializeNotifyShareMetadata(a.serialize());
 
         string calldata slicedName = bytes(name).length > 128 ? name[0:128] : name;
 
@@ -187,10 +184,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testUpdateShareClassHook(uint64 poolId, bytes16 scId, bytes32 hook) public pure {
-        MessageLib.UpdateShareClassHook memory a =
-            MessageLib.UpdateShareClassHook({poolId: poolId, scId: scId, hook: hook});
-        MessageLib.UpdateShareClassHook memory b = MessageLib.deserializeUpdateShareClassHook(a.serialize());
+    function testUpdateShareHook(uint64 poolId, bytes16 scId, bytes32 hook) public pure {
+        MessageLib.UpdateShareHook memory a = MessageLib.UpdateShareHook({poolId: poolId, scId: scId, hook: hook});
+        MessageLib.UpdateShareHook memory b = MessageLib.deserializeUpdateShareHook(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);

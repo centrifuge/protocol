@@ -106,13 +106,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updatePricePoolPerAsset(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.price, m.timestamp
             );
-        } else if (kind == MessageType.UpdateShareClassMetadata) {
-            MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
+        } else if (kind == MessageType.NotifyShareMetadata) {
+            MessageLib.NotifyShareMetadata memory m = MessageLib.deserializeNotifyShareMetadata(message);
             poolManager.updateShareMetadata(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
             );
-        } else if (kind == MessageType.UpdateShareClassHook) {
-            MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
+        } else if (kind == MessageType.UpdateShareHook) {
+            MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
             poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);

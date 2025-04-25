@@ -56,6 +56,18 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
+    function sendNotifyShareMetadata(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external;
+
+    /// @notice Creates and send the message
     function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 pricePerShare)
         external;
 

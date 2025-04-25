@@ -38,6 +38,10 @@ enum AccountType {
 interface IHub {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
+    event NotifySharePrice(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
+    );
+    event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
     event NotifySharePrice(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare);
     event NotifyAssetPrice(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
@@ -99,6 +103,12 @@ interface IHub {
     /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
     function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
+
+    /// @notice Notify to a CV instance that share metadata has updated
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
+
+    /// @notice Update on a CV instance the hook of a share token
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
     /// @dev The receiving centrifugeId is derived from the provided assetId
