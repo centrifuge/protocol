@@ -445,16 +445,20 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
+        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(increase, defaultAmount);
+
         // Submit with queue disabled
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
-        // Shares should remain in the queue and not be submitted
-        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(increase, defaultAmount);
+        // Shares should be submitted even if disabled
+        (increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(increase, 0);
+
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
-        assertEq(shares, 0);
-        assertEq(isIssuance, false);
+        assertEq(shares, defaultAmount);
+        assertEq(isIssuance, true);
     }
 
     function testTransferSharesFrom() public {
