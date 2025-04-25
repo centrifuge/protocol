@@ -165,13 +165,7 @@ contract BalanceSheetTest is BaseTest {
         erc20.approve(address(balanceSheet), defaultAmount);
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
         );
         balanceSheet.deposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
@@ -189,13 +183,7 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
         );
         balanceSheet.noteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
@@ -223,13 +211,7 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
         );
         balanceSheet.withdraw(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)

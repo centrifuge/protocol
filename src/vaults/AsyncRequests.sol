@@ -237,7 +237,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         // Need to transfer to the balanceSheet so that it can burn from itself
         globalEscrow.authTransferTo(vault_.share(), address(balanceSheet), shareAmount);
-        balanceSheet.revoke(poolId, scId, address(globalEscrow), pricePoolPerShare, shareAmount);
+        balanceSheet.revoke(poolId, scId, address(balanceSheet), pricePoolPerShare, shareAmount);
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler

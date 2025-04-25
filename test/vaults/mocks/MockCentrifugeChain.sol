@@ -307,7 +307,7 @@ contract MockCentrifugeChain is Test {
         uint128 shares
     ) public {
         // NOTE: Currently, hardcoding pricePoolPerAsset to 1
-        isApprovedDeposits(poolId, scId, assetId, assets, d18(1,1));
+        isApprovedDeposits(poolId, scId, assetId, assets, d18(1, 1));
 
         execute(
             MessageLib.FulfilledDepositRequest({
@@ -331,7 +331,7 @@ contract MockCentrifugeChain is Test {
         uint128 shares
     ) public {
         // NOTE: Currently hard coding pricePoolPerShare to 1
-        isRevokedShares(poolId, scId, assetId, assets, shares, d18(1,1));
+        isRevokedShares(poolId, scId, assetId, assets, shares, d18(1, 1));
         execute(
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId,
@@ -345,16 +345,38 @@ contract MockCentrifugeChain is Test {
     }
 
     /// @dev Implicitly called by isFulfilledDepositRequest
-    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets, D18 pricePoolPerAsset) public {
+    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets, D18 pricePoolPerAsset)
+        public
+    {
         execute(
-            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets, pricePoolPerAsset: pricePoolPerAsset.raw()}).serialize()
+            MessageLib.ApprovedDeposits({
+                poolId: poolId,
+                scId: scId,
+                assetId: assetId,
+                assetAmount: assets,
+                pricePoolPerAsset: pricePoolPerAsset.raw()
+            }).serialize()
         );
     }
 
     /// @dev Implicitly called by isFulfilledRedeemRequest
-    function isRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets, uint128 shareAmount, D18 pricePoolPerShare) public {
+    function isRevokedShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) public {
         execute(
-            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare.raw() }).serialize()
+            MessageLib.RevokedShares({
+                poolId: poolId,
+                scId: scId,
+                assetId: assetId,
+                assetAmount: assets,
+                shareAmount: shareAmount,
+                pricePoolPerShare: pricePoolPerShare.raw()
+            }).serialize()
         );
     }
 

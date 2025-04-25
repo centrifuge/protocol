@@ -305,7 +305,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_,
         uint128 shares,
         address receiver,
-        address /* owner */,
+        address, /* owner */
         uint128 depositAssetAmount
     ) internal {
         PoolId poolId = vault_.poolId();

@@ -614,9 +614,20 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount, uint128 pricePoolPerAsset) public pure {
-        MessageLib.ApprovedDeposits memory a =
-            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount, pricePoolPerAsset: pricePoolPerAsset});
+    function testApprovedDeposits(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assetAmount,
+        uint128 pricePoolPerAsset
+    ) public pure {
+        MessageLib.ApprovedDeposits memory a = MessageLib.ApprovedDeposits({
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            assetAmount: assetAmount,
+            pricePoolPerAsset: pricePoolPerAsset
+        });
 
         MessageLib.ApprovedDeposits memory b = MessageLib.deserializeApprovedDeposits(a.serialize());
 
@@ -630,9 +641,22 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount, uint128 shareAmount, uint128 pricePoolPerShare) public pure {
-        MessageLib.RevokedShares memory a =
-            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assetAmount, shareAmount: shareAmount, pricePoolPerShare: pricePoolPerShare });
+    function testRevokedShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        uint128 pricePoolPerShare
+    ) public pure {
+        MessageLib.RevokedShares memory a = MessageLib.RevokedShares({
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            assetAmount: assetAmount,
+            shareAmount: shareAmount,
+            pricePoolPerShare: pricePoolPerShare
+        });
 
         MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
 

@@ -124,7 +124,13 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     // @notice Creates and send the message
-    function sendIssuedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 shareAmount, D18 pricePoolPerShare) external;
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external;
 
     /// @notice Creates and send the message
     function sendRevokedShares(

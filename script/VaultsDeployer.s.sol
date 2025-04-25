@@ -54,8 +54,8 @@ contract VaultsDeployer is CommonDeployer {
         syncRequests = new SyncRequests(IEscrow(vaultsGlobalEscrow), address(root), deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, deployer);
         syncDepositVaultFactory =
-            new SyncDepositVaultFactory(address(root), syncRequests, asyncRequests, poolEscrowFactory, deployer)
-        ;
+            new SyncDepositVaultFactory(address(root), syncRequests, asyncRequests, poolEscrowFactory, deployer);
+
         IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
         vaultFactories[0] = asyncVaultFactory;
         vaultFactories[1] = syncDepositVaultFactory;

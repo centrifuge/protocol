@@ -317,10 +317,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendIssuedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 shareAmount, D18 pricePoolPerShare)
-        external
-        auth
-    {
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
         } else {

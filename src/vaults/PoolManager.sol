@@ -516,9 +516,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _relyShareToken(IBaseVault vault, IShareToken shareToken_)
-        internal
-    {
+    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
         address manager = address(IBaseVault(vault).manager());
         IAuth(address(shareToken_)).rely(manager);
 
