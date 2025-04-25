@@ -197,7 +197,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (uint256 assets)
     {
-        return convertToAssets(vault_, shares);
+        return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
@@ -247,7 +247,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-
         Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
         return super._assetToShareAmount(
@@ -263,12 +262,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         override(IBaseInvestmentManager, BaseInvestmentManager)
         returns (uint256 assets)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
-
-        return super._shareToAssetAmount(
-            vault_, vaultDetails, shares, prices_.poolPerAsset, prices_.poolPerShare, MathLib.Rounding.Up
-        );
+        return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
     }
 
     // --- ISharePriceProvider Overwrites ---
@@ -329,5 +323,17 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         } else {
             maxDeposit_ = maxReserve_ - availableBalance;
         }
+    }
+
+    function _shareToAssetAmount(IBaseVault vault_, uint256 assets, MathLib.Rounding rounding)
+        internal
+        view
+        returns (uint256 shares)
+    {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+        return super._shareToAssetAmount(
+            vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, rounding
+        );
     }
 }
