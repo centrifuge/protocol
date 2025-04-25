@@ -29,6 +29,9 @@ enum MessageType {
     TransferShares,
     UpdateRestriction,
     UpdateContract,
+    ApprovedDeposits,
+    IssuedShares,
+    RevokedShares,
     // -- Investment manager messages
     DepositRequest,
     RedeemRequest,
@@ -41,8 +44,6 @@ enum MessageType {
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
-    ApprovedDeposits,
-    RevokedShares,
     TriggerUpdateHoldingAmount,
     TriggerUpdateShares,
     TriggerSubmitQueuedShares,
@@ -103,6 +104,9 @@ library MessageLib {
         (73  << uint8(MessageType.TransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
+        (73  << uint8(MessageType.ApprovedDeposits) * 8) +
+        (57  << uint8(MessageType.IssuedShares) * 8) +
+        (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
         (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
@@ -113,14 +117,12 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (57  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
-        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+        (74 << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
-    uint256 constant MESSAGE_LENGTHS_2 = 
+    uint256 constant MESSAGE_LENGTHS_2 =
+        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
@@ -1055,6 +1057,7 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         uint128 assetAmount;
+        uint128 pricePoolPerAsset;
     }
 
     function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
@@ -1064,12 +1067,41 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            pricePoolPerAsset: data.toUint128(57)
         });
     }
 
     function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(
+            MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount, t.pricePoolPerAsset
+        );
+    }
+
+    //---------------------------------------
+    //    IssuedShares
+    //---------------------------------------
+
+    struct IssuedShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
+    }
+
+    function deserializeIssuedShares(bytes memory data) internal pure returns (IssuedShares memory) {
+        require(messageType(data) == MessageType.IssuedShares, UnknownMessageType());
+
+        return IssuedShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            shareAmount: data.toUint128(25),
+            pricePoolPerShare: data.toUint128(41)
+        });
+    }
+
+    function serialize(IssuedShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.IssuedShares, t.poolId, t.scId, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------
@@ -1080,6 +1112,8 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
+        uint128 shareAmount;
+        uint128 pricePoolPerShare;
         uint128 assetAmount;
     }
 
@@ -1090,12 +1124,16 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41)
+            assetAmount: data.toUint128(41),
+            shareAmount: data.toUint128(57),
+            pricePoolPerShare: data.toUint128(73)
         });
     }
 
     function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount);
+        return abi.encodePacked(
+            MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount, t.shareAmount, t.pricePoolPerShare
+        );
     }
 
     //---------------------------------------

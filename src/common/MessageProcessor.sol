@@ -236,13 +236,27 @@ contract MessageProcessor is Auth, IMessageProcessor {
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
-            balanceSheet.approvedDeposits(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            investmentManager.approvedDeposits(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                D18.wrap(m.pricePoolPerAsset)
+            );
+        } else if (kind == MessageType.IssuedShares) {
+            MessageLib.IssuedShares memory m = message.deserializeIssuedShares();
+            investmentManager.issuedShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shareAmount, D18.wrap(m.pricePoolPerShare)
             );
         } else if (kind == MessageType.RevokedShares) {
             MessageLib.RevokedShares memory m = message.deserializeRevokedShares();
-            balanceSheet.revokedShares(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            investmentManager.revokedShares(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                m.shareAmount,
+                D18.wrap(m.pricePoolPerShare)
             );
         } else if (kind == MessageType.TriggerSubmitQueuedShares) {
             MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();

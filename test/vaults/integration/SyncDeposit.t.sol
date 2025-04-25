@@ -52,7 +52,6 @@ contract SyncDepositTestHelper is BaseTest {
     {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        uint64 timestamp = uint64(block.timestamp);
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
 
@@ -61,7 +60,7 @@ contract SyncDepositTestHelper is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset, timestamp
+            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset
         );
     }
 }
@@ -99,8 +98,12 @@ contract SyncDepositTest is SyncDepositTestHelper {
         uint256 assetsForShares = syncVault.previewMint(shares);
         assertEq(shares, amount / assetsPerShare, "shares, amount / assetsPerShare");
         assertEq(assetsForShares, amount, "assetsForShares, amount");
-        assertEq(syncVault.maxDeposit(self), type(uint256).max, "syncVault.maxDeposit(self), type(uint256).max");
-        assertEq(syncVault.maxMint(self), type(uint256).max, "syncVault.maxMint(self), type(uint256).max");
+        assertEq(syncVault.maxDeposit(self), MAX_UINT128, "syncVault.maxDeposit(self) != type(uint128).max");
+        assertEq(
+            syncVault.maxMint(self),
+            syncVault.convertToShares(MAX_UINT128),
+            "syncVault.maxMint(self) != convertToShares(MAX_UINT128)"
+        );
 
         // Will fail - user not member: can not send funds
         vm.expectRevert(IHook.TransferBlocked.selector);
@@ -120,7 +123,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(ISyncRequests.ExceedsMaxReserve.selector);
+        vm.expectRevert(ISyncRequests.ExceedsMaxDeposit.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(

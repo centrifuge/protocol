@@ -22,14 +22,16 @@ contract BalanceSheetTest is BaseTest {
     using CastLib for *;
 
     uint128 defaultAmount;
-    D18 defaultPricePerShare;
+    D18 defaultPricePoolPerShare;
+    D18 defaultPricePoolPerAsset;
     AssetId assetId;
     ShareClassId defaultTypedShareClassId;
 
     function setUp() public override {
         super.setUp();
         defaultAmount = 100;
-        defaultPricePerShare = d18(1, 1);
+        defaultPricePoolPerShare = d18(1, 1);
+        defaultPricePoolPerAsset = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
@@ -38,27 +40,16 @@ contract BalanceSheetTest is BaseTest {
             POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictedTransfers
         );
         poolManager.updatePricePoolPerShare(
-            POOL_A, defaultTypedShareClassId, defaultPricePerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
         );
         poolManager.updatePricePoolPerAsset(
-            POOL_A, defaultTypedShareClassId, assetId, defaultPricePerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
         );
         poolManager.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
-        // In order for allowances to work during issuance, the balanceSheet must be canManage to transfer
-        poolManager.updateRestriction(
-            POOL_A,
-            defaultTypedShareClassId,
-            MessageLib.UpdateRestrictionMember({user: address(balanceSheet).toBytes32(), validUntil: MAX_UINT64})
-                .serialize()
-        );
-        // Manually set necessary escrow allowance which are naturally part of poolManager.addVault
-        IPoolEscrow escrow = poolEscrowFactory.escrow(POOL_A);
-        vm.prank(address(poolManager));
-        escrow.approveMax(address(erc20), erc20TokenId, address(balanceSheet));
     }
 
     // Deployment
@@ -76,7 +67,6 @@ contract BalanceSheetTest is BaseTest {
         assertEq(address(balanceSheet.gateway()), address(gateway));
         assertEq(address(balanceSheet.poolManager()), address(poolManager));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
-        assertEq(address(balanceSheet.sharePriceProvider()), address(syncRequests));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
@@ -102,8 +92,6 @@ contract BalanceSheetTest is BaseTest {
         assertEq(address(balanceSheet.gateway()), randomUser);
         balanceSheet.file("sender", randomUser);
         assertEq(address(balanceSheet.sender()), randomUser);
-        balanceSheet.file("sharePriceProvider", randomUser);
-        assertEq(address(balanceSheet.sharePriceProvider()), randomUser);
         balanceSheet.file("poolEscrowProvider", randomUser);
         assertEq(address(balanceSheet.poolEscrowProvider()), randomUser);
 
@@ -180,8 +168,7 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            defaultPricePerShare,
-            uint64(block.timestamp)
+            defaultPricePoolPerAsset
         );
         balanceSheet.deposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
@@ -197,7 +184,7 @@ contract BalanceSheetTest is BaseTest {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         vm.expectEmit();
@@ -208,11 +195,10 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            d18(100, 5),
-            uint64(block.timestamp)
+            defaultPricePoolPerAsset
         );
         balanceSheet.noteDeposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, d18(100, 5)
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
 
         // Ensure no balance transfer occurred but escrow holding was incremented nevertheless
@@ -243,8 +229,7 @@ contract BalanceSheetTest is BaseTest {
             erc20TokenId,
             address(this),
             defaultAmount,
-            defaultPricePerShare,
-            uint64(block.timestamp)
+            defaultPricePoolPerAsset
         );
         balanceSheet.withdraw(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
@@ -268,7 +253,9 @@ contract BalanceSheetTest is BaseTest {
         assertEq(token.balanceOf(address(this)), 0);
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        emit IBalanceSheet.Issue(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
@@ -296,7 +283,9 @@ contract BalanceSheetTest is BaseTest {
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
-        emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), defaultPricePerShare, defaultAmount);
+        emit IBalanceSheet.Revoke(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         (, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);

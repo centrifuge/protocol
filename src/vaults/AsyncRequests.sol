@@ -36,7 +36,7 @@ import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 
 /// @title  Investment Manager
@@ -54,7 +54,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IAsyncVault vault))) public vault;
 
-    constructor(address root_, address deployer) BaseInvestmentManager(root_, deployer) {}
+    constructor(IEscrow globalEscrow_, address root_, address deployer)
+        BaseInvestmentManager(globalEscrow_, root_, deployer)
+    {}
 
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
@@ -191,6 +193,50 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     // -- Gateway handlers --
     /// @inheritdoc IInvestmentManagerGatewayHandler
+    function approvedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 /* pricePoolPerAsset */ // TODO: Expose transient price setting in BS
+    ) external auth {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+        address poolEscrow = address(poolEscrowProvider.escrow(poolId));
+        globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
+    }
+
+    /// @inheritdoc IInvestmentManagerGatewayHandler
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 /* pricePoolPerShare */ )
+        external
+        auth
+    {
+        // TODO: Expose transient price setting in BS
+        balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
+    }
+
+    /// @inheritdoc IInvestmentManagerGatewayHandler
+    function revokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 /* pricePoolPerShare */ // TODO: Expose transient price setting in BS
+    ) external auth {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        // Lock assets to ensure they are not withdrawn and are available for the redeeming user
+        poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
+
+        IAsyncVault vault_ = IAsyncVault(vault[poolId][scId][assetId]);
+
+        // Need to transfer to the balanceSheet so that it can burn from itself
+        globalEscrow.authTransferTo(vault_.share(), address(balanceSheet), shareAmount);
+        balanceSheet.revoke(poolId, scId, address(balanceSheet), shareAmount);
+    }
+
+    /// @inheritdoc IInvestmentManagerGatewayHandler
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -208,10 +254,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.pendingDepositRequest = state.pendingDepositRequest > assets ? state.pendingDepositRequest - assets : 0;
 
         if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
-
-        // Mint to escrow. Recipient can claim by calling deposit / mint
-        IShareToken shareToken = IShareToken(vault_.share());
-        shareToken.mint(address(poolEscrowProvider.escrow(poolId)), shares);
 
         vault_.onDepositClaimable(user, assets, shares);
     }
@@ -237,10 +279,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
 
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
-
-        // Burn redeemed share class tokens from escrow
-        IShareToken shareToken = IShareToken(vault_.share());
-        shareToken.burn(address(poolEscrowProvider.escrow(poolId)), shares);
 
         vault_.onRedeemClaimable(user, assets, shares);
     }
@@ -298,8 +336,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         uint128 sharesUp = _calculateShares(vault_, assets.toUint128(), state.depositPrice, MathLib.Rounding.Up);
         uint128 sharesDown = _calculateShares(vault_, assets.toUint128(), state.depositPrice, MathLib.Rounding.Down);
-        _processDeposit(state, sharesUp, sharesDown, vault_, receiver);
         shares = uint256(sharesDown);
+        _processDeposit(state, sharesUp, sharesDown, vault_, receiver);
     }
 
     /// @inheritdoc IDepositManager
@@ -310,9 +348,8 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     {
         AsyncInvestmentState storage state = investments[vault_][controller];
         uint128 shares_ = shares.toUint128();
-        _processDeposit(state, shares_, shares_, vault_, receiver);
-
         assets = uint256(_calculateAssets(vault_, shares_, state.depositPrice, MathLib.Rounding.Down));
+        _processDeposit(state, shares_, shares_, vault_, receiver);
     }
 
     function _processDeposit(
@@ -326,12 +363,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.maxMint = state.maxMint > sharesUp ? state.maxMint - sharesUp : 0;
 
         if (sharesDown > 0) {
-            require(
-                IERC20(vault_.share()).transferFrom(
-                    address(poolEscrowProvider.escrow(vault_.poolId())), receiver, sharesDown
-                ),
-                ShareTokenTransferFailed()
-            );
+            globalEscrow.authTransferTo(vault_.share(), receiver, sharesDown);
         }
     }
 
@@ -396,10 +428,9 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        IPoolEscrow(address(poolEscrowProvider.escrow(poolId))).reserveDecrease(
-            scId, vaultDetails.asset, vaultDetails.tokenId, assets
-        );
-
+        // TODO: Enable transient pricing for BS
+        // (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
+        poolEscrowProvider.escrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
@@ -421,13 +452,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
         if (assets > 0) {
             VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-
-            address escrow = address(poolEscrowProvider.escrow(vault_.poolId()));
-            if (vaultDetails.tokenId == 0) {
-                SafeTransferLib.safeTransferFrom(vaultDetails.asset, escrow, receiver, assets);
-            } else {
-                IERC6909(vaultDetails.asset).transferFrom(escrow, receiver, vaultDetails.tokenId, assets);
-            }
+            globalEscrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
         }
     }
 
@@ -442,12 +467,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         state.claimableCancelRedeemRequest = 0;
 
         if (shares > 0) {
-            require(
-                IERC20(vault_.share()).transferFrom(
-                    address(poolEscrowProvider.escrow(vault_.poolId())), receiver, shares
-                ),
-                ShareTokenTransferFailed()
-            );
+            globalEscrow.authTransferTo(vault_.share(), receiver, shares);
         }
     }
 

@@ -75,7 +75,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas - 1}(vault, amount, self, self);
 
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
     }
 
     function testLockDepositRequests() public {
@@ -165,11 +165,11 @@ contract VaultRouterTest is BaseTest {
         uint256 gas = estimateGas() + GAS_BUFFER;
         vaultRouter.enable(vault);
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
 
         vaultRouter.cancelDepositRequest{value: gas}(vault);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
         );
@@ -184,7 +184,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault, self, self);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
+        assertEq(erc20.balanceOf(address(globalEscrow)), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
 
@@ -421,7 +421,7 @@ contract VaultRouterTest is BaseTest {
 
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
     }
 
     function estimateGas() internal view returns (uint256) {

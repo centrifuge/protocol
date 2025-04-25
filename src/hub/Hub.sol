@@ -294,13 +294,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint128 approvedAssetAmount
     ) external payable returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
         _protectedAndPaid(poolId);
-
-        D18 price = _pricePoolPerAsset(poolId, scId, depositAssetId);
+        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, depositAssetId);
         (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
-            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, price
+            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
 
-        sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount);
+        sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount, pricePoolPerAsset);
     }
 
     /// @inheritdoc IHub
@@ -330,6 +329,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
+        sender.sendIssuedShares(poolId, scId, depositAssetId, issuedShareAmount, navPoolPerShare);
     }
 
     /// @inheritdoc IHub
@@ -345,7 +345,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
 
-        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount);
+        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount, revokedShareAmount, navPoolPerShare);
     }
 
     /// @inheritdoc IHub

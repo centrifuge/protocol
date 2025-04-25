@@ -36,7 +36,7 @@ import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDeposi
 import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 /// @title  Sync Investment Manager
@@ -56,7 +56,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
         public valuation;
 
-    constructor(address root_, address deployer) BaseInvestmentManager(root_, deployer) {}
+    constructor(IEscrow globalEscrow_, address root_, address deployer)
+        BaseInvestmentManager(globalEscrow_, root_, deployer)
+    {}
 
     // --- Administration ---
     /// @inheritdoc IBaseInvestmentManager
@@ -107,7 +109,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         vault[poolId][scId][assetId] = vault_;
 
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
-        maxReserve[poolId][scId][asset_][tokenId] = type(uint128).max;
+        setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
 
         IAuth(token).rely(address(vault_));
         IShareToken(token).updateVault(vault_.asset(), address(vault_));
@@ -152,6 +154,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         auth
         returns (uint256 assets)
     {
+        require(maxMint(vault_, owner) >= shares, ExceedsMaxMint());
         assets = previewMint(vault_, owner, shares);
 
         _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
@@ -210,15 +213,16 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     // --- IDepositManager Reads ---
     /// @inheritdoc IDepositManager
-    function maxMint(IBaseVault, /* vault_ */ address /* owner */ ) public pure returns (uint256) {
-        // TODO(follow-up PR): implement rate limit
-        return type(uint256).max;
+    function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        uint128 maxAssets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
+        return convertToShares(vault_, maxAssets);
     }
 
     /// @inheritdoc IDepositManager
-    function maxDeposit(IBaseVault, /* vault_ */ address /* owner */ ) public pure returns (uint256) {
-        // TODO(follow-up PR): implement rate limit
-        return type(uint256).max;
+    function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
     }
 
     // --- IVaultManager Views ---
@@ -301,37 +305,38 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         IBaseVault vault_,
         uint128 shares,
         address receiver,
-        address owner,
+        address, /* owner */
         uint128 depositAssetAmount
     ) internal {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        _checkMaxReserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, depositAssetAmount);
-
-        Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
+        // TODO: Enable transient price setting in BS
+        // Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
 
         // Mint shares for receiver & notify CP about issued shares
-        balanceSheet.issue(poolId, scId, receiver, shares, priceData.poolPerShare);
+        balanceSheet.issue(poolId, scId, receiver, shares);
 
-        // Notice deposit of shares and notify CP about holding update
-        // NOTE: Does not transfer shares from escrow to owner and assumes that to be handled elsewhere, i.e. in
-        // SyncDepositVault.{mint, deposit}
-        balanceSheet.noteDeposit(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, owner, depositAssetAmount, priceData.poolPerAsset
-        );
+        // NOTE:
+        // - Transfer is handled by the vault to the pool escrow afterwards
+        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount);
     }
 
-    function _checkMaxReserve(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        uint128 depositAssetAmount
-    ) internal view {
-        uint256 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
-        require(availableBalance + depositAssetAmount <= maxReserve[poolId][scId][asset][tokenId], ExceedsMaxReserve());
+    function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        internal
+        view
+        returns (uint128 maxDeposit_)
+    {
+        uint128 availableBalance =
+            poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId).toUint128();
+        uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
+
+        if (maxReserve_ < availableBalance) {
+            maxDeposit_ = 0;
+        } else {
+            maxDeposit_ = maxReserve_ - availableBalance;
+        }
     }
 
     function _priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, address asset, uint256 tokenId)

@@ -34,9 +34,8 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         IShareToken token,
         address root,
-        IAsyncRequests manager,
-        IPoolEscrowProvider poolEscrowProvider
-    ) AsyncVault(poolId, scId, asset, token, root, manager, poolEscrowProvider) {
+        IAsyncRequests manager
+    ) AsyncVault(poolId, scId, asset, token, root, manager) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
         require(
             legacyVault_.trancheId() == legacyTrancheId_, NotLegacyTrancheId(legacyTrancheId_, legacyVault_.trancheId())
@@ -57,7 +56,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     // --- IInvestmentManager impl ---
     function escrow() public view returns (address) {
-        return address(_poolEscrowProvider.escrow(poolId));
+        return address(manager.globalEscrow());
     }
 
     /// @inheritdoc IInvestmentManager

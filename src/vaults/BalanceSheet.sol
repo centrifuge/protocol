@@ -40,7 +40,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IGateway public gateway;
     IPoolManager public poolManager;
     IVaultMessageSender public sender;
-    ISharePriceProvider public sharePriceProvider;
     IPoolEscrowProvider public poolEscrowProvider;
 
     mapping(PoolId => mapping(ShareClassId => mapping(address => bool))) public manager;
@@ -62,7 +61,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
-        else if (what == "sharePriceProvider") sharePriceProvider = ISharePriceProvider(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -87,40 +85,36 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// --- External ---
     /// @inheritdoc IBalanceSheet
+    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
+        external
+        authOrManager(poolId, scId)
+    {
+        IShareToken token = IShareToken(poolManager.shareToken(poolId, scId));
+        token.authTransferFrom(from, from, to, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
         external
         authOrManager(poolId, scId)
     {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, true);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
+        _executeDeposit(poolId, asset, tokenId, provider, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function deposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) external authOrManager(poolId, scId) {
-        AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset, true);
-    }
-
-    /// @inheritdoc IBalanceSheet
+    /// @dev This function is mostly useful to keep higher level integrations CEI adherent.
     function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
         address asset,
         uint256 tokenId,
         address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
+        uint128 amount
     ) external authOrManager(poolId, scId) {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset, false);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -133,38 +127,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         uint128 amount
     ) external authOrManager(poolId, scId) {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-
         _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) external authOrManager(poolId, scId) {
-        AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePoolPerAsset);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
-        external
-        authOrManager(poolId, scId)
-    {
-        _revoke(poolId, scId, from, shares);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 price)
-        external
-        authOrManager(poolId, scId)
-    {
-        _revoke(poolId, scId, from, shares, price);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -173,23 +136,54 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 price)
+    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
         external
         authOrManager(poolId, scId)
     {
-        _issue(poolId, scId, to, shares, price);
+        _noteRevoke(poolId, scId, from, shares);
+        _executeRevoke(poolId, scId, from, shares);
     }
 
     /// @inheritdoc IBalanceSheet
-    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
+    /// @dev This function is mostly useful to keep higher level integrations CEI adherent.
+    function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares)
         external
         authOrManager(poolId, scId)
     {
-        IShareToken token = IShareToken(poolManager.shareToken(poolId, scId));
-        token.authTransferFrom(from, from, to, amount);
+        _noteRevoke(poolId, scId, from, shares);
     }
 
     /// --- IBalanceSheetHandler ---
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
+        external
+        auth
+    {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
+        _executeDeposit(poolId, asset, tokenId, provider, amount);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function triggerWithdraw(PoolId poolId, ShareClassId scId, AssetId assetId, address receiver, uint128 amount)
+        external
+        auth
+    {
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function triggerIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares) external auth {
+        _issue(poolId, scId, receiver, shares);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address provider, uint128 shares) external auth {
+        _noteRevoke(poolId, scId, provider, shares);
+        _executeRevoke(poolId, scId, provider, shares);
+    }
+
     /// @inheritdoc IBalanceSheetGatewayHandler
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queueEnabled[poolId][scId] = enabled;
@@ -208,138 +202,36 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         _submitQueuedShares(poolId, scId);
     }
 
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
-        external
-        auth
-    {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, true);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerWithdraw(PoolId poolId, ShareClassId scId, AssetId assetId, address receiver, uint128 amount)
-        external
-        auth
-    {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external auth {
-        _issue(poolId, scId, to, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, uint128 shares) external auth {
-        _revoke(poolId, scId, from, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        Prices memory prices = sharePriceProvider.prices(poolId, scId, assetId, asset, tokenId);
-
-        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
-        escrow.deposit(scId, asset, tokenId, assetAmount);
-        sender.sendUpdateHoldingAmount(poolId, scId, assetId, address(escrow), assetAmount, prices.poolPerAsset, true);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-
-        // Lock assets to ensure they are not withdrawn and are available for the redeeming user
-        poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
-    }
-
     // --- Internal ---
-    function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) internal {
-        (D18 price,) = poolManager.pricePoolPerShare(poolId, scId, false);
-        _issue(poolId, scId, to, shares, price);
-    }
-
-    function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 pricePoolPerShare) internal {
-        IShareToken token = poolManager.shareToken(poolId, scId);
-        token.mint(address(to), shares);
-
-        if (queueEnabled[poolId][scId]) {
-            queuedShares[poolId][scId].increase += shares;
-        } else {
-            sender.sendUpdateShares(poolId, scId, shares, true);
-        }
-
-        emit Issue(poolId, scId, to, pricePoolPerShare, shares);
-    }
-
-    function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
-        (D18 price,) = poolManager.pricePoolPerShare(poolId, scId, false);
-        _revoke(poolId, scId, from, shares, price);
-    }
-
-    function _revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 pricePoolPerShare) internal {
-        IShareToken token = poolManager.shareToken(poolId, scId);
-        token.burn(address(from), shares);
-
-        emit Revoke(poolId, scId, from, pricePoolPerShare, shares);
-
-        if (queueEnabled[poolId][scId]) {
-            queuedShares[poolId][scId].decrease += shares;
-        } else {
-            sender.sendUpdateShares(poolId, scId, shares, false);
-        }
-    }
-
-    function _deposit(
+    function _noteDeposit(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         address asset,
         uint256 tokenId,
         address provider,
-        uint128 amount,
-        bool preDepositTransfer
-    ) internal {
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-        _deposit(poolId, scId, assetId, asset, tokenId, provider, amount, pricePoolPerAsset, preDepositTransfer);
-    }
-
-    function _deposit(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset,
-        bool preDepositTransfer
+        uint128 amount
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
-
-        if (preDepositTransfer) {
-            if (tokenId == 0) {
-                SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
-            } else {
-                IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
-            }
-        }
-
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset, uint64(block.timestamp));
-
-        // Do escrow balance sufficiency check only if we executed the transfer
-        if (preDepositTransfer) {
-            escrow.deposit(scId, asset, tokenId, amount);
-        } else {
-            escrow.noteDeposit(scId, asset, tokenId, amount);
-        }
+        escrow.deposit(scId, asset, tokenId, amount);
+        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset);
 
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].increase += amount;
         } else {
             sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset, true);
+        }
+    }
+
+    function _executeDeposit(PoolId poolId, address asset, uint256 tokenId, address provider, uint128 amount)
+        internal
+    {
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
+        } else {
+            IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
         }
     }
 
@@ -352,36 +244,48 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address receiver,
         uint128 amount
     ) internal {
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-        _withdraw(poolId, scId, assetId, asset, tokenId, receiver, amount, pricePoolPerAsset);
-    }
-
-    function _withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.withdraw(scId, asset, tokenId, amount);
-
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, address(escrow), receiver, amount);
-        } else {
-            IERC6909(asset).transferFrom(address(escrow), receiver, tokenId, amount);
-        }
-
-        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset, uint64(block.timestamp));
+        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset);
 
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].decrease += amount;
         } else {
             sender.sendUpdateHoldingAmount(poolId, scId, assetId, receiver, amount, pricePoolPerAsset, false);
         }
+
+        escrow.authTransferTo(asset, tokenId, receiver, amount);
+    }
+
+    function _issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) internal {
+        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        emit Issue(poolId, scId, to, pricePoolPerShare, shares);
+
+        if (queueEnabled[poolId][scId]) {
+            queuedShares[poolId][scId].increase += shares;
+        } else {
+            sender.sendUpdateShares(poolId, scId, shares, true);
+        }
+
+        IShareToken token = poolManager.shareToken(poolId, scId);
+        token.mint(to, shares);
+    }
+
+    function _noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
+        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        emit Revoke(poolId, scId, from, pricePoolPerShare, shares);
+
+        if (queueEnabled[poolId][scId]) {
+            queuedShares[poolId][scId].decrease += shares;
+        } else {
+            sender.sendUpdateShares(poolId, scId, shares, false);
+        }
+    }
+
+    function _executeRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
+        IShareToken token = poolManager.shareToken(poolId, scId);
+        token.burn(from, shares);
     }
 
     function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {

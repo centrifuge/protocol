@@ -147,13 +147,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[msg.sender][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-        escrow.approveMax(vaultDetails.asset, vaultDetails.tokenId, address(this));
-
-        if (vaultDetails.tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), receiver, lockedRequest);
-        } else {
-            IERC6909(vaultDetails.asset).transferFrom(address(escrow), receiver, vaultDetails.tokenId, lockedRequest);
-        }
+        escrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
     }
@@ -165,15 +159,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-
-        escrow.approveMax(vaultDetails.asset, vaultDetails.tokenId, address(this));
-        if (vaultDetails.tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(vaultDetails.asset, address(escrow), address(this), lockedRequest);
-        } else {
-            IERC6909(vaultDetails.asset).transferFrom(
-                address(escrow), address(this), vaultDetails.tokenId, lockedRequest
-            );
-        }
+        escrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, address(this), lockedRequest);
 
         _pay();
         _approveMax(vaultDetails.asset, vaultDetails.tokenId, address(vault));

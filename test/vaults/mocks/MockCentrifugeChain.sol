@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {d18} from "src/misc/types/D18.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -292,7 +292,9 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
-        isApprovedDeposits(poolId, scId, assetId, assets);
+        // NOTE: Currently, hardcoding pricePoolPerAsset to 1
+        isApprovedDeposits(poolId, scId, assetId, assets, d18(1, 1));
+        isIssuedShares(poolId, scId, shares, d18(1, 1));
 
         execute(
             MessageLib.FulfilledDepositRequest({
@@ -315,7 +317,8 @@ contract MockCentrifugeChain is Test {
         uint128 assets,
         uint128 shares
     ) public {
-        isRevokedShares(poolId, scId, assetId, assets);
+        // NOTE: Currently hard coding pricePoolPerShare to 1
+        isRevokedShares(poolId, scId, assetId, assets, shares, d18(1, 1));
         execute(
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId,
@@ -329,16 +332,50 @@ contract MockCentrifugeChain is Test {
     }
 
     /// @dev Implicitly called by isFulfilledDepositRequest
-    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+    function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets, D18 pricePoolPerAsset)
+        public
+    {
         execute(
-            MessageLib.ApprovedDeposits({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
+            MessageLib.ApprovedDeposits({
+                poolId: poolId,
+                scId: scId,
+                assetId: assetId,
+                assetAmount: assets,
+                pricePoolPerAsset: pricePoolPerAsset.raw()
+            }).serialize()
+        );
+    }
+
+    /// @dev Impicitly called by isFulfilledDepositRequest
+    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 shares, D18 pricePoolPerShare) public {
+        execute(
+            MessageLib.IssuedShares({
+                poolId: poolId,
+                scId: scId,
+                shareAmount: shares,
+                pricePoolPerShare: pricePoolPerShare.raw()
+            }).serialize()
         );
     }
 
     /// @dev Implicitly called by isFulfilledRedeemRequest
-    function isRevokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets) public {
+    function isRevokedShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) public {
         execute(
-            MessageLib.RevokedShares({poolId: poolId, scId: scId, assetId: assetId, assetAmount: assets}).serialize()
+            MessageLib.RevokedShares({
+                poolId: poolId,
+                scId: scId,
+                assetId: assetId,
+                assetAmount: assets,
+                shareAmount: shareAmount,
+                pricePoolPerShare: pricePoolPerShare.raw()
+            }).serialize()
         );
     }
 

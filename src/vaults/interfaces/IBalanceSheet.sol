@@ -18,8 +18,7 @@ interface IBalanceSheet {
         uint256 tokenId,
         address receiver,
         uint128 amount,
-        D18 pricePoolPerAsset,
-        uint64 timestamp
+        D18 pricePoolPerAsset
     );
     event Deposit(
         PoolId indexed poolId,
@@ -28,8 +27,7 @@ interface IBalanceSheet {
         uint256 tokenId,
         address provider,
         uint128 amount,
-        D18 pricePoolPerAsset,
-        uint64 timestamp
+        D18 pricePoolPerAsset
     );
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
@@ -40,25 +38,14 @@ interface IBalanceSheet {
     /// @notice Overloaded increase with asset transfer
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
         external;
-    function deposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) external;
 
-    /// @notice Overloaded increase without asset transfer
     function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
         address asset,
         uint256 tokenId,
         address provider,
-        uint128 amount,
-        D18 pricePoolPerAsset
+        uint128 amount
     ) external;
 
     function withdraw(
@@ -69,21 +56,12 @@ interface IBalanceSheet {
         address receiver,
         uint128 amount
     ) external;
-    function withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        D18 pricePoolPerAsset
-    ) external;
 
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares, D18 pricePoolPerShare) external;
 
     function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares, D18 pricePoolPerShare) external;
+
+    function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
 }

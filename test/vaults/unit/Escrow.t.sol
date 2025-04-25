@@ -33,80 +33,14 @@ contract EscrowTestBase is Test {
     }
 }
 
-contract EscrowTestERC20 is EscrowTestBase {
-    function testApproveMax() public {
-        assertEq(erc20.allowance(address(escrow), spender), 0);
+contract EscrowTestERC20 is EscrowTestBase {}
 
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.approveMax(address(erc20), spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc20), spender, type(uint256).max);
-        escrow.approveMax(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), type(uint256).max);
-    }
-
-    function testUnapprove() public {
-        escrow.approveMax(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), type(uint256).max);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.unapprove(address(erc20), spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc20), spender, 0);
-        escrow.unapprove(address(erc20), spender);
-        assertEq(erc20.allowance(address(escrow), spender), 0);
-    }
-}
-
-contract EscrowTestERC6909 is EscrowTestBase {
-    function testApproveMaxERC6909(uint8 decimals_) public {
-        uint256 tokenId = uint256(bound(decimals_, 2, 18));
-
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), 0);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.approveMax(address(erc6909), tokenId, spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc6909), tokenId, spender, type(uint256).max);
-        escrow.approveMax(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), type(uint256).max);
-    }
-
-    function testUnapproveERC6909(uint8 decimals_) public {
-        uint256 tokenId = uint256(bound(decimals_, 2, 18));
-
-        escrow.approveMax(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), type(uint256).max);
-
-        vm.prank(randomUser);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.unapprove(address(erc6909), tokenId, spender);
-
-        vm.expectEmit();
-        emit IEscrow.Approve(address(erc6909), tokenId, spender, 0);
-        escrow.unapprove(address(erc6909), tokenId, spender);
-        assertEq(erc6909.allowance(address(escrow), spender, tokenId), 0);
-    }
-}
+contract EscrowTestERC6909 is EscrowTestBase {}
 
 contract PoolEscrowTestBase is EscrowTestBase {
     function _testDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
         address asset = _asset(tokenId);
         PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-
-        _mint(address(escrow), tokenId, 300);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 500);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 600);
 
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
@@ -114,30 +48,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after deposit");
 
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 200);
-
-        _mint(address(escrow), tokenId, 200);
-
-        vm.expectRevert(IPoolEscrow.InsufficientDeposit.selector);
-        escrow.deposit(scId, asset, tokenId, 201);
-
         vm.expectEmit();
         emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 200);
         escrow.deposit(scId, asset, tokenId, 200);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "holdings should be 500 after deposit");
-    }
-
-    function _testNoteDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
-        address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
-
-        vm.expectEmit();
-        emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
-        escrow.noteDeposit(scId, asset, tokenId, 300);
-
-        assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after noting deposit");
     }
 
     function _testReserveIncrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
@@ -202,7 +117,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         escrow.reserveIncrease(scId, asset, tokenId, 500);
 
-        vm.expectRevert(IPoolEscrow.InsufficientBalance.selector);
+        vm.expectRevert(abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, asset, tokenId, 600, 500));
         escrow.withdraw(scId, asset, tokenId, 600);
 
         vm.expectEmit();
@@ -240,12 +155,6 @@ contract PoolEscrowTestERC20 is PoolEscrowTestBase {
         _testDeposit(poolId, scId, tokenId);
     }
 
-    function testNoteDeposit(PoolId poolId, ShareClassId scId) public {
-        _testNoteDeposit(poolId, scId, tokenId);
-
-        assertEq(erc20.balanceOf(address(escrow)), 0, "Escrow should not hold any tokens after noting");
-    }
-
     function testReserveIncrease(PoolId poolId, ShareClassId scId) public {
         _testReserveIncrease(poolId, scId, tokenId);
     }
@@ -270,12 +179,6 @@ contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
         _testDeposit(poolId, scId, tokenId);
 
         assertEq(erc6909.balanceOf(address(escrow), tokenId), 0, "Escrow should not hold any tokens after noting");
-    }
-
-    function testNoteDeposit(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testNoteDeposit(poolId, scId, tokenId);
     }
 
     function testReserveIncrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {

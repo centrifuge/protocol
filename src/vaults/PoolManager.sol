@@ -12,6 +12,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -45,7 +46,14 @@ import {PoolEscrow} from "src/vaults/Escrow.sol";
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolManagerGatewayHandler {
+contract PoolManager is
+    ReentrancyProtection,
+    Auth,
+    Recoverable,
+    IPoolManager,
+    IUpdateContract,
+    IPoolManagerGatewayHandler
+{
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -107,6 +115,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
         payable
+        protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(
@@ -125,7 +134,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
@@ -418,7 +426,7 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the manager approvals is not easy. We SHOULD do that if we phase-out a manager
-        _approvePool(vault, poolId, shareClass.shareToken, assetIdKey.asset, assetIdKey.tokenId);
+        _relyShareToken(vault, shareClass.shareToken);
 
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
@@ -536,41 +544,15 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _approvePool(IBaseVault vault, PoolId poolId, IShareToken shareToken_, address asset, uint256 tokenId)
-        internal
-    {
-        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
-
-        // Give pool manager infinite approval for asset
-        // in the escrow to transfer to the user on transfer
-        escrow.approveMax(asset, tokenId, address(this));
-
-        // Give balance sheet manager infinite approval for asset
-        // in the escrow to transfer to the user on transfer
-        escrow.approveMax(asset, tokenId, balanceSheet);
-
-        address manager = address(vault.manager());
-        _approveManager(escrow, manager, shareToken_, asset, tokenId);
+    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
+        address manager = address(IBaseVault(vault).manager());
+        IAuth(address(shareToken_)).rely(manager);
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
         (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            _approveManager(escrow, secondaryVaultManager, shareToken_, asset, tokenId);
+            IAuth(address(shareToken_)).rely(secondaryVaultManager);
         }
-    }
-
-    /// @dev Sets up approval permissions for the given vault manager
-    function _approveManager(
-        IPoolEscrow escrow,
-        address manager,
-        IShareToken shareToken_,
-        address asset,
-        uint256 tokenId
-    ) internal {
-        IAuth(address(shareToken_)).rely(manager);
-
-        escrow.approveMax(address(shareToken_), manager);
-        escrow.approveMax(asset, tokenId, manager);
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

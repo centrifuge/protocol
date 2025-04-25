@@ -578,8 +578,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         ShareClassId scId = oldVault.scId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory =
-            new AsyncVaultFactory(address(root), asyncRequests, poolEscrowFactory, address(this));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
@@ -749,59 +748,12 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         }
     }
 
-    function _assertAllowance(address vaultAddress, address asset, uint256 tokenId) private view {
-        address vaultManager = address(IBaseVault(vaultAddress).manager());
-        address escrow_ = address(poolEscrowFactory.escrow(poolId));
-        IShareToken token_ = poolManager.shareToken(poolId, scId);
-
-        assertEq(
-            IERC20(token_).allowance(escrow_, vaultManager),
-            type(uint256).max,
-            "Escrow to VaultManager share token allowance missing"
-        );
-
-        if (tokenId == 0) {
-            assertEq(
-                IERC20(asset).allowance(escrow_, address(poolManager)),
-                type(uint256).max,
-                "Escrow to PoolManager ERC20 Asset allowance missing"
-            );
-            assertEq(
-                IERC20(asset).allowance(escrow_, address(balanceSheet)),
-                type(uint256).max,
-                "Escrow to BalanceSheet ERC20 Asset allowance missing"
-            );
-            assertEq(
-                IERC20(asset).allowance(escrow_, vaultManager),
-                type(uint256).max,
-                "Escrow to VaultManager ERC20 Asset allowance missing"
-            );
-        } else {
-            assertEq(
-                IERC6909(asset).allowance(escrow_, address(poolManager), tokenId),
-                type(uint256).max,
-                "Escrow to PoolManager ERC6909 Asset allowance missing"
-            );
-            assertEq(
-                IERC6909(asset).allowance(escrow_, address(balanceSheet), tokenId),
-                type(uint256).max,
-                "Escrow to BalanceSheet ERC6909 Asset allowance missing"
-            );
-            assertEq(
-                IERC6909(asset).allowance(escrow_, vaultManager, tokenId),
-                type(uint256).max,
-                "Escrow to VaultManager ERC6909 Asset allowance missing"
-            );
-        }
-    }
-
     function _assertDeployedVault(address vaultAddress, AssetId assetId, address asset, uint256 tokenId, bool isLinked)
         internal
         view
     {
         _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
         _assertShareSetup(vaultAddress, isLinked);
-        _assertAllowance(vaultAddress, asset, tokenId);
     }
 
     function testDeployVaultWithoutLinkERC20(
