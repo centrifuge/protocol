@@ -37,7 +37,8 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         IShareToken token,
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, tokenId, token, root, asyncRequests, poolEscrowProvider);
+        require(tokenId == 0, UnsupportedTokenId());
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequests, poolEscrowProvider);
 
         vault.rely(root);
         vault.rely(address(asyncRequests));

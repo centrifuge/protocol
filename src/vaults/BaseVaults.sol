@@ -39,7 +39,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @inheritdoc IERC7575
     address public immutable asset;
-    uint256 public immutable tokenId;
 
     /// @inheritdoc IERC7575
     address public immutable share;
@@ -66,7 +65,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         PoolId poolId_,
         ShareClassId scId_,
         address asset_,
-        uint256 tokenId_,
         IShareToken token_,
         address root_,
         IBaseInvestmentManager manager_,
@@ -75,7 +73,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         poolId = poolId_;
         scId = scId_;
         asset = asset_;
-        tokenId = tokenId_;
         share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);

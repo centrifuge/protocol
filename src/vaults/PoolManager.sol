@@ -78,7 +78,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         }
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
@@ -126,6 +129,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Outgoing methods
+    //----------------------------------------------------------------------------------------------
+
     // @inheritdoc IPoolManager
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
@@ -165,6 +172,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
 
         sender.sendRegisterAsset(centrifugeId, assetId, decimals);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Incoming methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManagerGatewayHandler
     function addPool(PoolId poolId) public auth {
@@ -297,7 +308,6 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         shareToken_.mint(destinationAddress, amount);
     }
 
-    // --- IUpdateContract implementation ---
     /// @inheritdoc IUpdateContract
     /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
     /// the vault
@@ -350,7 +360,38 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         }
     }
 
-    // --- Public functions ---
+    /// @inheritdoc IPoolManager
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
+        _shareClass(poolId, scId);
+
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+
+        IBaseInvestmentManager manager = vault.manager();
+        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
+
+        _vaultDetails[vault].isLinked = true;
+
+        emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
+    }
+
+    /// @inheritdoc IPoolManager
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
+        _shareClass(poolId, scId);
+
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+
+        IBaseInvestmentManager manager = vault.manager();
+        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
+
+        _vaultDetails[vault].isLinked = false;
+
+        emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Public methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IPoolManager
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         public
@@ -383,35 +424,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         return vault;
     }
 
-    /// @inheritdoc IPoolManager
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
-        _shareClass(poolId, scId);
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
-
-        _vaultDetails[vault].isLinked = true;
-
-        emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
-    }
-
-    /// @inheritdoc IPoolManager
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
-        _shareClass(poolId, scId);
-
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
-
-        _vaultDetails[vault].isLinked = false;
-
-        emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
-    }
-
-    // --- Helpers ---
     /// @inheritdoc IPoolManager
     function isPoolActive(PoolId poolId) public view returns (bool) {
         return pools[poolId].createdAt > 0;
@@ -501,6 +517,10 @@ contract PoolManager is Auth, Recoverable, IPoolManager, IUpdateContract, IPoolM
         price = poolPerAsset.asPrice();
         computedAt = poolPerAsset.computedAt;
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal methods
+    //----------------------------------------------------------------------------------------------
 
     function _poolPer(PoolId poolId, ShareClassId scId, AssetId assetId)
         internal

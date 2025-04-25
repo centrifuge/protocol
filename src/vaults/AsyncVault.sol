@@ -32,33 +32,20 @@ contract AsyncVault is AsyncRedeemVault, IAsyncVault {
         PoolId poolId_,
         ShareClassId scId_,
         address asset_,
-        uint256 tokenId_,
         IShareToken token_,
         address root_,
         IAsyncRequests manager_,
         IPoolEscrowProvider poolEscrowProvider
-    )
-        BaseVault(poolId_, scId_, asset_, tokenId_, token_, root_, manager_, poolEscrowProvider)
-        AsyncRedeemVault(manager_)
-    {}
+    ) BaseVault(poolId_, scId_, asset_, token_, root_, manager_, poolEscrowProvider) AsyncRedeemVault(manager_) {}
 
     // --- ERC-7540 methods ---
     /// @inheritdoc IERC7540Deposit
     function requestDeposit(uint256 assets, address controller, address owner) public returns (uint256) {
         require(owner == msg.sender || isOperator[owner][msg.sender], InvalidOwner());
-        require(
-            tokenId == 0 && IERC20(asset).balanceOf(owner) >= assets
-                || tokenId > 0 && IERC6909(asset).balanceOf(owner, tokenId) >= assets,
-            InsufficientBalance()
-        );
+        require(IERC20(asset).balanceOf(owner) >= assets, InsufficientBalance());
 
         require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
-
-        if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
-        } else {
-            IERC6909(asset).transferFrom(owner, address(_poolEscrowProvider.escrow(poolId)), tokenId, assets);
-        }
+        SafeTransferLib.safeTransferFrom(asset, owner, address(_poolEscrowProvider.escrow(poolId)), assets);
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;
