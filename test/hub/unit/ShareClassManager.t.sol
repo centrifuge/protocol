@@ -51,7 +51,7 @@ string constant SC_SYMBOL = "ExampleSymbol";
 bytes32 constant SC_SALT = bytes32("ExampleSalt");
 bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 
-uint32 constant STORAGE_INDEX_METRICS = 10;
+uint32 constant STORAGE_INDEX_METRICS = 4;
 
 contract HubRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
