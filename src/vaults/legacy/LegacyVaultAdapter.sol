@@ -10,7 +10,7 @@ import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdap
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
@@ -37,7 +37,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         IShareToken token,
         address root,
-        IAsyncRedeemManager manager,
+        IAsyncRequests manager,
         IPoolEscrowProvider poolEscrowProvider
     ) AsyncVault(poolId, scId, asset, LEGACY_TOKEN_ID, token, root, manager, poolEscrowProvider) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
@@ -94,12 +94,12 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
     // --- IInvestmentManager - View functions ---
     /// @inheritdoc IInvestmentManager
     function convertToShares(address, /* vault */ uint256 _assets) public view returns (uint256 shares) {
-        shares = manager.convertToShares(this, _assets);
+        shares = asyncManager().convertToShares(this, _assets);
     }
 
     /// @inheritdoc IInvestmentManager
     function convertToAssets(address, /* vault */ uint256 _shares) public view returns (uint256 assets) {
-        assets = manager.convertToAssets(this, _shares);
+        assets = asyncManager().convertToAssets(this, _shares);
     }
 
     /// @inheritdoc IInvestmentManager

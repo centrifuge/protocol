@@ -68,6 +68,7 @@ contract BaseTest is VaultsDeployer, Test {
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
     uint256 public defaultGas;
+    uint256 public defaultSubsidy;
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -117,6 +118,7 @@ contract BaseTest is VaultsDeployer, Test {
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
 
         defaultGas = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        defaultSubsidy = defaultGas * 100;
 
         // Label contracts
         vm.label(address(root), "Root");
@@ -207,6 +209,9 @@ contract BaseTest is VaultsDeployer, Test {
         );
         vaultAddress = IShareToken(poolManager.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
+
+        gateway.setRefundAddress(POOL_A, gateway);
+        gateway.subsidizePool{value: defaultSubsidy}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)

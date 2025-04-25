@@ -38,7 +38,6 @@ enum MessageType {
     CancelRedeemRequest,
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
-    TriggerRedeemRequest,
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
@@ -113,7 +112,6 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (89  << uint8(MessageType.TriggerRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
@@ -980,33 +978,6 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.FulfilledCancelRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.cancelledShares
         );
-    }
-
-    //---------------------------------------
-    //    TriggerRedeemRequest
-    //---------------------------------------
-
-    struct TriggerRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 shares;
-    }
-
-    function deserializeTriggerRedeemRequest(bytes memory data) internal pure returns (TriggerRedeemRequest memory) {
-        require(messageType(data) == MessageType.TriggerRedeemRequest, UnknownMessageType());
-        return TriggerRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            shares: data.toUint128(73)
-        });
-    }
-
-    function serialize(TriggerRedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.shares);
     }
 
     //---------------------------------------

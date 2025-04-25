@@ -246,17 +246,6 @@ interface IInvestmentManagerGatewayHandler {
     ///         claimCancelRedeemRequest calls.
     function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         external;
-
-    /// @notice Triggers a redeem request on behalf of the user through Centrifuge governance.
-    ///         This function is required for legal/compliance reasons and rare scenarios, like share contract
-    ///         migrations.
-    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with asset payouts
-    /// in case the orders
-    ///         got fulfilled.
-    /// @dev    The user share amount required to fulfill the redeem request has to be locked in escrow,
-    ///         even though the asset payout can only happen after epoch execution.
-    function triggerRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        external;
 }
 
 /// @notice Interface for CV methods related to epoch called by messages

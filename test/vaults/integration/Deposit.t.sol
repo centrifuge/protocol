@@ -158,25 +158,6 @@ contract DepositTest is BaseTest {
         assertTrue(vault.maxDeposit(self) <= amount * 0.01e18);
     }
 
-    function testDepositWithPrepaymentFromGateway(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-        vm.deal(address(this), 1 ether);
-
-        uint256 gasPerMessage = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
-        gateway.setRefundAddress(POOL_A, gateway);
-        gateway.subsidizePool{value: gasPerMessage}(POOL_A);
-
-        (uint256 value,) = gateway.subsidy(POOL_A);
-        assertEq(value, gasPerMessage);
-
-        // One outgoing requestDeposit message
-        _testDepositMint(amount, false);
-
-        (value,) = gateway.subsidy(POOL_A);
-        assertEq(value, 0);
-    }
-
     function testPartialDepositExecutions() public {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
