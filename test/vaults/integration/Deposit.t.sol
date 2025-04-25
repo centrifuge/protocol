@@ -344,10 +344,10 @@ contract DepositTest is BaseTest {
         assertEq(shareToken.balanceOf(address(globalEscrow)), shares);
 
         // deposit 1/2 funds to receiver
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(SafeTransferLib.SafeTransferFailed.selector);
         vault.deposit(amount / 2, receiver, self); // mint half the amount
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(SafeTransferLib.SafeTransferFailed.selector);
         vault.mint(amount / 2, receiver); // mint half the amount
 
         // add receiver number
@@ -767,10 +767,8 @@ contract DepositTest is BaseTest {
     }
 
     function _topUpEscrow(PoolId poolId, ShareClassId scId, ERC20 asset, uint256 assetAmount) internal {
-        asset.mint(address(poolEscrowFactory.escrow(poolId)), assetAmount);
-
-        balanceSheet.deposit(
-            poolId, scId, address(asset), 0, address(poolEscrowFactory.escrow(poolId)), assetAmount.toUint128()
-        );
+        asset.mint(address(this), assetAmount);
+        asset.approve(address(balanceSheet), assetAmount);
+        balanceSheet.deposit(poolId, scId, address(asset), 0, address(this), assetAmount.toUint128());
     }
 }
