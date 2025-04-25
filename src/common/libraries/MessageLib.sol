@@ -117,13 +117,13 @@ library MessageLib {
         (57  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.RevokedShares) * 8) +
         (106 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (74  << uint8(MessageType.TriggerUpdateShares) * 8);
+        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
+        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 = 
-        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) + 
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
-        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) + 
+        (26 << (uint8(MessageType.SetSharesQueue) - 32) * 8) +
         (26 << (uint8(MessageType.SetAssetsQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
