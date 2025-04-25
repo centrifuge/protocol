@@ -42,7 +42,7 @@ contract AsyncRequestsTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequests(vaultsGlobalEscrow, address(root), address(this));
+        new AsyncRequests(globalEscrow, address(root), address(this));
 
         // values set correctly
         assertEq(address(asyncRequests.sender()), address(messageDispatcher));
@@ -88,7 +88,7 @@ contract AsyncRequestsTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestsHarness harness = new AsyncRequestsHarness(vaultsGlobalEscrow, address(root), address(this));
+        AsyncRequestsHarness harness = new AsyncRequestsHarness(globalEscrow, address(root), address(this));
         assertEq(harness.calculatePrice(IBaseVault(address(0)), 1, 0), 0);
         assertEq(harness.calculatePrice(IBaseVault(address(0)), 0, 1), 0);
     }

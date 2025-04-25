@@ -28,7 +28,7 @@ contract AssetShareConversionTest is BaseTest {
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
 
-        assertEq(asset.balanceOf(address(vaultsGlobalEscrow)), investmentAmount);
+        assertEq(asset.balanceOf(address(globalEscrow)), investmentAmount);
 
         // trigger executed collectInvest at a price of 1.0
         uint128 shares = 100000000000000000000; // 100 * 10**18
