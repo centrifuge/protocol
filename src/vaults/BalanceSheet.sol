@@ -151,11 +151,14 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         _noteRevoke(poolId, scId, from, shares);
     }
 
-    function setPricePoolPerAsset(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId)), value.raw());
+    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
+        external
+        authOrManager(poolId)
+    {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
     }
 
-    function setPricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
     }
 
@@ -217,7 +220,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.deposit(scId, asset, tokenId, amount);
-        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId);
+        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
         emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
@@ -249,7 +252,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.withdraw(scId, asset, tokenId, amount);
-        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId);
+        D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
@@ -327,11 +330,20 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         queue.decrease = 0;
     }
 
-    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId) internal view returns (D18) {
-        return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId))));
+    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
+        D18 stored =
+            d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId))));
+        if (!stored.isNull()) return stored;
+
+        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        return pricePoolPerAsset;
     }
 
     function _pricePoolPerShare(PoolId poolId, ShareClassId scId) internal view returns (D18) {
-        return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
+        D18 stored = d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
+        if (!stored.isNull()) return stored;
+
+        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        return pricePoolPerShare;
     }
 }

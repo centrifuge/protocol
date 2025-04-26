@@ -202,7 +202,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
     ) external auth {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
 
-        balanceSheet.setPricePoolPerAsset(poolId, scId, pricePoolPerAsset);
+        balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
 
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));
@@ -211,7 +211,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
 
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
-        balanceSheet.setPricePoolPerShare(poolId, scId, pricePoolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
     }
 
@@ -233,7 +233,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         // Need to transfer to the balanceSheet so that it can burn from itself
         globalEscrow.authTransferTo(vault_.share(), address(balanceSheet), shareAmount);
 
-        balanceSheet.setPricePoolPerShare(poolId, scId, pricePoolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.revoke(poolId, scId, address(balanceSheet), shareAmount);
     }
 
@@ -430,7 +430,7 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         ShareClassId scId = vault_.scId();
 
         (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, vaultDetails.assetId, true);
-        balanceSheet.setPricePoolPerAsset(poolId, scId, pricePoolPerAsset);
+        balanceSheet.overridePricePoolPerAsset(poolId, scId, vaultDetails.assetId, pricePoolPerAsset);
 
         poolEscrowProvider.escrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);

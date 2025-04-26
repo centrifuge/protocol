@@ -314,7 +314,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
         // Mint shares for receiver & notify CP about issued shares
         Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
-        balanceSheet.setPricePoolPerShare(poolId, scId, priceData.poolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, priceData.poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
 
         // NOTE:

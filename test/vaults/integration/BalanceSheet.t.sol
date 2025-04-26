@@ -160,8 +160,6 @@ contract BalanceSheetTest is BaseTest {
         erc20.mint(address(this), defaultAmount);
         erc20.approve(address(balanceSheet), defaultAmount);
 
-        balanceSheet.setPricePoolPerAsset(POOL_A, defaultTypedShareClassId, defaultPricePoolPerAsset);
-
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
             POOL_A,
@@ -188,8 +186,6 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.deposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
         );
-
-        balanceSheet.setPricePoolPerAsset(POOL_A, defaultTypedShareClassId, defaultPricePoolPerAsset);
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
@@ -225,7 +221,7 @@ contract BalanceSheetTest is BaseTest {
 
         assertEq(erc20.balanceOf(address(this)), 0);
 
-        balanceSheet.setPricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(
@@ -258,7 +254,7 @@ contract BalanceSheetTest is BaseTest {
         IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
-        balanceSheet.setPricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(
@@ -289,7 +285,7 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        balanceSheet.setPricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
