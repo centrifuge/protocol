@@ -35,7 +35,7 @@ contract AsyncVaultTest is BaseTest {
     }
 
     // --- Administration ---
-    function testFileVault() public {
+    function testFile() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
 

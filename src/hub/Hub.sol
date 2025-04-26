@@ -93,7 +93,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Permissionless methods
+    // FreezeOnly methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub

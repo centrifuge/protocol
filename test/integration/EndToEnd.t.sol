@@ -87,8 +87,8 @@ struct CVaults {
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncDepositVaultFactory;
     // Hooks
-    address restrictedTransfers;
-    address freelyTransferable;
+    address fullRestrictionsHook;
+    address redemptionRestrictionsHook;
 }
 
 /// End to end testing assuming two full deployments in two different chains
@@ -179,8 +179,8 @@ contract TestEndToEnd is Test {
             balanceSheet: deploy.balanceSheet(),
             poolManager: deploy.poolManager(),
             router: deploy.vaultRouter(),
-            restrictedTransfers: deploy.restrictedTransfers(),
-            freelyTransferable: deploy.freelyTransferable(),
+            fullRestrictionsHook: deploy.fullRestrictionsHook(),
+            redemptionRestrictionsHook: deploy.redemptionRestrictionsHook(),
             asyncVaultFactory: deploy.asyncVaultFactory(),
             syncDepositVaultFactory: deploy.syncDepositVaultFactory()
         });
@@ -212,7 +212,7 @@ contract TestEndToEnd is Test {
         h.hub.setPoolMetadata(poolId, bytes("Testing pool"));
         h.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32("salt"));
         h.hub.notifyPool{value: GAS}(poolId, cv.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(poolId, scId, cv.centrifugeId, cv.freelyTransferable.toBytes32());
+        h.hub.notifyShareClass{value: GAS}(poolId, scId, cv.centrifugeId, cv.redemptionRestrictionsHook.toBytes32());
 
         h.hub.createAccount(poolId, ASSET_ACCOUNT, true);
         h.hub.createAccount(poolId, EQUITY_ACCOUNT, false);

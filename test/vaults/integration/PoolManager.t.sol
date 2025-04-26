@@ -24,7 +24,7 @@ import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 
-import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
+import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 
 contract PoolManagerTestHelper is BaseTest {
     PoolId poolId;
@@ -364,7 +364,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        IRestrictedTransfers hook = IRestrictedTransfers(shareToken.hook());
+        IMemberlist hook = IMemberlist(shareToken.hook());
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(randomUser);
         hook.updateMember(address(shareToken), randomUser, validUntil);
@@ -478,7 +478,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.prank(randomUser);
         poolManager.updateShareHook(poolId, scId, newHook);
 
-        assertEq(shareToken.hook(), restrictedTransfers);
+        assertEq(shareToken.hook(), fullRestrictionsHook);
 
         poolManager.updateShareHook(poolId, scId, newHook);
         assertEq(shareToken.hook(), newHook);
