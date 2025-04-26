@@ -16,4 +16,19 @@ interface ILegacyVault {
 
     /// @notice Documentation see Centrifuge V2 repository.
     function share() external view returns (address);
+
+    /// @notice Callback when a redeem Request is triggered externally;
+    function onRedeemRequest(address controller, address owner, uint256 shares) external;
+
+    /// @notice Callback when a deposit Request becomes claimable
+    function onDepositClaimable(address owner, uint256 assets, uint256 shares) external;
+
+    /// @notice Callback when a redeem Request becomes claimable
+    function onRedeemClaimable(address owner, uint256 assets, uint256 shares) external;
+
+    /// @notice Callback when a claim deposit Request becomes claimable
+    function onCancelDepositClaimable(address owner, uint256 assets) external;
+
+    /// @notice Callback when a claim redeem Request becomes claimable
+    function onCancelRedeemClaimable(address owner, uint256 shares) external;
 }

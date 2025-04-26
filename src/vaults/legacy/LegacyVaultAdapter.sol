@@ -10,15 +10,15 @@ import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdap
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
 ///
-/// @dev This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2. At
-/// the
-/// same time it acts like a new `IAsyncVault` for the `IAsyncRequests` manager of Centrifuge V3. The adapter needs to
-/// be deployed per legacy vault and allows a seamless interaction between Centrifuge V2 vaults and Centrifuge V3
-/// infrastructure. Thereby, allowing to migrate existing vaults to the new system.
+/// @dev    This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2.
+///         At the same time it acts like a new `IAsyncVault` for the `IAsyncRequests` manager of Centrifuge V3.
+///         The adapter needs to be deployed per legacy vault and allows a seamless interaction between Centrifuge V2
+///         vaults and Centrifuge V3 infrastructure. Thereby, allowing to migrate existing vaults to the new system.
 contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManager {
     uint64 public immutable legacyPoolId;
     bytes16 public immutable legacyTrancheId;
@@ -205,5 +205,41 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         returns (uint256 shares)
     {
         shares = asyncManager().claimCancelRedeemRequest(this, receiver, owner);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Event emitters
+    //----------------------------------------------------------------------------------------------
+
+    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public override auth {
+        legacyVault.onDepositClaimable(controller, assets, shares);
+    }
+
+    function onCancelDepositClaimable(address controller, uint256 assets) public override auth {
+        legacyVault.onCancelDepositClaimable(controller, assets);
+    }
+
+    function onRedeemRequest(address controller, address owner, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onRedeemRequest(controller, owner, shares);
+    }
+
+    function onRedeemClaimable(address controller, uint256 assets, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onRedeemClaimable(controller, assets, shares);
+    }
+
+    function onCancelRedeemClaimable(address controller, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onCancelRedeemClaimable(controller, shares);
     }
 }

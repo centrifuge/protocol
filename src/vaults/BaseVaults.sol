@@ -318,15 +318,15 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // Event emitters
     //----------------------------------------------------------------------------------------------
 
-    function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
+    function onRedeemRequest(address controller, address owner, uint256 shares) public virtual auth {
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
     }
 
-    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public auth {
+    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public virtual auth {
         emit RedeemClaimable(controller, REQUEST_ID, assets, shares);
     }
 
-    function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
+    function onCancelRedeemClaimable(address controller, uint256 shares) public virtual auth {
         emit CancelRedeemClaimable(controller, REQUEST_ID, shares);
     }
 
