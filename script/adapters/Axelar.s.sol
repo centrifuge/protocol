@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy CP and CP with an AxelarScript Adapter.
 contract AxelarDeployer is FullDeployer {

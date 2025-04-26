@@ -65,7 +65,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration methods
+    // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IShareClassManager

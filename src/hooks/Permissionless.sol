@@ -18,12 +18,10 @@ import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 /// @title  Permissionless
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
-///         * Requires accounts to be added as a member before submitting a redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
 ///         * Allows authTransferFrom calls
 ///
-/// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
-///         the last bit is used to denote whether the account is frozen.
+/// @dev    The last bit of hookData is used to denote whether the account is frozen.
 contract Permissionless is Auth, IFreezable, IHook {
     using BitmapLib for *;
     using MessageLib for *;
