@@ -3,12 +3,12 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";

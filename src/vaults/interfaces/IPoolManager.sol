@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
+
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -252,6 +253,9 @@ interface IPoolManager {
     /// defined as ASSET_UNIT/SHARE_UNIT.
     /// @dev Conditionally checks if price is valid.
     ///
+    /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
+    /// conversion relying on pricePoolPerShare and pricePoolPerAsset. See PricingLib for more information.
+    ///
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
@@ -291,4 +295,19 @@ interface IPoolManager {
         external
         view
         returns (D18 price, uint64 computedAt);
+
+    /// @notice Returns the both prices per pool for a given pool, share class and the underlying asset id. The Provided
+    /// prices is defined as POOL_UNIT/ASSET_UNIT and POOL_UNIT/SHARE_UNIT.
+    /// @dev Conditionally checks if prices are valid.
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id for which we want to know pool price per asset
+    /// @param checkValidity Whether to check if the prices are valid
+    /// @return pricePoolPerAsset The pool price per asset unit, i.e. POOL_UNIT/ASSET_UNIT
+    /// @return pricePoolPerShare The pool price per share unit, i.e. POOL_UNIT/SHARE_UNIT
+    function pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
+        external
+        view
+        returns (D18 pricePoolPerAsset, D18 pricePoolPerShare);
 }

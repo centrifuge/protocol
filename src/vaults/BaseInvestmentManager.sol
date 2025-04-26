@@ -12,10 +12,10 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -47,19 +47,23 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
+            poolManager.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
-        return _convertToShares(vault_, vaultDetails, priceAssetPerShare, assets, MathLib.Rounding.Down);
+        return _assetToShareAmount(
+            vault_, vaultDetails, assets, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
     }
 
     /// @inheritdoc IBaseInvestmentManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        (D18 priceAssetPerShare,) =
-            poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
+            poolManager.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
-        return _convertToAssets(vault_, vaultDetails, priceAssetPerShare, shares, MathLib.Rounding.Down);
+        return _shareToAssetAmount(
+            vault_, vaultDetails, shares, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
     }
 
     /// @inheritdoc IBaseInvestmentManager
@@ -74,36 +78,40 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         return poolEscrowProvider.escrow(poolId);
     }
 
-    function _convertToShares(
+    function _assetToShareAmount(
         IBaseVault vault_,
         VaultDetails memory vaultDetails,
-        D18 priceAssetPerShare,
         uint256 assets,
+        D18 pricePoolPerAsset,
+        D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 shares) {
-        return VaultPricingLib.calculateShares(
+        return PricingLib.assetToShareAmount(
             vault_.share(),
             vaultDetails.asset,
             vaultDetails.tokenId,
             assets.toUint128(),
-            priceAssetPerShare.raw(),
+            pricePoolPerAsset,
+            pricePoolPerShare,
             rounding
         );
     }
 
-    function _convertToAssets(
+    function _shareToAssetAmount(
         IBaseVault vault_,
         VaultDetails memory vaultDetails,
-        D18 priceAssetPerShare,
         uint256 shares,
+        D18 pricePoolPerAsset,
+        D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 assets) {
-        return VaultPricingLib.calculateAssets(
+        return PricingLib.shareToAssetAmount(
             vault_.share(),
             shares.toUint128(),
             vaultDetails.asset,
             vaultDetails.tokenId,
-            priceAssetPerShare.raw(),
+            pricePoolPerAsset,
+            pricePoolPerShare,
             rounding
         );
     }

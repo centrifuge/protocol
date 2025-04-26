@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
@@ -40,6 +40,6 @@ contract TransientValuation is BaseValuation, ReentrancyProtection {
 
         require(D18.unwrap(price) != 0, PriceNotSet(base, quote));
 
-        return ConversionLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
+        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
     }
 }

@@ -3,8 +3,10 @@ pragma solidity 0.8.28;
 pragma abicoder v2;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
+
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
@@ -21,14 +23,21 @@ interface VaultLike {
 contract AsyncRequestsHarness is AsyncRequests {
     constructor(IEscrow globalEscrow, address root, address deployer) AsyncRequests(globalEscrow, root, deployer) {}
 
-    function calculatePrice(IBaseVault vault, uint128 assets, uint128 shares) external view returns (uint256 price) {
+    function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
+        external
+        view
+        returns (uint256 price)
+    {
         if (address(vault) == address(0)) {
-            return VaultPricingLib.calculatePrice(address(0), shares, address(0), 0, assets);
+            return
+                PricingLib.calculatePriceAssetPerShare(address(0), shares, address(0), 0, assets, MathLib.Rounding.Down);
         }
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         address shareToken = vault.share();
-        return VaultPricingLib.calculatePrice(shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets);
+        return PricingLib.calculatePriceAssetPerShare(
+            shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
+        );
     }
 }
 
@@ -89,7 +98,7 @@ contract AsyncRequestsTest is BaseTest {
     // --- Price calculations ---
     function testPrice() public {
         AsyncRequestsHarness harness = new AsyncRequestsHarness(globalEscrow, address(root), address(this));
-        assertEq(harness.calculatePrice(IBaseVault(address(0)), 1, 0), 0);
-        assertEq(harness.calculatePrice(IBaseVault(address(0)), 0, 1), 0);
+        assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0), 0);
+        assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1), 0);
     }
 }

@@ -5,11 +5,11 @@ import "forge-std/Test.sol";
 
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -77,7 +77,7 @@ abstract contract ShareClassManagerBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for string;
-    using ConversionLib for *;
+    using PricingLib for *;
 
     ShareClassManager public shareClass;
 
@@ -106,7 +106,7 @@ abstract contract ShareClassManagerBaseTest is Test {
     }
 
     function _intoPoolAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
-        return ConversionLib.convertWithPrice(
+        return PricingLib.convertWithPrice(
             amount,
             IHubRegistry(hubRegistryMock).decimals(assetId),
             IHubRegistry(hubRegistryMock).decimals(poolId),
@@ -115,7 +115,7 @@ abstract contract ShareClassManagerBaseTest is Test {
     }
 
     function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
-        return ConversionLib.convertWithPrice(
+        return PricingLib.convertWithPrice(
             amount,
             IHubRegistry(hubRegistryMock).decimals(poolId),
             IHubRegistry(hubRegistryMock).decimals(assetId),
@@ -129,12 +129,13 @@ abstract contract ShareClassManagerBaseTest is Test {
         returns (uint128)
     {
         return pricePoolPerShare.reciprocalMulUint256(
-            ConversionLib.convertWithPrice(
+            PricingLib.convertWithPrice(
                 depositAmountAsset,
                 IHubRegistry(hubRegistryMock).decimals(assetId),
                 IHubRegistry(hubRegistryMock).decimals(poolId),
                 _pricePoolPerAsset(assetId)
-            )
+            ),
+            MathLib.Rounding.Down
         ).toUint128();
     }
 
@@ -942,7 +943,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         redeemShares = uint128(bound(redeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
         approvedShares = uint128(bound(approvedShares_, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
         poolPerShare = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
-        approvedPool = poolPerShare.mulUint128(approvedShares);
+        approvedPool = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
 
         shareClass.requestRedeem(poolId, scId, redeemShares, investor, USDC);
         shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
@@ -1055,7 +1056,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
         approvedShares = uint128(bound(approvedShares, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
         D18 poolPerShare = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
-        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
         uint128 assetAmount = _intoAssetAmount(USDC, poolAmount);
 
         // Mock total issuance to equal redeemShares
@@ -1245,7 +1246,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
     function testQueuedRedeemWithoutCancellation(uint128 redeemShares) public {
         redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 3));
         D18 poolPerShare = d18(1, 1);
-        uint128 poolAmount = poolPerShare.mulUint128(redeemShares);
+        uint128 poolAmount = poolPerShare.mulUint128(redeemShares, MathLib.Rounding.Down);
         uint128 claimedAssetAmount = _intoAssetAmount(USDC, poolAmount);
         uint128 approvedShares = redeemShares;
         uint128 pendingShareAmount = 0;
@@ -1309,7 +1310,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         D18 poolPerShare = d18(1, 1);
         uint128 approvedShares = redeemShares / 4;
         uint128 pendingShareAmount = redeemShares - approvedShares;
-        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
         uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
         uint128 queuedAmount = 0;
         uint32 epochId = 1;
@@ -1371,7 +1372,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         D18 poolPerShare = d18(1, 1);
         uint128 approvedShares = redeemShares / 4;
         uint128 pendingShareAmount = redeemShares - approvedShares;
-        uint128 poolAmount = poolPerShare.mulUint128(approvedShares);
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
         uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
         uint32 epochId = 1;
 
@@ -1432,7 +1433,9 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
     ) public {
         D18 navPerShareDeposit = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
         D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.inner())));
-        uint128 shares = navPerShareDeposit.reciprocalMulUint128(_intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC));
+        uint128 shares = navPerShareDeposit.reciprocalMulUint128(
+            _intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC), MathLib.Rounding.Down
+        );
         depositRequestUsdc = uint128(bound(depositRequestUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
         redeemRequestShares = uint128(bound(redeemRequestShares, MIN_REQUEST_AMOUNT_SHARES, shares));
         depositApprovedUsdc = uint128(bound(depositRequestUsdc, MIN_REQUEST_AMOUNT_USDC, depositRequestUsdc));
@@ -1477,7 +1480,8 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
 
         // Step 2d: Issue shares
         shareClass.issueShares(poolId, scId, USDC, epochId, navPerShareDeposit);
-        uint128 depositIssuedShares = navPerShareDeposit.reciprocalMulUint128(_intoPoolAmount(USDC, depositRequestUsdc));
+        uint128 depositIssuedShares =
+            navPerShareDeposit.reciprocalMulUint128(_intoPoolAmount(USDC, depositRequestUsdc), MathLib.Rounding.Down);
         shares += depositIssuedShares;
         assertEq(_totalIssuance(), shares, "2Mismatch in issuance");
 
