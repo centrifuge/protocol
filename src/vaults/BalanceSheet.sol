@@ -305,8 +305,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         QueueAmount storage queue = queuedAssets[poolId][scId][assetId];
 
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-
+        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         if (queue.increase > queue.decrease) {
             sender.sendUpdateHoldingAmount(
                 poolId, scId, assetId, address(0), queue.increase - queue.decrease, pricePoolPerAsset, true
