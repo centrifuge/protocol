@@ -47,16 +47,15 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacyVault = legacyVault_;
     }
 
-    /// @dev Check if the msg.sender is the legacyVault
+    /// @dev Check if the msg.sender is the legacy vault
     modifier legacy() {
         require(msg.sender == address(legacyVault), NotLegacyVault(msg.sender, address(legacyVault)));
         _;
     }
 
-    // --- IInvestmentManager impl ---
-    function escrow() public view returns (address) {
-        return address(manager.globalEscrow());
-    }
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager handlers
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IInvestmentManager
     function requestDeposit(address, /* vault */ uint256 assets, address receiver, address owner, address source)
@@ -86,7 +85,14 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         return asyncManager().cancelRedeemRequest(this, owner, source);
     }
 
-    // --- IInvestmentManager - View functions ---
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager view methods
+    //----------------------------------------------------------------------------------------------
+
+    function escrow() public view returns (address) {
+        return address(manager.globalEscrow());
+    }
+
     /// @inheritdoc IInvestmentManager
     function convertToShares(address, /* vault */ uint256 _assets) public view returns (uint256 shares) {
         shares = asyncManager().convertToShares(this, _assets);
@@ -152,7 +158,10 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         lastUpdated = manager.priceLastUpdated(this);
     }
 
-    // --- IInvestmentManager - Vault claim functions ---
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager vault claim methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IInvestmentManager
     function deposit(address, /* vault */ uint256 assets, address receiver, address owner)
         public
