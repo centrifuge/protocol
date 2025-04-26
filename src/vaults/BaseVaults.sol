@@ -200,7 +200,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 }
 
 abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
-    IAsyncRedeemManager public asyncRedeemManager;
+    IAsyncRedeemManager public immutable asyncRedeemManager;
 
     constructor(IAsyncRedeemManager asyncRequests_) {
         asyncRedeemManager = asyncRequests_;
@@ -327,7 +327,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 }
 
 abstract contract BaseSyncDepositVault is BaseVault {
-    ISyncDepositManager public syncDepositManager;
+    ISyncDepositManager public immutable syncDepositManager;
 
     constructor(ISyncDepositManager syncRequests_) {
         syncDepositManager = syncRequests_;

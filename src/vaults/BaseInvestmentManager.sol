@@ -24,11 +24,10 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     using MathLib for uint256;
 
     address public immutable root;
+    IEscrow public immutable globalEscrow;
 
     IPoolManager public poolManager;
     IPoolEscrowProvider public poolEscrowProvider;
-    /// @inheritdoc IBaseInvestmentManager
-    IEscrow public globalEscrow;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;

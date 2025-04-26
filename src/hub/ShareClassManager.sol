@@ -31,9 +31,6 @@ contract ShareClassManager is Auth, IShareClassManager {
     using CastLib for *;
     using BytesLib for bytes;
 
-    uint32 constant META_NAME_LENGTH = 128;
-    uint32 constant META_SYMBOL_LENGTH = 32;
-
     IHubRegistry public immutable hubRegistry;
 
     // Share classes

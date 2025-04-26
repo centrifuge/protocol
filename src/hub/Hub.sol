@@ -114,7 +114,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
-            totalCancelledAssetAmount = cancelledAssetAmount;
+            totalCancelledAssetAmount += cancelledAssetAmount;
 
             if (!canClaimAgain) {
                 break;
@@ -148,7 +148,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
-            totalCancelledShareAmount = cancelledShareAmount;
+            totalCancelledShareAmount += cancelledShareAmount;
 
             if (!canClaimAgain) {
                 break;
