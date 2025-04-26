@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -12,8 +11,6 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 /// @dev    Pausing can happen instantaneously, but relying on other contracts
 ///         is restricted to the timelock set by the delay.
 contract Root is Auth, IRoot {
-    using BytesLib for bytes;
-
     /// @dev To prevent filing a delay that would block any updates indefinitely
     uint256 internal constant MAX_DELAY = 4 weeks;
 

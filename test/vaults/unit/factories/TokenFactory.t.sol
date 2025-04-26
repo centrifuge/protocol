@@ -39,7 +39,7 @@ contract FactoryTest is Test {
             testSetup1.deployVault(
                 VaultKind.Async,
                 18,
-                testSetup1.restrictedTransfers(),
+                testSetup1.fullRestrictionsHook(),
                 bytes16(bytes("1")),
                 address(testSetup1.erc20()),
                 0,
@@ -55,7 +55,7 @@ contract FactoryTest is Test {
             testSetup2.deployVault(
                 VaultKind.Async,
                 18,
-                testSetup2.restrictedTransfers(),
+                testSetup2.fullRestrictionsHook(),
                 bytes16(bytes("1")),
                 address(testSetup2.erc20()),
                 0,

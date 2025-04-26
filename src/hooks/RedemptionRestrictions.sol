@@ -10,19 +10,22 @@ import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IHook, HookData} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook, HookData, ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
+import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 
-/// @title  Permissionless
+/// @title  Redemption Restrictions
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
+///         * Requires accounts to be added as a member before submitting a redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
 ///         * Allows authTransferFrom calls
 ///
-/// @dev    The last bit of hookData is used to denote whether the account is frozen.
-contract Permissionless is Auth, IFreezable, IHook {
+/// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
+///         the last bit is used to denote whether the account is frozen.
+contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
     using BitmapLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -37,7 +40,10 @@ contract Permissionless is Auth, IFreezable, IHook {
         root = IRoot(root_);
     }
 
-    // --- Callback from share token ---
+    //----------------------------------------------------------------------------------------------
+    // Callback from share token
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHook
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external
@@ -59,9 +65,8 @@ contract Permissionless is Auth, IFreezable, IHook {
         return IHook.onERC20AuthTransfer.selector;
     }
 
-    // --- ERC1404 implementation ---
     /// @inheritdoc IHook
-    function checkERC20Transfer(address from, address, /* to */ uint256, /* value */ HookData calldata hookData)
+    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
         public
         view
         returns (bool)
@@ -78,15 +83,31 @@ contract Permissionless is Auth, IFreezable, IHook {
             return false;
         }
 
+        if (from == address(0) && to == ESCROW_HOOK_ID) {
+            // Deposit request fulfillment
+            return true;
+        }
+
+        if (to == ESCROW_HOOK_ID && fromHookData >> 64 < block.timestamp) {
+            // Destination is escrow, so it's a redemption request, and the user is not a member
+            return false;
+        }
+
         return true;
     }
 
-    // --- Incoming message handling ---
+    //----------------------------------------------------------------------------------------------
+    // Restriction updates
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHook
     function updateRestriction(address token, bytes memory payload) external auth {
         UpdateRestrictionType updateId = payload.updateRestrictionType();
 
-        if (updateId == UpdateRestrictionType.Freeze) {
+        if (updateId == UpdateRestrictionType.Member) {
+            MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
+            updateMember(token, m.user.toAddress(), m.validUntil);
+        } else if (updateId == UpdateRestrictionType.Freeze) {
             MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
             freeze(token, m.user.toAddress());
         } else if (updateId == UpdateRestrictionType.Unfreeze) {
@@ -121,7 +142,28 @@ contract Permissionless is Auth, IFreezable, IHook {
         return uint128(IShareToken(token).hookDataOf(user)).getBit(FREEZE_BIT);
     }
 
-    // --- ERC165 support ---
+    /// @inheritdoc IMemberlist
+    function updateMember(address token, address user, uint64 validUntil) public auth {
+        require(block.timestamp <= validUntil, InvalidValidUntil());
+        require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
+
+        uint128 hookData = uint128(validUntil) << 64;
+        hookData.setBit(FREEZE_BIT, isFrozen(token, user));
+        IShareToken(token).setHookData(user, bytes16(hookData));
+
+        emit UpdateMember(token, user, validUntil);
+    }
+
+    /// @inheritdoc IMemberlist
+    function isMember(address token, address user) external view returns (bool isValid, uint64 validUntil) {
+        validUntil = abi.encodePacked(IShareToken(token).hookDataOf(user)).toUint64(0);
+        isValid = validUntil >= block.timestamp;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return interfaceId == type(IHook).interfaceId || interfaceId == type(IERC165).interfaceId;

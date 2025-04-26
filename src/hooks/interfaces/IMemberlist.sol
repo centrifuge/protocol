@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
-
-interface IRestrictedTransfers is IFreezable {
+interface IMemberlist {
     // --- Events ---
     event UpdateMember(address indexed token, address indexed user, uint64 validUntil);
 

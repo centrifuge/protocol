@@ -10,7 +10,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -75,7 +75,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000, uint64(block.timestamp));
@@ -119,7 +119,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken(address(vault.share()));
 

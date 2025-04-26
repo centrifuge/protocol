@@ -37,7 +37,13 @@ contract BalanceSheetTest is BaseTest {
         assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
         poolManager.addPool(POOL_A);
         poolManager.addShareClass(
-            POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), restrictedTransfers
+            POOL_A,
+            defaultTypedShareClassId,
+            "testShareClass",
+            "tsc",
+            defaultDecimals,
+            bytes32(""),
+            fullRestrictionsHook
         );
         poolManager.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)

@@ -11,35 +11,35 @@ import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 import {IHook} from "src/vaults/interfaces/token/IHook.sol";
 
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
-import {IRestrictedTransfers} from "src/hooks/interfaces/IRestrictedTransfers.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
+import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 
-contract RestrictedTransfersTest is Test {
+contract FullRestrictionsTest is Test {
     MockRoot root;
     ShareToken token;
-    RestrictedTransfers restrictedTransfers;
+    FullRestrictions fullRestrictionsHook;
 
     function setUp() public {
         root = new MockRoot();
         token = new ShareToken(18);
-        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
-        token.file("hook", address(restrictedTransfers));
+        fullRestrictionsHook = new FullRestrictions(address(root), address(this));
+        token.file("hook", address(fullRestrictionsHook));
     }
 
     function testHandleInvalidMessage() public {
         vm.expectRevert(IHook.InvalidUpdate.selector);
-        restrictedTransfers.updateRestriction(address(token), abi.encodePacked(uint8(0)));
+        fullRestrictionsHook.updateRestriction(address(token), abi.encodePacked(uint8(0)));
     }
 
     function testAddMember(uint64 validUntil) public {
         vm.assume(validUntil >= block.timestamp);
 
-        vm.expectRevert(IRestrictedTransfers.InvalidValidUntil.selector);
-        restrictedTransfers.updateMember(address(token), address(this), uint64(block.timestamp - 1));
+        vm.expectRevert(IMemberlist.InvalidValidUntil.selector);
+        fullRestrictionsHook.updateMember(address(token), address(this), uint64(block.timestamp - 1));
 
-        restrictedTransfers.updateMember(address(token), address(this), validUntil);
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), address(this));
+        fullRestrictionsHook.updateMember(address(token), address(this), validUntil);
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
     }
@@ -47,37 +47,37 @@ contract RestrictedTransfersTest is Test {
     function testIsMember(uint64 validUntil) public {
         vm.assume(validUntil >= block.timestamp);
 
-        restrictedTransfers.updateMember(address(token), address(this), validUntil);
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), address(this));
+        fullRestrictionsHook.updateMember(address(token), address(this), validUntil);
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
     }
 
     function testFreeze() public {
-        restrictedTransfers.freeze(address(token), address(this));
-        assertEq(restrictedTransfers.isFrozen(address(token), address(this)), true);
+        fullRestrictionsHook.freeze(address(token), address(this));
+        assertEq(fullRestrictionsHook.isFrozen(address(token), address(this)), true);
     }
 
     function testFreezingZeroAddress() public {
         vm.expectRevert(IFreezable.CannotFreezeZeroAddress.selector);
-        restrictedTransfers.freeze(address(token), address(0));
-        assertEq(restrictedTransfers.isFrozen(address(token), address(0)), false);
+        fullRestrictionsHook.freeze(address(token), address(0));
+        assertEq(fullRestrictionsHook.isFrozen(address(token), address(0)), false);
     }
 
     function testAddMemberAndFreeze(uint64 validUntil) public {
         vm.assume(validUntil >= block.timestamp);
 
-        restrictedTransfers.updateMember(address(token), address(this), validUntil);
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), address(this));
+        fullRestrictionsHook.updateMember(address(token), address(this), validUntil);
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
-        assertEq(restrictedTransfers.isFrozen(address(token), address(this)), false);
+        assertEq(fullRestrictionsHook.isFrozen(address(token), address(this)), false);
 
-        restrictedTransfers.freeze(address(token), address(this));
-        (_isMember, _validUntil) = restrictedTransfers.isMember(address(token), address(this));
+        fullRestrictionsHook.freeze(address(token), address(this));
+        (_isMember, _validUntil) = fullRestrictionsHook.isMember(address(token), address(this));
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
-        assertEq(restrictedTransfers.isFrozen(address(token), address(this)), true);
+        assertEq(fullRestrictionsHook.isFrozen(address(token), address(this)), true);
     }
 
     // --- erc165 checks ---
@@ -90,9 +90,9 @@ contract RestrictedTransfersTest is Test {
         assertEq(type(IERC165).interfaceId, erc165);
         assertEq(type(IHook).interfaceId, hook);
 
-        assertEq(restrictedTransfers.supportsInterface(erc165), true);
-        assertEq(restrictedTransfers.supportsInterface(hook), true);
+        assertEq(fullRestrictionsHook.supportsInterface(erc165), true);
+        assertEq(fullRestrictionsHook.supportsInterface(hook), true);
 
-        assertEq(restrictedTransfers.supportsInterface(unsupportedInterfaceId), false);
+        assertEq(fullRestrictionsHook.supportsInterface(unsupportedInterfaceId), false);
     }
 }

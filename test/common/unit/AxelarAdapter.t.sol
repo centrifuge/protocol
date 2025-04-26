@@ -8,7 +8,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {AxelarAdapter, IAdapter, IAxelarAdapter, IAxelarExecutable} from "src/common/AxelarAdapter.sol";
+import {AxelarAdapter, IAdapter, IAxelarAdapter, IAxelarExecutable} from "src/common/adapters/AxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 contract MockAxelarGateway is Mock {

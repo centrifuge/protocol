@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {WormholeAdapter} from "src/common/WormholeAdapter.sol";
+import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";

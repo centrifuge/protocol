@@ -7,19 +7,18 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ILegacyVault} from "src/vaults/legacy/interfaces/ILegacyVault.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
 ///
-/// @dev This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2. At
-/// the
-/// same time it acts like a new `IAsyncVault` for the `IAsyncRequests` manager of Centrifuge V3. The adapter needs to
-/// be deployed per legacy vault and allows a seamless interaction between Centrifuge V2 vaults and Centrifuge V3
-/// infrastructure. Thereby, allowing to migrate existing vaults to the new system.
+/// @dev    This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2.
+///         At the same time it acts like a new `IAsyncVault` for the `IAsyncRequests` manager of Centrifuge V3.
+///         The adapter needs to be deployed per legacy vault and allows a seamless interaction between Centrifuge V2
+///         vaults and Centrifuge V3 infrastructure. Thereby, allowing to migrate existing vaults to the new system.
 contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManager {
     uint64 public immutable legacyPoolId;
     bytes16 public immutable legacyTrancheId;
@@ -48,16 +47,15 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacyVault = legacyVault_;
     }
 
-    /// @dev Check if the msg.sende_r is the legacyVault
+    /// @dev Check if the msg.sender is the legacy vault
     modifier legacy() {
         require(msg.sender == address(legacyVault), NotLegacyVault(msg.sender, address(legacyVault)));
         _;
     }
 
-    // --- IInvestmentManager impl ---
-    function escrow() public view returns (address) {
-        return address(manager.globalEscrow());
-    }
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager handlers
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IInvestmentManager
     function requestDeposit(address, /* vault */ uint256 assets, address receiver, address owner, address source)
@@ -87,7 +85,14 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         return asyncManager().cancelRedeemRequest(this, owner, source);
     }
 
-    // --- IInvestmentManager - View functions ---
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager view methods
+    //----------------------------------------------------------------------------------------------
+
+    function escrow() public view returns (address) {
+        return address(manager.globalEscrow());
+    }
+
     /// @inheritdoc IInvestmentManager
     function convertToShares(address, /* vault */ uint256 _assets) public view returns (uint256 shares) {
         shares = asyncManager().convertToShares(this, _assets);
@@ -153,7 +158,10 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         lastUpdated = manager.priceLastUpdated(this);
     }
 
-    // --- IInvestmentManager - Vault claim functions ---
+    //----------------------------------------------------------------------------------------------
+    // IInvestmentManager vault claim methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IInvestmentManager
     function deposit(address, /* vault */ uint256 assets, address receiver, address owner)
         public
@@ -206,5 +214,41 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         returns (uint256 shares)
     {
         shares = asyncManager().claimCancelRedeemRequest(this, receiver, owner);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Event emitters
+    //----------------------------------------------------------------------------------------------
+
+    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public override auth {
+        legacyVault.onDepositClaimable(controller, assets, shares);
+    }
+
+    function onCancelDepositClaimable(address controller, uint256 assets) public override auth {
+        legacyVault.onCancelDepositClaimable(controller, assets);
+    }
+
+    function onRedeemRequest(address controller, address owner, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onRedeemRequest(controller, owner, shares);
+    }
+
+    function onRedeemClaimable(address controller, uint256 assets, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onRedeemClaimable(controller, assets, shares);
+    }
+
+    function onCancelRedeemClaimable(address controller, uint256 shares)
+        public
+        override(BaseAsyncRedeemVault, IAsyncRedeemVault)
+        auth
+    {
+        legacyVault.onCancelRedeemClaimable(controller, shares);
     }
 }

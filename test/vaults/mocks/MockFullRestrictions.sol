@@ -2,14 +2,14 @@
 pragma solidity 0.8.28;
 
 import "test/common/mocks/Mock.sol";
-import "src/hooks/RestrictedTransfers.sol";
+import "src/hooks/FullRestrictions.sol";
 
-contract MockRestrictedTransfers is RestrictedTransfers, Mock {
-    constructor(address root_, address deployer) RestrictedTransfers(root_, deployer) {}
+contract MockFullRestrictions is FullRestrictions, Mock {
+    constructor(address root_, address deployer) FullRestrictions(root_, deployer) {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public
-        override(RestrictedTransfers)
+        override(FullRestrictions)
         returns (bytes4)
     {
         require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());

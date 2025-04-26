@@ -26,7 +26,7 @@ import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
@@ -218,7 +218,8 @@ contract BaseTest is VaultsDeployer, Test {
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(vaultKind, decimals, restrictedTransfers, scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID);
+        return
+            deployVault(vaultKind, decimals, fullRestrictionsHook, scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID);
     }
 
     function deploySimpleVault(VaultKind vaultKind)
@@ -226,7 +227,7 @@ contract BaseTest is VaultsDeployer, Test {
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
         return deployVault(
-            vaultKind, 6, restrictedTransfers, bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
+            vaultKind, 6, fullRestrictionsHook, bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
         );
     }
 

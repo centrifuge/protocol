@@ -10,6 +10,7 @@ import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
@@ -31,6 +32,22 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
         BaseSyncDepositVault(syncDepositManager_)
         BaseAsyncRedeemVault(asyncRedeemManager_)
     {}
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    function file(bytes32 what, address data) external override(BaseAsyncRedeemVault, BaseVault) auth {
+        if (what == "manager") manager = IBaseInvestmentManager(data);
+        else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
+        else if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
+        else revert FileUnrecognizedParam();
+        emit File(what, data);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId)

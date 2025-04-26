@@ -85,7 +85,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external virtual auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -210,10 +210,21 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 }
 
 abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
-    IAsyncRedeemManager public immutable asyncRedeemManager;
+    IAsyncRedeemManager public asyncRedeemManager;
 
     constructor(IAsyncRedeemManager asyncRequests_) {
         asyncRedeemManager = asyncRequests_;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    function file(bytes32 what, address data) external virtual override auth {
+        if (what == "manager") manager = IBaseInvestmentManager(data);
+        else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
+        else revert FileUnrecognizedParam();
+        emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -308,15 +319,15 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // Event emitters
     //----------------------------------------------------------------------------------------------
 
-    function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
+    function onRedeemRequest(address controller, address owner, uint256 shares) public virtual auth {
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
     }
 
-    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public auth {
+    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public virtual auth {
         emit RedeemClaimable(controller, REQUEST_ID, assets, shares);
     }
 
-    function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
+    function onCancelRedeemClaimable(address controller, uint256 shares) public virtual auth {
         emit CancelRedeemClaimable(controller, REQUEST_ID, shares);
     }
 
@@ -352,7 +363,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 }
 
 abstract contract BaseSyncDepositVault is BaseVault {
-    ISyncDepositManager public immutable syncDepositManager;
+    ISyncDepositManager public syncDepositManager;
 
     constructor(ISyncDepositManager syncRequests_) {
         syncDepositManager = syncRequests_;

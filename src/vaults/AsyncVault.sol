@@ -163,11 +163,11 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     // Event emitters
     //----------------------------------------------------------------------------------------------
 
-    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public auth {
+    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public virtual auth {
         emit DepositClaimable(controller, REQUEST_ID, assets, shares);
     }
 
-    function onCancelDepositClaimable(address controller, uint256 assets) public auth {
+    function onCancelDepositClaimable(address controller, uint256 assets) public virtual auth {
         emit CancelDepositClaimable(controller, REQUEST_ID, assets);
     }
 }

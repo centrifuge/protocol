@@ -11,8 +11,9 @@ import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
-import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
+import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
+import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
@@ -38,8 +39,9 @@ contract VaultsDeployer is CommonDeployer {
     TokenFactory public tokenFactory;
 
     // Hooks
-    address public restrictedTransfers;
-    address public freelyTransferable;
+    address public freezeOnlyHook;
+    address public redemptionRestrictionsHook;
+    address public fullRestrictionsHook;
 
     function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
@@ -63,8 +65,9 @@ contract VaultsDeployer is CommonDeployer {
         vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
 
         // Hooks
-        restrictedTransfers = address(new RestrictedTransfers{salt: SALT}(address(root), deployer));
-        freelyTransferable = address(new FreelyTransferable{salt: SALT}(address(root), deployer));
+        freezeOnlyHook = address(new FreezeOnly{salt: SALT}(address(root), deployer));
+        fullRestrictionsHook = address(new FullRestrictions{salt: SALT}(address(root), deployer));
+        redemptionRestrictionsHook = address(new RedemptionRestrictions{salt: SALT}(address(root), deployer));
 
         _vaultsRegister();
         _vaultsEndorse();
@@ -76,8 +79,9 @@ contract VaultsDeployer is CommonDeployer {
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));
-        register("restrictedTransfers", address(restrictedTransfers));
-        register("freelyTransferable", address(freelyTransferable));
+        register("freezeOnlyHook", address(freezeOnlyHook));
+        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
+        register("fullRestrictionsHook", address(fullRestrictionsHook));
         register("tokenFactory", address(tokenFactory));
         register("asyncRequests", address(asyncRequests));
         register("syncRequests", address(syncRequests));
@@ -100,8 +104,9 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(tokenFactory).rely(address(poolManager));
         asyncRequests.rely(address(poolManager));
         syncRequests.rely(address(poolManager));
-        IAuth(restrictedTransfers).rely(address(poolManager));
-        IAuth(freelyTransferable).rely(address(poolManager));
+        IAuth(freezeOnlyHook).rely(address(poolManager));
+        IAuth(fullRestrictionsHook).rely(address(poolManager));
+        IAuth(redemptionRestrictionsHook).rely(address(poolManager));
         messageDispatcher.rely(address(poolManager));
         poolEscrowFactory.rely(address(poolManager));
         gateway.rely(address(poolManager));
@@ -131,8 +136,9 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(asyncVaultFactory).rely(address(root));
         IAuth(syncDepositVaultFactory).rely(address(root));
         IAuth(tokenFactory).rely(address(root));
-        IAuth(restrictedTransfers).rely(address(root));
-        IAuth(freelyTransferable).rely(address(root));
+        IAuth(freezeOnlyHook).rely(address(root));
+        IAuth(fullRestrictionsHook).rely(address(root));
+        IAuth(redemptionRestrictionsHook).rely(address(root));
 
         // Rely gateway
         asyncRequests.rely(address(gateway));
@@ -197,8 +203,9 @@ contract VaultsDeployer is CommonDeployer {
         IAuth(asyncVaultFactory).deny(deployer);
         IAuth(syncDepositVaultFactory).deny(deployer);
         IAuth(tokenFactory).deny(deployer);
-        IAuth(restrictedTransfers).deny(deployer);
-        IAuth(freelyTransferable).deny(deployer);
+        IAuth(freezeOnlyHook).deny(deployer);
+        IAuth(fullRestrictionsHook).deny(deployer);
+        IAuth(redemptionRestrictionsHook).deny(deployer);
         asyncRequests.deny(deployer);
         syncRequests.deny(deployer);
         poolManager.deny(deployer);
