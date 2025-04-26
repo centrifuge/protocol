@@ -12,8 +12,6 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
     IGatewayHandler,
@@ -22,7 +20,6 @@ import {
     IHubGatewayHandler,
     IInvestmentManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";

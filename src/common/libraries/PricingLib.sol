@@ -8,8 +8,6 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-
 library PricingLib {
     using MathLib for *;
 

@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";

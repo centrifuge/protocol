@@ -4,9 +4,8 @@ pragma solidity 0.8.28;
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC7575.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
@@ -21,7 +20,6 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {

@@ -19,7 +19,6 @@ import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @title  VaultRouter

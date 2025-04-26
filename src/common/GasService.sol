@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used to determine the execution gas limit

@@ -7,8 +7,6 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
@@ -25,7 +23,6 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 

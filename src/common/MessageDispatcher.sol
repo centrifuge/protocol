@@ -8,8 +8,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";

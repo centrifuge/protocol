@@ -7,7 +7,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
