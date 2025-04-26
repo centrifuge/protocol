@@ -74,6 +74,7 @@ forge test
 | [xmxanuel](https://x.com/xmxanuel)                   | May - June 2024 | Security review            | Internal                                                                                                                                                                    |
 | [Spearbit](https://spearbit.com/)                    | July 2024       | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2024-08-Spearbit.pdf)                                                                            |
 | [Cantina](https://cantina.xyz/)                      | Feb 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-02-Cantina.pdf)                                                                             |
+| [burraSec](https://www.burrasec.com/)                      | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec.pdf)                                                                             |
 
 ## License
 This codebase is licensed under [Business Source License 1.1](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE).
