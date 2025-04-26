@@ -7,6 +7,13 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
+struct QueueAmount {
+    // Issuances of shares / deposits of assets
+    uint128 increase;
+    // Revocations of shares / withdraws of assets
+    uint128 decrease;
+}
+
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);

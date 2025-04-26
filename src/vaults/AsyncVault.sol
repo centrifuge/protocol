@@ -35,7 +35,10 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         IAsyncRequests manager_
     ) BaseVault(poolId_, scId_, asset_, token_, root_, manager_) BaseAsyncRedeemVault(manager_) {}
 
-    // --- ERC-7540 methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7540 deposit
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7540Deposit
     function requestDeposit(uint256 assets, address controller, address owner) public returns (uint256) {
         require(owner == msg.sender || isOperator[owner][msg.sender], InvalidOwner());
@@ -60,7 +63,10 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         claimableAssets = maxDeposit(controller);
     }
 
-    // --- Asynchronous cancellation methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7887
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7540CancelDeposit
     function cancelDepositRequest(uint256, address controller) external {
         _validateController(controller);
@@ -88,14 +94,20 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         emit CancelDepositClaim(controller, receiver, REQUEST_ID, msg.sender, assets);
     }
 
-    // --- ERC165 support ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure override(BaseAsyncRedeemVault, IERC165) returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId
             || interfaceId == type(IERC7540CancelDeposit).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    // --- ERC-4626 methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7540 claim
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7575
     function maxDeposit(address controller) public view returns (uint256 maxAssets) {
         maxAssets = asyncManager().maxDeposit(this, controller);
@@ -147,7 +159,10 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         revert();
     }
 
-    // --- Event emitters ---
+    //----------------------------------------------------------------------------------------------
+    // Event emitters
+    //----------------------------------------------------------------------------------------------
+
     function onDepositClaimable(address controller, uint256 assets, uint256 shares) public auth {
         emit DepositClaimable(controller, REQUEST_ID, assets, shares);
     }

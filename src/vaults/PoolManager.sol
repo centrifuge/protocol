@@ -85,7 +85,7 @@ contract PoolManager is
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration methods
+    // Administration thods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
@@ -108,7 +108,10 @@ contract PoolManager is
         emit File(what, factory, status);
     }
 
-    // --- Outgoing message handling ---
+    //----------------------------------------------------------------------------------------------
+    // Outgoing methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IPoolManager
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
@@ -134,10 +137,6 @@ contract PoolManager is
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
         sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Outgoing methods
-    //----------------------------------------------------------------------------------------------
 
     // @inheritdoc IPoolManager
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
@@ -180,7 +179,7 @@ contract PoolManager is
     }
 
     //----------------------------------------------------------------------------------------------
-    // Incoming methods
+    // Incoming
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManagerGatewayHandler

@@ -51,7 +51,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         BaseInvestmentManager(globalEscrow_, root_, deployer)
     {}
 
-    /// @inheritdoc IBaseInvestmentManager
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
@@ -61,7 +64,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         emit File(what, data);
     }
 
-    // --- IVaultManager ---
     /// @inheritdoc IVaultManager
     /// @dev vault_ Must be an IAsyncVault
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
@@ -96,7 +98,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         deny(address(vault_));
     }
 
-    // --- Async investment handlers ---
+    //----------------------------------------------------------------------------------------------
+    // Async investment handlers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAsyncDepositManager
     function requestDeposit(IBaseVault vault_, uint256 assets, address controller, address, address)
         public
@@ -184,7 +189,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         sender.sendCancelRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
     }
 
-    // -- Gateway handlers --
+    //----------------------------------------------------------------------------------------------
+    // Gateway handlers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IInvestmentManagerGatewayHandler
     function approvedDeposits(
         PoolId poolId,
@@ -320,7 +328,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         vault_.onCancelRedeemClaimable(user, shares);
     }
 
-    // --- Sync investment handlers ---
+    //----------------------------------------------------------------------------------------------
+    // Sync investment handlers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IDepositManager
     function deposit(IBaseVault vault_, uint256 assets, address receiver, address controller)
         public
@@ -365,7 +376,6 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         }
     }
 
-    // --- Redeem Manager ---
     /// @inheritdoc IRedeemManager
     function redeem(IBaseVault vault_, uint256 shares, address receiver, address controller)
         public
@@ -430,6 +440,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Cancelation claim handlers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAsyncDepositManager
     function claimCancelDepositRequest(IBaseVault vault_, address receiver, address controller)
         public
@@ -467,7 +481,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         }
     }
 
-    // --- View functions ---
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
         if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) {
@@ -544,7 +561,10 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         return (VaultKind.Async, address(0));
     }
 
-    // --- Helpers ---
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     /// @dev    Checks transfer restrictions for the vault shares. Sender (from) and receiver (to) have to both pass
     ///         the restrictions for a successful share transfer.
     function _canTransfer(IBaseVault vault_, address from, address to, uint256 value) internal view returns (bool) {

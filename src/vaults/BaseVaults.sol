@@ -81,7 +81,10 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         _DOMAIN_SEPARATOR = EIP712Lib.calculateDomainSeparator(nameHash, versionHash);
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     function file(bytes32 what, address data) external auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else revert FileUnrecognizedParam();
@@ -147,7 +150,10 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         authorizations[msg.sender][nonce] = true;
     }
 
-    // --- ERC165 support ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
         return interfaceId == type(IERC7540Operator).interfaceId || interfaceId == type(IERC7741).interfaceId
@@ -155,7 +161,10 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
             || interfaceId == type(IERC165).interfaceId;
     }
 
-    // --- ERC-4626 methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-4626
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7575
     function totalAssets() external view returns (uint256) {
         return convertToAssets(IERC20Metadata(share).totalSupply());
@@ -175,7 +184,10 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         assets = manager.convertToAssets(this, shares);
     }
 
-    // --- Helpers ---
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
     function pricePerShare() external view returns (uint256) {
         return convertToAssets(10 ** _shareDecimals);
@@ -204,7 +216,10 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         asyncRedeemManager = asyncRequests_;
     }
 
-    // --- ERC-7540 methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7540 redeem
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7540Redeem
     function requestRedeem(uint256 shares, address controller, address owner) public returns (uint256) {
         require(IShareToken(share).balanceOf(owner) >= shares, InsufficientBalance());
@@ -236,7 +251,10 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         claimableShares = maxRedeem(controller);
     }
 
-    // --- Asynchronous cancellation methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7887
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7540CancelRedeem
     function cancelRedeemRequest(uint256, address controller) external {
         _validateController(controller);
@@ -264,7 +282,10 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
     }
 
-    // --- Synchronous redeem methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-7540 claim
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7575
     /// @notice     DOES NOT support controller != msg.sender since shares are already transferred on requestRedeem
     function withdraw(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
@@ -283,7 +304,10 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
-    // --- Event emitters ---
+    //----------------------------------------------------------------------------------------------
+    // Event emitters
+    //----------------------------------------------------------------------------------------------
+
     function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
     }
@@ -296,7 +320,10 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         emit CancelRedeemClaimable(controller, REQUEST_ID, shares);
     }
 
-    // --- View methods ---
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override(BaseVault, IERC165) returns (bool) {
         return super.supportsInterface(interfaceId) || interfaceId == type(IERC7540Redeem).interfaceId
@@ -331,7 +358,10 @@ abstract contract BaseSyncDepositVault is BaseVault {
         syncDepositManager = syncRequests_;
     }
 
-    // --- ERC-4626 methods ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-4626
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC7575
     function maxDeposit(address owner) public view returns (uint256 maxAssets) {
         maxAssets = syncDepositManager.maxDeposit(this, owner);
