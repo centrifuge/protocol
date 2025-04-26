@@ -206,28 +206,4 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
     {
         shares = asyncManager().claimCancelRedeemRequest(this, receiver, owner);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Event emitters
-    //----------------------------------------------------------------------------------------------
-
-    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public auth {
-        legacyVault.onDepositClaimable(controller, assets, shares);
-    }
-
-    function onCancelDepositClaimable(address controller, uint256 assets) public auth {
-        legacyVault.onCancelDepositClaimable(controller, assets);
-    }
-
-    function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
-        legacyVault.onRedeemRequest(controller, owner, shares);
-    }
-
-    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public auth {
-        legacyVault.onRedeemClaimable(controller, assets, shares);
-    }
-
-    function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
-        legacyVault.onCancelRedeemClaimable(controller, shares);
-    }
 }

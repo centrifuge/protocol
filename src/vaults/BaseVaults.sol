@@ -85,7 +85,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external virtual auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -220,9 +220,9 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external auth {
-        if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
-        else super.file(what, data);
+    function file(bytes32 what, address data) external virtual override auth {
+        if (what == "manager") manager = IBaseInvestmentManager(data);
+        else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         emit File(what, data);
     }
 
@@ -366,16 +366,6 @@ abstract contract BaseSyncDepositVault is BaseVault {
 
     constructor(ISyncDepositManager syncRequests_) {
         syncDepositManager = syncRequests_;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    function file(bytes32 what, address data) external auth {
-        if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
-        else super.file(what, data);
-        emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
