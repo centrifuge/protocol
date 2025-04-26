@@ -34,7 +34,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         axelarGasService = IAxelarGasService(axelarGasService_);
     }
 
-    // --- Administrative ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAxelarAdapter
     function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, address source) external auth {
         if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, source);
@@ -49,7 +52,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         emit File(what, centrifugeId, axelarId, destination);
     }
 
-    // --- Incoming ---
+    //----------------------------------------------------------------------------------------------
+    // Incoming
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAxelarExecutable
     function execute(
         bytes32 commandId,
@@ -68,7 +74,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         gateway.handle(source.centrifugeId, payload);
     }
 
-    // --- Outgoing ---
+    //----------------------------------------------------------------------------------------------
+    // Outgoing
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAdapter
     function send(uint16 centrifugeId, bytes calldata payload, uint256, /* gasLimit */ address refund)
         external

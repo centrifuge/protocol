@@ -17,25 +17,20 @@ contract Root is Auth, IRoot {
     /// @dev To prevent filing a delay that would block any updates indefinitely
     uint256 internal constant MAX_DELAY = 4 weeks;
 
-    /// @inheritdoc IRoot
     bool public paused;
-
-    /// @inheritdoc IRoot
     uint256 public delay;
-
-    /// @inheritdoc IRoot
     mapping(address => uint256) public endorsements;
-
-    /// @inheritdoc IRoot
     mapping(address relyTarget => uint256 timestamp) public schedule;
 
     constructor(uint256 _delay, address deployer) Auth(deployer) {
         require(_delay <= MAX_DELAY, DelayTooLong());
-
         delay = _delay;
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function file(bytes32 what, uint256 data) external auth {
         if (what == "delay") {
@@ -47,7 +42,6 @@ contract Root is Auth, IRoot {
         emit File(what, data);
     }
 
-    /// --- Endorsements ---
     /// @inheritdoc IRoot
     function endorse(address user) external auth {
         endorsements[user] = 1;
@@ -65,7 +59,10 @@ contract Root is Auth, IRoot {
         return endorsements[user] == 1;
     }
 
-    // --- Pause management ---
+    //----------------------------------------------------------------------------------------------
+    // Pause management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function pause() external auth {
         paused = true;
@@ -78,7 +75,10 @@ contract Root is Auth, IRoot {
         emit Unpause();
     }
 
-    /// --- Timelocked ward management ---
+    //----------------------------------------------------------------------------------------------
+    // Timelocked ward management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function scheduleRely(address target) public auth {
         schedule[target] = block.timestamp + delay;
@@ -103,7 +103,10 @@ contract Root is Auth, IRoot {
         schedule[target] = 0;
     }
 
-    /// --- External contract ward management ---
+    //----------------------------------------------------------------------------------------------
+    // External contract ward management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function relyContract(address target, address user) external auth {
         IAuth(target).rely(user);
