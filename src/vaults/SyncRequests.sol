@@ -13,13 +13,13 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
@@ -29,11 +29,14 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISharePriceProvider, Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
+import {
+    ISharePriceProvider,
+    Prices,
+    ISyncDepositValuation
+} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -53,8 +56,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     mapping(PoolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault))) public vault;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
-    mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => IERC7726))))
-        public valuation;
+    mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer)
         BaseInvestmentManager(globalEscrow_, root_, deployer)
@@ -79,9 +81,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
             require(address(poolManager.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(m.assetId));
 
-            setValuation(poolId, scId, asset, tokenId, m.valuation.toAddress());
+            setValuation(poolId, scId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
@@ -173,13 +174,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     }
 
     /// @inheritdoc ISyncRequests
-    function setValuation(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address valuation_)
-        public
-        auth
-    {
-        valuation[poolId][scId][asset][tokenId] = IERC7726(valuation_);
+    function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
+        valuation[poolId][scId] = ISyncDepositValuation(valuation_);
 
-        emit SetValuation(poolId, scId, asset, tokenId, address(valuation_));
+        emit SetValuation(poolId, scId, address(valuation_));
     }
 
     /// @inheritdoc ISyncRequests
@@ -199,7 +197,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (uint256 assets)
     {
-        return convertToAssets(vault_, shares);
+        return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
     /// @inheritdoc ISyncDepositManager
@@ -240,7 +238,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IBaseInvestmentManager Overwrites ---
+    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets)
         public
@@ -249,14 +247,14 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
-        );
+        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
-        return super._convertToShares(vault_, vaultDetails, priceAssetPerShare_, assets, MathLib.Rounding.Down);
+        return super._assetToShareAmount(
+            vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, MathLib.Rounding.Down
+        );
     }
 
-    // --- IBaseInvestmentManager Overwrites ---
+    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToAssets(IBaseVault vault_, uint256 shares)
         public
@@ -264,38 +262,26 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         override(IBaseInvestmentManager, BaseInvestmentManager)
         returns (uint256 assets)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        D18 priceAssetPerShare_ = _priceAssetPerShare(
-            vault_.poolId(), vault_.scId(), vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId
-        );
-
-        return super._convertToAssets(vault_, vaultDetails, priceAssetPerShare_, shares, MathLib.Rounding.Up);
+        return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
     }
 
-    // --- ISharePriceProvider Overwrites ---
-    /// @inheritdoc ISharePriceProvider
-    function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18 price) {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-
-        return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId);
-    }
-
-    /// @inheritdoc ISharePriceProvider
-    function prices(PoolId poolId, ShareClassId scId, AssetId assetId, address asset, uint256 tokenId)
-        public
-        view
-        returns (Prices memory priceData)
-    {
-        IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
-
-        (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
-        priceData.assetPerShare = _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
+    // --- ISharePriceProvider overrides ---
+    /// @inheritdoc ISyncDepositValuation
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId) public view returns (D18 price) {
+        ISyncDepositValuation valuation_ = valuation[poolId][scId];
 
         if (address(valuation_) == address(0)) {
-            (priceData.poolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+            (price,) = poolManager.pricePoolPerShare(poolId, scId, true);
         } else {
-            priceData.poolPerShare = priceData.poolPerAsset * priceData.assetPerShare;
+            price = valuation_.pricePoolPerShare(poolId, scId);
         }
+    }
+
+    /// @inheritdoc ISharePriceProvider
+    function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
+        priceData.poolPerShare = pricePoolPerShare(poolId, scId);
+        (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
     }
 
     /// --- Internal methods ---
@@ -313,8 +299,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
         // Mint shares for receiver & notify CP about issued shares
-        Prices memory priceData = prices(poolId, scId, vaultDetails.assetId, vault_.asset(), vaultDetails.tokenId);
-        balanceSheet.overridePricePoolPerShare(poolId, scId, priceData.poolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
 
         // NOTE:
@@ -338,36 +323,15 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    function _priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, address asset, uint256 tokenId)
+    function _shareToAssetAmount(IBaseVault vault_, uint256 assets, MathLib.Rounding rounding)
         internal
         view
-        returns (D18 price)
+        returns (uint256 shares)
     {
-        IERC7726 valuation_ = valuation[poolId][scId][asset][tokenId];
-
-        return _priceAssetPerShare(poolId, scId, assetId, asset, tokenId, valuation_);
-    }
-
-    function _priceAssetPerShare(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        IERC7726 valuation_
-    ) internal view returns (D18 price) {
-        if (address(valuation_) == address(0)) {
-            (price,) = poolManager.priceAssetPerShare(poolId, scId, assetId, true);
-        } else {
-            IShareToken shareToken = poolManager.shareToken(poolId, scId);
-
-            uint128 assetUnitAmount = uint128(10 ** VaultPricingLib.getAssetDecimals(asset, tokenId));
-            uint128 shareUnitAmount = uint128(10 ** IERC20Metadata(shareToken).decimals());
-            uint128 assetAmountPerShareUnit =
-                valuation_.getQuote(shareUnitAmount, address(shareToken), asset).toUint128();
-
-            // Retrieve price by normalizing by asset denomination
-            price = d18(assetAmountPerShareUnit, assetUnitAmount);
-        }
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+        return super._shareToAssetAmount(
+            vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, rounding
+        );
     }
 }

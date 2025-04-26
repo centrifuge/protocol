@@ -3,18 +3,18 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {Prices} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {SyncRequests} from "src/vaults/SyncRequests.sol";
-import {VaultPricingLib} from "src/vaults/libraries/VaultPricingLib.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {ISyncDepositValuation} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
 
 import "test/vaults/BaseTest.sol";
 
@@ -46,11 +46,11 @@ contract SyncRequestsBaseTest is BaseTest {
         );
     }
 
-    function _setValuation(SyncDepositVault vault, address valuation_, uint256 tokenId) internal {
+    function _setValuation(SyncDepositVault vault, address valuation_) internal {
         vm.expectEmit();
-        emit ISyncRequests.SetValuation(vault.poolId(), vault.scId(), vault.asset(), tokenId, valuation_);
-        syncRequests.setValuation(vault.poolId(), vault.scId(), vault.asset(), tokenId, valuation_);
-        assertEq(address(syncRequests.valuation(vault.poolId(), vault.scId(), vault.asset(), tokenId)), valuation_);
+        emit ISyncRequests.SetValuation(vault.poolId(), vault.scId(), valuation_);
+        syncRequests.setValuation(vault.poolId(), vault.scId(), valuation_);
+        assertEq(address(syncRequests.valuation(vault.poolId(), vault.scId())), valuation_);
     }
 }
 
@@ -132,7 +132,7 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
 
     function testSetValuationUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0), 0, address(0));
+        syncRequests.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
     }
 
     function testUpdate(address nonWard) public {
@@ -159,8 +159,7 @@ contract SyncRequestsPrices is SyncRequestsBaseTest {
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
 
-        Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
+        Prices memory prices = syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
         assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
         assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset mismatch");
@@ -172,10 +171,35 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
 
     address valuation_ = makeAddr("valuation");
 
+    function _mockValuation(SyncDepositVault syncVault, D18 pricePoolPerShare) internal {
+        vm.mockCall(
+            address(valuation_),
+            abi.encodeWithSelector(
+                ISyncDepositValuation.pricePoolPerShare.selector, syncVault.poolId(), syncVault.scId()
+            ),
+            abi.encode(pricePoolPerShare)
+        );
+    }
+
+    function _assertPrices(SyncDepositVault syncVault, D18 prePoolPerShare, Prices memory expected, uint128 assetId)
+        internal
+        view
+    {
+        Prices memory prices = syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+
+        D18 pricePost = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        assertNotEq(prePoolPerShare.inner(), pricePost.inner(), "Price should be changed by valuation");
+        assertEq(expected.poolPerShare.inner(), prices.poolPerShare.inner(), "poolPerShare mismatch");
+        assertEq(expected.poolPerShare.inner(), pricePost.inner(), "poolPerShare vs pricePost mismatch");
+
+        assertEq(expected.poolPerAsset.inner(), prices.poolPerAsset.inner(), "poolPerAsset mismatch");
+        assertEq(expected.assetPerShare.inner(), prices.assetPerShare.inner(), "assetPerShare mismatch");
+    }
+
     function testSetValuationERC20() public {
         (SyncDepositVault syncVault,) = _deploySyncDepositVault(d18(1e18), d18(1e18));
 
-        _setValuation(syncVault, valuation_, 0);
+        _setValuation(syncVault, valuation_);
     }
 
     function testPricesWithValuationERC20() public {
@@ -184,32 +208,22 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
-        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+        D18 pricePre = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
-        _setValuation(syncVault, valuation_, 0);
+        _setValuation(syncVault, valuation_);
 
-        // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** shareToken.decimals();
-        priceAssetPerShare = d18(4e18);
+        // Change pricePoolPerShare
         pricePoolPerShare = d18(20e18);
-        uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
+        priceAssetPerShare = d18(4e18); // 20e18 / 5e18
 
-        // Mock valuation
-        vm.mockCall(
-            address(valuation_),
-            abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
-            abi.encode(assetPerShareAmount)
+        // Mock valuation and perform checks
+        _mockValuation(syncVault, pricePoolPerShare);
+        _assertPrices(
+            syncVault,
+            pricePre,
+            Prices({assetPerShare: priceAssetPerShare, poolPerAsset: pricePoolPerAsset, poolPerShare: pricePoolPerShare}),
+            assetId
         );
-
-        Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
-        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
-        assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
-        assertEq(prices.assetPerShare.inner(), pricePost.inner(), "priceAssetPerShare vs pricePost mismatch");
-        assertNotEq(prices.assetPerShare.inner(), pricePre.inner());
-        assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset 2mismatch");
-        assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
     }
 
     function testFuzzedPricesWithValuationERC20(
@@ -220,89 +234,25 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e8, 1e24)));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e6, pricePoolPerShare.inner())));
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
-        vm.assume(priceAssetPerShare.inner() % 1e12 == 0);
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
+        vm.assume(priceAssetPerShare.inner() % multiplier == 0);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
-        D18 pricePre = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+        D18 pricePre = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
-        _setValuation(syncVault, valuation_, 0);
+        _setValuation(syncVault, valuation_);
 
-        // Change priceAssetPerShare
-        uint256 shareUnitAmount = 10 ** shareToken.decimals();
-        uint256 assetUnitAmount = 10 ** VaultPricingLib.getAssetDecimals(syncVault.asset(), 0);
-        priceAssetPerShare = d18(priceAssetPerShare.inner() * multiplier);
-        uint256 assetPerShareAmount = priceAssetPerShare.mulUint256(shareUnitAmount);
-        pricePoolPerShare = d18(assetPerShareAmount.toUint128(), assetUnitAmount.toUint128()) * pricePoolPerAsset;
+        // Change pricePoolPerShare
+        pricePoolPerShare = d18(pricePoolPerShare.inner() * multiplier);
+        priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
-        // Mock valuation
-        vm.mockCall(
-            address(valuation_),
-            abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
-            abi.encode(assetPerShareAmount)
+        // Mock valuation and perform checks
+        _mockValuation(syncVault, pricePoolPerShare);
+        _assertPrices(
+            syncVault,
+            pricePre,
+            Prices({assetPerShare: priceAssetPerShare, poolPerAsset: pricePoolPerAsset, poolPerShare: pricePoolPerShare}),
+            assetId
         );
-
-        Prices memory prices =
-            syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asset(), 0);
-        D18 pricePost = syncRequests.priceAssetPerShare(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
-        assertEq(
-            prices.assetPerShare.inner(), priceAssetPerShare.inner(), "assetPerShare vs priceAssetPerShare mismatch"
-        );
-        assertEq(prices.assetPerShare.inner(), pricePost.inner(), "assetPerShare vs pricePost mismatch");
-        assertNotEq(prices.assetPerShare.inner(), pricePre.inner());
-        assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset 2mismatch");
-        assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
-    }
-
-    function testConversionWithValuationERC20() public {
-        D18 pricePoolPerShare = d18(10e18);
-        D18 pricePoolPerAsset = d18(5e18);
-        D18 priceAssetPerShare = d18(2e18);
-
-        (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
-        _setValuation(syncVault, valuation_, 0);
-
-        // Mock valuation
-        uint256 shareUnitAmount = 10 ** shareToken.decimals();
-        vm.mockCall(
-            address(valuation_),
-            abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
-            abi.encode(priceAssetPerShare.mulUint256(shareUnitAmount))
-        );
-
-        uint256 shares = shareUnitAmount;
-        uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
-    }
-
-    function testFuzzedConversionWithValuationERC20(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
-        uint128 shift = 1e4;
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e2, 1e20)) * shift);
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1, pricePoolPerShare.inner() / shift)) * shift);
-        D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
-
-        (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        IShareToken shareToken = poolManager.shareToken(syncVault.poolId(), syncVault.scId());
-        _setValuation(syncVault, valuation_, 0);
-
-        // Mock valuation
-        uint256 shareUnitAmount = 10 ** IERC20Metadata(shareToken).decimals();
-        vm.mockCall(
-            address(valuation_),
-            abi.encodeWithSelector(IERC7726.getQuote.selector, shareUnitAmount, shareToken, syncVault.asset()),
-            abi.encode(priceAssetPerShare.mulUint256(shareUnitAmount))
-        );
-
-        uint256 shares = shareUnitAmount;
-        uint256 assets = priceAssetPerShare.mulUint256(shares);
-        assertEq(syncRequests.convertToAssets(syncVault, shares), assets, "convertToAssets mismatch");
-        assertEq(syncRequests.previewMint(syncVault, address(0), shares), assets, "previewMint mismatch");
-        assertEq(syncRequests.convertToShares(syncVault, assets), shares, "convertToShares mismatch");
-        assertEq(syncRequests.previewDeposit(syncVault, address(0), assets), shares, "previewDeposit mismatch");
     }
 }

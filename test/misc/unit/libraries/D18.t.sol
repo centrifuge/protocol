@@ -26,72 +26,90 @@ contract D18Test is Test {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000;
 
-        assertEq(factor.mulUint128(value), 6_000_000_000_000_000);
+        assertEq(factor.mulUint128(value, MathLib.Rounding.Down), 6_000_000_000_000_000);
+        assertEq(factor.mulUint128(value, MathLib.Rounding.Up), 6_000_000_000_000_000);
     }
 
     function testFuzzMulUInt128(uint128 a, uint128 b) public pure {
         a = uint128(bound(a, 1, type(uint128).max));
         b = uint128(bound(b, 0, type(uint128).max / a));
 
-        uint128 c = d18(a).mulUint128(b);
-        assertEq(c, MathLib.mulDiv(a, b, 1e18));
+        uint128 cDown = d18(a).mulUint128(b, MathLib.Rounding.Down);
+        uint128 cUp = d18(a).mulUint128(b, MathLib.Rounding.Down);
+        assertEq(cDown, MathLib.mulDiv(a, b, 1e18));
+        assertEq(cUp, MathLib.mulDiv(a, b, 1e18));
     }
 
     function testRoundingUint128(uint128 a) public pure {
         a = uint128(bound(a, 0, type(uint128).max / 1e18));
         D18 oneHundredPercent = d18(1e18);
 
-        assertEq(oneHundredPercent.mulUint128(a), a);
+        assertEq(oneHundredPercent.mulUint128(a, MathLib.Rounding.Down), a);
+        assertEq(oneHundredPercent.mulUint128(a, MathLib.Rounding.Up), a);
     }
 
     function testMulUint256() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint256 value = 4_000_000_000_000_000_000_000_000;
 
-        assertEq(factor.mulUint256(value), 6_000_000_000_000_000_000_000_000);
+        assertEq(factor.mulUint256(value, MathLib.Rounding.Down), 6_000_000_000_000_000_000_000_000);
+        assertEq(factor.mulUint256(value, MathLib.Rounding.Up), 6_000_000_000_000_000_000_000_000);
     }
 
     function testFuzzMulUInt256(uint128 a, uint256 b) public pure {
         a = uint128(bound(a, 1, type(uint128).max));
         b = uint256(bound(b, 0, type(uint256).max / a));
 
-        uint256 c = d18(a).mulUint256(b);
-        assertEq(c, MathLib.mulDiv(a, b, 1e18));
+        uint256 cDown = d18(a).mulUint256(b, MathLib.Rounding.Down);
+        uint256 cUp = d18(a).mulUint256(b, MathLib.Rounding.Down);
+        assertEq(cDown, MathLib.mulDiv(a, b, 1e18));
+        assertEq(cUp, MathLib.mulDiv(a, b, 1e18));
     }
 
     function testRoundingUint256(uint256 a) public pure {
         a = bound(a, 0, type(uint256).max / 1e18);
         D18 oneHundredPercent = d18(1e18);
 
-        assertEq(oneHundredPercent.mulUint256(a), a);
+        assertEq(oneHundredPercent.mulUint256(a, MathLib.Rounding.Down), a);
+        assertEq(oneHundredPercent.mulUint256(a, MathLib.Rounding.Up), a);
     }
 
     function testReciprocalMulInt128() public pure {
         D18 divisor = d18(2e18);
         uint128 multiplier = 1e20;
 
-        assertEq(divisor.reciprocalMulUint128(multiplier), 5e19);
+        assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Down), 5e19);
+        assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Up), 5e19);
     }
 
     function testFuzzReciprocalMulInt128(uint128 divisor_, uint128 multiplier) public pure {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
 
-        assertEq(divisor.reciprocalMulUint128(multiplier), multiplier * 1e18 / divisor.inner());
+        uint128 expectedDown = multiplier * 1e18 / divisor.inner();
+        uint128 expectedUp = (multiplier * 1e18 % divisor.raw()) == 0 ? expectedDown : expectedDown + 1;
+
+        assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Down), expectedDown);
+        assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Up), expectedUp);
     }
 
     function testReciprocalMulInt256() public pure {
         D18 divisor = d18(2e18);
         uint256 multiplier = 1e20;
 
-        assertEq(divisor.reciprocalMulUint256(multiplier), 5e19);
+        assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Down), 5e19);
+        assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Up), 5e19);
     }
 
     function testFuzzReciprocalMulInt256(uint128 divisor_, uint256 multiplier) public pure {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = bound(multiplier, 0, type(uint256).max / 1e18);
 
-        assertEq(divisor.reciprocalMulUint256(multiplier), multiplier * 1e18 / divisor.inner());
+        uint256 expectedDown = multiplier * 1e18 / divisor.inner();
+        uint256 expectedUp = (multiplier * 1e18 % divisor.raw()) == 0 ? expectedDown : expectedDown + 1;
+
+        assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Down), expectedDown);
+        assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Up), expectedUp);
     }
 
     function testMulD18() public pure {

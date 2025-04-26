@@ -17,25 +17,24 @@ struct Prices {
     D18 poolPerShare;
 }
 
-interface ISharePriceProvider {
-    /// @notice Returns the price per share for a given pool, share class, asset, and asset id. The provided price is
-    /// defined as ASSET_UNIT/SHARE_UNIT.
+interface ISyncDepositValuation {
+    /// @notice Returns the pool price per share for a given pool and share class, asset, and asset id.
+    // The provided price is defined as POOL_UNIT/SHARE_UNIT.
     ///
     /// @param poolId The pool id
     /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
-    /// @return price The asset price per share
-    function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18 price);
+    /// @return price The pool price per share
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
+}
 
+interface ISharePriceProvider is ISyncDepositValuation {
     /// @notice Returns the all three prices for a given pool, share class, asset, and asset id.
     ///
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @param assetId The asset id corresponding to the asset and tokenId
-    /// @param asset The address of the asset corresponding to the assetId
-    /// @param tokenId The asset token id, i.e. 0 for ERC20, or the token id for ERC6909
     /// @return priceData The asset price per share, pool price per asset, and pool price per share
-    function prices(PoolId poolId, ShareClassId scId, AssetId assetId, address asset, uint256 tokenId)
+    function prices(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
         returns (Prices memory priceData);

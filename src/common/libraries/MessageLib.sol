@@ -695,7 +695,6 @@ library MessageLib {
     //---------------------------------------
 
     struct UpdateContractValuation {
-        uint128 assetId;
         bytes32 valuation;
     }
 
@@ -706,11 +705,11 @@ library MessageLib {
     {
         require(updateContractType(data) == UpdateContractType.Valuation, UnknownMessageType());
 
-        return UpdateContractValuation({assetId: data.toUint128(1), valuation: data.toBytes32(17)});
+        return UpdateContractValuation({valuation: data.toBytes32(1)});
     }
 
     function serialize(UpdateContractValuation memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Valuation, t.assetId, t.valuation);
+        return abi.encodePacked(UpdateContractType.Valuation, t.valuation);
     }
 
     //---------------------------------------
