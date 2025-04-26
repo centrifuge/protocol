@@ -9,7 +9,6 @@ import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
@@ -21,7 +20,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
 // @inheritdoc IHub
@@ -114,7 +113,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
-            totalCancelledAssetAmount = cancelledAssetAmount;
+            totalCancelledAssetAmount += cancelledAssetAmount;
 
             if (!canClaimAgain) {
                 break;
@@ -148,7 +147,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
-            totalCancelledShareAmount = cancelledShareAmount;
+            totalCancelledShareAmount += cancelledShareAmount;
 
             if (!canClaimAgain) {
                 break;

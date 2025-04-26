@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 

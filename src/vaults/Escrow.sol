@@ -10,7 +10,6 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {Holding, IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 contract Escrow is Auth, IEscrow {

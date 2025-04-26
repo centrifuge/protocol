@@ -8,14 +8,10 @@ import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
-import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -27,7 +23,6 @@ import {IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.s
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {
     ISharePriceProvider,
@@ -37,7 +32,6 @@ import {
 import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";

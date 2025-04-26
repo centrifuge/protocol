@@ -6,7 +6,6 @@ import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";

@@ -2,15 +2,14 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
@@ -24,10 +23,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -42,7 +40,6 @@ import {
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {PoolEscrow} from "src/vaults/Escrow.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,

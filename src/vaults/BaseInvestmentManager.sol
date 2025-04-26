@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "forge-std/interfaces/IERC165.sol";
-
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
@@ -24,11 +19,10 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     using MathLib for uint256;
 
     address public immutable root;
+    IEscrow public immutable globalEscrow;
 
     IPoolManager public poolManager;
     IPoolEscrowProvider public poolEscrowProvider;
-    /// @inheritdoc IBaseInvestmentManager
-    IEscrow public globalEscrow;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;

@@ -5,7 +5,8 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGuardian, IGateway} from "src/common/Guardian.sol";
+import {IGuardian} from "src/common/interfaces/IGuardian.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/vaults/BaseTest.sol";
