@@ -7,7 +7,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ILegacyVault} from "src/vaults/legacy/interfaces/ILegacyVault.sol";
 import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
@@ -48,7 +47,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacyVault = legacyVault_;
     }
 
-    /// @dev Check if the msg.sende_r is the legacyVault
+    /// @dev Check if the msg.sender is the legacyVault
     modifier legacy() {
         require(msg.sender == address(legacyVault), NotLegacyVault(msg.sender, address(legacyVault)));
         _;
@@ -206,5 +205,29 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         returns (uint256 shares)
     {
         shares = asyncManager().claimCancelRedeemRequest(this, receiver, owner);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Event emitters
+    //----------------------------------------------------------------------------------------------
+
+    function onDepositClaimable(address controller, uint256 assets, uint256 shares) public auth {
+        legacyVault.onDepositClaimable(controller, assets, shares);
+    }
+
+    function onCancelDepositClaimable(address controller, uint256 assets) public auth {
+        legacyVault.onCancelDepositClaimable(controller, assets);
+    }
+
+    function onRedeemRequest(address controller, address owner, uint256 shares) public auth {
+        legacyVault.onRedeemRequest(controller, owner, shares);
+    }
+
+    function onRedeemClaimable(address controller, uint256 assets, uint256 shares) public auth {
+        legacyVault.onRedeemClaimable(controller, assets, shares);
+    }
+
+    function onCancelRedeemClaimable(address controller, uint256 shares) public auth {
+        legacyVault.onCancelRedeemClaimable(controller, shares);
     }
 }
