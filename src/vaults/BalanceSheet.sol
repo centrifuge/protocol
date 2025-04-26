@@ -73,11 +73,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         if (kind == uint8(UpdateContractType.UpdateManager)) {
             MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
-
             address who = m.who.toAddress();
 
             manager[poolId][who] = m.canManage;
-
             emit UpdateManager(poolId, who, m.canManage);
         } else {
             revert UnknownUpdateContractType();
