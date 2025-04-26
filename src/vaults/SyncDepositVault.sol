@@ -12,8 +12,8 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 
 /// @title  SyncDepositVault
-/// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits and asynchronous
-/// redemptions following ERC-7540.
+/// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
+///         and asynchronous redemptions following ERC-7540.
 ///
 /// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
 ///         against asset deposits based on the current share price.

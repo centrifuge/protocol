@@ -45,6 +45,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         tokenRecoverer = tokenRecoverer_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGatewayHandler(data);
@@ -56,6 +60,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
         emit File(what, data);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Handlers
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
     function handle(uint16, bytes calldata message) external auth {

@@ -18,7 +18,6 @@ import {PoolManager} from "src/vaults/PoolManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 

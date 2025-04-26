@@ -37,7 +37,10 @@ contract ShareToken is ERC20, IShareToken {
         _;
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IShareToken
     function file(bytes32 what, address data) external authOrHook {
         if (what == "hook") hook = data;
@@ -56,7 +59,10 @@ contract ShareToken is ERC20, IShareToken {
         emit VaultUpdate(asset, vault_);
     }
 
-    // --- ERC20 overrides ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-20 overrides
+    //----------------------------------------------------------------------------------------------
+
     function _balanceOf(address user) internal view override returns (uint256) {
         return balances[user].amount;
     }
@@ -131,7 +137,10 @@ contract ShareToken is ERC20, IShareToken {
         );
     }
 
-    // --- ERC1404 implementation ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-1404
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IShareToken
     function checkTransferRestriction(address from, address to, uint256 value) public view returns (bool) {
         return detectTransferRestriction(from, to, value) == SUCCESS_CODE_ID;
@@ -151,7 +160,10 @@ contract ShareToken is ERC20, IShareToken {
         return restrictionCode == SUCCESS_CODE_ID ? SUCCESS_MESSAGE : ERROR_MESSAGE;
     }
 
-    // --- ERC165 support ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return interfaceId == type(IERC7575Share).interfaceId || interfaceId == type(IERC165).interfaceId;

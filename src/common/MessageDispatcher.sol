@@ -56,6 +56,10 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         tokenRecoverer = tokenRecoverer_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
@@ -67,11 +71,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         emit File(what, data);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageDispatcher
     function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
         if (centrifugeId == localCentrifugeId) return 0;
         return gateway.estimate(centrifugeId, payload);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Outgoing
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolMessageSender
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external auth {

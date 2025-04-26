@@ -56,7 +56,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         messageDispatcher = messageDispatcher_;
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all message sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override(Multicall, IMulticall) {
@@ -73,7 +76,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         }
     }
 
-    // --- Enable interactions with the vault ---
+    //----------------------------------------------------------------------------------------------
+    // Enable interactions
+    //----------------------------------------------------------------------------------------------
+
     function enable(IBaseVault vault) public payable protected {
         vault.setEndorsedOperator(msg.sender, true);
     }
@@ -82,7 +88,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         vault.setEndorsedOperator(msg.sender, false);
     }
 
-    // --- Deposit ---
+    //----------------------------------------------------------------------------------------------
+    // Deposit
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IVaultRouter
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
@@ -189,7 +198,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         vault.claimCancelDepositRequest(REQUEST_ID, receiver, controller);
     }
 
-    // --- Redeem ---
+    //----------------------------------------------------------------------------------------------
+    // Redeem
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IVaultRouter
     function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
@@ -232,7 +244,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         vault.claimCancelRedeemRequest(REQUEST_ID, receiver, controller);
     }
 
-    // --- ERC20 permits ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-20 permits & wrapping
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IVaultRouter
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external
@@ -242,7 +257,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         try IERC20Permit(asset).permit(msg.sender, spender, assets, deadline, v, r, s) {} catch {}
     }
 
-    // --- ERC20 wrapping ---
     function wrap(address wrapper, uint256 amount, address receiver, address owner) public payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         address underlying = IERC20Wrapper(wrapper).underlying();
@@ -262,7 +276,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), UnwrapFailed());
     }
 
-    // --- View Methods ---
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
         return IPoolManager(poolManager).shareToken(poolId, scId).vault(asset);

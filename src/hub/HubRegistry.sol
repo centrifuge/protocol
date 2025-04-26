@@ -87,7 +87,7 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     //----------------------------------------------------------------------------------------------
-    // PermissViewionless methods
+    // View methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry

@@ -29,6 +29,10 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         root = root_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
@@ -37,7 +41,10 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         emit File(what, data);
     }
 
-    // --- View functions ---
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);

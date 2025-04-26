@@ -56,7 +56,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         BaseInvestmentManager(globalEscrow_, root_, deployer)
     {}
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IBaseInvestmentManager
     function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
@@ -66,7 +69,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         emit File(what, data);
     }
 
-    /// --- IUpdateContract ---
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
@@ -90,7 +92,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IVaultManager ---
     /// @inheritdoc IVaultManager
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         external
@@ -142,7 +143,27 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IDepositManager Writes ---
+    /// @inheritdoc ISyncRequests
+    function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
+        valuation[poolId][scId] = ISyncDepositValuation(valuation_);
+
+        emit SetValuation(poolId, scId, address(valuation_));
+    }
+
+    /// @inheritdoc ISyncRequests
+    function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
+        public
+        auth
+    {
+        maxReserve[poolId][scId][asset][tokenId] = maxReserve_;
+
+        emit SetMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Deposit handlers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IDepositManager
     function mint(IBaseVault vault_, uint256 shares, address receiver, address owner)
         external
@@ -167,24 +188,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
     }
 
-    /// @inheritdoc ISyncRequests
-    function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
-        valuation[poolId][scId] = ISyncDepositValuation(valuation_);
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
-        emit SetValuation(poolId, scId, address(valuation_));
-    }
-
-    /// @inheritdoc ISyncRequests
-    function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
-        public
-        auth
-    {
-        maxReserve[poolId][scId][asset][tokenId] = maxReserve_;
-
-        emit SetMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
-    }
-
-    // --- ISyncDepositManager Reads ---
     /// @inheritdoc ISyncDepositManager
     function previewMint(IBaseVault vault_, address, /* sender */ uint256 shares)
         public
@@ -217,7 +224,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
     }
 
-    // --- IVaultManager Views ---
     /// @inheritdoc IVaultManager
     function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
         return vault[poolId][scId][assetId];
@@ -232,7 +238,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets)
         public
@@ -248,7 +253,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         );
     }
 
-    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToAssets(IBaseVault vault_, uint256 shares)
         public
@@ -259,7 +263,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
     }
 
-    // --- ISharePriceProvider overrides ---
     /// @inheritdoc ISyncDepositValuation
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) public view returns (D18 price) {
         ISyncDepositValuation valuation_ = valuation[poolId][scId];
@@ -278,7 +281,10 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
     }
 
-    /// --- Internal methods ---
+    //----------------------------------------------------------------------------------------------
+    // Internal
+    //----------------------------------------------------------------------------------------------
+
     /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
     /// updated holding
     function _issueShares(

@@ -37,6 +37,10 @@ contract Guardian is IGuardian {
         _;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
@@ -47,7 +51,10 @@ contract Guardian is IGuardian {
         emit File(what, data);
     }
 
-    // --- Admin actions ---
+    //----------------------------------------------------------------------------------------------
+    // Admin actions
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IGuardian
     function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
         return hub.createPool(poolId, admin, currency);
@@ -111,7 +118,10 @@ contract Guardian is IGuardian {
         sender.sendDisputeRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
-    // --- Helpers ---
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     function _isSafeOwner(address addr) internal view returns (bool) {
         try safe.isOwner(addr) returns (bool isOwner) {
             return isOwner;
