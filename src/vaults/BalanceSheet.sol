@@ -235,9 +235,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
     }
 
-    function _executeDeposit(PoolId poolId, address asset, uint256 tokenId, address owner, uint128 amount)
-        internal
-    {
+    function _executeDeposit(PoolId poolId, address asset, uint256 tokenId, address owner, uint128 amount) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, owner, address(escrow), amount);
@@ -257,7 +255,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.withdraw(scId, asset, tokenId, amount);
-        
+
         D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
 
@@ -295,6 +293,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     function _executeRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
         IShareToken token = poolManager.shareToken(poolId, scId);
+        // token.authTransferFrom(from, from, address(this), shares);
         token.burn(from, shares);
     }
 

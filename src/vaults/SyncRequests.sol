@@ -210,7 +210,6 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return convertToShares(vault_, assets);
     }
 
-    // --- IDepositManager Reads ---
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
@@ -285,26 +284,25 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Issues shares to the receiver and instruct the Balance Sheet Manager to react on the issuance and the
-    /// updated holding
+    /// @dev Issues shares to the receiver and instruct the balance sheet
+    //       to react on the issuance and the updated holding.
     function _issueShares(
         IBaseVault vault_,
         uint128 shares,
         address receiver,
         address, /* owner */
-        uint128 depositAssetAmount
+        uint128 assets
     ) internal {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        // Mint shares for receiver & notify CP about issued shares
         balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
 
-        // NOTE:
-        // - Transfer is handled by the vault to the pool escrow afterwards
-        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, depositAssetAmount);
+        // Note deposit into the pool escrow, to make assets available for managers of the balance sheet
+        // ERC-20 transfer is handled by the vault to the pool escrow afterwards
+        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
     function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
@@ -312,8 +310,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         view
         returns (uint128 maxDeposit_)
     {
-        uint128 availableBalance =
-            poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId).toUint128();
+        uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
 
         if (maxReserve_ < availableBalance) {
