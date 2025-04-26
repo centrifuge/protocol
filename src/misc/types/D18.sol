@@ -100,10 +100,6 @@ function raw(D18 d) pure returns (uint128) {
     return D18.unwrap(d);
 }
 
-function isNull(D18 a) pure returns (bool) {
-    return D18.unwrap(a) == 0;
-}
-
 using {
     add as +,
     sub as -,
@@ -116,6 +112,5 @@ using {
     reciprocalMulUint128,
     reciprocalMulUint256,
     reciprocal,
-    raw,
-    isNull
+    raw
 } for D18 global;
