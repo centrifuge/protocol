@@ -292,9 +292,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {
         QueueAmount storage queue = queuedShares[poolId][scId];
-        if (!queueEnabled[poolId][scId]) {
-            return;
-        }
 
         if (queue.increase > queue.decrease) {
             sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true);
@@ -308,9 +305,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         QueueAmount storage queue = queuedAssets[poolId][scId][assetId];
-        if (!queueEnabled[poolId][scId]) {
-            return;
-        }
 
         (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
 
