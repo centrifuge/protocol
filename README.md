@@ -1,4 +1,4 @@
-# Centrifuge Protocol V3 [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE)
+# Centrifuge Protocol V3 [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry]
 [gha]: https://github.com/centrifuge/protocol-v3/actions
 [gha-badge]: https://github.com/centrifuge/protocol-v3/actions/workflows/ci.yml/badge.svg
 [foundry]: https://getfoundry.sh
@@ -73,6 +73,7 @@ forge test
 | [Alex the Entreprenerd](https://x.com/gallodasballo) | Mar - Apr 2024  | Invariant test development | [`Part 1`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge) [`Part 2`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge-059) |
 | [xmxanuel](https://x.com/xmxanuel)                   | May - June 2024 | Security review            | Internal                                                                                                                                                                    |
 | [Spearbit](https://spearbit.com/)                    | July 2024       | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2024-08-Spearbit.pdf)                                                                            |
+| [Recon](https://getrecon.xyz/) | Jan 2025  | Invariant test development | [`Report`](https://getrecon.substack.com/p/never-stop-improving-your-invariant) |
 | [Cantina](https://cantina.xyz/)                      | Feb 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-02-Cantina.pdf)                                                                             |
 | [burraSec](https://www.burrasec.com/)                      | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec.pdf)                                                                             |
 
