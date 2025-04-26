@@ -223,6 +223,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     function file(bytes32 what, address data) external virtual override auth {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 

@@ -16,7 +16,7 @@ import {
 } from "src/vaults/interfaces/token/IHook.sol";
 import {IShareToken, IERC1404} from "src/vaults/interfaces/token/IShareToken.sol";
 
-/// @title  Centrifuge Token
+/// @title  Share Token
 /// @notice Extension of ERC20 + ERC1404,
 ///         integrating an external hook optionally for ERC20 callbacks and ERC1404 checks.
 contract ShareToken is ERC20, IShareToken {

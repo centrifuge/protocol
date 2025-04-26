@@ -41,6 +41,7 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
         if (what == "manager") manager = IBaseInvestmentManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         else if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 

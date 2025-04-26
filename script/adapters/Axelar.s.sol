@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AxelarAdapter} from "src/common/AxelarAdapter.sol";
+import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
