@@ -80,13 +80,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBalanceSheet
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address owner, uint128 amount)
         external
         authOrManager(poolId)
     {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
-        _executeDeposit(poolId, asset, tokenId, provider, amount);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, owner, amount);
+        _executeDeposit(poolId, asset, tokenId, owner, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -96,11 +96,11 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         ShareClassId scId,
         address asset,
         uint256 tokenId,
-        address provider,
+        address owner,
         uint128 amount
     ) external authOrManager(poolId) {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, owner, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -165,13 +165,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
+    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address owner, uint128 amount)
         external
         auth
     {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
-        _noteDeposit(poolId, scId, assetId, asset, tokenId, provider, amount);
-        _executeDeposit(poolId, asset, tokenId, provider, amount);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, owner, amount);
+        _executeDeposit(poolId, asset, tokenId, owner, amount);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
@@ -189,9 +189,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address provider, uint128 shares) external auth {
-        _noteRevoke(poolId, scId, provider, shares);
-        _executeRevoke(poolId, scId, provider, shares);
+    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address owner, uint128 shares) external auth {
+        _noteRevoke(poolId, scId, owner, shares);
+        _executeRevoke(poolId, scId, owner, shares);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
@@ -219,29 +219,30 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         AssetId assetId,
         address asset,
         uint256 tokenId,
-        address provider,
+        address owner,
         uint128 amount
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.deposit(scId, asset, tokenId, amount);
+
         D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-        emit Deposit(poolId, scId, asset, tokenId, provider, amount, pricePoolPerAsset_);
+        emit Deposit(poolId, scId, asset, tokenId, owner, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].increase += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, provider, amount, pricePoolPerAsset_, true);
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, owner, amount, pricePoolPerAsset_, true);
         }
     }
 
-    function _executeDeposit(PoolId poolId, address asset, uint256 tokenId, address provider, uint128 amount)
+    function _executeDeposit(PoolId poolId, address asset, uint256 tokenId, address owner, uint128 amount)
         internal
     {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         if (tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(asset, provider, address(escrow), amount);
+            SafeTransferLib.safeTransferFrom(asset, owner, address(escrow), amount);
         } else {
-            IERC6909(asset).transferFrom(provider, address(escrow), tokenId, amount);
+            IERC6909(asset).transferFrom(owner, address(escrow), tokenId, amount);
         }
     }
 
@@ -256,6 +257,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
         escrow.withdraw(scId, asset, tokenId, amount);
+        
         D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
 
