@@ -223,17 +223,12 @@ contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
         uint128 shareAmount,
         D18 pricePoolPerShare
     ) external auth {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
+        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
 
-        IAsyncVault vault_ = IAsyncVault(vault[poolId][scId][assetId]);
-
-        // Need to transfer to the balance sheet so that it can burn from itself
-        globalEscrow.authTransferTo(vault_.share(), address(balanceSheet), shareAmount);
-
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
-        balanceSheet.revoke(poolId, scId, address(balanceSheet), shareAmount);
+        balanceSheet.revoke(poolId, scId, address(globalEscrow), shareAmount);
     }
 
     /// @inheritdoc IInvestmentManagerGatewayHandler

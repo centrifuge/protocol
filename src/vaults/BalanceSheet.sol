@@ -293,8 +293,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     function _executeRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
         IShareToken token = poolManager.shareToken(poolId, scId);
-        // token.authTransferFrom(from, from, address(this), shares);
-        token.burn(from, shares);
+        token.authTransferFrom(from, from, address(this), shares);
+        token.burn(address(this), shares);
     }
 
     function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {
