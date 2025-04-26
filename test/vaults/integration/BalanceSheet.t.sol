@@ -114,7 +114,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, true);
+        emit IBalanceSheet.UpdateManager(POOL_A, randomUser, true);
 
         balanceSheet.update(
             POOL_A,
@@ -127,7 +127,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.UpdateManager(POOL_A, defaultTypedShareClassId, randomUser, false);
+        emit IBalanceSheet.UpdateManager(POOL_A, randomUser, false);
 
         balanceSheet.update(
             POOL_A,
@@ -221,6 +221,8 @@ contract BalanceSheetTest is BaseTest {
 
         assertEq(erc20.balanceOf(address(this)), 0);
 
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+
         vm.expectEmit();
         emit IBalanceSheet.Withdraw(
             POOL_A,
@@ -252,6 +254,8 @@ contract BalanceSheetTest is BaseTest {
         IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+
         vm.expectEmit();
         emit IBalanceSheet.Issue(
             POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
@@ -280,6 +284,8 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
         token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();

@@ -238,7 +238,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    // --- IBaseInvestmentManager Overwrites ---
+    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets)
         public
@@ -254,7 +254,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         );
     }
 
-    // --- IBaseInvestmentManager Overwrites ---
+    // --- IBaseInvestmentManager overrides ---
     /// @inheritdoc IBaseInvestmentManager
     function convertToAssets(IBaseVault vault_, uint256 shares)
         public
@@ -265,7 +265,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
     }
 
-    // --- ISharePriceProvider Overwrites ---
+    // --- ISharePriceProvider overrides ---
     /// @inheritdoc ISyncDepositValuation
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) public view returns (D18 price) {
         ISyncDepositValuation valuation_ = valuation[poolId][scId];
@@ -298,10 +298,8 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        // TODO: Enable transient price setting in BS
-        // Prices memory priceData = prices(poolId, scId, vaultDetails.assetId);
-
         // Mint shares for receiver & notify CP about issued shares
+        balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
 
         // NOTE:

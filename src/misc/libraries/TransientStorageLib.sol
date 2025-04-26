@@ -21,6 +21,12 @@ library TransientStorageLib {
         }
     }
 
+    function tstore(bytes32 slot, bool value) internal {
+        assembly ("memory-safe") {
+            tstore(slot, value)
+        }
+    }
+
     function tloadAddress(bytes32 slot) internal view returns (address value) {
         assembly ("memory-safe") {
             value := tload(slot)
@@ -40,6 +46,12 @@ library TransientStorageLib {
     }
 
     function tloadBytes32(bytes32 slot) internal view returns (bytes32 value) {
+        assembly ("memory-safe") {
+            value := tload(slot)
+        }
+    }
+
+    function tloadBool(bytes32 slot) internal view returns (bool value) {
         assembly ("memory-safe") {
             value := tload(slot)
         }

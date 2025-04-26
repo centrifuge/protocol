@@ -10,7 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
-    event UpdateManager(PoolId indexed poolId, ShareClassId indexed scId, address who, bool canManage);
+    event UpdateManager(PoolId indexed poolId, address who, bool canManage);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -64,4 +64,8 @@ interface IBalanceSheet {
     function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+
+    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external;
+
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
 }

@@ -8,7 +8,6 @@ import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
