@@ -57,6 +57,24 @@ contract Accounting is Auth, IAccounting {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Account creation & metadata
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAccounting
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
+        require(accounts[poolId][account].lastUpdated == 0, AccountExists());
+        accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
+        emit CreateAccount(poolId, account, isDebitNormal);
+    }
+
+    /// @inheritdoc IAccounting
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
+        accounts[poolId][account].metadata = metadata;
+        emit SetAccountMetadata(poolId, account, metadata);
+    }
+    
+    //----------------------------------------------------------------------------------------------
     // Account updates
     //----------------------------------------------------------------------------------------------
 
@@ -97,24 +115,6 @@ contract Accounting is Auth, IAccounting {
         }
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Account creation & metadata
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IAccounting
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
-        require(accounts[poolId][account].lastUpdated == 0, AccountExists());
-        accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
-        emit CreateAccount(poolId, account, isDebitNormal);
-    }
-
-    /// @inheritdoc IAccounting
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
-        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
-        accounts[poolId][account].metadata = metadata;
-        emit SetAccountMetadata(poolId, account, metadata);
-    }
-    
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
