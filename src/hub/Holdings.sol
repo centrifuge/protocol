@@ -27,29 +27,62 @@ contract Holdings is Auth, IHoldings {
         hubRegistry = hubRegistry_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Holding management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHoldings
     function create(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation_,
+        IERC7726 valuation,
         bool isLiability_,
         HoldingAccount[] memory accounts
     ) external auth {
         require(!scId.isNull(), WrongShareClassId());
-        require(address(valuation_) != address(0), WrongValuation());
+        require(address(valuation) != address(0), WrongValuation());
 
-        holding[poolId][scId][assetId] = Holding(0, 0, valuation_, isLiability_);
+        holding[poolId][scId][assetId] = Holding(0, 0, valuation, isLiability_);
 
         for (uint256 i; i < accounts.length; i++) {
             accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;
         }
 
-        emit Create(poolId, scId, assetId, valuation_, isLiability_, accounts);
+        emit Create(poolId, scId, assetId, valuation, isLiability_, accounts);
     }
 
     /// @inheritdoc IHoldings
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
+    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external auth {
+        require(address(valuation) != address(0), WrongValuation());
+
+        Holding storage holding_ = holding[poolId][scId][assetId];
+        require(address(holding_.valuation) != address(0), HoldingNotFound());
+
+        holding_.valuation = valuation;
+
+        emit UpdateValuation(poolId, scId, assetId, valuation);
+    }
+
+    /// @inheritdoc IHoldings
+    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId_)
+        external
+        auth
+    {
+        Holding storage holding_ = holding[poolId][scId][assetId];
+        require(address(holding_.valuation) != address(0), HoldingNotFound());
+
+        accountId[poolId][scId][assetId][kind] = accountId_;
+
+        emit SetAccountId(poolId, scId, assetId, kind, accountId_);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Value updates
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHoldings
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
@@ -58,17 +91,17 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         amountValue = PricingLib.convertWithPrice(
-            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+            amount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         ).toUint128();
 
-        holding_.assetAmount += amount_;
+        holding_.assetAmount += amount;
         holding_.assetAmountValue += amountValue;
 
-        emit Increase(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
+        emit Increase(poolId, scId, assetId, pricePoolPerAsset, amount, amountValue);
     }
 
     /// @inheritdoc IHoldings
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         auth
         returns (uint128 amountValue)
@@ -77,13 +110,13 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         amountValue = PricingLib.convertWithPrice(
-            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
+            amount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         ).toUint128();
 
-        holding_.assetAmount -= amount_;
+        holding_.assetAmount -= amount;
         holding_.assetAmountValue -= amountValue;
 
-        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
+        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount, amountValue);
     }
 
     /// @inheritdoc IHoldings
@@ -108,30 +141,9 @@ contract Holdings is Auth, IHoldings {
         emit Update(poolId, scId, assetId, isPositive, diffValue);
     }
 
-    /// @inheritdoc IHoldings
-    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_) external auth {
-        require(address(valuation_) != address(0), WrongValuation());
-
-        Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-
-        holding_.valuation = valuation_;
-
-        emit UpdateValuation(poolId, scId, assetId, valuation_);
-    }
-
-    /// @inheritdoc IHoldings
-    function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId_)
-        external
-        auth
-    {
-        Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-
-        accountId[poolId][scId][assetId][kind] = accountId_;
-
-        emit SetAccountId(poolId, scId, assetId, kind, accountId_);
-    }
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value_) {
@@ -165,6 +177,7 @@ contract Holdings is Auth, IHoldings {
         return holding_.isLiability;
     }
 
+    /// @inheritdoc IHoldings
     function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
         return address(holding[poolId][scId][assetId].valuation) != address(0);
     }
