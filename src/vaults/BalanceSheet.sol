@@ -143,7 +143,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheet
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
-        external
+        public
         authOrManager(poolId)
     {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
@@ -298,8 +298,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     function _executeRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) internal {
+        transferSharesFrom(poolId, scId, from, address(this), shares);
         IShareToken token = poolManager.shareToken(poolId, scId);
-        token.authTransferFrom(from, from, address(this), shares);
         token.burn(address(this), shares);
     }
 
