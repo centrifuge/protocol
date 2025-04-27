@@ -173,7 +173,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendTriggerUpdateShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0, false);
+        hub.sendTriggerIssueShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.sendTriggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));

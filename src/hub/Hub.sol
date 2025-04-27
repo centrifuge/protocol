@@ -229,17 +229,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendTriggerUpdateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        address who,
-        uint128 shares,
-        bool isIssuance
-    ) public payable {
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        public
+        payable
+    {
         _isManagerAndPaid(poolId);
 
-        sender.sendTriggerUpdateShares(centrifugeId, poolId, scId, who, shares, isIssuance);
+        sender.sendTriggerIssueShares(centrifugeId, poolId, scId, who, shares);
     }
 
     /// @inheritdoc IHub

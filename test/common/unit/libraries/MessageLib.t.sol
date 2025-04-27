@@ -633,25 +633,16 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testTriggerUpdateShares(uint64 poolId, bytes16 scId, bytes32 who, uint128 shares, bool isIssuance)
-        public
-        pure
-    {
-        MessageLib.TriggerUpdateShares memory a = MessageLib.TriggerUpdateShares({
-            poolId: poolId,
-            scId: scId,
-            who: who,
-            shares: shares,
-            isIssuance: isIssuance
-        });
+    function testTriggerIssueShares(uint64 poolId, bytes16 scId, bytes32 who, uint128 shares) public pure {
+        MessageLib.TriggerIssueShares memory a =
+            MessageLib.TriggerIssueShares({poolId: poolId, scId: scId, who: who, shares: shares});
 
-        MessageLib.TriggerUpdateShares memory b = MessageLib.deserializeTriggerUpdateShares(a.serialize());
+        MessageLib.TriggerIssueShares memory b = MessageLib.deserializeTriggerIssueShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.who, b.who);
         assertEq(a.shares, b.shares);
-        assertEq(a.isIssuance, b.isIssuance);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);

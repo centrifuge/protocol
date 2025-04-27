@@ -411,29 +411,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendTriggerUpdateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        address who,
-        uint128 shares,
-        bool isIssuance
-    ) external auth {
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        external
+        auth
+    {
         if (centrifugeId == localCentrifugeId) {
-            if (isIssuance) {
-                balanceSheet.triggerIssueShares(poolId, scId, who, shares);
-            } else {
-                balanceSheet.triggerRevokeShares(poolId, scId, who, shares);
-            }
+            balanceSheet.triggerIssueShares(poolId, scId, who, shares);
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.TriggerUpdateShares({
+                MessageLib.TriggerIssueShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     who: who.toBytes32(),
-                    shares: shares,
-                    isIssuance: isIssuance
+                    shares: shares
                 }).serialize()
             );
         }

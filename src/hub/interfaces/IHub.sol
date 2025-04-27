@@ -190,14 +190,9 @@ interface IHub {
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Tells the BalanceSheet to issue/revoke shares.
-    function sendTriggerUpdateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        address who,
-        uint128 shares,
-        bool isIssuance
-    ) external payable;
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        external
+        payable;
 
     /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;

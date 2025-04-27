@@ -44,7 +44,7 @@ enum MessageType {
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
-    TriggerUpdateShares,
+    TriggerIssueShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
     SetQueue
@@ -116,7 +116,7 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (74  << uint8(MessageType.TriggerUpdateShares) * 8) +
+        (73  << uint8(MessageType.TriggerIssueShares) * 8) +
         (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
 
     // forgefmt: disable-next-item
@@ -1133,33 +1133,30 @@ library MessageLib {
         );
     }
 
-
     //---------------------------------------
-    //    TriggerUpdateShares
+    //    TriggerIssueShares
     //---------------------------------------
 
-    struct TriggerUpdateShares {
+    struct TriggerIssueShares {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
         uint128 shares;
-        bool isIssuance;
     }
 
-    function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
-        require(messageType(data) == MessageType.TriggerUpdateShares, UnknownMessageType());
+    function deserializeTriggerIssueShares(bytes memory data) internal pure returns (TriggerIssueShares memory) {
+        require(messageType(data) == MessageType.TriggerIssueShares, UnknownMessageType());
 
-        return TriggerUpdateShares({
+        return TriggerIssueShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            shares: data.toUint128(57),
-            isIssuance: data.toBool(73)
+            shares: data.toUint128(57)
         });
     }
 
-    function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance);
+    function serialize(TriggerIssueShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerIssueShares, t.poolId, t.scId, t.who, t.shares);
     }
 
     //---------------------------------------

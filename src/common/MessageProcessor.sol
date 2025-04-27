@@ -190,17 +190,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.cancelledShares
             );
-        } else if (kind == MessageType.TriggerUpdateShares) {
-            MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
-            if (m.isIssuance) {
-                balanceSheet.triggerIssueShares(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
-                );
-            } else {
-                balanceSheet.triggerRevokeShares(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
-                );
-            }
+        } else if (kind == MessageType.TriggerIssueShares) {
+            MessageLib.TriggerIssueShares memory m = message.deserializeTriggerIssueShares();
+            balanceSheet.triggerIssueShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
+            );
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hub.updateHoldingAmount(
