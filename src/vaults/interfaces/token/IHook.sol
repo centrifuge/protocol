@@ -38,8 +38,8 @@ interface IHook is IERC165 {
         returns (bytes4);
 
     /// @notice Callback on authorized ERC20 transfer.
-    /// @dev    MUST return bytes4(keccak256("onERC20AuthTransfer(address,address,address,uint256,(bytes16,bytes16))"))
-    ///         if successful
+    /// @dev    Cannot be blocked, can only be used to update state.
+    ///         Return value is ignored, only kept for compatibility with V2 share tokens.
     function onERC20AuthTransfer(address sender, address from, address to, uint256 value, HookData calldata hookdata)
         external
         returns (bytes4);

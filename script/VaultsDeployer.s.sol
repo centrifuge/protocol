@@ -61,7 +61,7 @@ contract VaultsDeployer is CommonDeployer {
         vaultFactories[1] = syncDepositVaultFactory;
 
         poolManager = new PoolManager(tokenFactory, vaultFactories, deployer);
-        balanceSheet = new BalanceSheet(deployer);
+        balanceSheet = new BalanceSheet(root, deployer);
         vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
 
         // Hooks

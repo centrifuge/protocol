@@ -41,6 +41,7 @@ interface IBalanceSheet {
 
     // --- Errors ---
     error FileUnrecognizedParam();
+    error CannotTransferFromEndorsedContract();
 
     /// @notice Overloaded increase with asset transfer
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)

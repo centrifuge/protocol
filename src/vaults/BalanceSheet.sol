@@ -11,6 +11,7 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "../common/interfaces/IGatewaySenders.sol";
@@ -30,6 +31,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     using MathLib for *;
     using CastLib for bytes32;
 
+    IRoot public immutable root;
+
     IGateway public gateway;
     IPoolManager public poolManager;
     IVaultMessageSender public sender;
@@ -40,7 +43,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     mapping(PoolId poolId => mapping(ShareClassId scId => QueueAmount)) public queuedShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => QueueAmount))) public queuedAssets;
 
-    constructor(address deployer) Auth(deployer) {}
+    constructor(IRoot root_, address deployer) Auth(deployer) {
+        root = root_;
+    }
 
     /// @dev Check if the msg.sender is ward or a manager
     modifier authOrManager(PoolId poolId) {
@@ -141,6 +146,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         external
         authOrManager(poolId)
     {
+        require(!root.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = IShareToken(poolManager.shareToken(poolId, scId));
         token.authTransferFrom(from, from, to, amount);
     }

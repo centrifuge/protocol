@@ -129,12 +129,9 @@ contract ShareToken is ERC20, IShareToken {
     {
         success = _transferFrom(sender, from, to, value);
         address hook_ = hook;
-        require(
-            hook_ == address(0)
-                || IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
-                    == IHook.onERC20AuthTransfer.selector,
-            RestrictionsFailed()
-        );
+        if (hook_ != address(0)) {
+            IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)));
+        }
     }
 
     //----------------------------------------------------------------------------------------------
