@@ -321,7 +321,7 @@ contract PoolManager is
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
                 IVaultFactory factory = IVaultFactory(m.vaultOrFactory.toAddress());
 
-                IBaseVault vault = _deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
+                IBaseVault vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
                 linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
             } else {
                 IBaseVault vault = IBaseVault(m.vaultOrFactory.toAddress());
