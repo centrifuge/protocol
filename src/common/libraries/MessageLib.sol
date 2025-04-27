@@ -116,13 +116,13 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (26  << (uint8(MessageType.SetQueue) - 32) * 8) +
+        (26  << uint8(MessageType.SetQueue) * 8) +
         (74  << uint8(MessageType.TriggerUpdateShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
-        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
-        (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8);
+        (25  << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
+        (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
