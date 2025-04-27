@@ -25,6 +25,9 @@ import {
     EpochId
 } from "src/hub/interfaces/IShareClassManager.sol";
 
+/// @title  Share Class Manager
+/// @notice Manager for the share classes of a pool, and the core logic for tracking, approving, and fulfilling
+///         requests.
 contract ShareClassManager is Auth, IShareClassManager {
     using MathLib for *;
     using CastLib for *;

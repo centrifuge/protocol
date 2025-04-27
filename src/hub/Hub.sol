@@ -23,15 +23,19 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
-// @inheritdoc IHub
+/// @title  Hub
+/// @notice Central pool management contract, that brings together all functions in one place.
+///         Pools can assign hub managers which have full rights over all actions.
+///
+///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MathLib for uint256;
 
-    IAccounting public immutable accounting;
     IHubRegistry public immutable hubRegistry;
 
     IGateway public gateway;
     IHoldings public holdings;
+    IAccounting public accounting;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
 
@@ -60,6 +64,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();

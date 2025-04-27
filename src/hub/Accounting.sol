@@ -21,6 +21,10 @@ library TransientJournal {
     }
 }
 
+/// @title  Accounting
+/// @notice Double-entry bookkeeping system.
+/// @dev    To add entries, a specific pool needs to be unlocked.
+///         When locking, the debited and credited amounts need to match.
 contract Accounting is Auth, IAccounting {
     mapping(PoolId => mapping(AccountId => Account)) public accounts;
 
