@@ -31,6 +31,53 @@ contract Accounting is Auth, IAccounting {
 
     constructor(address deployer) Auth(deployer) {}
 
+    //----------------------------------------------------------------------------------------------
+    // Lock/unlock
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAccounting
+    function unlock(PoolId poolId) external auth {
+        require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
+        debited = 0;
+        credited = 0;
+        _currentPoolId = poolId;
+
+        if (TransientJournal.journalId(poolId) == 0) {
+            TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
+        }
+        emit StartJournalId(poolId, TransientJournal.journalId(poolId));
+    }
+
+    /// @inheritdoc IAccounting
+    function lock() external auth {
+        require(debited == credited, Unbalanced());
+
+        emit EndJournalId(_currentPoolId, TransientJournal.journalId(_currentPoolId));
+        _currentPoolId = PoolId.wrap(0);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Account creation & metadata
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAccounting
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
+        require(accounts[poolId][account].lastUpdated == 0, AccountExists());
+        accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
+        emit CreateAccount(poolId, account, isDebitNormal);
+    }
+
+    /// @inheritdoc IAccounting
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
+        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
+        accounts[poolId][account].metadata = metadata;
+        emit SetAccountMetadata(poolId, account, metadata);
+    }
+    
+    //----------------------------------------------------------------------------------------------
+    // Account updates
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAccounting
     function addDebit(AccountId account, uint128 value) public auth {
         require(!_currentPoolId.isNull(), AccountingLocked());
@@ -58,7 +105,7 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+    function addJournal(JournalEntry[] memory debits, JournalEntry[] memory credits) external auth {
         for (uint256 i; i < debits.length; i++) {
             addDebit(debits[i].accountId, debits[i].value);
         }
@@ -68,43 +115,12 @@ contract Accounting is Auth, IAccounting {
         }
     }
 
-    /// @inheritdoc IAccounting
-    function unlock(PoolId poolId) external auth {
-        require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
-        debited = 0;
-        credited = 0;
-        _currentPoolId = poolId;
-
-        if (TransientJournal.journalId(poolId) == 0) {
-            TransientJournal.setJournalId(poolId, _generateJournalId(poolId));
-        }
-        emit StartJournalId(poolId, TransientJournal.journalId(poolId));
-    }
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAccounting
-    function lock() external auth {
-        require(debited == credited, Unbalanced());
-
-        emit EndJournalId(_currentPoolId, TransientJournal.journalId(_currentPoolId));
-        _currentPoolId = PoolId.wrap(0);
-    }
-
-    /// @inheritdoc IAccounting
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
-        require(accounts[poolId][account].lastUpdated == 0, AccountExists());
-        accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
-        emit CreateAccount(poolId, account, isDebitNormal);
-    }
-
-    /// @inheritdoc IAccounting
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external auth {
-        require(accounts[poolId][account].lastUpdated != 0, AccountDoesNotExist());
-        accounts[poolId][account].metadata = metadata;
-        emit SetAccountMetadata(poolId, account, metadata);
-    }
-
-    /// @inheritdoc IAccounting
-    function accountValue(PoolId poolId, AccountId account) public view returns (bool /* isPositive */, uint128) {
+    function accountValue(PoolId poolId, AccountId account) external view returns (bool /* isPositive */, uint128) {
         Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
@@ -126,7 +142,7 @@ contract Accounting is Auth, IAccounting {
     }
 
     /// @inheritdoc IAccounting
-    function exists(PoolId poolId, AccountId account) public view returns (bool) {
+    function exists(PoolId poolId, AccountId account) external view returns (bool) {
         return accounts[poolId][account].lastUpdated != 0;
     }
 

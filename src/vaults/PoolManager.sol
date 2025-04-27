@@ -137,6 +137,7 @@ contract PoolManager is
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
+        protected
         returns (AssetId assetId)
     {
         string memory name;
@@ -387,10 +388,6 @@ contract PoolManager is
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Public methods
-    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
