@@ -41,7 +41,7 @@ contract MaliciousVault {
 }
 
 contract NonAsyncVault {
-    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+    function supportsInterface(bytes4) public pure returns (bool) {
         return false;
     }
 }
