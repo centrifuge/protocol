@@ -132,6 +132,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
+        require(vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonAsyncVault());
 
         lockedRequests[controller][vault] += amount;
 

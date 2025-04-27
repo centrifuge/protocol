@@ -65,24 +65,24 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     // ERC-7887
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IERC7540CancelDeposit
+    /// @inheritdoc IERC7887Deposit
     function cancelDepositRequest(uint256, address controller) external {
         _validateController(controller);
         asyncManager().cancelDepositRequest(this, controller, msg.sender);
         emit CancelDepositRequest(controller, REQUEST_ID, msg.sender);
     }
 
-    /// @inheritdoc IERC7540CancelDeposit
+    /// @inheritdoc IERC7887Deposit
     function pendingCancelDepositRequest(uint256, address controller) public view returns (bool isPending) {
         isPending = asyncManager().pendingCancelDepositRequest(this, controller);
     }
 
-    /// @inheritdoc IERC7540CancelDeposit
+    /// @inheritdoc IERC7887Deposit
     function claimableCancelDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
         claimableAssets = asyncManager().claimableCancelDepositRequest(this, controller);
     }
 
-    /// @inheritdoc IERC7540CancelDeposit
+    /// @inheritdoc IERC7887Deposit
     function claimCancelDepositRequest(uint256, address receiver, address controller)
         external
         returns (uint256 assets)
@@ -99,7 +99,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure override(BaseAsyncRedeemVault, IERC165) returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId
-            || interfaceId == type(IERC7540CancelDeposit).interfaceId || super.supportsInterface(interfaceId);
+            || interfaceId == type(IERC7887Deposit).interfaceId || super.supportsInterface(interfaceId);
     }
 
     //----------------------------------------------------------------------------------------------

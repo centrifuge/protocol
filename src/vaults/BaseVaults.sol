@@ -260,24 +260,24 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     // ERC-7887
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IERC7540CancelRedeem
+    /// @inheritdoc IERC7887Redeem
     function cancelRedeemRequest(uint256, address controller) external {
         _validateController(controller);
         asyncRedeemManager.cancelRedeemRequest(this, controller, msg.sender);
         emit CancelRedeemRequest(controller, REQUEST_ID, msg.sender);
     }
 
-    /// @inheritdoc IERC7540CancelRedeem
+    /// @inheritdoc IERC7887Redeem
     function pendingCancelRedeemRequest(uint256, address controller) public view returns (bool isPending) {
         isPending = asyncRedeemManager.pendingCancelRedeemRequest(this, controller);
     }
 
-    /// @inheritdoc IERC7540CancelRedeem
+    /// @inheritdoc IERC7887Redeem
     function claimableCancelRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
         claimableShares = asyncRedeemManager.claimableCancelRedeemRequest(this, controller);
     }
 
-    /// @inheritdoc IERC7540CancelRedeem
+    /// @inheritdoc IERC7887Redeem
     function claimCancelRedeemRequest(uint256, address receiver, address controller)
         external
         returns (uint256 shares)
@@ -332,7 +332,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure virtual override(BaseVault, IERC165) returns (bool) {
         return super.supportsInterface(interfaceId) || interfaceId == type(IERC7540Redeem).interfaceId
-            || interfaceId == type(IERC7540CancelRedeem).interfaceId;
+            || interfaceId == type(IERC7887Redeem).interfaceId;
     }
 
     /// @inheritdoc IERC7575

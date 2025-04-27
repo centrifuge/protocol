@@ -24,6 +24,7 @@ interface IVaultRouter is IMulticall {
     error UnwrapFailed();
     error InvalidSender();
     error NonSyncDepositVault();
+    error NonAsyncVault();
 
     /// @notice Check how much of the `vault`'s asset is locked for the current `controller`.
     /// @dev    This is a getter method
@@ -120,18 +121,18 @@ interface IVaultRouter is IMulticall {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- Redeem ---
-    /// @notice Check `IERC7540CancelDeposit.cancelDepositRequest`.
+    /// @notice Check `IERC7887Deposit.cancelDepositRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
     function cancelDepositRequest(IAsyncVault vault) external payable;
 
-    /// @notice Check IERC7540CancelDeposit.claimCancelDepositRequest
+    /// @notice Check IERC7887Deposit.claimCancelDepositRequest
     ///
     /// @param  vault Address of the vault
-    /// @param  receiver Check  IERC7540CancelDeposit.claimCancelDepositRequest.receiver
-    /// @param  controller Check  IERC7540CancelDeposit.claimCancelDepositRequest.controller
+    /// @param  receiver Check  IERC7887Deposit.claimCancelDepositRequest.receiver
+    /// @param  controller Check  IERC7887Deposit.claimCancelDepositRequest.controller
     function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- Redeem ---
@@ -154,18 +155,18 @@ interface IVaultRouter is IMulticall {
     /// @param  controller Check IERC7575.withdraw.owner
     function claimRedeem(IBaseVault vault, address receiver, address controller) external payable;
 
-    /// @notice Check `IERC7540CancelRedeem.cancelRedeemRequest`.
+    /// @notice Check `IERC7887Redeem.cancelRedeemRequest`.
     /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
     ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
     ///
     /// @param  vault The vault where the deposit was initiated
     function cancelRedeemRequest(IAsyncVault vault) external payable;
 
-    /// @notice Check IERC7540CancelRedeem.claimableCancelRedeemRequest
+    /// @notice Check IERC7887Redeem.claimableCancelRedeemRequest
     ///
     /// @param  vault Address of the vault
-    /// @param  receiver Check  IERC7540CancelRedeem.claimCancelRedeemRequest.receiver
-    /// @param  controller Check  IERC7540CancelRedeem.claimCancelRedeemRequest.controller
+    /// @param  receiver Check  IERC7887Redeem.claimCancelRedeemRequest.receiver
+    /// @param  controller Check  IERC7887Redeem.claimCancelRedeemRequest.controller
     function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
     // --- ERC20 permit ---

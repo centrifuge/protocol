@@ -108,8 +108,8 @@ contract AsyncVaultTest is BaseTest {
         assertEq(type(IERC7540Operator).interfaceId, asyncVaultOperator);
         assertEq(type(IERC7540Deposit).interfaceId, asyncVaultDeposit);
         assertEq(type(IERC7540Redeem).interfaceId, asyncVaultRedeem);
-        assertEq(type(IERC7540CancelDeposit).interfaceId, asyncVaultCancelDeposit);
-        assertEq(type(IERC7540CancelRedeem).interfaceId, asyncVaultCancelRedeem);
+        assertEq(type(IERC7887Deposit).interfaceId, asyncVaultCancelDeposit);
+        assertEq(type(IERC7887Redeem).interfaceId, asyncVaultCancelRedeem);
         assertEq(type(IERC7741).interfaceId, erc7741);
         assertEq(type(IERC7714).interfaceId, erc7714);
 

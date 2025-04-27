@@ -140,7 +140,7 @@ interface IERC7540Redeem is IERC7540Operator {
         returns (uint256 claimableShares);
 }
 
-interface IERC7540CancelDeposit {
+interface IERC7887Deposit {
     event CancelDepositRequest(address indexed controller, uint256 indexed requestId, address sender);
     event CancelDepositClaim(
         address indexed controller, address indexed receiver, uint256 indexed requestId, address sender, uint256 assets
@@ -191,7 +191,7 @@ interface IERC7540CancelDeposit {
         returns (uint256 assets);
 }
 
-interface IERC7540CancelRedeem {
+interface IERC7887Redeem {
     event CancelRedeemRequest(address indexed controller, uint256 indexed requestId, address sender);
     event CancelRedeemClaim(
         address indexed controller, address indexed receiver, uint256 indexed requestId, address sender, uint256 shares
