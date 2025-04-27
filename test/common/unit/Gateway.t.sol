@@ -986,6 +986,9 @@ contract GatewayTestSend is GatewayTest {
         bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
 
+        vm.expectRevert(IGateway.NotUnderpaidBatch.selector);
+        gateway.repay(REMOTE_CENT_ID, message);
+
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
         vm.expectEmit();
@@ -998,8 +1001,6 @@ contract GatewayTestSend is GatewayTest {
         gateway.repay(REMOTE_CENT_ID, message);
 
         uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
-        gateway.subsidizePool{value: payment}(POOL_A);
-
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
         vm.expectEmit();
@@ -1010,7 +1011,7 @@ contract GatewayTestSend is GatewayTest {
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, message);
-        gateway.repay(REMOTE_CENT_ID, message);
+        gateway.repay{value: payment}(REMOTE_CENT_ID, message);
     }
 
     function testSendMessageUsingSubsidizedPoolPayment() public {
