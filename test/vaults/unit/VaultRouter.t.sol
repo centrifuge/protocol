@@ -9,6 +9,7 @@ import "src/misc/interfaces/IERC20.sol";
 import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -19,6 +20,7 @@ import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -29,6 +31,18 @@ contract ERC20WrapperFake {
 
     constructor(address underlying_) {
         underlying = underlying_;
+    }
+}
+
+contract MaliciousVault {
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == type(IERC7540Deposit).interfaceId;
+    }
+}
+
+contract NonAsyncVault {
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return false;
     }
 }
 
@@ -78,6 +92,27 @@ contract VaultRouterTest is BaseTest {
         assertEq(erc20.balanceOf(address(globalEscrow)), amount);
     }
 
+    function testRouterSyncDeposit() public {
+        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        vm.label(vault_, "vault");
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        erc20.mint(self, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        uint256 gas = estimateGas();
+
+        erc20.approve(address(vault_), amount);
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+
+        erc20.approve(address(vaultRouter), amount);
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
+        vaultRouter.deposit{value: gas - 1}(vault, amount, self, self);
+
+        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+    }
+
     function testLockDepositRequests() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
@@ -89,8 +124,13 @@ contract VaultRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
 
+        IAsyncVault maliciousVault = IAsyncVault(address(new MaliciousVault()));
         vm.expectRevert(IPoolManager.UnknownVault.selector);
-        vaultRouter.lockDepositRequest(IAsyncVault(makeAddr("maliciousVault")), amount, self, self);
+        vaultRouter.lockDepositRequest(maliciousVault, amount, self, self);
+
+        IAsyncVault nonAsyncVault = IAsyncVault(address(new NonAsyncVault()));
+        vm.expectRevert(IVaultRouter.NonAsyncVault.selector);
+        vaultRouter.lockDepositRequest(nonAsyncVault, amount, self, self);
 
         vaultRouter.lockDepositRequest(vault, amount, self, self);
 
