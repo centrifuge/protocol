@@ -190,26 +190,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.cancelledShares
             );
-        } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
-            MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
-
-            if (m.isIncrease) {
-                balanceSheet.triggerDeposit(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    AssetId.wrap(m.assetId),
-                    m.who.toAddress(),
-                    m.amount
-                );
-            } else {
-                balanceSheet.triggerWithdraw(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    AssetId.wrap(m.assetId),
-                    m.who.toAddress(),
-                    m.amount
-                );
-            }
         } else if (kind == MessageType.TriggerUpdateShares) {
             MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
             if (m.isIssuance) {

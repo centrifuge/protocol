@@ -411,36 +411,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendTriggerUpdateHoldingAmount(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address who,
-        uint128 amount,
-        bool isIncrease
-    ) external auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            if (isIncrease) {
-                balanceSheet.triggerDeposit(poolId, scId, assetId, who, amount);
-            } else {
-                balanceSheet.triggerWithdraw(poolId, scId, assetId, who, amount);
-            }
-        } else {
-            gateway.send(
-                assetId.centrifugeId(),
-                MessageLib.TriggerUpdateHoldingAmount({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    who: who.toBytes32(),
-                    amount: amount,
-                    isIncrease: isIncrease
-                }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IPoolMessageSender
     function sendTriggerUpdateShares(
         uint16 centrifugeId,
         PoolId poolId,

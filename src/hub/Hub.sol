@@ -27,11 +27,11 @@ import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MathLib for uint256;
 
+    IAccounting public immutable accounting;
     IHubRegistry public immutable hubRegistry;
 
     IGateway public gateway;
     IHoldings public holdings;
-    IAccounting public accounting;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
 
@@ -60,7 +60,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
-        else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
@@ -222,20 +221,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
         sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
-    }
-
-    /// @inheritdoc IHub
-    function sendTriggerUpdateHoldingAmount(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address who,
-        uint128 amount,
-        bool isIncrease
-    ) public payable {
-        _isManagerAndPaid(poolId);
-
-        sender.sendTriggerUpdateHoldingAmount(poolId, scId, assetId, who, amount, isIncrease);
     }
 
     /// @inheritdoc IHub

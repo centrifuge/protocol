@@ -633,36 +633,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
     }
 
-    function testTriggerUpdateHoldingAmount(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        bytes32 who,
-        uint128 amount,
-        bool isIncrease
-    ) public pure {
-        MessageLib.TriggerUpdateHoldingAmount memory a = MessageLib.TriggerUpdateHoldingAmount({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            who: who,
-            amount: amount,
-            isIncrease: isIncrease
-        });
-
-        MessageLib.TriggerUpdateHoldingAmount memory b = MessageLib.deserializeTriggerUpdateHoldingAmount(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.who, b.who);
-        assertEq(a.amount, b.amount);
-        assertEq(a.isIncrease, b.isIncrease);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
     function testTriggerUpdateShares(uint64 poolId, bytes16 scId, bytes32 who, uint128 shares, bool isIssuance)
         public
         pure
