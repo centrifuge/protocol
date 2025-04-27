@@ -286,8 +286,6 @@ interface IBalanceSheetGatewayHandler {
 
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
-
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
 
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;

@@ -9,6 +9,8 @@ import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
+/// @title  Hub Registry
+/// @notice Registry of all known pools, currencies, and assets.
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
 

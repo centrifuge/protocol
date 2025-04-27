@@ -44,8 +44,7 @@ enum MessageType {
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
-    TriggerUpdateHoldingAmount,
-    TriggerUpdateShares,
+    TriggerIssueShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
     SetQueue
@@ -117,12 +116,11 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (90 << uint8(MessageType.TriggerUpdateHoldingAmount) * 8) +
-        (74 << uint8(MessageType.TriggerUpdateShares) * 8);
+        (73  << uint8(MessageType.TriggerIssueShares) * 8) +
+        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
-        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
@@ -1136,67 +1134,29 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TriggerUpdateHoldingAmount
+    //    TriggerIssueShares
     //---------------------------------------
 
-    struct TriggerUpdateHoldingAmount {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-        bytes32 who;
-        uint128 amount;
-        bool isIncrease; // Signals whether this is an increase or a decrease
-    }
-
-    function deserializeTriggerUpdateHoldingAmount(bytes memory data)
-        internal
-        pure
-        returns (TriggerUpdateHoldingAmount memory h)
-    {
-        require(messageType(data) == MessageType.TriggerUpdateHoldingAmount, "UnknownMessageType");
-
-        return TriggerUpdateHoldingAmount({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            who: data.toBytes32(41),
-            amount: data.toUint128(73),
-            isIncrease: data.toBool(89)
-        });
-    }
-
-    function serialize(TriggerUpdateHoldingAmount memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.TriggerUpdateHoldingAmount, t.poolId, t.scId, t.assetId, t.who, t.amount, t.isIncrease
-        );
-    }
-
-    //---------------------------------------
-    //    TriggerUpdateShares
-    //---------------------------------------
-
-    struct TriggerUpdateShares {
+    struct TriggerIssueShares {
         uint64 poolId;
         bytes16 scId;
         bytes32 who;
         uint128 shares;
-        bool isIssuance;
     }
 
-    function deserializeTriggerUpdateShares(bytes memory data) internal pure returns (TriggerUpdateShares memory) {
-        require(messageType(data) == MessageType.TriggerUpdateShares, UnknownMessageType());
+    function deserializeTriggerIssueShares(bytes memory data) internal pure returns (TriggerIssueShares memory) {
+        require(messageType(data) == MessageType.TriggerIssueShares, UnknownMessageType());
 
-        return TriggerUpdateShares({
+        return TriggerIssueShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             who: data.toBytes32(25),
-            shares: data.toUint128(57),
-            isIssuance: data.toBool(73)
+            shares: data.toUint128(57)
         });
     }
 
-    function serialize(TriggerUpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerUpdateShares, t.poolId, t.scId, t.who, t.shares, t.isIssuance);
+    function serialize(TriggerIssueShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.TriggerIssueShares, t.poolId, t.scId, t.who, t.shares);
     }
 
     //---------------------------------------

@@ -15,6 +15,8 @@ import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
+/// @title  Holdings
+/// @notice Bookkeeping of the holdings and its associated accounting IDs for each pool.
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256;
 

@@ -155,24 +155,8 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendTriggerUpdateHoldingAmount(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address who,
-        uint128 amount,
-        bool isIncrease
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendTriggerUpdateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        address who,
-        uint128 shares,
-        bool isIssuance
-    ) external;
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        external;
 
     /// @notice Creates and send the message
     function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;

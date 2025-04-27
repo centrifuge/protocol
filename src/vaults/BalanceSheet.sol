@@ -27,6 +27,14 @@ import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
+/// @title  Balance Sheet
+/// @notice Management contract that integrates all balance sheet functions of a pool:
+///         - Issuing and revoking shares
+///         - Depositing and withdrawing assets
+///         - Force transferring shares
+///
+///         Share and asset updates to the Hub are optionally queued, to reduce the cost
+///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
 contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
     using MathLib for *;
     using CastLib for bytes32;
@@ -192,12 +200,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares) external auth {
         _issue(poolId, scId, receiver, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address owner, uint128 shares) external auth {
-        _noteRevoke(poolId, scId, owner, shares);
-        _executeRevoke(poolId, scId, owner, shares);
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler

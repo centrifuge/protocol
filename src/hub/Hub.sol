@@ -23,7 +23,11 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
-// @inheritdoc IHub
+/// @title  Hub
+/// @notice Central pool management contract, that brings together all functions in one place.
+///         Pools can assign hub managers which have full rights over all actions.
+///
+///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     using MathLib for uint256;
 
@@ -225,31 +229,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendTriggerUpdateHoldingAmount(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address who,
-        uint128 amount,
-        bool isIncrease
-    ) public payable {
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        public
+        payable
+    {
         _isManagerAndPaid(poolId);
 
-        sender.sendTriggerUpdateHoldingAmount(poolId, scId, assetId, who, amount, isIncrease);
-    }
-
-    /// @inheritdoc IHub
-    function sendTriggerUpdateShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        address who,
-        uint128 shares,
-        bool isIssuance
-    ) public payable {
-        _isManagerAndPaid(poolId);
-
-        sender.sendTriggerUpdateShares(centrifugeId, poolId, scId, who, shares, isIssuance);
+        sender.sendTriggerIssueShares(centrifugeId, poolId, scId, who, shares);
     }
 
     /// @inheritdoc IHub
