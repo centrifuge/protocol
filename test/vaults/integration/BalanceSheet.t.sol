@@ -481,7 +481,9 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
 
         vm.expectRevert(IBalanceSheet.CannotTransferFromEndorsedContract.selector);
-        balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(globalEscrow), address(1), defaultAmount);
+        balanceSheet.transferSharesFrom(
+            POOL_A, defaultTypedShareClassId, address(globalEscrow), address(1), defaultAmount
+        );
 
         balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
 

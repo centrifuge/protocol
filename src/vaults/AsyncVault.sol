@@ -98,8 +98,8 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) public pure override(BaseAsyncRedeemVault, IERC165) returns (bool) {
-        return interfaceId == type(IERC7540Deposit).interfaceId
-            || interfaceId == type(IERC7887Deposit).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC7887Deposit).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     //----------------------------------------------------------------------------------------------
