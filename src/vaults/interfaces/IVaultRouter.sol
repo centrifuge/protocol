@@ -6,6 +6,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 interface IVaultRouter is IMulticall {
     // --- Events ---
@@ -22,6 +23,7 @@ interface IVaultRouter is IMulticall {
     error WrapFailed();
     error UnwrapFailed();
     error InvalidSender();
+    error NonSyncDepositVault();
 
     /// @notice Check how much of the `vault`'s asset is locked for the current `controller`.
     /// @dev    This is a getter method
@@ -47,6 +49,16 @@ interface IVaultRouter is IMulticall {
     /// @param  controller Check @param IERC7540Deposit.requestDeposit.controller
     /// @param  owner Check @param IERC7540Deposit.requestDeposit.owner
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
+
+    /// @notice Check `IERC4626.deposit`.
+    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
+    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
+    ///
+    /// @param  vault The vault to deposit into
+    /// @param  assets Check @param IERC4626.deposit.assets
+    /// @param  receiver Check @param IERC4626.deposit.receiver
+    /// @param  owner User from which to transfer the assets, either msg.sender or the VaultRouter
+    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner) external payable;
 
     /// @notice Locks `amount` of `vault`'s asset in an escrow before actually sending a deposit LockDepositRequest
     ///         There are users that would like to interact with the protocol but don't have permissions yet. They can

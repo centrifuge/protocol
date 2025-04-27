@@ -240,13 +240,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
-
-        address escrow = address(manager.globalEscrow());
-        try IShareToken(share).authTransferFrom(sender, owner, escrow, shares) returns (bool) {}
-        catch {
-            // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(IShareToken(share).transferFrom(owner, escrow, shares), TransferFromFailed());
-        }
+        IShareToken(share).authTransferFrom(sender, owner, address(manager.globalEscrow()), shares);
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;

@@ -67,7 +67,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new BalanceSheet(address(this));
+        new BalanceSheet(root, address(this));
 
         // values set correctly
         assertEq(address(balanceSheet.gateway()), address(gateway));
@@ -288,12 +288,8 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        vm.expectRevert(IERC20.InsufficientAllowance.selector);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
-
         balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
-        token.approve(address(balanceSheet), defaultAmount * 3);
         vm.expectEmit();
         emit IBalanceSheet.Revoke(
             POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount

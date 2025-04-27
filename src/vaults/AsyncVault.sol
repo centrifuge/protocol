@@ -45,9 +45,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         require(IERC20(asset).balanceOf(owner) >= assets, InsufficientBalance());
 
         require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
-
-        address escrow = address(manager.globalEscrow());
-        SafeTransferLib.safeTransferFrom(asset, owner, escrow, assets);
+        SafeTransferLib.safeTransferFrom(asset, owner, address(manager.globalEscrow()), assets);
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;

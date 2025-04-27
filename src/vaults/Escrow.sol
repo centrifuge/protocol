@@ -16,7 +16,7 @@ contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IEscrow
-    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) public auth {
         if (tokenId == 0) {
             uint256 balance = IERC20(asset).balanceOf(address(this));
             require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
@@ -34,11 +34,7 @@ contract Escrow is Auth, IEscrow {
 
     /// @inheritdoc IEscrow
     function authTransferTo(address asset, address receiver, uint256 amount) external auth {
-        uint256 balance = IERC20(asset).balanceOf(address(this));
-        require(balance >= amount, InsufficientBalance(asset, 0, amount, balance));
-
-        SafeTransferLib.safeTransfer(asset, receiver, amount);
-        emit AuthTransferTo(asset, receiver, amount);
+        authTransferTo(asset, 0, receiver, amount);
     }
 }
 
@@ -46,8 +42,6 @@ contract Escrow is Auth, IEscrow {
 /// @notice Escrow contract that holds assets for a specific pool separated by share classes.
 ///         Only wards can approve funds to be taken out.
 contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
-    using MathLib for uint256;
-
     /// @dev The underlying pool id
     PoolId public immutable poolId;
 
@@ -60,35 +54,35 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     receive() external payable {}
 
     /// @inheritdoc IPoolEscrow
-    function deposit(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
-        holding[scId][asset][tokenId].total += value.toUint128();
+    function deposit(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
+        holding[scId][asset][tokenId].total += value;
 
         emit Deposit(asset, tokenId, poolId, scId, value);
     }
 
     /// @inheritdoc IPoolEscrow
-    function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function withdraw(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
         Holding storage holding_ = holding[scId][asset][tokenId];
-        uint256 balance = holding_.total - holding_.reserved;
+        uint128 balance = holding_.total - holding_.reserved;
         require(balance >= value, InsufficientBalance(asset, tokenId, value, balance));
 
-        holding_.total -= value.toUint128();
+        holding_.total -= value;
 
         emit Withdraw(asset, tokenId, poolId, scId, value);
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveIncrease(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
-        uint128 newValue = holding[scId][asset][tokenId].reserved + value.toUint128();
+    function reserveIncrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
+        uint128 newValue = holding[scId][asset][tokenId].reserved + value;
         holding[scId][asset][tokenId].reserved = newValue;
 
         emit IncreaseReserve(asset, tokenId, poolId, scId, value, newValue);
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveDecrease(ShareClassId scId, address asset, uint256 tokenId, uint256 value) external auth {
+    function reserveDecrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
         uint128 prevValue = holding[scId][asset][tokenId].reserved;
-        uint128 value_ = value.toUint128();
+        uint128 value_ = value;
         require(prevValue >= value_, InsufficientReservedAmount());
 
         uint128 newValue = prevValue - value_;
@@ -98,7 +92,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function availableBalanceOf(ShareClassId scId, address asset, uint256 tokenId) public view returns (uint256) {
+    function availableBalanceOf(ShareClassId scId, address asset, uint256 tokenId) public view returns (uint128) {
         Holding storage holding_ = holding[scId][asset][tokenId];
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;

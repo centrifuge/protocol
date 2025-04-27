@@ -126,12 +126,7 @@ contract PoolManager is
 
         gateway.payTransaction{value: msg.value}(msg.sender);
 
-        try share.authTransferFrom(msg.sender, msg.sender, address(this), amount) returns (bool) {}
-        catch {
-            // Support share class tokens that block authTransferFrom. In this case ERC20 approval needs to be set
-            require(share.transferFrom(msg.sender, address(this), amount), TransferFromFailed());
-        }
-
+        share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
