@@ -93,7 +93,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testRouterSyncDeposit() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -109,8 +109,9 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
         vaultRouter.deposit{value: gas - 1}(vault, amount, self, self);
 
+        erc20.approve(address(vaultRouter), amount);
         vaultRouter.deposit{value: gas}(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+        assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 
     function testLockDepositRequests() public {

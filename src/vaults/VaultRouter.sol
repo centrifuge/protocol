@@ -120,6 +120,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
+        _approveMax(vaultDetails.asset, address(vault));
 
         _pay();
         vault.deposit(assets, receiver);
