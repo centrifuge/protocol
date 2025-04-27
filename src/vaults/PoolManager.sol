@@ -137,6 +137,7 @@ contract PoolManager is
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
+        protected
         returns (AssetId assetId)
     {
         string memory name;
@@ -320,7 +321,7 @@ contract PoolManager is
             if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
                 IVaultFactory factory = IVaultFactory(m.vaultOrFactory.toAddress());
 
-                IBaseVault vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
+                IBaseVault vault = _deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
                 linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
             } else {
                 IBaseVault vault = IBaseVault(m.vaultOrFactory.toAddress());
@@ -387,10 +388,6 @@ contract PoolManager is
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Public methods
-    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
