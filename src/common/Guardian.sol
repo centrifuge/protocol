@@ -17,8 +17,8 @@ contract Guardian is IGuardian {
 
     IRoot public immutable root;
 
-    ISafe public safe;
     IHub public hub;
+    ISafe public safe;
     IRootMessageSender public sender;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {

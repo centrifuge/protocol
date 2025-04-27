@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {Accounting} from "src/hub/Accounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 enum AccountType {
     Asset,
@@ -27,6 +27,7 @@ contract AccountingTest is Test {
     AccountId immutable EQUITY_ACCOUNT = AccountId.wrap(301);
     AccountId immutable GAIN_ACCOUNT = AccountId.wrap(302);
     AccountId immutable NON_INITIALIZED_ACCOUNT = AccountId.wrap(999);
+    JournalEntry[] EMPTY_JOURNAL_ENTRY;
 
     Accounting accounting = new Accounting(address(this));
 
@@ -154,6 +155,9 @@ contract AccountingTest is Test {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        accounting.addJournal(EMPTY_JOURNAL_ENTRY, EMPTY_JOURNAL_ENTRY);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         accounting.lock();

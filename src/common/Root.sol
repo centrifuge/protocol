@@ -52,7 +52,7 @@ contract Root is Auth, IRoot {
     }
 
     /// @inheritdoc IRoot
-    function endorsed(address user) public view returns (bool) {
+    function endorsed(address user) external view returns (bool) {
         return endorsements[user] == 1;
     }
 
@@ -77,13 +77,13 @@ contract Root is Auth, IRoot {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IRoot
-    function scheduleRely(address target) public auth {
+    function scheduleRely(address target) external auth {
         schedule[target] = block.timestamp + delay;
         emit ScheduleRely(target, schedule[target]);
     }
 
     /// @inheritdoc IRoot
-    function cancelRely(address target) public auth {
+    function cancelRely(address target) external auth {
         require(schedule[target] != 0, TargetNotScheduled());
         schedule[target] = 0;
         emit CancelRely(target);
