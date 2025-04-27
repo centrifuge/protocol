@@ -58,9 +58,7 @@ interface IVaultRouter is IMulticall {
     /// @param  assets Check @param IERC4626.deposit.assets
     /// @param  receiver Check @param IERC4626.deposit.receiver
     /// @param  owner User from which to transfer the assets, either msg.sender or the VaultRouter
-    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner)
-        external
-        payable;
+    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner) external payable;
 
     /// @notice Locks `amount` of `vault`'s asset in an escrow before actually sending a deposit LockDepositRequest
     ///         There are users that would like to interact with the protocol but don't have permissions yet. They can
