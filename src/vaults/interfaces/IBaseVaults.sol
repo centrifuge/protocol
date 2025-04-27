@@ -7,8 +7,8 @@ import {
     IERC7714,
     IERC7741,
     IERC7540Redeem,
-    IERC7540CancelRedeem,
-    IERC7540CancelDeposit,
+    IERC7887Redeem,
+    IERC7887Deposit,
     IERC7540Deposit
 } from "src/misc/interfaces/IERC7540.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
@@ -54,7 +54,7 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
  * @dev    This is the specific set of interfaces used by the Centrifuge implementation of ERC7540,
  *         as a fully asynchronous Vault, with cancellation support, and authorize operator signature support.
  */
-interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault {
+interface IAsyncRedeemVault is IERC7540Redeem, IERC7887Redeem, IBaseVault {
     event RedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelRedeemClaimable(address indexed controller, uint256 indexed requestId, uint256 shares);
 
@@ -71,7 +71,7 @@ interface IAsyncRedeemVault is IERC7540Redeem, IERC7540CancelRedeem, IBaseVault 
     function asyncRedeemManager() external view returns (IAsyncRedeemManager);
 }
 
-interface IAsyncVault is IERC7540Deposit, IERC7540CancelDeposit, IAsyncRedeemVault {
+interface IAsyncVault is IERC7540Deposit, IERC7887Deposit, IAsyncRedeemVault {
     event DepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets, uint256 shares);
     event CancelDepositClaimable(address indexed controller, uint256 indexed requestId, uint256 assets);
 
