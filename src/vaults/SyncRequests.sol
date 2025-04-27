@@ -286,13 +286,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
 
     /// @dev Issues shares to the receiver and instruct the balance sheet
     //       to react on the issuance and the updated holding.
-    function _issueShares(
-        IBaseVault vault_,
-        uint128 shares,
-        address receiver,
-        address, /* owner */
-        uint128 assets
-    ) internal {
+    function _issueShares(IBaseVault vault_, uint128 shares, address receiver, address, /* owner */ uint128 assets)
+        internal
+    {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
