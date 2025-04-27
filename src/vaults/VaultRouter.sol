@@ -7,7 +7,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -15,11 +15,11 @@ import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -102,11 +102,27 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (owner == address(this)) {
-            _approveMax(vaultDetails.asset, vaultDetails.tokenId, address(vault));
+            _approveMax(vaultDetails.asset, address(vault));
         }
 
         _pay();
         vault.requestDeposit(amount, controller, owner);
+    }
+
+    /// @inheritdoc IVaultRouter
+    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner)
+        external
+        payable
+        protected
+    {
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
+        require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
+
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
+
+        _pay();
+        vault.deposit(assets, receiver);
     }
 
     /// @inheritdoc IVaultRouter
@@ -120,12 +136,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] += amount;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-
-        if (vaultDetails.tokenId == 0) {
-            SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
-        } else {
-            IERC6909(vaultDetails.asset).transferFrom(owner, address(escrow), vaultDetails.tokenId, amount);
-        }
+        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
 
         emit LockDepositRequest(vault, controller, owner, msg.sender, amount);
     }
@@ -137,8 +148,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
 
         uint256 assetBalance;
-        if (vaultDetails.tokenId == 0) assetBalance = IERC20(vaultDetails.asset).balanceOf(msg.sender);
-        else assetBalance = IERC6909(vaultDetails.asset).balanceOf(msg.sender, vaultDetails.tokenId);
+        assetBalance = IERC20(vaultDetails.asset).balanceOf(msg.sender);
 
         if (vaultDetails.isWrapper && assetBalance < amount) {
             wrap(vaultDetails.asset, amount, address(this), msg.sender);
@@ -155,7 +165,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[msg.sender][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, receiver, lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
     }
@@ -167,10 +177,10 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] = 0;
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, address(this), lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, address(this), lockedRequest);
 
         _pay();
-        _approveMax(vaultDetails.asset, vaultDetails.tokenId, address(vault));
+        _approveMax(vaultDetails.asset, address(vault));
         vault.requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
     }
@@ -265,7 +275,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(amount != 0, ZeroBalance());
         SafeTransferLib.safeTransferFrom(underlying, owner, address(this), amount);
 
-        _approveMax(underlying, 0, wrapper);
+        _approveMax(underlying, wrapper);
         require(IERC20Wrapper(wrapper).depositFor(receiver, amount), WrapFailed());
     }
 
@@ -302,11 +312,9 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     /// @notice Gives the max approval to `to` for spending the given `asset` if not already approved.
     /// @dev    Assumes that `type(uint256).max` is large enough to never have to increase the allowance again.
-    function _approveMax(address asset, uint256 tokenId, address spender) internal {
-        if (tokenId == 0 && IERC20(asset).allowance(address(this), spender) == 0) {
+    function _approveMax(address asset, address spender) internal {
+        if (IERC20(asset).allowance(address(this), spender) == 0) {
             SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-        } else if (tokenId != 0 && IERC6909(asset).allowance(address(this), spender, tokenId) == 0) {
-            IERC6909(asset).approve(spender, tokenId, type(uint256).max);
         }
     }
 

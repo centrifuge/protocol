@@ -16,7 +16,7 @@ contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IEscrow
-    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) external auth {
+    function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 amount) public auth {
         if (tokenId == 0) {
             uint256 balance = IERC20(asset).balanceOf(address(this));
             require(balance >= amount, InsufficientBalance(asset, tokenId, amount, balance));
@@ -34,11 +34,7 @@ contract Escrow is Auth, IEscrow {
 
     /// @inheritdoc IEscrow
     function authTransferTo(address asset, address receiver, uint256 amount) external auth {
-        uint256 balance = IERC20(asset).balanceOf(address(this));
-        require(balance >= amount, InsufficientBalance(asset, 0, amount, balance));
-
-        SafeTransferLib.safeTransfer(asset, receiver, amount);
-        emit AuthTransferTo(asset, receiver, amount);
+        authTransferTo(asset, 0, receiver, amount);
     }
 }
 
