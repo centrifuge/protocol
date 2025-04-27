@@ -203,12 +203,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerRevokeShares(PoolId poolId, ShareClassId scId, address owner, uint128 shares) external auth {
-        _noteRevoke(poolId, scId, owner, shares);
-        _executeRevoke(poolId, scId, owner, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queueEnabled[poolId][scId] = enabled;
     }
