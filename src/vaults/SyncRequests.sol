@@ -24,12 +24,7 @@ import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol"
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {
-    ISharePriceProvider,
-    Prices,
-    ISyncDepositValuation
-} from "src/vaults/interfaces/investments/ISharePriceProvider.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequests, Prices, ISyncDepositValuation} from "src/vaults/interfaces/investments/ISyncRequests.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
@@ -273,7 +268,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    /// @inheritdoc ISharePriceProvider
+    /// @inheritdoc ISyncRequests
     function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
         (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
