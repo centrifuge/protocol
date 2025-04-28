@@ -30,7 +30,7 @@ import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/vaults/interfaces/token/IHook.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for

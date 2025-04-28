@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {

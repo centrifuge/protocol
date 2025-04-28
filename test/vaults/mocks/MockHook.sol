@@ -5,7 +5,7 @@ import "test/common/mocks/Mock.sol";
 
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 
 contract MockHook is Mock {
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
