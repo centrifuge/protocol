@@ -56,9 +56,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @inheritdoc IERC7540Operator
     mapping(address => mapping(address => bool)) public isOperator;
 
-    // --- Events ---
-    event File(bytes32 indexed what, address data);
-
     constructor(
         PoolId poolId_,
         ShareClassId scId_,
