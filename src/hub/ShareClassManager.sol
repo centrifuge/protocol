@@ -24,7 +24,6 @@ import {
     RequestType,
     EpochId
 } from "src/hub/interfaces/IShareClassManager.sol";
-import {console2} from "forge-std/console2.sol";
 
 /// @title  Share Class Manager
 /// @notice Manager for the share classes of a pool, and the core logic for tracking, approving, and fulfilling
@@ -674,7 +673,6 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // We must only update either queued or pending
         if (_updateQueued(poolId, scId_, amount, isIncrement, investor, assetId, userOrder, queued, requestType)) {
-            console2.log("returns early");
             return 0;
         }
 

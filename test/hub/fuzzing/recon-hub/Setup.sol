@@ -51,17 +51,6 @@ import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-core/mocks/MockMe
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
-    enum Op {
-        APPROVE_DEPOSITS,
-        APPROVE_REDEEMS,
-        REVOKE_SHARES
-    }
-
-    struct QueuedOp {
-        Op op;
-        ShareClassId scId;
-    }
-
     Accounting accounting;
     HubRegistry hubRegistry;
     Holdings holdings;
