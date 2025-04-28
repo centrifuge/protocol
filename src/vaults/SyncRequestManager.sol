@@ -24,7 +24,11 @@ import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol"
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {ISyncRequests, Prices, ISyncDepositValuation} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {
+    ISyncRequestManager,
+    Prices,
+    ISyncDepositValuation
+} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
@@ -34,7 +38,7 @@ import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFa
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract SyncRequests is BaseInvestmentManager, ISyncRequests {
+contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
     using BytesLib for bytes;
     using MathLib for *;
     using CastLib for *;
@@ -138,14 +142,14 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    /// @inheritdoc ISyncRequests
+    /// @inheritdoc ISyncRequestManager
     function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
         valuation[poolId][scId] = ISyncDepositValuation(valuation_);
 
         emit SetValuation(poolId, scId, address(valuation_));
     }
 
-    /// @inheritdoc ISyncRequests
+    /// @inheritdoc ISyncRequestManager
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
         public
         auth
@@ -177,6 +181,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         auth
         returns (uint256 shares)
     {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vaultDetails.asset, vault_), AssetNotAllowed());
+
         require(maxDeposit(vault_, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vault_, owner, assets);
 
@@ -268,7 +275,7 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         }
     }
 
-    /// @inheritdoc ISyncRequests
+    /// @inheritdoc ISyncRequestManager
     function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
         (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);

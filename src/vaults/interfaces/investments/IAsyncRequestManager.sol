@@ -33,18 +33,16 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
     error AssetMismatch();
     error VaultAlreadyExists();
     error VaultDoesNotExist();
     error ZeroAmountNotAllowed();
-    error AssetNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
     error NoPendingRequest();
     error ShareTokenAmountIsZero();
     error FailedRedeemRequest();
-    error ExceedsMaxDeposit();
     error ExceedsDepositLimits();
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();

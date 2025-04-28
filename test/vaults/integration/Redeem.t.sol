@@ -10,7 +10,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 contract RedeemTest is BaseTest {
@@ -30,7 +30,7 @@ contract RedeemTest is BaseTest {
         );
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.ZeroAmountNotAllowed.selector);
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
@@ -42,8 +42,8 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), assets, uint128(amount));
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), assets, uint128(amount));
 
         // success
         centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
@@ -87,9 +87,9 @@ contract RedeemTest is BaseTest {
         assertTrue(vault.maxRedeem(self) <= 1);
 
         // withdrawing or redeeming more should revert
-        vm.expectRevert(IAsyncRequests.ExceedsRedeemLimits.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsRedeemLimits.selector);
         vault.withdraw(2, investor, self);
-        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxRedeem.selector);
         vault.redeem(2, investor, self);
     }
 
@@ -171,7 +171,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
 
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
         vault.cancelRedeemRequest(0, self);
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -179,7 +179,7 @@ contract RedeemTest is BaseTest {
         // will fail - user not member
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, uint64(block.timestamp));
         vm.warp(block.timestamp + 1);
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
@@ -199,10 +199,10 @@ contract RedeemTest is BaseTest {
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
         vault.cancelRedeemRequest(0, self);
 
-        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
@@ -231,7 +231,7 @@ contract RedeemTest is BaseTest {
         // invest
         uint256 investmentAmount = 100000000; // 100 * 10**6
         centrifugeChain.updateMember(poolId.raw(), scId.raw(), self, type(uint64).max);
-        asset.approve(address(asyncRequests), investmentAmount);
+        asset.approve(address(asyncRequestManager), investmentAmount);
         asset.mint(self, investmentAmount);
         erc20.approve(address(vault), investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
@@ -241,7 +241,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1000000000000000000);
 
         // assert deposit & mint values adjusted
@@ -266,7 +266,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
         );
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1500000000000000000);
 
         // trigger second executed collectRedeem at a price of 1.0
@@ -277,7 +277,7 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
         );
 
-        (,,, redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1250000000000000000);
     }
 
@@ -307,7 +307,7 @@ contract RedeemTest is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
@@ -321,7 +321,7 @@ contract RedeemTest is BaseTest {
             secondShareRedeem
         );
 
-        (,,, redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);

@@ -13,7 +13,7 @@ import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 import {PoolManager} from "src/vaults/PoolManager.sol";
-import {SyncRequests} from "src/vaults/SyncRequests.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
@@ -27,14 +27,14 @@ contract MockCentrifugeChain is Test {
 
     IAdapter[] public adapters;
     PoolManager public poolManager;
-    SyncRequests public syncRequests;
+    SyncRequestManager public syncRequestManager;
 
-    constructor(IAdapter[] memory adapters_, PoolManager poolManager_, SyncRequests syncRequests_) {
+    constructor(IAdapter[] memory adapters_, PoolManager poolManager_, SyncRequestManager syncRequestManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
         poolManager = poolManager_;
-        syncRequests = syncRequests_;
+        syncRequestManager = syncRequestManager_;
     }
 
     function addPool(uint64 poolId) public {
@@ -82,7 +82,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateContract({
                 poolId: poolId,
                 scId: scId,
-                target: bytes32(bytes20(address(syncRequests))),
+                target: bytes32(bytes20(address(syncRequestManager))),
                 payload: MessageLib.UpdateContractSyncDepositMaxReserve({
                     assetId: vaultDetails.assetId.raw(),
                     maxReserve: maxReserve
