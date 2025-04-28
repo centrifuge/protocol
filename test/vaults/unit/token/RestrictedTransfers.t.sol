@@ -8,8 +8,7 @@ import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";

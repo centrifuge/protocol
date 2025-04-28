@@ -13,7 +13,7 @@ import {
     SUCCESS_MESSAGE,
     ERROR_CODE_ID,
     ERROR_MESSAGE
-} from "src/vaults/interfaces/token/IHook.sol";
+} from "src/common/interfaces/IHook.sol";
 import {IShareToken, IERC1404} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  Share Token

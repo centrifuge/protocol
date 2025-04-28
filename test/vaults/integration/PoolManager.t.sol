@@ -22,7 +22,7 @@ import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 

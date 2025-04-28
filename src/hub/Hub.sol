@@ -229,7 +229,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+    function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
         public
         payable
     {
@@ -239,21 +239,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
+    function triggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
         _isManagerAndPaid(poolId);
 
         sender.sendTriggerSubmitQueuedShares(centrifugeId, poolId, scId);
     }
 
     /// @inheritdoc IHub
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
+    function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
         _isManagerAndPaid(poolId);
 
         sender.sendTriggerSubmitQueuedAssets(poolId, scId, assetId);
     }
 
     /// @inheritdoc IHub
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
+    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
         _isManagerAndPaid(poolId);
 
         sender.sendSetQueue(centrifugeId, poolId, scId, enabled);
