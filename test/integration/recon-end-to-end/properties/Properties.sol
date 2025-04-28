@@ -9,6 +9,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
@@ -464,6 +465,27 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
                 gte(holding, reserved, "holding must be greater than reserved");
             }
+        }
+    }
+
+    /// @dev Property: The price per share used in the entire system is ALWAYS provided by the admin
+    function property_price_per_share_overall() public {
+        // first check if the share amount changed 
+        uint256 shareDelta;
+        uint256 assetDelta;
+        if(_before.totalShareSupply != _after.totalShareSupply) {
+            if(_before.totalShareSupply > _after.totalShareSupply) {
+                shareDelta = _before.totalShareSupply - _after.totalShareSupply;
+                assetDelta = _before.totalAssets - _after.totalAssets;
+            } else {
+                shareDelta = _after.totalShareSupply - _before.totalShareSupply;
+                assetDelta = _after.totalAssets - _before.totalAssets;
+            }
+
+            // if the share amount changed, check if it used the correct price per share set by the admin
+            (, D18 navPerShare) = shareClassManager.metrics(ShareClassId.wrap(scId));
+            uint256 expectedShareDelta = navPerShare.mulUint256(assetDelta);
+            eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
         }
     }
 
