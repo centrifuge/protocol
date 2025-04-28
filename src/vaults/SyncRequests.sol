@@ -177,6 +177,9 @@ contract SyncRequests is BaseInvestmentManager, ISyncRequests {
         auth
         returns (uint256 shares)
     {
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vaultDetails.asset, vault_), AssetNotAllowed());
+
         require(maxDeposit(vault_, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vault_, owner, assets);
 

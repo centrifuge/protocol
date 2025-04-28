@@ -12,6 +12,8 @@ interface IBaseInvestmentManager {
 
     error FileUnrecognizedParam();
     error SenderNotVault();
+    error AssetNotAllowed();
+    error ExceedsMaxDeposit();
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'poolManager'.

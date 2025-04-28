@@ -38,13 +38,11 @@ interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestme
     error VaultAlreadyExists();
     error VaultDoesNotExist();
     error ZeroAmountNotAllowed();
-    error AssetNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
     error NoPendingRequest();
     error ShareTokenAmountIsZero();
     error FailedRedeemRequest();
-    error ExceedsMaxDeposit();
     error ExceedsDepositLimits();
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();

@@ -37,9 +37,7 @@ interface ISyncRequests is ISyncDepositManager, ISyncDepositValuation, IUpdateCo
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
 
-    error ExceedsMaxDeposit();
     error ExceedsMaxMint();
-    error AssetNotAllowed();
     error VaultDoesNotExist();
     error VaultAlreadyExists();
     error ShareTokenDoesNotExist();
