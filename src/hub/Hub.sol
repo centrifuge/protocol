@@ -120,7 +120,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
             // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
             // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
+            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
             if (cancelled > 0) {
                 cancelledAssetAmount = cancelled;
             }
