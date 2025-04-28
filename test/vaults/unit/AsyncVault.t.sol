@@ -45,6 +45,13 @@ contract AsyncVaultTest is BaseTest {
         root.relyContract(vault_, self);
         vault.file("manager", self);
 
+        address random = makeAddr("random");
+        vault.file("manager", random);
+        assertEq(address(vault.manager()), random);
+
+        vault.file("asyncRedeemManager", random);
+        assertEq(address(vault.asyncRedeemManager()), random);
+
         vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);
     }

@@ -70,6 +70,7 @@ contract BalanceSheetTest is BaseTest {
         new BalanceSheet(root, address(this));
 
         // values set correctly
+        assertEq(address(balanceSheet.root()), address(root));
         assertEq(address(balanceSheet.gateway()), address(gateway));
         assertEq(address(balanceSheet.poolManager()), address(poolManager));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));

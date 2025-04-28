@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
@@ -73,6 +74,41 @@ contract SyncDepositTest is SyncDepositTestHelper {
     D18 priceAssetPerShare = d18(assetsPerShare, 1);
     D18 pricePoolPerShare = d18(4, 1);
     D18 pricePoolPerAsset = pricePoolPerShare / priceAssetPerShare;
+
+    function testFile(bytes32 fileTarget, address nonWard) public {
+        vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
+        vm.assume(
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequests)
+                && nonWard != address(asyncRequests)
+        );
+        address random = makeAddr("random");
+        (SyncDepositVault vault,) = _deploySyncDepositVault(d18(0), d18(0));
+
+        vm.startPrank(address(root));
+
+        vm.expectEmit();
+        emit IBaseVault.File("manager", random);
+        vault.file("manager", random);
+        assertEq(address(vault.manager()), random);
+
+        vm.expectEmit();
+        emit IBaseVault.File("syncDepositManager", random);
+        vault.file("syncDepositManager", random);
+        assertEq(address(vault.syncDepositManager()), random);
+
+        vm.expectEmit();
+        emit IBaseVault.File("asyncRedeemManager", random);
+        vault.file("asyncRedeemManager", random);
+        assertEq(address(vault.asyncRedeemManager()), random);
+
+        vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
+        vault.file(fileTarget, random);
+
+        vm.stopPrank();
+        vm.prank(random);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vault.file("manager", random);
+    }
 
     function testSyncDepositERC20(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens

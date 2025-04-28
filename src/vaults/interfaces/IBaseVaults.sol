@@ -33,6 +33,8 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
     error RequestRedeemFailed();
     error TransferFromFailed();
 
+    event File(bytes32 indexed what, address data);
+
     /// @notice Identifier of the Centrifuge pool
     function poolId() external view returns (PoolId);
 
