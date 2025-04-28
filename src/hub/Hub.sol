@@ -97,7 +97,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // FreezeOnly methods
+    // Permissionless methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
@@ -183,6 +183,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHub
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
         _isManagerAndPaid(poolId);
