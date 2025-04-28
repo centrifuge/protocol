@@ -318,13 +318,13 @@ abstract contract AdminTargets is
         hub_updateRestriction(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), payload);
     }
 
-    function hub_updatePricePoolPerShare(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPerShare, bytes calldata data) public {
+    function hub_updatePricePoolPerShare(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPerShare, bytes memory data) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         hub.updatePricePoolPerShare(poolId, scId, D18.wrap(navPerShare), data);
     }
 
-    function hub_updatePricePoolPerShare_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare, bytes calldata data) public {
+    function hub_updatePricePoolPerShare_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare, bytes memory data) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_updatePricePoolPerShare(poolId.raw(), scId.raw(), navPerShare, data);

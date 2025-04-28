@@ -135,11 +135,11 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    // TODO: Price is capped at u64 to test overflows
-    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
-        poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
-    }
+    // NOTE: in e2e tests, these get called as callbacks in notifyAssetPrice and notifySharePrice
+    // function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
+    //     poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
+    //     poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
+    // }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
         poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);

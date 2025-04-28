@@ -157,14 +157,16 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
-        poolManager_updatePricePoolPerShare(pricePoolPerShare, type(uint64).max);
-        poolManager_updateMember(type(uint64).max);
-        
-        vault_requestDeposit(amount, toEntropy);
-
         if(!isIdentityValuation) {
             transientValuation_setPrice_clamped(poolId, priceValuation);
         }
+        
+        hub_updatePricePoolPerShare(poolId, scId, pricePoolPerShare, bytes(""));
+        hub_notifySharePrice_clamped(0,0);
+        hub_notifyAssetPrice_clamped(0,0);
+        poolManager_updateMember(type(uint64).max);
+        
+        vault_requestDeposit(amount, toEntropy);
 
         shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), isIdentityValuation, navPerShare);
        
