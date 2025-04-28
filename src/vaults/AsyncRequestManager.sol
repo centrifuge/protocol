@@ -18,7 +18,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IAsyncRequests, AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
@@ -35,7 +35,7 @@ import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequests is BaseInvestmentManager, IAsyncRequests {
+contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;

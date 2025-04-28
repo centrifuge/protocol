@@ -96,8 +96,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         // values set correctly
         assertEq(address(messageDispatcher.poolManager()), address(poolManager));
         assertEq(address(balanceSheet.poolManager()), address(poolManager));
-        assertEq(address(asyncRequests.poolManager()), address(poolManager));
-        assertEq(address(syncRequests.poolManager()), address(poolManager));
+        assertEq(address(asyncRequestManager.poolManager()), address(poolManager));
+        assertEq(address(syncRequestManager.poolManager()), address(poolManager));
 
         assertEq(address(poolManager.poolEscrowFactory()), address(poolEscrowFactory));
         assertEq(address(poolManager.tokenFactory()), address(tokenFactory));
@@ -578,11 +578,11 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         ShareClassId scId = oldVault.scId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequests, address(this));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(poolManager));
-        asyncRequests.rely(address(newVaultFactory));
+        asyncRequestManager.rely(address(newVaultFactory));
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Remove old vault
@@ -710,15 +710,15 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             AsyncVault vault = AsyncVault(vault_);
-            assertEq(address(vault.manager()), address(asyncRequests), "investment manager mismatch");
+            assertEq(address(vault.manager()), address(asyncRequestManager), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId().raw(), poolId.raw(), "poolId mismatch");
             assertEq(vault.scId().raw(), scId.raw(), "scId mismatch");
             assertEq(address(vault.share()), address(token_), "share class token mismatch");
 
-            assertEq(vault.wards(address(asyncRequests)), 1);
+            assertEq(vault.wards(address(asyncRequestManager)), 1);
             assertEq(vault.wards(address(this)), 0);
-            assertEq(asyncRequests.wards(vaultAddress), 1);
+            assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
             assert(!poolManager.isLinked(poolId, scId, asset, IBaseVault(vaultAddress)));
             // Check Share permissions
@@ -726,7 +726,9 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
-            assertEq(asyncRequests.wards(vaultAddress), 0, "Vault auth on asyncRequests set up in linkVault");
+            assertEq(
+                asyncRequestManager.wards(vaultAddress), 0, "Vault auth on asyncRequestManager set up in linkVault"
+            );
         }
     }
 

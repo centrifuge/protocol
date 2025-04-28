@@ -31,7 +31,7 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncRequests is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve

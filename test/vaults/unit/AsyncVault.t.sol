@@ -9,20 +9,20 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
     function testDeployment(bytes16 scId, uint128 assetId, address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequests));
+        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
         (uint64 poolId, address vault_,) = deployVault(VaultKind.Async, erc20.decimals(), scId);
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(asyncRequests));
+        assertEq(address(vault.manager()), address(asyncRequestManager));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
         IShareToken token = poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
@@ -30,7 +30,7 @@ contract AsyncVaultTest is BaseTest {
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
-        assertEq(vault.wards(address(asyncRequests)), 1);
+        assertEq(vault.wards(address(asyncRequestManager)), 1);
         assertEq(vault.wards(nonWard), 0);
     }
 
@@ -79,7 +79,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxRedeem.selector);
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);

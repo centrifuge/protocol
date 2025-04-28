@@ -13,7 +13,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/vaults/BaseTest.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
@@ -49,7 +49,7 @@ contract DepositTest is BaseTest {
         erc20.mint(self, amount);
 
         // will fail - user not member: can not send funds
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vault.requestDeposit(amount, self, self);
 
         assertEq(vault.isPermissioned(self), false);
@@ -58,7 +58,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive share class
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
@@ -66,7 +66,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(IAsyncRequests.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.ZeroAmountNotAllowed.selector);
         vault.requestDeposit(0, self, self);
 
         // will fail - owner != msg.sender not allowed
@@ -77,8 +77,8 @@ contract DepositTest is BaseTest {
         uint128 shares = uint128((amount * 10 ** 18) / price); // sharePrice = 2$
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares);
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        asyncRequestManager.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares);
 
         // success
         erc20.approve(vault_, amount);
@@ -148,7 +148,7 @@ contract DepositTest is BaseTest {
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
-        vm.expectRevert(IAsyncRequests.ExceedsDepositLimits.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsDepositLimits.selector);
         vault.mint(1, self);
         vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
         vault.deposit(2, self, self);
@@ -184,7 +184,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -193,7 +193,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, secondSharePayout
         );
 
-        (,, depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -457,7 +457,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -487,7 +487,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1492615384615384615);
     }
 
@@ -518,7 +518,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1200000019200000307);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -551,7 +551,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequests.investments(vault, self);
+        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice, 1492615411252828877);
 
         // collect the asset
@@ -594,7 +594,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -633,7 +633,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1200000000000000000);
     }
 
@@ -656,8 +656,8 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        asyncRequests.fulfillCancelDepositRequest(
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        asyncRequestManager.fulfillCancelDepositRequest(
             poolId, scId, self, AssetId.wrap(assetId), uint128(amount), uint128(amount)
         );
 
@@ -673,12 +673,12 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
         vault.cancelDepositRequest(0, self);
 
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        vm.expectRevert(IAsyncRequests.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
         vault.requestDeposit(amount, self, self);
         erc20.burn(self, amount);
 
@@ -714,7 +714,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -723,7 +723,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout
         );
 
-        (,, depositPrice,,,,,,,) = asyncRequests.investments(vault, self);
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice, 1292307679384615384);
 
         // assert deposit & mint values adjusted

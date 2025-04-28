@@ -20,7 +20,8 @@ library PricingLib {
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequests which rely on priceAssetPerShare that is derived from Fulfilled*
+    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    /// Fulfilled*
     /// message amounts. Any other codepath must use the variant with pricePoolPerAsset and pricePoolPerShare
     function assetToShareAmount(
         address shareToken,
@@ -66,7 +67,8 @@ library PricingLib {
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequests which rely on priceAssetPerShare that is derived from Fulfilled*
+    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    /// Fulfilled*
     /// message amounts. Any other codepath must use the variant with pricePoolPerAsset and pricePoolPerShare
     function shareToAssetAmount(
         address shareToken,

@@ -18,7 +18,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 // core contracts
-import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
@@ -107,7 +107,7 @@ contract BaseTest is VaultsDeployer, Test {
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequests);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequestManager);
         mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
@@ -122,8 +122,8 @@ contract BaseTest is VaultsDeployer, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(asyncRequests), "AsyncRequests");
-        vm.label(address(syncRequests), "SyncRequests");
+        vm.label(address(asyncRequestManager), "AsyncRequestManager");
+        vm.label(address(syncRequestManager), "SyncRequestManager");
         vm.label(address(poolManager), "PoolManager");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -147,8 +147,8 @@ contract BaseTest is VaultsDeployer, Test {
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
-        excludeContract(address(asyncRequests));
-        excludeContract(address(syncRequests));
+        excludeContract(address(asyncRequestManager));
+        excludeContract(address(syncRequestManager));
         excludeContract(address(balanceSheet));
         excludeContract(address(poolManager));
         excludeContract(address(gateway));

@@ -20,7 +20,7 @@ contract PoolEscrowFactoryTest is Test {
     address poolManager = makeAddr("poolManager");
     address gateway = makeAddr("gateway");
     address balanceSheet = makeAddr("balanceSheet");
-    address asyncRequests = makeAddr("asyncRequests");
+    address asyncRequestManager = makeAddr("asyncRequestManager");
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
@@ -28,7 +28,7 @@ contract PoolEscrowFactoryTest is Test {
         factory.file("poolManager", poolManager);
         factory.file("gateway", gateway);
         factory.file("balanceSheet", balanceSheet);
-        factory.file("asyncRequests", asyncRequests);
+        factory.file("asyncRequestManager", asyncRequestManager);
     }
 
     function testEscrows(PoolId poolId) public {
@@ -53,7 +53,7 @@ contract PoolEscrowFactoryTest is Test {
     function testEscrowHasCorrectPermissions(PoolId poolId, address nonWard) public {
         vm.assume(
             nonWard != root && nonWard != gateway && nonWard != poolManager && nonWard != balanceSheet
-                && nonWard != asyncRequests
+                && nonWard != asyncRequestManager
         );
         address escrowAddr = address(factory.newEscrow(poolId));
 
@@ -63,7 +63,7 @@ contract PoolEscrowFactoryTest is Test {
         assertEq(escrow.wards(gateway), 1, "gateway not authorized");
         assertEq(escrow.wards(poolManager), 1, "poolManager not authorized");
         assertEq(escrow.wards(balanceSheet), 1, "balanceSheet not authorized");
-        assertEq(escrow.wards(asyncRequests), 1, "asyncRequests not authorized");
+        assertEq(escrow.wards(asyncRequestManager), 1, "asyncRequestManager not authorized");
 
         assertEq(escrow.wards(address(factory)), 0, "factory still authorized");
         assertEq(escrow.wards(nonWard), 0, "unexpected authorization");
@@ -79,9 +79,9 @@ contract PoolEscrowFactoryTest is Test {
         assertEq(factory.balanceSheet(), randomUser);
     }
 
-    function testFileSetsAsyncRequests() public {
-        factory.file("asyncRequests", randomUser);
-        assertEq(factory.asyncRequests(), randomUser);
+    function testFileSetsAsyncRequestManager() public {
+        factory.file("asyncRequestManager", randomUser);
+        assertEq(factory.asyncRequestManager(), randomUser);
     }
 
     function testFileWithUnknownParamReverts() public {

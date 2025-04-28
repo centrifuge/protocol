@@ -8,15 +8,19 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {ISyncRequests, Prices, ISyncDepositValuation} from "src/vaults/interfaces/investments/ISyncRequests.sol";
-import {SyncRequests} from "src/vaults/SyncRequests.sol";
+import {
+    ISyncRequestManager,
+    Prices,
+    ISyncDepositValuation
+} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
 
-contract SyncRequestsBaseTest is BaseTest {
+contract SyncRequestManagerBaseTest is BaseTest {
     function _assumeUnauthorizedCaller(address nonWard) internal view {
         vm.assume(
             nonWard != address(root) && nonWard != address(poolManager) && nonWard != address(syncDepositVaultFactory)
@@ -46,13 +50,13 @@ contract SyncRequestsBaseTest is BaseTest {
 
     function _setValuation(SyncDepositVault vault, address valuation_) internal {
         vm.expectEmit();
-        emit ISyncRequests.SetValuation(vault.poolId(), vault.scId(), valuation_);
-        syncRequests.setValuation(vault.poolId(), vault.scId(), valuation_);
-        assertEq(address(syncRequests.valuation(vault.poolId(), vault.scId())), valuation_);
+        emit ISyncRequestManager.SetValuation(vault.poolId(), vault.scId(), valuation_);
+        syncRequestManager.setValuation(vault.poolId(), vault.scId(), valuation_);
+        assertEq(address(syncRequestManager.valuation(vault.poolId(), vault.scId())), valuation_);
     }
 }
 
-contract SyncRequestsTest is SyncRequestsBaseTest {
+contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
     using MessageLib for *;
 
     // Deployment
@@ -60,43 +64,43 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequests(globalEscrow, address(root), address(this));
+        new SyncRequestManager(globalEscrow, address(root), address(this));
 
         // values set correctly
-        assertEq(address(syncRequests.poolManager()), address(poolManager));
-        assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
-        assertEq(address(syncRequests.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(syncRequestManager.poolManager()), address(poolManager));
+        assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncRequestManager.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
-        assertEq(syncRequests.wards(address(root)), 1);
-        assertEq(syncRequests.wards(address(poolManager)), 1);
-        assertEq(syncRequests.wards(address(syncDepositVaultFactory)), 1);
-        assertEq(balanceSheet.wards(address(syncRequests)), 1);
-        assertEq(syncRequests.wards(nonWard), 0);
+        assertEq(syncRequestManager.wards(address(root)), 1);
+        assertEq(syncRequestManager.wards(address(poolManager)), 1);
+        assertEq(syncRequestManager.wards(address(syncDepositVaultFactory)), 1);
+        assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
+        assertEq(syncRequestManager.wards(nonWard), 0);
     }
 
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
         vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
-        syncRequests.file("random", self);
+        syncRequestManager.file("random", self);
 
-        assertEq(address(syncRequests.poolManager()), address(poolManager));
-        assertEq(address(syncRequests.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncRequestManager.poolManager()), address(poolManager));
+        assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
 
         // success
-        syncRequests.file("poolManager", randomUser);
-        assertEq(address(syncRequests.poolManager()), randomUser);
-        syncRequests.file("balanceSheet", randomUser);
-        assertEq(address(syncRequests.balanceSheet()), randomUser);
-        syncRequests.file("poolEscrowProvider", randomUser);
-        assertEq(address(syncRequests.balanceSheet()), randomUser);
+        syncRequestManager.file("poolManager", randomUser);
+        assertEq(address(syncRequestManager.poolManager()), randomUser);
+        syncRequestManager.file("balanceSheet", randomUser);
+        assertEq(address(syncRequestManager.balanceSheet()), randomUser);
+        syncRequestManager.file("poolEscrowProvider", randomUser);
+        assertEq(address(syncRequestManager.balanceSheet()), randomUser);
 
         // remove self from wards
-        syncRequests.deny(self);
+        syncRequestManager.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        syncRequests.file("poolManager", randomUser);
+        syncRequestManager.file("poolManager", randomUser);
     }
 
     // --- Simple Errors ---
@@ -105,46 +109,48 @@ contract SyncRequestsTest is SyncRequestsBaseTest {
         poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
-        syncRequests.deposit(vault, 1, address(0), address(0));
+        syncRequestManager.deposit(vault, 1, address(0), address(0));
     }
 }
 
-contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
+contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
     function testFileUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.file(bytes32(0), address(0));
+        syncRequestManager.file(bytes32(0), address(0));
     }
 
     function testAddVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.addVault(PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0));
+        syncRequestManager.addVault(
+            PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
+        );
     }
 
     function testRemoveVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.removeVault(
+        syncRequestManager.removeVault(
             PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
         );
     }
 
     function testDepositUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.deposit(IBaseVault(address(0)), 0, address(0), address(0));
+        syncRequestManager.deposit(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testMintUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.mint(IBaseVault(address(0)), 0, address(0), address(0));
+        syncRequestManager.mint(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testSetValuationUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
+        syncRequestManager.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
     }
 
     function testUpdate(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequests.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
+        syncRequestManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized(address caller) internal {
@@ -158,7 +164,7 @@ contract SyncRequestsUnauthorizedTest is SyncRequestsBaseTest {
     }
 }
 
-contract SyncRequestsPrices is SyncRequestsBaseTest {
+contract SyncRequestManagerPrices is SyncRequestManagerBaseTest {
     function testPricesWithoutValuation(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e6, 1e24)));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e4, pricePoolPerShare.inner())));
@@ -166,14 +172,14 @@ contract SyncRequestsPrices is SyncRequestsBaseTest {
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
 
-        Prices memory prices = syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+        Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
         assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
         assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset mismatch");
     }
 }
 
-contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
+contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
     using MathLib for uint256;
 
     address valuation_ = makeAddr("valuation");
@@ -192,9 +198,9 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         internal
         view
     {
-        Prices memory prices = syncRequests.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+        Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
 
-        D18 pricePost = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 pricePost = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
         assertNotEq(prePoolPerShare.inner(), pricePost.inner(), "Price should be changed by valuation");
         assertEq(expected.poolPerShare.inner(), prices.poolPerShare.inner(), "poolPerShare mismatch");
         assertEq(expected.poolPerShare.inner(), pricePost.inner(), "poolPerShare vs pricePost mismatch");
@@ -215,7 +221,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        D18 pricePre = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
         _setValuation(syncVault, valuation_);
 
@@ -245,7 +251,7 @@ contract SyncRequestsUpdateValuation is SyncRequestsBaseTest {
         vm.assume(priceAssetPerShare.inner() % multiplier == 0);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        D18 pricePre = syncRequests.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
         _setValuation(syncVault, valuation_);
 

@@ -19,7 +19,7 @@ import {IHook} from "src/common/interfaces/IHook.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {ISyncRequests} from "src/vaults/interfaces/investments/ISyncRequests.sol";
+import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
@@ -79,8 +79,8 @@ contract SyncDepositTest is SyncDepositTestHelper {
     function testFile(bytes32 fileTarget, address nonWard) public {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
         vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequests)
-                && nonWard != address(asyncRequests)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequestManager)
+                && nonWard != address(asyncRequestManager)
         );
         address random = makeAddr("random");
         (SyncDepositVault vault,) = _deploySyncDepositVault(d18(0), d18(0));

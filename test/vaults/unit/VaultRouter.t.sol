@@ -18,7 +18,7 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
@@ -178,7 +178,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = estimateGas();
         vm.deal(address(this), 10 ether);
 
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
         vaultRouter.cancelDepositRequest{value: fuel}(vault);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
@@ -221,7 +221,7 @@ contract VaultRouterTest is BaseTest {
         vm.expectRevert(IVaultRouter.InvalidSender.selector);
         vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault, self, self);
@@ -453,7 +453,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
 
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 

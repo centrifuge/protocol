@@ -15,7 +15,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
     address public poolManager;
     address public gateway;
     address public balanceSheet;
-    address public asyncRequests;
+    address public asyncRequestManager;
 
     mapping(PoolId poolId => IPoolEscrow) public escrows;
 
@@ -28,7 +28,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
         if (what == "poolManager") poolManager = data;
         else if (what == "gateway") gateway = data;
         else if (what == "balanceSheet") balanceSheet = data;
-        else if (what == "asyncRequests") asyncRequests = data;
+        else if (what == "asyncRequestManager") asyncRequestManager = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -42,7 +42,7 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
         escrow_.rely(gateway);
         escrow_.rely(poolManager);
         escrow_.rely(balanceSheet);
-        escrow_.rely(asyncRequests);
+        escrow_.rely(asyncRequestManager);
 
         escrow_.deny(address(this));
 

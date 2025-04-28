@@ -33,7 +33,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
     error AssetMismatch();
     error VaultAlreadyExists();
     error VaultDoesNotExist();
