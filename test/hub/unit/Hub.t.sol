@@ -173,16 +173,16 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendTriggerIssueShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0);
+        hub.triggerIssueShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendTriggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
+        hub.triggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendTriggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
+        hub.triggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.sendSetQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.setQueue(0, POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

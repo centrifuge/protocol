@@ -12,7 +12,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/vaults/BaseTest.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 

@@ -29,7 +29,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {
     AssetIdKey,

@@ -13,7 +13,7 @@ import "src/misc/interfaces/IERC7540.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 import {MockFullRestrictions} from "test/vaults/mocks/MockFullRestrictions.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 interface ERC20Like {

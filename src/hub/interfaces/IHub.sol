@@ -190,19 +190,19 @@ interface IHub {
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Tells the BalanceSheet to issue/revoke shares.
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+    function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
         external
         payable;
 
     /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
+    function triggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
 
     /// @notice  Tell the BalanceSheet to send a message back with the queued deposits/withdrawals.
     /// @param assetId Identifier of the asset which has queued deposits/withdrawals
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+    function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
