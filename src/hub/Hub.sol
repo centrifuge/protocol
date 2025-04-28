@@ -101,7 +101,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function claimDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
     {
@@ -141,7 +141,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHub
-    function claimRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
     {
