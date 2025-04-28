@@ -95,6 +95,18 @@ contract AsyncRequestsTest is BaseTest {
         asyncRequests.file("poolManager", randomUser);
     }
 
+    // --- Simple Errors ---
+    function testRequestDepositUnlinkedVault() public {
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        IAsyncVault vault = IAsyncVault(vault_);
+
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+
+        vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
+        asyncRequests.requestDeposit(vault, 1, address(0), address(0), address(0));
+    }
+
     // --- Price calculations ---
     function testPrice() public {
         AsyncRequestsHarness harness = new AsyncRequestsHarness(globalEscrow, address(root), address(this));
