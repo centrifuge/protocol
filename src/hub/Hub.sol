@@ -109,15 +109,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         uint128 totalPayoutShareAmount;
         uint128 totalPaymentAssetAmount;
-        uint128 totalCancelledAssetAmount;
+        uint128 cancelledAssetAmount;
 
         for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
                 shareClassManager.claimDeposit(poolId, scId, investor, assetId);
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
-            totalCancelledAssetAmount += cancelledAssetAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
+            if (cancelled > 0) {
+                cancelledAssetAmount = cancelled;
+            }
 
             if (!canClaimAgain) {
                 break;
@@ -129,8 +135,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         );
 
         // If cancellation was queued, notify about delayed cancellation
-        if (totalCancelledAssetAmount > 0) {
-            sender.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, totalCancelledAssetAmount);
+        if (cancelledAssetAmount > 0) {
+            sender.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, cancelledAssetAmount);
         }
     }
 
@@ -143,15 +149,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         uint128 totalPayoutAssetAmount;
         uint128 totalPaymentShareAmount;
-        uint128 totalCancelledShareAmount;
+        uint128 cancelledShareAmount;
 
         for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount, bool canClaimAgain) =
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
                 shareClassManager.claimRedeem(poolId, scId, investor, assetId);
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
-            totalCancelledShareAmount += cancelledShareAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
+            if (cancelled > 0) {
+                cancelledShareAmount = cancelled;
+            }
 
             if (!canClaimAgain) {
                 break;
@@ -163,8 +175,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         );
 
         // If cancellation was queued, notify about delayed cancellation
-        if (totalCancelledShareAmount > 0) {
-            sender.sendFulfilledCancelRedeemRequest(poolId, scId, assetId, investor, totalCancelledShareAmount);
+        if (cancelledShareAmount > 0) {
+            sender.sendFulfilledCancelRedeemRequest(poolId, scId, assetId, investor, cancelledShareAmount);
         }
     }
 
