@@ -5,6 +5,7 @@ import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHa
 
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct AsyncInvestmentState {
@@ -13,8 +14,10 @@ struct AsyncInvestmentState {
     /// @dev Assets that can be claimed using `withdraw()`
     uint128 maxWithdraw;
     /// @dev Weighted average price of deposits, used to convert maxMint to maxDeposit
+    /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
     uint256 depositPrice;
     /// @dev Weighted average price of redemptions, used to convert maxWithdraw to maxRedeem
+    /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
     uint256 redeemPrice;
     /// @dev Remaining deposit request in assets
     uint128 pendingDepositRequest;
@@ -30,25 +33,23 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequests is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
     error AssetMismatch();
     error VaultAlreadyExists();
     error VaultDoesNotExist();
     error ZeroAmountNotAllowed();
-    error AssetNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
     error NoPendingRequest();
     error ShareTokenAmountIsZero();
     error FailedRedeemRequest();
-    error ExceedsMaxDeposit();
     error ExceedsDepositLimits();
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();
     error ExceedsRedeemLimits();
 
     /// @notice Returns the investment state
-    function investments(address vaultAddr, address investor)
+    function investments(IBaseVault vaultAddr, address investor)
         external
         view
         returns (

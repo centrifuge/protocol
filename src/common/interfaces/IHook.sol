@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "src/vaults/interfaces/IERC7575.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 struct HookData {
     bytes16 from;
@@ -14,11 +14,15 @@ string constant SUCCESS_MESSAGE = "transfer-allowed";
 uint8 constant ERROR_CODE_ID = 1;
 string constant ERROR_MESSAGE = "transfer-blocked";
 
+/// @dev Magic address denoting a transfer to the escrow
+/// @dev Solely used for gas saving since escrow is per pool
+address constant ESCROW_HOOK_ID = address(uint160(uint8(0xce)));
+
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
 ///           Deposit request:      address(0)      -> address(user)
-///           Deposit claim:        address(escrow) -> address(user)
-///           Redeem request:       address(user)   -> address(escrow)
+///           Deposit claim:        ESCROW_HOOK_ID  -> address(user)
+///           Redeem request:       address(user)   -> ESCROW_HOOK_ID
 ///           Redeem claim:         address(user)   -> address(0)
 ///           Cross-chain transfer: address(user)   -> address(uint160(chainId))
 interface IHook is IERC165 {
@@ -34,8 +38,8 @@ interface IHook is IERC165 {
         returns (bytes4);
 
     /// @notice Callback on authorized ERC20 transfer.
-    /// @dev    MUST return bytes4(keccak256("onERC20AuthTransfer(address,address,address,uint256,(bytes16,bytes16))"))
-    ///         if successful
+    /// @dev    Cannot be blocked, can only be used to update state.
+    ///         Return value is ignored, only kept for compatibility with V2 share tokens.
     function onERC20AuthTransfer(address sender, address from, address to, uint256 value, HookData calldata hookdata)
         external
         returns (bytes4);

@@ -1,22 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
+import "test/vaults/BaseTest.sol";
+
 import "src/misc/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockERC20Wrapper} from "test/vaults/mocks/MockERC20Wrapper.sol";
-import "test/vaults/BaseTest.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -30,6 +34,18 @@ contract ERC20WrapperFake {
     }
 }
 
+contract MaliciousVault {
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == type(IERC7540Deposit).interfaceId;
+    }
+}
+
+contract NonAsyncVault {
+    function supportsInterface(bytes4) public pure returns (bool) {
+        return false;
+    }
+}
+
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
     using MessageLib for *;
@@ -40,7 +56,7 @@ contract VaultRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), address(gateway), address(poolManager), messageDispatcher, address(this));
+        new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
@@ -52,7 +68,7 @@ contract VaultRouterTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
-        assertEq(vaultRouter.getVault(vault.poolId(), vault.trancheId(), address(erc20)), vault_);
+        assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), address(erc20)), vault_);
     }
 
     function testRequestDeposit() public {
@@ -62,22 +78,45 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = estimateGas();
 
         vm.expectRevert(IAsyncVault.InvalidOwner.selector);
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
-        vaultRouter.enable(vault_);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
+        vaultRouter.enable(vault);
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.requestDeposit{value: gas - 1}(vault_, amount, self, self);
+        vaultRouter.requestDeposit{value: gas - 1}(vault, amount, self, self);
 
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
+    }
+
+    function testRouterSyncDeposit() public {
+        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        vm.label(vault_, "vault");
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        erc20.mint(self, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        uint256 gas = estimateGas();
+
+        erc20.approve(address(vault_), amount);
+        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+
+        erc20.approve(address(vaultRouter), amount);
+        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
+        vaultRouter.deposit{value: gas - 1}(vault, amount, self, self);
+
+        erc20.approve(address(vaultRouter), amount);
+        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 
     function testLockDepositRequests() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -86,16 +125,22 @@ contract VaultRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
 
+        IAsyncVault maliciousVault = IAsyncVault(address(new MaliciousVault()));
         vm.expectRevert(IPoolManager.UnknownVault.selector);
-        vaultRouter.lockDepositRequest(makeAddr("maliciousVault"), amount, self, self);
+        vaultRouter.lockDepositRequest(maliciousVault, amount, self, self);
 
-        vaultRouter.lockDepositRequest(vault_, amount, self, self);
+        IAsyncVault nonAsyncVault = IAsyncVault(address(new NonAsyncVault()));
+        vm.expectRevert(IVaultRouter.NonAsyncVault.selector);
+        vaultRouter.lockDepositRequest(nonAsyncVault, amount, self, self);
+
+        vaultRouter.lockDepositRequest(vault, amount, self, self);
 
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
     }
 
     function testUnlockDepositRequests() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         uint256 amount = 100 * 10 ** 18;
@@ -104,12 +149,12 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(address(vaultRouter), amount);
 
         vm.expectRevert(IVaultRouter.NoLockedBalance.selector);
-        vaultRouter.unlockDepositRequest(vault_, self);
+        vaultRouter.unlockDepositRequest(vault, self);
 
-        vaultRouter.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.lockDepositRequest(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
         assertEq(erc20.balanceOf(self), 0);
-        vaultRouter.unlockDepositRequest(vault_, self);
+        vaultRouter.unlockDepositRequest(vault, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
@@ -125,25 +170,25 @@ contract VaultRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
 
-        vaultRouter.enable(vault_);
-        vaultRouter.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.enable(vault);
+        vaultRouter.lockDepositRequest(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
         assertEq(vault.pendingCancelDepositRequest(0, self), false);
 
         uint256 fuel = estimateGas();
         vm.deal(address(this), 10 ether);
 
-        vm.expectRevert(IAsyncRequests.NoPendingRequest.selector);
-        vaultRouter.cancelDepositRequest{value: fuel}(vault_);
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        vaultRouter.cancelDepositRequest{value: fuel}(vault);
 
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
-        vaultRouter.executeLockedDepositRequest{value: fuel}(vault_, self);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        vaultRouter.executeLockedDepositRequest{value: fuel}(vault, self);
         assertEq(vault.pendingDepositRequest(0, self), amount);
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.cancelDepositRequest{value: 0}(vault_);
+        vaultRouter.cancelDepositRequest{value: 0}(vault);
 
-        vaultRouter.cancelDepositRequest{value: fuel}(vault_);
+        vaultRouter.cancelDepositRequest{value: fuel}(vault);
         assertTrue(vault.pendingCancelDepositRequest(0, self));
     }
 
@@ -156,31 +201,31 @@ contract VaultRouterTest is BaseTest {
 
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
         uint256 gas = estimateGas() + GAS_BUFFER;
-        vaultRouter.enable(vault_);
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        vaultRouter.enable(vault);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
 
-        vaultRouter.cancelDepositRequest{value: gas}(vault_);
+        vaultRouter.cancelDepositRequest{value: gas}(vault);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
         centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
         );
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
 
         address nonMember = makeAddr("nonMember");
         vm.prank(nonMember);
         vm.expectRevert(IVaultRouter.InvalidSender.selector);
-        vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
+        vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
-        vaultRouter.claimCancelDepositRequest(vault_, nonMember, self);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
-        vaultRouter.claimCancelDepositRequest(vault_, self, self);
-        assertEq(erc20.balanceOf(address(escrow)), 0);
+        vaultRouter.claimCancelDepositRequest(vault, self, self);
+        assertEq(erc20.balanceOf(address(globalEscrow)), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
 
@@ -192,13 +237,13 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = estimateGas();
-        vaultRouter.enable(vault_);
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -207,9 +252,9 @@ contract VaultRouterTest is BaseTest {
         share.approve(address(vaultRouter), amount);
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.requestRedeem{value: gas - 1}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas - 1}(vault, amount, self, self);
 
-        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas}(vault, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
     }
 
@@ -221,28 +266,28 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = estimateGas();
-        vaultRouter.enable(vault_);
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
 
         // Then redeem
         share.approve(address(vaultRouter), amount);
-        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas}(vault, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
 
         vm.deal(address(this), 10 ether);
 
         vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.cancelRedeemRequest{value: gas - 1}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas - 1}(vault);
 
-        vaultRouter.cancelRedeemRequest{value: gas}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas}(vault);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
     }
 
@@ -254,13 +299,13 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         erc20.approve(address(vault_), amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = estimateGas() + GAS_BUFFER;
-        vaultRouter.enable(vault_);
-        vaultRouter.requestDeposit{value: gas}(vault_, amount, self, self);
+        vaultRouter.enable(vault);
+        vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId(), vault.trancheId(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -268,22 +313,22 @@ contract VaultRouterTest is BaseTest {
         // Then redeem
         share.approve(vault_, amount);
         share.approve(address(vaultRouter), amount);
-        vaultRouter.requestRedeem{value: gas}(vault_, amount, self, self);
+        vaultRouter.requestRedeem{value: gas}(vault, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
 
-        vaultRouter.cancelRedeemRequest{value: gas}(vault_);
+        vaultRouter.cancelRedeemRequest{value: gas}(vault);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId(), vault.trancheId(), self.toBytes32(), assetId, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
         );
 
         address sender = makeAddr("maliciousUser");
         vm.prank(sender);
         vm.expectRevert(IVaultRouter.InvalidSender.selector);
-        vaultRouter.claimCancelRedeemRequest(vault_, sender, self);
+        vaultRouter.claimCancelRedeemRequest(vault, sender, self);
 
-        vaultRouter.claimCancelRedeemRequest(vault_, self, self);
+        vaultRouter.claimCancelRedeemRequest(vault, self, self);
         assertEq(share.balanceOf(address(self)), amount);
     }
 
@@ -318,16 +363,17 @@ contract VaultRouterTest is BaseTest {
 
     function testEnableAndDisable() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
         assertFalse(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
-        assertEq(vaultRouter.isEnabled(vault_, self), false);
-        vaultRouter.enable(vault_);
+        assertEq(vaultRouter.isEnabled(vault, self), false);
+        vaultRouter.enable(vault);
         assertTrue(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
-        assertEq(vaultRouter.isEnabled(vault_, self), true);
-        vaultRouter.disable(vault_);
+        assertEq(vaultRouter.isEnabled(vault, self), true);
+        vaultRouter.disable(vault);
         assertFalse(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
-        assertEq(vaultRouter.isEnabled(vault_, self), false);
+        assertEq(vaultRouter.isEnabled(vault, self), false);
     }
 
     function testWrap() public {
@@ -399,24 +445,24 @@ contract VaultRouterTest is BaseTest {
         erc20.mint(self, amount);
         erc20.approve(address(vaultRouter), amount);
 
-        bool canUserExecute = vaultRouter.hasPermissions(vault_, self);
+        bool canUserExecute = vaultRouter.hasPermissions(vault, self);
         assertFalse(canUserExecute);
 
-        vaultRouter.lockDepositRequest(vault_, amount, self, self);
+        vaultRouter.lockDepositRequest(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
 
         uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
 
-        vm.expectRevert(IAsyncRequests.TransferNotAllowed.selector);
-        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), self, type(uint64).max);
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault, self);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
-        canUserExecute = vaultRouter.hasPermissions(vault_, self);
+        canUserExecute = vaultRouter.hasPermissions(vault, self);
         assertTrue(canUserExecute);
 
-        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault_, self);
+        vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), 0);
-        assertEq(erc20.balanceOf(address(escrow)), amount);
+        assertEq(erc20.balanceOf(address(globalEscrow)), amount);
     }
 
     function estimateGas() internal view returns (uint256) {

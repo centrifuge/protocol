@@ -19,7 +19,6 @@ import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {Hub} from "src/hub/Hub.sol";
 
 contract TestCommon is Test {
@@ -35,9 +34,8 @@ contract TestCommon is Test {
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
-    ITransientValuation immutable transientValuation = ITransientValuation(makeAddr("TransientValuation"));
 
-    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, transientValuation, address(this));
+    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -75,10 +73,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), D18.wrap(0), 0);
+        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), D18.wrap(0), 0);
+        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.stopPrank();
     }
@@ -95,10 +93,16 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyPool(POOL_A, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareClass(POOL_A, 0, ShareClassId.wrap(0), bytes32(""));
+        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifySharePrice(POOL_A, 0, ShareClassId.wrap(0));
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
@@ -110,28 +114,28 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.addShareClass(POOL_A, "", "", bytes32(0), bytes(""));
+        hub.addShareClass(POOL_A, "", "", bytes32(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, IERC7726(address(0)));
+        hub.approveDeposits(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0);
+        hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0));
+        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), D18.wrap(0), IERC7726(address(0)));
+        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateRestriction(POOL_A, 0, ShareClassId.wrap(0), bytes(""));
+        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, 0, ShareClassId.wrap(0), bytes32(0), bytes(""));
+        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updatePricePoolPerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0), bytes(""));
+        hub.updatePricePerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.createHolding(
@@ -168,6 +172,18 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.triggerIssueShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.triggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.triggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setQueue(0, POOL_A, ShareClassId.wrap(0), true);
+
         vm.stopPrank();
     }
 }
@@ -178,7 +194,7 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.notifyShareClass(POOL_A, 23, SC_A, bytes32(""));
+        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""));
     }
 }
 

@@ -34,7 +34,10 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         localWormholeId = deliveryProvider.chainId();
     }
 
-    // --- Administrative ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IWormholeAdapter
     function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external auth {
         if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeId, addr);
@@ -43,7 +46,10 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         emit File(what, centrifugeId, wormholeId, addr);
     }
 
-    // --- Incoming ---
+    //----------------------------------------------------------------------------------------------
+    // Incoming
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IWormholeReceiver
     function receiveWormholeMessages(
         bytes memory payload,
@@ -59,16 +65,25 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         gateway.handle(source.centrifugeId, payload);
     }
 
-    // --- Outgoing ---
+    //----------------------------------------------------------------------------------------------
+    // Outgoing
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund) external payable {
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+        external
+        payable
+        returns (bytes32 adapterData)
+    {
         require(msg.sender == address(gateway), NotGateway());
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
-        relayer.sendPayloadToEvm{value: msg.value}(
+        uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
             destination.wormholeId, destination.addr, payload, 0, gasLimit, localWormholeId, refund
         );
+
+        adapterData = bytes32(bytes8(sequence));
     }
 
     /// @inheritdoc IAdapter

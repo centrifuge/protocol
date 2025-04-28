@@ -5,16 +5,15 @@ import "forge-std/Test.sol";
 
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
-import {TransientValuation} from "src/misc/TransientValuation.sol";
 
+import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 address constant C6 = address(6);
 address constant C18 = address(18);
 
 contract TestTransientValuation is Test {
-    TransientValuation valuation = new TransientValuation(new MockERC6909(), address(0));
+    TransientValuation valuation = new TransientValuation(new MockERC6909());
 
     function testSameDecimals() public {
         valuation.setPrice(C6, C6, d18(2, 1)); //2.0
@@ -58,7 +57,7 @@ contract TestTransientValuation is Test {
     }
 
     function testErrPriceNotSet() public {
-        vm.expectRevert(abi.encodeWithSelector(ITransientValuation.PriceNotSet.selector, C6, C18));
+        vm.expectRevert(abi.encodeWithSelector(TransientValuation.PriceNotSet.selector, C6, C18));
         valuation.getQuote(1 * 1e6, C6, C18);
     }
 }

@@ -9,6 +9,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -56,7 +57,7 @@ contract BaseTest is HubDeployer, Test {
         wire(CHAIN_CV, cv, address(this));
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         // Pre deployment
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
 
@@ -69,7 +70,6 @@ contract BaseTest is HubDeployer, Test {
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
-        vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(hubRegistry), "HubRegistry");
         vm.label(address(accounting), "Accounting");
@@ -83,5 +83,14 @@ contract BaseTest is HubDeployer, Test {
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
+    }
+
+    function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
+        internal
+        view
+    {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
     }
 }

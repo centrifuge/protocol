@@ -2,28 +2,38 @@
 pragma solidity ^0.8.28;
 
 import "test/hub/integration/BaseTest.sol";
+import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 
 contract TestCases is BaseTest {
     using CastLib for string;
     using CastLib for bytes32;
     using MathLib for *;
     using MessageLib for *;
+    using PricingLib for *;
+
+    TransientValuation transientValuation;
+
+    function setUp() public override {
+        super.setUp();
+        transientValuation = new TransientValuation(hubRegistry);
+    }
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, 6);
         cv.registerAsset(EUR_STABLE_C2, 12);
 
+        poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        poolId = guardian.createPool(FM, USD);
+        guardian.createPool(poolId, FM, USD);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
         vm.startPrank(FM);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT, bytes(""));
+        hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
-        hub.notifyShareClass{value: GAS}(poolId, CHAIN_CV, scId, SC_HOOK);
+        hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -51,8 +61,8 @@ contract TestCases is BaseTest {
         );
         hub.updateContract{value: GAS}(
             poolId,
-            CHAIN_CV,
             scId,
+            CHAIN_CV,
             bytes32("target"),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32("factory"),
@@ -95,19 +105,20 @@ contract TestCases is BaseTest {
 
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
-        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
-
         vm.startPrank(FM);
-        hub.approveDeposits(poolId, scId, USDC_C2, APPROVED_INVESTOR_AMOUNT, valuation);
-        hub.issueShares(poolId, scId, USDC_C2, NAV_PER_SHARE);
+        hub.approveDeposits{value: GAS}(
+            poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
+        );
+        hub.issueShares(poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE);
         vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimDeposit{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.notifyDeposit{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2)
+        );
 
         assertEq(cv.messageCount(), 2);
-
         MessageLib.ApprovedDeposits memory m0 = MessageLib.deserializeApprovedDeposits(cv.lastMessages(0));
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
@@ -120,7 +131,15 @@ contract TestCases is BaseTest {
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
         assertEq(m1.assetAmount, APPROVED_INVESTOR_AMOUNT);
-        assertEq(m1.shareAmount, SHARE_AMOUNT);
+        assertEq(
+            m1.shareAmount,
+            PricingLib.convertWithPrice(
+                APPROVED_INVESTOR_AMOUNT,
+                hubRegistry.decimals(USDC_C2),
+                hubRegistry.decimals(poolId),
+                NAV_PER_SHARE.reciprocal()
+            ).toUint128()
+        );
 
         cv.resetMessages();
     }
@@ -131,18 +150,24 @@ contract TestCases is BaseTest {
 
         cv.requestRedeem(poolId, scId, USDC_C2, INVESTOR, SHARE_AMOUNT);
 
-        IERC7726 valuation = holdings.valuation(poolId, scId, USDC_C2);
-        uint128 revokedAssetAmount =
-            NAV_PER_SHARE.mulUint128(uint128(valuation.getQuote(APPROVED_SHARE_AMOUNT, USD.addr(), USDC_C2.addr())));
+        uint128 revokedAssetAmount = PricingLib.convertWithPrice(
+            APPROVED_SHARE_AMOUNT, hubRegistry.decimals(poolId), hubRegistry.decimals(USDC_C2), NAV_PER_SHARE
+        ).toUint128();
 
         vm.startPrank(FM);
-        hub.approveRedeems(poolId, scId, USDC_C2, APPROVED_SHARE_AMOUNT);
-        hub.revokeShares(poolId, scId, USDC_C2, NAV_PER_SHARE, valuation);
+        hub.approveRedeems(
+            poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
+        );
+        hub.revokeShares{value: GAS}(
+            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
+        );
         vm.stopPrank();
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimRedeem{value: GAS}(poolId, scId, USDC_C2, INVESTOR);
+        hub.notifyRedeem{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2)
+        );
 
         assertEq(cv.messageCount(), 2);
 
@@ -174,15 +199,15 @@ contract TestCases is BaseTest {
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(1000 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(1000 * poolDecimals));
+        _assertEqAccountValue(poolId, equityAccount, true, 1000 * poolDecimals);
+        _assertEqAccountValue(poolId, assetAccount, true, 1000 * poolDecimals);
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
-        assertEq(accounting.accountValue(poolId, assetAccount), int128(400 * poolDecimals));
-        assertEq(accounting.accountValue(poolId, equityAccount), int128(400 * poolDecimals));
+        _assertEqAccountValue(poolId, assetAccount, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, equityAccount, true, 400 * poolDecimals);
     }
 
     /// forge-config: default.isolate = true
@@ -210,10 +235,10 @@ contract TestCases is BaseTest {
         transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
         vm.startPrank(FM);
-        hub.updatePricePoolPerShare(poolId, scId, sharePrice, "");
+        hub.updatePricePerShare(poolId, scId, sharePrice);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
-        hub.notifySharePrice{value: GAS}(poolId, CHAIN_CV, scId);
+        hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV);
         vm.stopPrank();
 
         assertEq(cv.messageCount(), 3);

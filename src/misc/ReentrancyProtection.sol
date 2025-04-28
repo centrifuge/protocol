@@ -4,8 +4,6 @@ pragma solidity ^0.8.28;
 // NOTE: This file has warning disabled due https://github.com/ethereum/solidity/issues/14359
 // If perform any change on it, please ensure no other warnings appears
 
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
-
 abstract contract ReentrancyProtection {
     /// @notice Dispatched when there is a re-entrancy issue
     error UnauthorizedSender();

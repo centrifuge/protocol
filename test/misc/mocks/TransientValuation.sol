@@ -3,21 +3,22 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {ConversionLib} from "src/misc/libraries/ConversionLib.sol";
-import {TransientStorage} from "src/misc/libraries/TransientStorage.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 import {BaseValuation} from "src/misc/BaseValuation.sol";
 
-contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientValuation {
-    using TransientStorage for bytes32;
+contract TransientValuation is BaseValuation, ReentrancyProtection {
+    using TransientStorageLib for bytes32;
 
-    constructor(IERC6909Decimals erc6909, address deployer) BaseValuation(erc6909, deployer) {}
+    /// @notice The price has not been set for a pair base quote.
+    error PriceNotSet(address base, address quote);
 
-    /// @inheritdoc ITransientValuation
+    constructor(IERC6909Decimals erc6909) BaseValuation(erc6909, msg.sender) {}
+
     function setPrice(address base, address quote, D18 price) external protected {
         bytes32 slot = keccak256(abi.encode(base, quote));
         slot.tstore(uint256(price.inner()));
@@ -27,7 +28,7 @@ contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientVa
             return;
         }
 
-        // @dev we assume symmetric prices
+        // We assume symmetric prices
         slot = keccak256(abi.encode(quote, base));
         slot.tstore(uint256(price.reciprocal().inner()));
     }
@@ -39,6 +40,6 @@ contract TransientValuation is BaseValuation, ReentrancyProtection, ITransientVa
 
         require(D18.unwrap(price) != 0, PriceNotSet(base, quote));
 
-        return ConversionLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
+        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
     }
 }

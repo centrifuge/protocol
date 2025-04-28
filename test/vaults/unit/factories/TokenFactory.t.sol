@@ -4,9 +4,10 @@ pragma solidity 0.8.28;
 import {Root} from "src/common/Root.sol";
 
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
 import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {BaseTest} from "test/vaults/BaseTest.sol";
 import "forge-std/Test.sol";
@@ -38,7 +39,7 @@ contract FactoryTest is Test {
             testSetup1.deployVault(
                 VaultKind.Async,
                 18,
-                testSetup1.restrictedTransfers(),
+                testSetup1.fullRestrictionsHook(),
                 bytes16(bytes("1")),
                 address(testSetup1.erc20()),
                 0,
@@ -54,7 +55,7 @@ contract FactoryTest is Test {
             testSetup2.deployVault(
                 VaultKind.Async,
                 18,
-                testSetup2.restrictedTransfers(),
+                testSetup2.fullRestrictionsHook(),
                 bytes16(bytes("1")),
                 address(testSetup2.erc20()),
                 0,
@@ -93,7 +94,7 @@ contract FactoryTest is Test {
     }
 
     function testShareShouldBeDeterministic(
-        address asyncRequests,
+        address asyncRequestManager,
         address poolManager,
         string memory name,
         string memory symbol,
@@ -112,7 +113,7 @@ contract FactoryTest is Test {
                             bytes1(0xff),
                             address(tokenFactory),
                             tokenSalt,
-                            keccak256(abi.encodePacked(type(CentrifugeToken).creationCode, abi.encode(decimals)))
+                            keccak256(abi.encodePacked(type(ShareToken).creationCode, abi.encode(decimals)))
                         )
                     )
                 )
@@ -120,10 +121,10 @@ contract FactoryTest is Test {
         );
 
         address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(asyncRequests);
+        tokenWards[0] = address(asyncRequestManager);
         tokenWards[1] = address(poolManager);
 
-        address token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
+        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
 
         assertEq(address(token), predictedAddress);
         assertEq(tokenFactory.getAddress(decimals, tokenSalt), address(token));
@@ -131,7 +132,7 @@ contract FactoryTest is Test {
 
     function testDeployingDeterministicAddressTwiceReverts(
         bytes32 salt,
-        address asyncRequests,
+        address asyncRequestManager,
         address poolManager,
         string memory name,
         string memory symbol,
@@ -158,7 +159,7 @@ contract FactoryTest is Test {
         );
 
         address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(asyncRequests);
+        tokenWards[0] = address(asyncRequestManager);
         tokenWards[1] = address(poolManager);
 
         TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));

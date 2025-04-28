@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IERC7575Share} from "src/vaults/interfaces/IERC7575.sol";
+import {IERC7575Share} from "src/misc/interfaces/IERC7575.sol";
 
 interface IERC1404 {
     /// @notice Detects if a transfer will be reverted and if so returns an appropriate reference code
@@ -27,7 +27,6 @@ interface IShareToken is IERC20Metadata, IERC7575Share, IERC1404 {
 
     // --- Errors ---
     error NotAuthorizedOrHook();
-    error FileUnrecognizedParam();
     error ExceedsMaxSupply();
     error RestrictionsFailed();
 

@@ -41,23 +41,24 @@ contract HubRegistryTest is Test {
     }
 
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerPool(address(this), CENTRIFUGE_ID, USD);
+        registry.registerPool(poolId, address(this), USD);
 
         vm.expectRevert(IHubRegistry.EmptyAccount.selector);
-        registry.registerPool(address(0), CENTRIFUGE_ID, USD);
+        registry.registerPool(poolId, address(0), USD);
 
         vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
-        registry.registerPool(address(this), CENTRIFUGE_ID, AssetId.wrap(0));
+        registry.registerPool(poolId, address(this), AssetId.wrap(0));
 
         vm.expectEmit();
         emit IHubRegistry.NewPool(newPoolId(CENTRIFUGE_ID, 1), fundAdmin, USD);
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_ID, USD);
+        registry.registerPool(poolId, fundAdmin, USD);
 
         assertEq(poolId.centrifugeId(), CENTRIFUGE_ID);
         assertEq(poolId.raw(), newPoolId(CENTRIFUGE_ID, 1).raw());
-        assertEq(registry.latestId(), 1);
 
         assertTrue(registry.manager(poolId, fundAdmin));
         assertFalse(registry.manager(poolId, address(this)));
@@ -71,7 +72,8 @@ contract HubRegistryTest is Test {
         notThisContract(additionalAdmin)
     {
         vm.assume(fundAdmin != additionalAdmin);
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_ID, USD);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
 
         assertFalse(registry.manager(poolId, additionalAdmin));
 
@@ -102,7 +104,8 @@ contract HubRegistryTest is Test {
     function testSetMetadata(bytes calldata metadata) public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_ID, USD);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
 
         assertEq(registry.metadata(poolId).length, 0);
 
@@ -136,7 +139,8 @@ contract HubRegistryTest is Test {
     function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        PoolId poolId = registry.registerPool(fundAdmin, CENTRIFUGE_ID, USD);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -157,7 +161,8 @@ contract HubRegistryTest is Test {
     }
 
     function testExists() public {
-        PoolId poolId = registry.registerPool(makeAddr("fundManager"), CENTRIFUGE_ID, USD);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundManager"), USD);
         assertEq(registry.exists(poolId), true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);

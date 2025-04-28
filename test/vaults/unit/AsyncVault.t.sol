@@ -2,31 +2,35 @@
 pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
+
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+
+import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
     function testDeployment(bytes16 scId, uint128 assetId, address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequests));
+        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
         (uint64 poolId, address vault_,) = deployVault(VaultKind.Async, erc20.decimals(), scId);
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(asyncRequests));
+        assertEq(address(vault.manager()), address(asyncRequestManager));
         assertEq(vault.asset(), address(erc20));
-        assertEq(vault.trancheId(), scId);
-        address token = poolManager.shareToken(poolId, scId);
-        assertEq(address(vault.share()), token);
+        assertEq(vault.scId().raw(), scId);
+        IShareToken token = poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
+        assertEq(address(vault.share()), address(token));
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
-        assertEq(vault.wards(address(asyncRequests)), 1);
+        assertEq(vault.wards(address(asyncRequestManager)), 1);
         assertEq(vault.wards(nonWard), 0);
     }
 
@@ -40,6 +44,13 @@ contract AsyncVaultTest is BaseTest {
 
         root.relyContract(vault_, self);
         vault.file("manager", self);
+
+        address random = makeAddr("random");
+        vault.file("manager", random);
+        assertEq(address(vault.manager()), random);
+
+        vault.file("asyncRedeemManager", random);
+        assertEq(address(vault.asyncRedeemManager()), random);
 
         vm.expectRevert(IBaseVault.FileUnrecognizedParam.selector);
         vault.file("random", self);
@@ -59,7 +70,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(IAsyncRequests.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
@@ -68,7 +79,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(IAsyncRequests.ExceedsMaxRedeem.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxRedeem.selector);
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);
@@ -104,8 +115,8 @@ contract AsyncVaultTest is BaseTest {
         assertEq(type(IERC7540Operator).interfaceId, asyncVaultOperator);
         assertEq(type(IERC7540Deposit).interfaceId, asyncVaultDeposit);
         assertEq(type(IERC7540Redeem).interfaceId, asyncVaultRedeem);
-        assertEq(type(IERC7540CancelDeposit).interfaceId, asyncVaultCancelDeposit);
-        assertEq(type(IERC7540CancelRedeem).interfaceId, asyncVaultCancelRedeem);
+        assertEq(type(IERC7887Deposit).interfaceId, asyncVaultCancelDeposit);
+        assertEq(type(IERC7887Redeem).interfaceId, asyncVaultCancelRedeem);
         assertEq(type(IERC7741).interfaceId, erc7741);
         assertEq(type(IERC7714).interfaceId, erc7714);
 
