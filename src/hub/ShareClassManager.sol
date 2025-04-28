@@ -515,8 +515,8 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function nowRedeemEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
-        return epochId[scId_][depositAssetId].redeem + 1;
+    function exists(PoolId poolId, ShareClassId scId_) public view returns (bool) {
+        return shareClassIds[poolId][scId_];
     }
 
     /// @inheritdoc IShareClassManager

@@ -12,29 +12,29 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Properties} from "../properties/Properties.sol";
 
 // Only for Share
-abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties {
+abstract contract FullRestrictionsTargets is BaseTargetFunctions, Properties {
     /**
      * RESTRICTION MANAGER
      */
     // NOTE: Same idea that we cycle through values via modifier
 
     // TODO: Actory Cycling
-    function restrictedTransfers_updateMemberBasic(uint64 validUntil) public asAdmin {
+    function fullRestrictions_updateMemberBasic(uint64 validUntil) public asAdmin {
         fullRestrictions.updateMember(address(token), _getActor(), validUntil);
     }
 
     // TODO: We prob want to keep one generic
     // And one with limited actors
-    function restrictedTransfers_updateMember(address user, uint64 validUntil) public asAdmin {
+    function fullRestrictions_updateMember(address user, uint64 validUntil) public asAdmin {
         fullRestrictions.updateMember(address(token), user, validUntil);
     }
 
     // TODO: Actor Cycling
-    function restrictedTransfers_freeze(address /*user*/ ) public asAdmin {
+    function fullRestrictions_freeze(address /*user*/ ) public asAdmin {
         fullRestrictions.freeze(address(token), _getActor());
     }
 
-    function restrictedTransfers_unfreeze(address /*user*/ ) public asAdmin {
+    function fullRestrictions_unfreeze(address /*user*/ ) public asAdmin {
         fullRestrictions.unfreeze(address(token), _getActor());
     }
 

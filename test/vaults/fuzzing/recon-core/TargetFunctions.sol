@@ -12,7 +12,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
 import {GatewayMockTargets} from "./targets/GatewayMockTargets.sol";
-import {RestrictedTransfersTargets} from "./targets/RestrictedTransfersTargets.sol";
+import {FullRestrictionsTargets} from "./targets/FullRestrictionsTargets.sol";
 import {VaultTargets} from "./targets/VaultTargets.sol";
 import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
 import {VaultCallbackTargets} from "./targets/VaultCallbackTargets.sol";
@@ -23,7 +23,7 @@ abstract contract TargetFunctions is
     Properties,
     ShareTokenTargets,
     GatewayMockTargets,
-    RestrictedTransfersTargets,
+    FullRestrictionsTargets,
     VaultTargets,
     PoolManagerTargets,
     VaultCallbackTargets, 

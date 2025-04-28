@@ -11,16 +11,15 @@ import {console2} from "forge-std/console2.sol";
 
 // Vaults
 import {Escrow} from "src/vaults/Escrow.sol";
-import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {SyncRequests} from "src/vaults/SyncRequests.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 // Hub
 import {Accounting} from "src/hub/Accounting.sol";
@@ -31,7 +30,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
-import {TransientValuation, ITransientValuation} from "src/misc/TransientValuation.sol";
+import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
@@ -44,14 +43,14 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 // Common
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -75,12 +74,12 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     TokenFactory tokenFactory;
 
     EscrowWrapper public escrow; // NOTE: Restriction Manager will query it
-    AsyncRequests asyncRequests;
-    SyncRequests syncRequests;
+    AsyncRequestManager asyncRequestManager;
+    SyncRequestManager syncRequestManager;
     PoolManager poolManager;
     AsyncVault vault;
-    CentrifugeToken token;
-    RestrictedTransfers restrictedTransfers;
+    ShareToken token;
+    FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
 
@@ -114,16 +113,18 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     AccountId[] internal createdAccountIds;
-
+    AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
     bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
     bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
     bool internal IS_DEBIT_NORMAL = true;
+    uint32 internal MAX_CLAIMS = 1e18;
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;
     uint32 internal LOSS_ACCOUNT = 3;
     uint32 internal GAIN_ACCOUNT = 4;
+    uint64 internal POOL_ID_COUNTER = 1;
 
     /// === GHOST === ///
     mapping (address => uint256) requestDeposited;
@@ -179,11 +180,11 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         gateway = new MockGateway();
 
 
-        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
+        fullRestrictions = new FullRestrictions(address(root), address(this));
         balanceSheet = new BalanceSheet(address(escrow), address(this));
-        asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
-        syncRequests = new SyncRequests(address(root), address(escrow), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
+        asyncRequestManager = new AsyncRequestManager(address(root), address(escrow), address(this));
+        syncRequestManager = new SyncRequestManager(address(root), address(escrow), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequestManager), address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
         address[] memory vaultFactories = new address[](1);
@@ -192,12 +193,12 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         messageDispatcher = new MockMessageDispatcher(CENTIFUGE_CHAIN_ID, root, address(gateway), address(this), address(this)); 
 
         // set dependencies
-        asyncRequests.file("sender", address(messageDispatcher));
-        asyncRequests.file("poolManager", address(poolManager));
-        asyncRequests.file("balanceSheet", address(balanceSheet));    
-        asyncRequests.file("sharePriceProvider", address(syncRequests));
-        syncRequests.file("poolManager", address(poolManager));
-        syncRequests.file("balanceSheet", address(balanceSheet));
+        asyncRequestManager.file("sender", address(messageDispatcher));
+        asyncRequestManager.file("poolManager", address(poolManager));
+        asyncRequestManager.file("balanceSheet", address(balanceSheet));    
+        asyncRequestManager.file("sharePriceProvider", address(syncRequestManager));
+        syncRequestManager.file("poolManager", address(poolManager));
+        syncRequestManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
@@ -205,19 +206,19 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("sharePriceProvider", address(syncRequests));
+        balanceSheet.file("sharePriceProvider", address(syncRequestManager));
 
         // authorize contracts
-        asyncRequests.rely(address(poolManager));
-        asyncRequests.rely(address(vaultFactory));
-        asyncRequests.rely(address(messageDispatcher));
+        asyncRequestManager.rely(address(poolManager));
+        asyncRequestManager.rely(address(vaultFactory));
+        asyncRequestManager.rely(address(messageDispatcher));
         poolManager.rely(address(messageDispatcher));
-        restrictedTransfers.rely(address(poolManager));
-        escrow.rely(address(asyncRequests));
+        fullRestrictions.rely(address(poolManager));
+        escrow.rely(address(asyncRequestManager));
         escrow.rely(address(poolManager));
         escrow.rely(address(balanceSheet));
-        balanceSheet.rely(address(asyncRequests));
-        balanceSheet.rely(address(syncRequests));
+        balanceSheet.rely(address(asyncRequestManager));
+        balanceSheet.rely(address(syncRequestManager));
         balanceSheet.rely(address(messageDispatcher));
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
@@ -226,8 +227,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
     function setupHub() internal {
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(hubRegistry, address(this));
-        identityValuation = new IdentityValuation(hubRegistry, address(this));
+        transientValuation = new TransientValuation(IERC6909Decimals(address(this)));
+        identityValuation = new IdentityValuation(IHubRegistry(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
@@ -241,7 +242,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
             IAccounting(address(accounting)), 
             IHoldings(address(holdings)), 
             IGateway(address(gateway)), 
-            ITransientValuation(address(transientValuation)), 
             address(this)
         );
 
@@ -258,7 +258,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         hub.file("sender", address(messageDispatcher));
         messageDispatcher.file("hub", address(hub)); 
         messageDispatcher.file("poolManager", address(poolManager));
-        messageDispatcher.file("investmentManager", address(asyncRequests));
+        messageDispatcher.file("investmentManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
     }
 
@@ -271,11 +271,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     function _getRandomActor(uint256 entropy) internal view returns (address randomActor) {
         address[] memory actorsArray = _getActors();
         randomActor = actorsArray[entropy % actorsArray.length];
-    }
-
-    /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
-    function _resetEpochIncrement() internal {
-        shareClassManager.setEpochIncrement(0);
     }
 
     // MOCK++

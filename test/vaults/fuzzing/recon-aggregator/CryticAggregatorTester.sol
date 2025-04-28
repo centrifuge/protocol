@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {CryticAsserts} from "@chimera/CryticAsserts.sol";
-import {TargetFunctions} from "./TargetFunctions.sol";
+import {TargetFunctions} from "test/vaults/fuzzing/recon-aggregator/TargetFunctions.sol";
+
 // echidna . --contract CryticAggregatorTester --config echidna.yaml
 // medusa fuzz
 contract CryticAggregatorTester is TargetFunctions, CryticAsserts {

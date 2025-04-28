@@ -47,4 +47,8 @@ abstract contract ToggleTargets is
     function toggle_IsDebitNormal() public {
         IS_DEBIT_NORMAL = !IS_DEBIT_NORMAL;
     }
+
+    function toggle_MaxClaims(uint32 maxClaims) public {
+        MAX_CLAIMS = maxClaims;
+    }
 }

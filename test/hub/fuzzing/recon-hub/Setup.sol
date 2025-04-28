@@ -20,7 +20,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
-import {TransientValuation, ITransientValuation} from "src/misc/TransientValuation.sol";
+import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
@@ -33,11 +33,11 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 // Types
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -68,6 +68,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
     AccountId[] internal createdAccountIds;
+    AssetId[] internal createdAssetIds;
 
     // Canaries
     bool poolCreated;
@@ -81,6 +82,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
     bool internal IS_DEBIT_NORMAL = true;
+    uint32 internal MAX_CLAIMS = 1e18;
     /// @dev see toggle_AccountToUpdate
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
     uint32 internal ASSET_ACCOUNT = 1;
@@ -112,21 +114,20 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         root = new Root(7 days, address(this));
         accounting = new Accounting(address(this)); 
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(hubRegistry, address(this));
+        transientValuation = new TransientValuation(IERC6909Decimals(address(this)));
         identityValuation = new IdentityValuation(hubRegistry, address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
-        messageDispatcher = new MockMessageDispatcher(PoolManager(address(this)), IAsyncRequests(address(this)), root, CENTIFUGE_CHAIN_ID);
+        messageDispatcher = new MockMessageDispatcher();
         hub = new Hub(
             IShareClassManager(address(shareClassManager)), 
             IHubRegistry(address(hubRegistry)), 
             IAccounting(address(accounting)), 
             IHoldings(address(holdings)), 
             IGateway(address(gateway)), 
-            ITransientValuation(address(transientValuation)), 
             address(this)
         );
 
@@ -175,6 +176,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     function _getRandomAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 accountEntropy) internal view returns (AccountId) {
         uint8 accountType = accountEntropy % 6;
         return holdings.accountId(poolId, scId, assetId, accountType);
+    }
+
+    function _getRandomAssetId(uint128 assetEntropy) internal view returns (AssetId) {
+        uint128 randomIndex = assetEntropy % createdAssetIds.length;
+        return createdAssetIds[randomIndex];
     }
 
     /// @dev performs the same check as SCM::_updateQueued

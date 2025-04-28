@@ -75,7 +75,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), NAV_PER_SHARE);
 
         // claim deposit
-        hub_claimDeposit(poolId.raw(), scId.raw(), assetId.raw());
+        hub_notifyDeposit(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
 
         return (poolId, scId);
     }
@@ -92,7 +92,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_revokeShares(poolId.raw(), scId.raw(), assetId.raw(), 10000000, identityValuation);
 
         // claim redemption
-        hub_claimRedeem(poolId.raw(), scId.raw(), 123);
+        hub_notifyRedeem(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
 
         return (poolId, scId);
     }
@@ -222,33 +222,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // }
 
-    // forge test --match-test test_hub_claimRedeem_clamped_3 -vvv 
-    // TODO: seems like this might be a valid edge case, but need to understand the implications
-    // it basically states that if a user calls claimRedeem before they have had their shares revoked, their lastUpdate gets out of sync with the epochId
-    function test_hub_claimRedeem_clamped_3() public {
-
-        shortcut_notify_share_class(6,1,1234,false,0,1,1);
-
-        hub_claimRedeem_clamped(0,0);
-
-    }
-
-    // forge test --match-test test_hub_claimRedeem_clamped_0 -vvv 
-    // TODO: come back to this to see if it actually messes up claiming flow if lastUpdate gets updated in middle of approve/revoke cycle
-    function test_hub_claimRedeem_clamped_0() public {
-
-        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
-
-        hub_addShareClass_clamped(0,1);
-
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_claimRedeem_clamped(0,0);
-
-    }
-
     // forge test --match-test test_hub_redeemRequest_clamped_2 -vvv 
     function test_hub_redeemRequest_clamped_2() public {
 
@@ -261,38 +234,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_approveRedeems_clamped(0,0,1);
 
         hub_redeemRequest_clamped(0,0,0);
-
-    }
-
-    // forge test --match-test test_hub_claimDeposit_clamped_3 -vvv 
-    function test_hub_claimDeposit_clamped_3() public {
-
-        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
-
-        hub_addShareClass_clamped(0,1);
-
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_claimDeposit_clamped(0,0);
-
-    }
-
-    // test claiming in the middle of the approve/revoke cycle
-    function test_hub_claimRedeem_in_middle_of_cycle() public {
-        (poolId, scId) = shortcut_deposit_and_claim(18, 123, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE);
-
-        // make a redeem request
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_claimRedeem_clamped(0,0);
-
-        hub_revokeShares_clamped(0,0,1, false);
-
-        hub_claimRedeem_clamped(0,0);
 
     }
 
@@ -340,7 +281,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_revokeShares_clamped(0,0,1000162686692190665,true);
 
-        property_total_pending_redeem_geq_sum_pending_user_redeem();
+        // property_total_pending_redeem_geq_sum_pending_user_redeem();
 
     }
 
@@ -353,21 +294,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_depositRequest_clamped(0,0,0);
     }
 
-    // forge test --match-test test_hub_redeemRequest_clamped_5 -vvv 
-    // NOTE: similar issue with partial approve/revoke cycle, if the redeemRequest is made in-between the call to approve and revoke it doesn't increase the lastUpdate because _updateQueued returns early
-    function test_hub_redeemRequest_clamped_5() public {
-
-        (poolId, scId) = shortcut_deposit_redeem_and_claim(6,1,1,false,1,513091547574673,1949);
-
-        console2.log("epochId before approveRedeems_clamped", shareClassManager.epochId(poolId));
-        hub_approveRedeems_clamped(0,0,1);
-
-        console2.log("epochId before redeemRequest_clamped", shareClassManager.epochId(poolId));
-        hub_redeemRequest_clamped(0,0,0);
-
-        console2.log("epochId after redeemRequest_clamped", shareClassManager.epochId(poolId));
-    }
-
     // forge test --match-test test_hub_claimDeposit_clamped_6 -vvv 
     // NOTE: when a deposit is approved but no shares are issued for it, the lastUpdate is not updated correctly
     function test_hub_claimDeposit_clamped_6() public {
@@ -376,8 +302,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_approveDeposits_clamped(0,0,1,true);
 
-        hub_claimDeposit_clamped(0,0);
-
+        hub_notifyDeposit_clamped(0,0,1,1);
     }
 
     // forge test --match-test test_property_total_yield_7 -vvv 

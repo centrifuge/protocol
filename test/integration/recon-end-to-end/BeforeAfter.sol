@@ -8,10 +8,11 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+import {UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
-import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 
 import {Ghosts} from "./helpers/Ghosts.sol";
 import {Setup} from "./Setup.sol";
@@ -43,7 +44,7 @@ abstract contract BeforeAfter is Ghosts {
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
-        mapping(PoolId poolId => mapping(AccountId accountId => int128 accountValue)) ghostAccountValue;
+        mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
     }
 
     BeforeAfterVars internal _before;
@@ -79,13 +80,13 @@ abstract contract BeforeAfter is Ghosts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            // _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+                // (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -100,7 +101,8 @@ abstract contract BeforeAfter is Ghosts {
                     (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
                     // accountValue is only set if the account has been updated
                     if(lastUpdated != 0) {
-                        _before.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                        (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                        _before.ghostAccountValue[poolId][accountId] = accountValue;
                     }
                 }
             }
@@ -122,13 +124,13 @@ abstract contract BeforeAfter is Ghosts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            // _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
                 
-                (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+                // (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -143,7 +145,8 @@ abstract contract BeforeAfter is Ghosts {
                     (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
                     // accountValue is only set if the account has been updated
                     if(lastUpdated != 0) {
-                        _after.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                        (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                        _after.ghostAccountValue[poolId][accountId] = accountValue;
                     }
                 }
             }
@@ -166,7 +169,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequests.investments(address(vault), actors[i]);
+            ) = asyncRequestManager.investments(IBaseVault(address(vault)), actors[i]);
             
             _structToUpdate.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
@@ -201,7 +204,7 @@ abstract contract BeforeAfter is Ghosts {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceAsset;
-        try poolManager.pricePoolPerAsset(poolId, scId, assetId, false) returns (D18 _priceAsset, uint64) {
+        try poolManager.pricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), false) returns (D18 _priceAsset, uint64) {
             priceAsset = _priceAsset;
         } catch (bytes memory reason) {
             bool expected = checkError(reason, "ShareTokenDoesNotExist()");
@@ -222,7 +225,7 @@ abstract contract BeforeAfter is Ghosts {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceShare;
-        try poolManager.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare, uint64) {
+        try poolManager.pricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), false) returns (D18 _priceShare, uint64) {
             priceShare = _priceShare;
         } catch (bytes memory reason) {
             bool expected = checkError(reason, "ShareTokenDoesNotExist()");

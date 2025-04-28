@@ -19,7 +19,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to deposit less than maxMint
     function doomsday_deposit(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
         uint256 maxMintAsAssets = vault.convertToAssets(maxMint);
 
         uint256 sharesReceived;
@@ -27,8 +27,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         try vault.deposit(assets, _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(address(vault), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
             if(assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
@@ -47,15 +47,15 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
         uint256 assetsSpent;
         try vault.mint(shares, _getActor()) returns (uint256 assets) {
             assetsSpent = assets;
         } catch {
-            bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(address(vault), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
             if(shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
@@ -73,7 +73,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to redeem less than maxWithdraw
     function doomsday_redeem(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
         uint256 maxWithdrawAsShares = vault.convertToShares(maxWithdraw);
 
         vm.prank(_getActor());
@@ -81,8 +81,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         try vault.redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
             assetsReceived = assets;
         } catch {
-            bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(address(vault), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
             if(shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
@@ -101,15 +101,15 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     function doomsday_withdraw(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
         uint256 assetsAsSharesBefore = vault.convertToShares(assets);
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequests.investments(address(vault), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
 
         vm.prank(_getActor());
         uint256 sharesReceived;
         try vault.withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
-            bool isFrozen = restrictedTransfers.isFrozen(address(vault), _getActor());
-            (bool isMember, ) = restrictedTransfers.isMember(address(token), _getActor());
+            bool isFrozen = fullRestrictions.isFrozen(address(vault), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
             if(assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }

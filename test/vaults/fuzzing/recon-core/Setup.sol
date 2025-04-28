@@ -9,19 +9,18 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {Escrow} from "src/vaults/Escrow.sol";
-import {AsyncRequests} from "src/vaults/AsyncRequests.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {SyncRequests} from "src/vaults/SyncRequests.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -38,12 +37,12 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     TokenFactory tokenFactory;
 
     Escrow public escrow; // NOTE: Restriction Manager will query it
-    AsyncRequests asyncRequests;
-    SyncRequests syncRequests;
+    AsyncRequestManager asyncRequestManager;
+    SyncRequestManager syncRequestManager;
     PoolManager poolManager;
     AsyncVault vault;
-    CentrifugeToken token;
-    RestrictedTransfers restrictedTransfers;
+    ShareToken token;
+    FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
 
@@ -139,29 +138,29 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Dependencies
         escrow = new Escrow(address(this));
         root = new Root(48 hours, address(this));
-        restrictedTransfers = new RestrictedTransfers(address(root), address(this));
+        fullRestrictions = new FullRestrictions(address(root), address(this));
 
         root.endorse(address(escrow));
 
         balanceSheet = new BalanceSheet(address(escrow), address(this));
-        asyncRequests = new AsyncRequests(address(root), address(escrow), address(this));
-        syncRequests = new SyncRequests(address(root), address(escrow), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequests), address(this));
+        asyncRequestManager = new AsyncRequestManager(address(root), address(escrow), address(this));
+        syncRequestManager = new SyncRequestManager(address(root), address(escrow), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequestManager), address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
         address[] memory vaultFactories = new address[](1);
         vaultFactories[0] = address(vaultFactory);
         poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
-        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequests, root, CENTIFUGE_CHAIN_ID); 
+        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequestManager, root, CENTIFUGE_CHAIN_ID); 
         gateway = new MockGateway();
 
         // set dependencies
-        asyncRequests.file("sender", address(messageDispatcher));
-        asyncRequests.file("poolManager", address(poolManager));
-        asyncRequests.file("balanceSheet", address(balanceSheet));    
-        asyncRequests.file("sharePriceProvider", address(syncRequests));
-        syncRequests.file("poolManager", address(poolManager));
-        syncRequests.file("balanceSheet", address(balanceSheet));
+        asyncRequestManager.file("sender", address(messageDispatcher));
+        asyncRequestManager.file("poolManager", address(poolManager));
+        asyncRequestManager.file("balanceSheet", address(balanceSheet));    
+        asyncRequestManager.file("sharePriceProvider", address(syncRequestManager));
+        syncRequestManager.file("poolManager", address(poolManager));
+        syncRequestManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
@@ -169,17 +168,17 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("sharePriceProvider", address(syncRequests));
+        balanceSheet.file("sharePriceProvider", address(syncRequestManager));
         // authorize contracts
-        asyncRequests.rely(address(poolManager));
-        asyncRequests.rely(address(vaultFactory));
-        asyncRequests.rely(address(messageDispatcher));
+        asyncRequestManager.rely(address(poolManager));
+        asyncRequestManager.rely(address(vaultFactory));
+        asyncRequestManager.rely(address(messageDispatcher));
         poolManager.rely(address(messageDispatcher));
 
-        restrictedTransfers.rely(address(poolManager));
+        fullRestrictions.rely(address(poolManager));
 
         // Setup Escrow Permissions
-        escrow.rely(address(asyncRequests));
+        escrow.rely(address(asyncRequestManager));
         escrow.rely(address(poolManager));
         escrow.rely(address(balanceSheet));
 
@@ -187,8 +186,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
 
-        balanceSheet.rely(address(asyncRequests));
-        balanceSheet.rely(address(syncRequests));
+        balanceSheet.rely(address(asyncRequestManager));
+        balanceSheet.rely(address(syncRequestManager));
     }
 
     // NOTE: this overrides contracts deployed in setup() above with forked contracts
@@ -201,14 +200,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // Forked contracts from here: https://github.com/centrifuge/liquidity-pools/blob/main/deployments/mainnet/ethereum-mainnet.json
         escrow = Escrow(address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD));
-        restrictedTransfers = RestrictedTransfers(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
-        asyncRequests = AsyncRequests(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
+        fullRestrictions = FullRestrictions(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
+        asyncRequestManager = AsyncRequestManager(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
         poolManager = PoolManager(address(0x91808B5E2F6d7483D41A681034D7c9DbB64B9E29));
         root = Root(address(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC));
 
         // Pool specific contracts
         vault = AsyncVault(address(0x1d01Ef1997d44206d839b78bA6813f60F1B3A970));
-        token = CentrifugeToken(address(0x8c213ee79581Ff4984583C6a801e5263418C4b86));
+        token = ShareToken(address(0x8c213ee79581Ff4984583C6a801e5263418C4b86));
         // TODO: replaced with getAsset(), need a better way to do this for forked setup
         // token = ERC20(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
 

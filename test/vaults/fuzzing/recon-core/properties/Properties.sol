@@ -152,7 +152,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     function property_IM_1() public {
-        if (address(asyncRequests) == address(0)) {
+        if (address(asyncRequestManager) == address(0)) {
             return;
         }
         if (address(vault) == address(0)) {
@@ -175,7 +175,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     function property_IM_2() public {
-        if (address(asyncRequests) == address(0)) {
+        if (address(asyncRequestManager) == address(0)) {
             return;
         }
         if (address(vault) == address(0)) {
@@ -370,12 +370,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: Skipping escrow which can have non-zero bal
         systemAddresses[0] = address(vaultFactory);
         systemAddresses[1] = address(tokenFactory);
-        systemAddresses[2] = address(asyncRequests);
+        systemAddresses[2] = address(asyncRequestManager);
         systemAddresses[3] = address(poolManager);
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(vault.asset());
         systemAddresses[6] = address(token);
-        systemAddresses[7] = address(restrictedTransfers);
+        systemAddresses[7] = address(fullRestrictions);
 
         if (GOV_FUZZING) {
             systemAddresses[8] = address(gateway);

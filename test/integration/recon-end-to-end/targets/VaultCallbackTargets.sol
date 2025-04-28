@@ -17,8 +17,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 // Src Deps 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";

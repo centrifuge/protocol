@@ -45,6 +45,7 @@ abstract contract TargetFunctions is
         // add and register asset
         add_new_asset(decimals);
         hub_registerAsset(isoCode); // 4294967295
+        transientValuation.file("erc6909", address(_getAsset()));
 
         // defaults to pool admined by the admin actor (address(this))
         poolId = hub_createPool(address(this), isoCode);
@@ -105,7 +106,7 @@ abstract contract TargetFunctions is
 
         AssetId assetId = newAssetId(isoCode);
         // claim deposit as actor
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         return (poolId, scId);
     }
@@ -129,7 +130,7 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         AssetId assetId = hubRegistry.currency(poolId);
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
         hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
@@ -179,7 +180,7 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         AssetId assetId = newAssetId(isoCode);
-        hub_claimDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
 
         // cancel deposit
         hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
@@ -212,7 +213,7 @@ abstract contract TargetFunctions is
     ) public clearQueuedCalls {        
         // claim redemption as actor
         AssetId assetId = newAssetId(isoCode);
-        hub_claimRedeem(poolId, scId, assetId.raw());
+        hub_notifyRedeem(poolId, scId, assetId.raw(), MAX_CLAIMS);
     }
 
     function shortcut_redeem_and_claim(
@@ -228,7 +229,7 @@ abstract contract TargetFunctions is
         
         // claim redemption as actor
         AssetId assetId = newAssetId(isoCode);
-        hub_claimRedeem(poolId, scId, assetId.raw()); 
+        hub_notifyRedeem(poolId, scId, assetId.raw(), MAX_CLAIMS); 
     }
 
     // deposit and redeem in one call
@@ -260,7 +261,7 @@ abstract contract TargetFunctions is
         
         // claim redemption as actor
         AssetId assetId = newAssetId(isoCode);
-        hub_claimRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_notifyRedeem(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         return (poolId, scId);
     }
@@ -457,9 +458,6 @@ abstract contract TargetFunctions is
 
         hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
         hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
-
-        // reset the epoch increment to 0 so that the next approval is in a "new tx"
-        _setEpochIncrement(0);
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -475,9 +473,6 @@ abstract contract TargetFunctions is
         AssetId assetId = newAssetId(isoCode);
         hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
         hub_revokeShares(poolId, scId, assetId.raw(), navPerShare, valuation);
-
-        // reset the epoch increment to 0 so that the next approval is in a "new tx"
-        _setEpochIncrement(0);
     }
 
     function shortcut_update_restriction(
@@ -511,11 +506,6 @@ abstract contract TargetFunctions is
     /// === Gateway === ///
     function gateway_topUp() public payable {
         gateway.topUp{value: msg.value}();
-    }
-
-    /// helper to set the epoch increment for the multi share class for multiple calls to approvals in same transaction
-    function _setEpochIncrement(uint32 epochIncrement) internal {
-        shareClassManager.setEpochIncrement(epochIncrement);
     }
 
     function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {

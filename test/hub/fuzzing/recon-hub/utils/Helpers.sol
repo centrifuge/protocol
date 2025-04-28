@@ -45,6 +45,11 @@ library Helpers {
         return createdAccountIds[accountEntropy % createdAccountIds.length];
     }
 
+    function getRandomAssetId(AssetId[] memory createdAssetIds, uint128 assetEntropy) internal pure returns (AssetId) {
+        uint128 randomIndex = assetEntropy % createdAssetIds.length;
+        return createdAssetIds[randomIndex];
+    }
+
     /// @dev performs the same check as SCM::_updateQueued
     function canMutate(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
         return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;

@@ -55,14 +55,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         // If not member
-        (bool isMember,) = restrictedTransfers.isMember(address(token), _getActor());
+        (bool isMember,) = fullRestrictions.isMember(address(token), _getActor());
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
 
         if (
-            restrictedTransfers.isFrozen(address(token), _getActor()) == true
-                || restrictedTransfers.isFrozen(address(token), to) == true
+            fullRestrictions.isFrozen(address(token), _getActor()) == true
+                || fullRestrictions.isFrozen(address(token), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
@@ -107,8 +107,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         if (
-            restrictedTransfers.isFrozen(address(token), _getActor()) == true
-                || restrictedTransfers.isFrozen(address(token), to) == true
+            fullRestrictions.isFrozen(address(token), _getActor()) == true
+                || fullRestrictions.isFrozen(address(token), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }

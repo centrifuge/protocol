@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // Interfaces
-import {EpochPointers, UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+import {UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
 import {AccountId} from "src/hub/interfaces/IAccounting.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 
@@ -33,7 +33,7 @@ abstract contract BeforeAfter is Setup {
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
-        mapping(PoolId poolId => mapping(AccountId accountId => int128 accountValue)) ghostAccountValue;
+        mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
     }
 
     Vars internal _before;
@@ -61,13 +61,13 @@ abstract contract BeforeAfter is Setup {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            // _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+                // (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -82,7 +82,8 @@ abstract contract BeforeAfter is Setup {
                     (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
                     // accountValue is only set if the account has been updated
                     if(lastUpdated != 0) {
-                        _before.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                        (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                        _before.ghostAccountValue[poolId][accountId] = isPositive ? accountValue : -accountValue;
                     }
                 }
             }
@@ -96,13 +97,13 @@ abstract contract BeforeAfter is Setup {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            // _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
                 
-                (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+                // (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -117,7 +118,8 @@ abstract contract BeforeAfter is Setup {
                     (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
                     // accountValue is only set if the account has been updated
                     if(lastUpdated != 0) {
-                        _after.ghostAccountValue[poolId][accountId] = accounting.accountValue(poolId, accountId);
+                        (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                        _after.ghostAccountValue[poolId][accountId] = isPositive ? accountValue : -accountValue;
                     }
                 }
             }

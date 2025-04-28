@@ -10,9 +10,11 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 // Src Deps | For cycling of values
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -73,12 +75,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            (newShareToken,) = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(restrictedTransfers));
+            (newShareToken,) = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(fullRestrictions));
         }
 
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
-        asyncRequests.rely(address(newVault));
-
+        asyncRequestManager.rely(address(newVault));
 
         // NOTE: Add to storage! So this will be called by other functions
         // NOTE: This sets the actors
@@ -103,8 +104,8 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         _finalizeAssetDeployment(_getActors(), approvals, initialMintPerUsers);
 
         vault = AsyncVault(newVault);
-        token = CentrifugeToken(newShareToken);
-        restrictedTransfers = RestrictedTransfers(address(token.hook()));
+        token = ShareToken(newShareToken);
+        fullRestrictions = FullRestrictions(address(token.hook()));
 
         scId = SHARE_ID;
         poolId = POOL_ID;
@@ -189,15 +190,15 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
-        poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
+        poolManager.updateShareMetadata(PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public asAdmin {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public asAdmin {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 
     // TODO: Rely / Permissions

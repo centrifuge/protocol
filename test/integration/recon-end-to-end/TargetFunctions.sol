@@ -9,8 +9,8 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-import {RestrictedTransfers} from "src/hooks/RestrictedTransfers.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -104,9 +104,12 @@ abstract contract TargetFunctions is
 
         // 2. Deploy new pool and register it
         {
-            _poolId = hub_createPool(address(this), _assetId);
+            _poolId = PoolId.wrap(POOL_ID_COUNTER);
+            hub_createPool(address(this), _poolId.raw(), _assetId);
 
             poolManager_addPool(_poolId.raw());
+
+            POOL_ID_COUNTER++;
         }
 
         // 3. Deploy new share class and register it
@@ -118,7 +121,7 @@ abstract contract TargetFunctions is
             hub_addShareClass(_poolId.raw(), salt);
 
             // TODO: Should we customize decimals and permissions here?
-            (_shareToken,) = poolManager_addShareClass(_poolId.raw(), _scId, 18, address(restrictedTransfers));
+            (_shareToken,) = poolManager_addShareClass(_poolId.raw(), _scId, 18, address(fullRestrictions));
         }
 
         // 4. Create accounts and holding
@@ -138,7 +141,7 @@ abstract contract TargetFunctions is
         // 5. Deploy new vault and register it
         _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
         poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
-        asyncRequests.rely(address(_vault));
+        asyncRequestManager.rely(address(_vault));
 
         // 6. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](2);
@@ -147,8 +150,8 @@ abstract contract TargetFunctions is
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 
         vault = AsyncVault(_vault);
-        token = CentrifugeToken(_shareToken);
-        restrictedTransfers = RestrictedTransfers(address(token.hook()));
+        token = ShareToken(_shareToken);
+        // fullRestrictions = FullRestrictions(address(root), address(this));
 
         // NOTE: Add to storage so these can be clamped in other functions
         scId = _scId;
@@ -161,7 +164,7 @@ abstract contract TargetFunctions is
             transientValuation_setPrice_clamped(poolId, priceValuation);
         }
         
-        hub_updatePricePoolPerShare(poolId, scId, pricePoolPerShare, bytes(""));
+        hub_updatePricePerShare(poolId, scId, pricePoolPerShare);
         hub_notifySharePrice_clamped(0,0);
         hub_notifyAssetPrice_clamped(0,0);
         poolManager_updateMember(type(uint64).max);
@@ -170,7 +173,7 @@ abstract contract TargetFunctions is
 
         shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), isIdentityValuation, navPerShare);
        
-        hub_claimDeposit(poolId, scId, assetId);
+        hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(amount);
     }
@@ -178,11 +181,9 @@ abstract contract TargetFunctions is
     function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
-        _resetEpochIncrement();
-
         shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), navPerShare, isIdentityValuation);
         
-        hub_claimRedeem(poolId, scId, assetId);
+        hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
         vault_withdraw(shares, toEntropy);
     }
@@ -201,9 +202,6 @@ abstract contract TargetFunctions is
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
         hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
         hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
-
-        // reset the epoch increment to 0 so that the next approval is in a "new tx"
-        _resetEpochIncrement();
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -218,9 +216,6 @@ abstract contract TargetFunctions is
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
         hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
         hub_revokeShares(poolId, scId, navPerShare, valuation);
-
-        // reset the epoch increment to 0 so that the next approval is in a "new tx"
-        _resetEpochIncrement();
     }
 
     /// === Transient Valuation === ///

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolManager} from "src/vaults/PoolManager.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -13,22 +13,10 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 contract MockMessageDispatcher {
     PoolManager public poolManager;
-    IAsyncRequests public asyncRequests;
+    IAsyncRequestManager public asyncRequestManager;
     IRoot public root;
 
     uint16 public localCentrifugeId;
-
-    constructor(
-        PoolManager _poolManager, 
-        IAsyncRequests _asyncRequests, 
-        IRoot _root, 
-        uint16 _localCentrifugeId
-    ) {
-        poolManager = _poolManager;
-        asyncRequests = _asyncRequests;
-        root = _root;
-        localCentrifugeId = _localCentrifugeId;
-    }
 
     function setLocalCentrifugeId(uint16 _localCentrifugeId) external {
         localCentrifugeId = _localCentrifugeId;
@@ -59,8 +47,8 @@ contract MockMessageDispatcher {
         uint128 shareAmount
     ) external  {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            asyncRequests.fulfillDepositRequest(
-                poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
+            asyncRequestManager.fulfillDepositRequest(
+                poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
             );
         } else {
             
@@ -76,8 +64,8 @@ contract MockMessageDispatcher {
         uint128 shareAmount
     ) external  {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            asyncRequests.fulfillRedeemRequest(
-                poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
+            asyncRequestManager.fulfillRedeemRequest(
+                poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
             );
         } else {
         }
@@ -91,8 +79,8 @@ contract MockMessageDispatcher {
         uint128 cancelledAmount
     ) external  {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            asyncRequests.fulfillCancelDepositRequest(
-                poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledAmount, cancelledAmount
+            asyncRequestManager.fulfillCancelDepositRequest(
+                poolId, scId, address(bytes20(investor)), assetId, cancelledAmount, cancelledAmount
             );
         } else {
         }
@@ -106,8 +94,8 @@ contract MockMessageDispatcher {
         uint128 cancelledShares
     ) external  {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            asyncRequests.fulfillCancelRedeemRequest(
-                poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledShares
+            asyncRequestManager.fulfillCancelRedeemRequest(
+                poolId, scId, address(bytes20(investor)), assetId, cancelledShares
             );
         } else {
         }
@@ -121,7 +109,7 @@ contract MockMessageDispatcher {
         bytes calldata payload
     ) external  {
         if (chainId == localCentrifugeId) {
-            poolManager.updateContract(poolId.raw(), scId.raw(), address(bytes20(target)), payload);
+            poolManager.updateContract(poolId, scId, address(bytes20(target)), payload);
         } else {
         }
     }
@@ -154,7 +142,7 @@ contract MockMessageDispatcher {
         external
     {
         if (chainId == localCentrifugeId) {
-            poolManager.handleTransferShares(poolId, scId, address(bytes20(receiver)), amount);
+            poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(bytes20(receiver)), amount);
         }
     }
 

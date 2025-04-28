@@ -6,7 +6,7 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {D18} from "src/misc/types/D18.sol";
 
 import {Setup} from "./Setup.sol";
-import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
+import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {Ghosts} from "./helpers/Ghosts.sol";
 
 enum OpType {
@@ -58,7 +58,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequests.investments(address(vault), actors[i]);
+            ) = asyncRequestManager.investments(address(vault), actors[i]);
             _before.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
@@ -105,7 +105,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequests.investments(address(vault), actors[i]);
+            ) = asyncRequestManager.investments(address(vault), actors[i]);
             _after.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,

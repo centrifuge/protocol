@@ -63,7 +63,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         poolManager_updatePricePoolPerShare(1,0);
 
-        restrictedTransfers_updateMemberBasic(1525116735);
+        fullRestrictions_updateMemberBasic(1525116735);
 
         vault_requestDeposit(1,0);
 

@@ -32,14 +32,14 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictedTransfers.isFrozen(address(token), to) == true
-                || restrictedTransfers.isFrozen(address(token), _getActor()) == true
+            fullRestrictions.isFrozen(address(token), to) == true
+                || fullRestrictions.isFrozen(address(token), _getActor()) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
@@ -68,14 +68,14 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            restrictedTransfers.isFrozen(address(token), to) == true
-                || restrictedTransfers.isFrozen(address(token), from) == true
+            fullRestrictions.isFrozen(address(token), to) == true
+                || fullRestrictions.isFrozen(address(token), from) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = restrictedTransfers.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }

@@ -32,7 +32,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(poolId, 1e18);
 
-        hub_updatePricePoolPerShare(poolId, scId, 1e18, bytes(""));
+        hub_updatePricePerShare(poolId, scId, 1e18);
         hub_notifySharePrice_clamped(0,0);
         hub_notifyAssetPrice_clamped(0,0);
         
@@ -44,7 +44,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_issueShares(poolId, scId, assetId, 1e18);
        
         // need to call claimDeposit first to mint the shares
-        hub_claimDeposit_clamped(poolId, 0);
+        hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(1e18);
     }
@@ -60,7 +60,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(poolId, 1e18);
 
-        hub_updatePricePoolPerShare(poolId, scId, 1e18, bytes(""));
+        hub_updatePricePerShare(poolId, scId, 1e18);
         hub_notifySharePrice_clamped(0,0);
         hub_notifyAssetPrice_clamped(0,0);
         poolManager_updateMember(type(uint64).max);
@@ -73,18 +73,16 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_issueShares(poolId, scId, assetId, 1e18);
        
         // need to call claimDeposit first to mint the shares
-        hub_claimDeposit_clamped(poolId, 0);
+        hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(1e18);
 
         vault_requestRedeem(1e18, 0);
 
-        shareClassManager.setEpochIncrement(0);
-
         hub_approveRedeems(poolId, scId, assetId, 1e18);
         hub_revokeShares(poolId, scId, 1e18, transientValuation);
         
-        hub_claimRedeem_clamped(poolId, 0);
+        hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
         vault_withdraw(1e18, 0);
     }
@@ -102,7 +100,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(poolId, 1e18);
 
-        hub_updatePricePoolPerShare(poolId, scId, 1e18, bytes(""));
+        hub_updatePricePerShare(poolId, scId, 1e18);
         hub_notifySharePrice_clamped(0,0);
         hub_notifyAssetPrice_clamped(0,0);
         poolManager_updateMember(type(uint64).max);

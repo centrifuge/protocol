@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Setup} from "../Setup.sol";
-
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 /**
     * GLOBAL GHOST VARIABLES
  */
@@ -48,7 +48,7 @@ abstract contract Ghosts is Setup {
     }
     
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
-        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequests.investments(address(vault), address(_getActor()));
+        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), address(_getActor()));
 
         return (depositPrice, redeemPrice);
     }

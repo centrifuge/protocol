@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAsyncRequests} from "src/vaults/interfaces/investments/IAsyncRequests.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {
@@ -137,14 +136,14 @@ contract MockMessageDispatcher {
         uint128 cancelledShares
     ) external  {
         investmentManager.fulfillCancelRedeemRequest(
-            poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledShares
+            poolId, scId, address(bytes20(investor)), assetId, cancelledShares
         );
     }
 
     function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
         external
     {
-        poolManager.updateRestriction(poolId.raw(), scId.raw(), payload);
+        poolManager.updateRestriction(poolId, scId, payload);
     }
 
     function sendUpdateContract(
@@ -175,7 +174,7 @@ contract MockMessageDispatcher {
     function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
         external
     {
-        poolManager.handleTransferShares(poolId, scId, address(bytes20(receiver)), amount);
+        poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(bytes20(receiver)), amount);
     }
 
     function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
@@ -198,14 +197,14 @@ contract MockMessageDispatcher {
         hub.cancelRedeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId));
     }
 
-    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount)
+    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, D18 pricePoolPerAsset)
         external
     {
-        balanceSheet.approvedDeposits(poolId, scId, assetId, assetAmount);
+        investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
     }
 
-    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external  {
-        balanceSheet.revokedShares(poolId, scId, assetId, assetAmount);
+    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount, D18 pricePoolPerShare) external  {
+        investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
     }
 
     function sendUpdateHoldingAmount(
