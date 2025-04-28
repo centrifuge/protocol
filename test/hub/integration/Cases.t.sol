@@ -114,7 +114,7 @@ contract TestCases is BaseTest {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimDeposit{value: GAS}(
+        hub.notifyDeposit{value: GAS}(
             poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2)
         );
 
@@ -165,7 +165,7 @@ contract TestCases is BaseTest {
 
         vm.prank(ANY);
         vm.deal(ANY, GAS);
-        hub.claimRedeem{value: GAS}(
+        hub.notifyRedeem{value: GAS}(
             poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2)
         );
 

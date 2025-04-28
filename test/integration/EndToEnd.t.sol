@@ -262,7 +262,7 @@ contract TestEndToEnd is Test {
         h.hub.issueShares(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
-        h.hub.claimDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), 1);
+        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), 1);
 
         //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
 

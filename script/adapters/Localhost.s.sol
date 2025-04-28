@@ -111,7 +111,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
 
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
-        hub.claimDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
+        hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
 
         // Claim deposit request
         vault.mint(1_000_000e18, msg.sender);
@@ -143,7 +143,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
         hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
 
-        hub.claimRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
+        hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
         // Claim redeem request
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
