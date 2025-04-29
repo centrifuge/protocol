@@ -141,9 +141,8 @@ abstract contract HubTargets is
         PoolId poolId = _getRandomPoolId(poolEntropy);
         ShareClassId scId = _getRandomShareClassIdForPool(poolId, scIdEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        bytes32 investor = CastLib.toBytes32(_getActor());
 
-        hub_notifyRedeem(poolId, scId, assetId, investor, maxClaims);
+        hub_notifyRedeem(poolId.raw(), scId.raw(), assetId.raw(), maxClaims);
     }
 
     /// === EXECUTION FUNCTIONS === ///

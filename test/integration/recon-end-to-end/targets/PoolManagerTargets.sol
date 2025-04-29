@@ -11,6 +11,10 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -60,7 +64,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 1
     function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public  asAdmin returns (uint128 assetId) {
-        assetId = poolManager.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId);
+        assetId = poolManager.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
@@ -73,7 +77,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_addPool(uint64 poolId) public  asAdmin {
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
     }
 
     // Step 3
@@ -86,9 +90,10 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
 
-        address newToken = poolManager.addShareClass(
-            poolId, scId, name, symbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), name, symbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
         );
+        address newToken = address(poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)));
 
         shareClassTokens.push(newToken);
 
@@ -97,7 +102,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 4 - deploy the pool
     function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
-        address vault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        address vault = address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
         vaults.push(vault);
 
         return vault;
@@ -109,7 +114,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 5 - link the vault
     function poolManager_linkVault(uint64 poolId, bytes16 scId, uint128 assetId, address vault) public  asAdmin {
-        poolManager.linkVault(poolId, scId, assetId, vault);
+        poolManager.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vault));
     }
 
     function poolManager_linkVault_clamped() public asAdmin {
@@ -118,7 +123,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Extra 6 - remove the vault
     function poolManager_unlinkVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin{
-        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
+        poolManager.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vaults[0]));
     }
 
     function poolManager_unlinkVault_clamped() public asAdmin{
@@ -131,7 +136,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     */
     function poolManager_updateMember(uint64 validUntil) public asAdmin {
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
@@ -142,14 +147,14 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
-        poolManager.updateShareMetadata(poolId, scId, tokenName, tokenSymbol);
+        poolManager.updateShareMetadata(PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public asAdmin {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public asAdmin {
-        poolManager.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 }

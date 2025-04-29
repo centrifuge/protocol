@@ -46,8 +46,7 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
-        bytes memory data = "not-used";
-        hub.addShareClass(poolId, name, symbol, bytes32(salt), data);
+        hub.addShareClass(poolId, name, symbol, bytes32(salt));
     }
 
     function hub_addShareClass_clamped(uint64 poolIdEntropy, uint256 salt) public {
@@ -55,81 +54,44 @@ abstract contract AdminTargets is
         hub_addShareClass(poolId.raw(), salt);
     }
 
-    function hub_approveDeposits(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
+    function hub_approveDeposits(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint32 nowDepositEpochId, uint128 maxApproval) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
         uint128 pendingDepositBefore = shareClassManager.pendingDeposit(scId, paymentAssetId);
         
-        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
+        hub.approveDeposits(poolId, scId, paymentAssetId, nowDepositEpochId, maxApproval);
 
         uint128 pendingDepositAfter = shareClassManager.pendingDeposit(scId, paymentAssetId);
         uint128 approvedAssetAmount = pendingDepositBefore - pendingDepositAfter;
         approvedDeposits += approvedAssetAmount;
     }
 
-    function hub_approveDeposits_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval, bool isIdentityValuation) public {
+    function hub_approveDeposits_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowDepositEpochId, uint128 maxApproval) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId paymentAssetId = hubRegistry.currency(poolId);
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub_approveDeposits(poolId.raw(), scId.raw(), paymentAssetId.raw(), maxApproval, valuation);
+        hub_approveDeposits(poolId.raw(), scId.raw(), paymentAssetId.raw(), nowDepositEpochId, maxApproval);
     }
 
-    /// @dev Resets the epoch increment for the share class so there can be multiple approvals in the same transaction but simulate as though they are in different transactions
-    function hub_approveDeposits_resetEpochIncrement(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 paymentAssetIdAsUint, uint128 maxApproval, IERC7726 valuation) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId paymentAssetId = AssetId.wrap(paymentAssetIdAsUint);
-        hub.approveDeposits(poolId, scId, paymentAssetId, maxApproval, valuation);
-    }
-
-    function hub_approveDeposits_resetEpochIncrement_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval, bool isIdentityValuation) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId paymentAssetId = hubRegistry.currency(poolId);
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        hub_approveDeposits_resetEpochIncrement(poolId.raw(), scId.raw(), paymentAssetId.raw(), maxApproval, valuation);
-    }
-
-    function hub_approveRedeems(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
+    function hub_approveRedeems(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 nowRedeemEpochId, uint128 maxApproval) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
         uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
         
-        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
+        hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, maxApproval);
 
         uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
         uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
         approvedRedemptions += approvedAssetAmount;
     }
 
-    function hub_approveRedeems_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval) public {
+    function hub_approveRedeems_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowRedeemEpochId, uint128 maxApproval) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub_approveRedeems(poolId.raw(), scId.raw(), payoutAssetId.raw(), maxApproval);
-    }
-
-    function hub_approveRedeems_resetEpochIncrement(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 maxApproval) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
-        
-        hub.approveRedeems(poolId, scId, payoutAssetId, maxApproval);
-
-        uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
-        uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
-        approvedRedemptions += approvedAssetAmount;
-    }
-
-    function hub_approveRedeems_resetEpochIncrement_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 maxApproval) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub_approveRedeems_resetEpochIncrement(poolId.raw(), scId.raw(), payoutAssetId.raw(), maxApproval);
+        hub_approveRedeems(poolId.raw(), scId.raw(), payoutAssetId.raw(), nowRedeemEpochId, maxApproval);
     }
 
     function hub_createAccount(uint64 poolIdAsUint, uint32 accountAsInt, bool isDebitNormal) public {
@@ -192,18 +154,18 @@ abstract contract AdminTargets is
         hub_createLiability(poolId.raw(), scId.raw(), assetId.raw(), valuation, expenseAccount.raw(), liabilityAccount.raw());
     }
     
-    function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 navPerShare) public {
+    function hub_issueShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 nowIssueEpochId, uint128 navPerShare) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.issueShares(poolId, scId, assetId, D18.wrap(navPerShare));
+        hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
     }
 
-    function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare) public {
+    function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowIssueEpochId,  uint128 navPerShare) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), navPerShare);
+        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), nowIssueEpochId, navPerShare);
     }
 
     function hub_notifyPool(uint64 poolIdAsUint, uint16 centrifugeId) public {
@@ -219,7 +181,7 @@ abstract contract AdminTargets is
     function hub_notifyShareClass(uint64 poolIdAsUint, uint16 centrifugeId, bytes16 scIdAsBytes, bytes32 hook) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.notifyShareClass(poolId, centrifugeId, scId, hook);
+        hub.notifyShareClass(poolId, scId, centrifugeId, hook);
     }
 
     function hub_notifyShareClass_clamped(uint64 poolIdEntropy, uint32 scEntropy, bytes32 hook) public {
@@ -228,16 +190,16 @@ abstract contract AdminTargets is
         hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), hook);
     }
 
-    function hub_notifySharePrice(uint64 poolIdAsUint, uint16 centrifugeId, bytes16 scIdAsBytes) public {
+    function hub_notifySharePrice(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint16 centrifugeId) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.notifySharePrice(poolId, centrifugeId, scId);
+        hub.notifySharePrice(poolId, scId, centrifugeId);
     }
 
     function hub_notifySharePrice_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_notifySharePrice(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw());
+        hub_notifySharePrice(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID);
     }
     
     function hub_notifyAssetPrice(uint64 poolIdAsUint, bytes16 scIdAsBytes) public {
@@ -254,7 +216,7 @@ abstract contract AdminTargets is
     }
     
 
-    function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPerShare, uint32 nowRevokeEpochId) public {
+    function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 nowRevokeEpochId, uint128 navPerShare) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId payoutAssetId = hubRegistry.currency(poolId);

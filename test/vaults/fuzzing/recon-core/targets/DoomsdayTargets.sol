@@ -19,7 +19,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to deposit less than maxMint
     function doomsday_deposit(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
         uint256 maxMintAsAssets = vault.convertToAssets(maxMint);
 
         uint256 sharesReceived;
@@ -47,7 +47,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
 
         vm.prank(_getActor());
         uint256 assetsSpent;
@@ -73,7 +73,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     /// @dev Property: user should always be able to redeem less than maxWithdraw
     function doomsday_redeem(uint256 shares) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
         uint256 maxWithdrawAsShares = vault.convertToShares(maxWithdraw);
 
         vm.prank(_getActor());
@@ -101,7 +101,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     function doomsday_withdraw(uint256 assets) public updateGhosts {
         uint256 ppfsBefore = vault.pricePerShare();
         uint256 assetsAsSharesBefore = vault.convertToShares(assets);
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
 
         vm.prank(_getActor());
         uint256 sharesReceived;

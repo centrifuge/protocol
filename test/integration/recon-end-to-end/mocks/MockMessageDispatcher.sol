@@ -36,25 +36,11 @@ contract MockMessageDispatcher {
     IInvestmentManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
-    constructor(
-        uint16 localCentrifugeId_,
-        IRoot root_,
-        address gateway_,
-        address tokenRecoverer_,
-        address deployer
-    ) {
-        localCentrifugeId = localCentrifugeId_;
-        root = root_;
-        gateway = gateway_;
-        tokenRecoverer = tokenRecoverer_;
-    }
-
     function file(bytes32 what, address data) external {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-
     }
 
     function setLocalCentrifugeId(uint16 _localCentrifugeId) external {
@@ -62,7 +48,7 @@ contract MockMessageDispatcher {
     }
 
     function sendNotifyPool(uint16 chainId, PoolId poolId) external  {
-       poolManager.addPool(poolId.raw());
+       poolManager.addPool(poolId);
     }
 
     function sendNotifyShareClass(
@@ -75,19 +61,19 @@ contract MockMessageDispatcher {
         bytes32 salt,
         bytes32 hook
     ) external  {
-        poolManager.addShareClass(poolId.raw(), scId.raw(), name, symbol, decimals, salt, hook.toAddress());
+        poolManager.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
     }
 
     function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
         external
     {
         uint64 timestamp = block.timestamp.toUint64();
-        poolManager.updatePricePoolPerShare(poolId.raw(), scId.raw(), sharePrice.raw(), timestamp);
+        poolManager.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
     }
 
     function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external {
         uint64 timestamp = block.timestamp.toUint64();
-        poolManager.updatePricePoolPerAsset(poolId.raw(), scId.raw(), assetId.raw(), price.raw(), timestamp);
+        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
     }
 
     function sendFulfilledDepositRequest(
@@ -99,7 +85,7 @@ contract MockMessageDispatcher {
         uint128 shareAmount
     ) external  {
         investmentManager.fulfillDepositRequest(
-            poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
+            poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
         );
     }
 
@@ -112,7 +98,7 @@ contract MockMessageDispatcher {
         uint128 shareAmount
     ) external  {
         investmentManager.fulfillRedeemRequest(
-            poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), assetAmount, shareAmount
+            poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
         );
     }
 
@@ -124,7 +110,7 @@ contract MockMessageDispatcher {
         uint128 cancelledAmount
     ) external  {
         investmentManager.fulfillCancelDepositRequest(
-            poolId.raw(), scId.raw(), address(bytes20(investor)), assetId.raw(), cancelledAmount, cancelledAmount
+            poolId, scId, address(bytes20(investor)), assetId, cancelledAmount, cancelledAmount
         );
     }
 
@@ -223,14 +209,13 @@ contract MockMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         address receiver,
-        D18 pricePerShare,
         uint128 shares,
         bool isIssuance
     ) external  {
         if (isIssuance) {
-            hub.increaseShareIssuance(poolId, scId, pricePerShare, shares);
+            hub.increaseShareIssuance(poolId, scId, shares);
         } else {
-            hub.decreaseShareIssuance(poolId, scId, pricePerShare, shares);
+            hub.decreaseShareIssuance(poolId, scId, shares);
         }
     }
 

@@ -48,7 +48,7 @@ abstract contract TargetFunctions is
         transientValuation.file("erc6909", address(_getAsset()));
 
         // defaults to pool admined by the admin actor (address(this))
-        poolId = hub_createPool(address(this), isoCode);
+        poolId = hub_createPool(address(this), POOL_ID_COUNTER++, isoCode);
         
         // create holding
         scId = shareClassManager.previewNextShareClassId(poolId);
@@ -180,7 +180,7 @@ abstract contract TargetFunctions is
 
         // claim deposit as actor
         AssetId assetId = newAssetId(isoCode);
-        hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
         hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
@@ -456,8 +456,8 @@ abstract contract TargetFunctions is
 
         transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), INITIAL_PRICE);
 
-        hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
-        hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
+        hub_approveDeposits(poolId, scId, assetId.raw(), NOW_REVOKE_EPOCH_ID, maxApproval);
+        hub_issueShares(poolId, scId, assetId.raw(), NOW_REVOKE_EPOCH_ID, navPerShare);
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -471,8 +471,8 @@ abstract contract TargetFunctions is
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         
         AssetId assetId = newAssetId(isoCode);
-        hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
-        hub_revokeShares(poolId, scId, assetId.raw(), navPerShare, valuation);
+        hub_approveRedeems(poolId, scId, assetId.raw(), 0, maxApproval);
+        hub_revokeShares(poolId, scId, NOW_REVOKE_EPOCH_ID, navPerShare);
     }
 
     function shortcut_update_restriction(
@@ -487,7 +487,7 @@ abstract contract TargetFunctions is
             
             // get a random share class id
             ShareClassId scId = shareClassManager.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
-            hub_updateRestriction(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), payload);
+            hub_updateRestriction(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID, payload);
         }
     }
 

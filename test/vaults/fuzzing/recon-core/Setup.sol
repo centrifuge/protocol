@@ -17,6 +17,7 @@ import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
@@ -28,7 +29,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 // Storage
 import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
-import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
+import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
@@ -142,16 +143,16 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         root.endorse(address(escrow));
 
-        balanceSheet = new BalanceSheet(address(escrow), address(this));
-        asyncRequestManager = new AsyncRequestManager(address(root), address(escrow), address(this));
-        syncRequestManager = new SyncRequestManager(address(root), address(escrow), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequestManager), address(this));
+        balanceSheet = new BalanceSheet(IRoot(address(root)), address(this));
+        asyncRequestManager = new AsyncRequestManager(escrow, address(root), address(this));
+        syncRequestManager = new SyncRequestManager(escrow, address(root), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
-        address[] memory vaultFactories = new address[](1);
-        vaultFactories[0] = address(vaultFactory);
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
-        messageDispatcher = new MockMessageDispatcher(poolManager, asyncRequestManager, root, CENTIFUGE_CHAIN_ID); 
+        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
+        vaultFactories[0] = vaultFactory;
+        poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
+        messageDispatcher = new MockMessageDispatcher(); 
         gateway = new MockGateway();
 
         // set dependencies

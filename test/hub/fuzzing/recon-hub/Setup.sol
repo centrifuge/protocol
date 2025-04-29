@@ -47,7 +47,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 // Test Utils
 import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
 import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
-import {MockMessageDispatcher} from "test/vaults/fuzzing/recon-core/mocks/MockMessageDispatcher.sol";
+import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
@@ -82,13 +82,15 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
     bool internal IS_DEBIT_NORMAL = true;
-    uint32 internal MAX_CLAIMS = 1e18;
+    uint32 internal MAX_CLAIMS = type(uint32).max;
     /// @dev see toggle_AccountToUpdate
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;
     uint32 internal LOSS_ACCOUNT = 3;
     uint32 internal GAIN_ACCOUNT = 4;
+    uint64 internal POOL_ID_COUNTER = 1;
+    uint32 internal NOW_REVOKE_EPOCH_ID = 0;
 
     event LogString(string);
 
@@ -179,7 +181,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     }
 
     function _getRandomAssetId(uint128 assetEntropy) internal view returns (AssetId) {
-        uint128 randomIndex = assetEntropy % createdAssetIds.length;
+        uint256 randomIndex = assetEntropy % createdAssetIds.length;
         return createdAssetIds[randomIndex];
     }
 

@@ -46,7 +46,7 @@ library Helpers {
     }
 
     function getRandomAssetId(AssetId[] memory createdAssetIds, uint128 assetEntropy) internal pure returns (AssetId) {
-        uint128 randomIndex = assetEntropy % createdAssetIds.length;
+        uint256 randomIndex = assetEntropy % createdAssetIds.length;
         return createdAssetIds[randomIndex];
     }
 

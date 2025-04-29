@@ -51,4 +51,8 @@ abstract contract ToggleTargets is
     function toggle_MaxClaims(uint32 maxClaims) public {
         MAX_CLAIMS = maxClaims;
     }
+
+    function toggle_NowRevokeEpochId(uint32 nowRevokeEpochId) public {
+        NOW_REVOKE_EPOCH_ID = nowRevokeEpochId;
+    }
 }

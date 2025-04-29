@@ -48,6 +48,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 // Common
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
@@ -118,7 +119,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
     bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
     bool internal IS_DEBIT_NORMAL = true;
-    uint32 internal MAX_CLAIMS = 1e18;
+    uint32 internal MAX_CLAIMS = type(uint32).max;
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;
@@ -181,16 +182,16 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
 
         fullRestrictions = new FullRestrictions(address(root), address(this));
-        balanceSheet = new BalanceSheet(address(escrow), address(this));
-        asyncRequestManager = new AsyncRequestManager(address(root), address(escrow), address(this));
-        syncRequestManager = new SyncRequestManager(address(root), address(escrow), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), address(asyncRequestManager), address(this));
+        balanceSheet = new BalanceSheet(root, address(this));
+        asyncRequestManager = new AsyncRequestManager(escrow, address(root), address(this));
+        syncRequestManager = new SyncRequestManager(escrow, address(root), address(this));
+        vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
 
-        address[] memory vaultFactories = new address[](1);
-        vaultFactories[0] = address(vaultFactory);
-        poolManager = new PoolManager(address(escrow), address(tokenFactory), vaultFactories, address(this));
-        messageDispatcher = new MockMessageDispatcher(CENTIFUGE_CHAIN_ID, root, address(gateway), address(this), address(this)); 
+        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
+        vaultFactories[0] = vaultFactory;
+        poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
+        messageDispatcher = new MockMessageDispatcher(); 
 
         // set dependencies
         asyncRequestManager.file("sender", address(messageDispatcher));

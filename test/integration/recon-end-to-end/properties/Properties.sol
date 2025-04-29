@@ -10,6 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
@@ -485,7 +486,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
             // if the share amount changed, check if it used the correct price per share set by the admin
             (, D18 navPerShare) = shareClassManager.metrics(ShareClassId.wrap(scId));
-            uint256 expectedShareDelta = navPerShare.mulUint256(assetDelta);
+            uint256 expectedShareDelta = navPerShare.mulUint256(assetDelta, MathLib.Rounding.Down);
             eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
         }
     }

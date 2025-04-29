@@ -75,7 +75,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
 
         asyncRequestManager.fulfillDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), currencyPayout, tokenPayout);
 
-        balanceSheet.approvedDeposits(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
+        balanceSheet.noteDeposit(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(token), assetId, investor, currencyPayout);
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(token)] += tokenPayout;
 
@@ -110,7 +110,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequestManager.investments(address(vault), investor);
+            ) = asyncRequestManager.investments(vault, investor);
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -135,9 +135,9 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         // /// @audit We mint payout here which has to be paid by the borrowers
         // // END TODO test_invariant_asyncVault_10_w_recon
 
-        asyncRequestManager.fulfillRedeemRequest(poolId, scId, investor, assetId, currencyPayout, tokenPayout);
+        asyncRequestManager.fulfillRedeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), currencyPayout, tokenPayout);
 
-        balanceSheet.revokedShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout);
+        balanceSheet.noteRevoke(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, tokenPayout);
 
         sumOfClaimedRequests[address(token)] += tokenPayout;
 
@@ -179,7 +179,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequestManager.investments(address(vault), investor);
+            ) = asyncRequestManager.investments(vault, investor);
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -198,7 +198,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         // Need to cap remainingInvestOrder by the shares?
 
         // TODO: Would they set the order to a higher value?
-        asyncRequestManager.fulfillCancelDepositRequest(poolId, scId, investor, assetId, currencyPayout, currencyPayout);
+        asyncRequestManager.fulfillCancelDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), currencyPayout, currencyPayout);
         /// @audit Reduced by: currencyPayout
 
         cancelDepositCurrencyPayout[_getAsset()] += currencyPayout;
@@ -235,7 +235,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
                 /*bool pendingCancelDepositRequest*/
                 ,
                 /*bool pendingCancelRedeemRequest*/
-            ) = asyncRequestManager.investments(address(vault), investor);
+            ) = asyncRequestManager.investments(vault, investor);
 
             /// @audit DANGEROUS TODO: Clamp so we ensure we never give remaining above what was sent, fully trusted
             /// value
@@ -250,7 +250,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
             }
         }
 
-        asyncRequestManager.fulfillCancelRedeemRequest(poolId, scId, investor, assetId, tokenPayout);
+        asyncRequestManager.fulfillCancelRedeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), tokenPayout);
         /// @audit tokenPayout
 
         cancelRedeemShareTokenPayout[address(token)] += tokenPayout;

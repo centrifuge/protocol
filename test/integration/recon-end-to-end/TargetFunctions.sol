@@ -159,10 +159,8 @@ abstract contract TargetFunctions is
         assetId = _assetId;
     }
 
-    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
-        if(!isIdentityValuation) {
-            transientValuation_setPrice_clamped(poolId, priceValuation);
-        }
+    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint32 nowDepositEpochId, uint128 navPerShare, uint256 toEntropy) public {
+        transientValuation_setPrice_clamped(poolId, priceValuation);
         
         hub_updatePricePerShare(poolId, scId, pricePoolPerShare);
         hub_notifySharePrice_clamped(0,0);
@@ -171,17 +169,17 @@ abstract contract TargetFunctions is
         
         vault_requestDeposit(amount, toEntropy);
 
-        shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), isIdentityValuation, navPerShare);
+        shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), nowDepositEpochId, navPerShare);
        
         hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(amount);
     }
 
-    function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, bool isIdentityValuation, uint256 toEntropy) public {
+    function shortcut_redeem_and_claim(uint256 shares, uint32 nowRevokeEpochId, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
-        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), navPerShare, isIdentityValuation);
+        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), nowRevokeEpochId, navPerShare);
         
         hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
@@ -194,28 +192,24 @@ abstract contract TargetFunctions is
         uint64 poolId,
         bytes16 scId,
         uint128 maxApproval, 
-        bool isIdentityValuation,
+        uint32 nowDepositEpochId,
         uint128 navPerShare
     ) public  {
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
-        hub_approveDeposits(poolId, scId, assetId.raw(), maxApproval, valuation);
-        hub_issueShares(poolId, scId, assetId.raw(), navPerShare);
+        hub_approveDeposits(poolId, scId, assetId.raw(), nowDepositEpochId, maxApproval);
+        hub_issueShares(poolId, scId, assetId.raw(), nowDepositEpochId, navPerShare);
     }
 
     function shortcut_approve_and_revoke_shares(
         uint64 poolId,
         bytes16 scId,
         uint128 maxApproval,
-        uint128 navPerShare,
-        bool isIdentityValuation
+        uint32 epochId,
+        uint128 navPerShare
     ) public  {        
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
-        
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
-        hub_approveRedeems(poolId, scId, assetId.raw(), maxApproval);
-        hub_revokeShares(poolId, scId, navPerShare, valuation);
+        hub_approveRedeems(poolId, scId, assetId.raw(), epochId, maxApproval);
+        hub_revokeShares(poolId, scId, epochId, navPerShare);
     }
 
     /// === Transient Valuation === ///

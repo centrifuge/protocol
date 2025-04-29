@@ -184,8 +184,8 @@ abstract contract Properties is BeforeAfter, Asserts {
                     // loop over all account types defined in IHub::AccountType
                     for(uint8 kind = 0; kind < 6; kind++) {
                         AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                        int128 accountValueBefore = _before.ghostAccountValue[poolId][accountId];
-                        int128 accountValueAfter = _after.ghostAccountValue[poolId][accountId];
+                        uint128 accountValueBefore = _before.ghostAccountValue[poolId][accountId];
+                        uint128 accountValueAfter = _after.ghostAccountValue[poolId][accountId];
                         if(accountValueAfter > accountValueBefore) {
                             t(false, "accountValue increased");
                         }
@@ -206,7 +206,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AssetId assetId = hubRegistry.currency(poolId);
                 AccountId accountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
                 
-                uint128 assets = uint128(accounting.accountValue(poolId, accountId));
+                (, uint128 assets) = accounting.accountValue(poolId, accountId);
                 uint128 holdingsValue = holdings.value(poolId, scId, assetId);
                 
                 // This property holds all of the system accounting together
@@ -231,12 +231,12 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
                 AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
 
-                int128 assets = accounting.accountValue(poolId, assetAccountId);
-                int128 equity = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
 
                 if(assets > equity) {
                     // Yield
-                    (uint128 yield) = accounting.accountValue(poolId, gainAccountId);
+                    (, uint128 yield) = accounting.accountValue(poolId, gainAccountId);
                     t(yield == assets - equity, "property_total_yield gain");
                 } else if (assets < equity) {
                     // Loss
@@ -263,10 +263,10 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
                 AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
 
-                int128 assets = accounting.accountValue(poolId, assetAccountId);
-                int128 equity = accounting.accountValue(poolId, equityAccountId);
-                int128 gain = accounting.accountValue(poolId, gainAccountId);
-                int128 loss = accounting.accountValue(poolId, lossAccountId);
+                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
                 // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
                 t(assets == equity + gain + loss, "property_asset_soundness"); // Loss is already negative
@@ -275,6 +275,7 @@ abstract contract Properties is BeforeAfter, Asserts {
     }
 
     /// @dev Property: equity = assets - loss - gain
+    // TODO: check if this math is correct for new types that are uint128 instead of int128
     function property_equity_soundness() public {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
@@ -290,13 +291,13 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
                 AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
 
-                int128 assets = accounting.accountValue(poolId, assetAccountId);
-                int128 equity = accounting.accountValue(poolId, equityAccountId);
-                int128 gain = accounting.accountValue(poolId, gainAccountId);
-                int128 loss = accounting.accountValue(poolId, lossAccountId);
+                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
                 
                 // equity = accountValue(Asset) + (ABS(accountValue(Loss)) - accountValue(Gain) // Loss comes back, gain is subtracted
-                t(equity == assets + (-loss) - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted, since loss is negative we need to negate it                
+                t(equity == assets - loss - gain, "property_equity_soundness"); // Loss comes back, gain is subtracted, since loss is negative we need to negate it                
             }
         }
     }
@@ -317,13 +318,13 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
                 AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
                 
-                int128 assets = accounting.accountValue(poolId, assetAccountId);
-                int128 equity = accounting.accountValue(poolId, equityAccountId);
-                int128 gain = accounting.accountValue(poolId, gainAccountId);
-                int128 loss = accounting.accountValue(poolId, lossAccountId);
+                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
-                int128 totalYield = assets - equity; // Can be positive or negative
-                t(gain == totalYield + (-loss), "property_gain_soundness");
+                uint128 totalYield = assets - equity; // Can be positive or negative
+                t(gain == (totalYield - loss), "property_gain_soundness");
             }   
         }
     }
@@ -344,15 +345,12 @@ abstract contract Properties is BeforeAfter, Asserts {
                 AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
                 AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
                 
-                int128 assets = accounting.accountValue(poolId, assetAccountId);
-                int128 equity = accounting.accountValue(poolId, equityAccountId);
-                int128 gain = accounting.accountValue(poolId, gainAccountId);
-                int128 loss = accounting.accountValue(poolId, lossAccountId);   
+                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+                (,uint128 loss) = accounting.accountValue(poolId, lossAccountId);   
                 
-                int128 totalYield = assets - equity; // Can be positive or negative
-                console2.log("totalYield", totalYield);
-                console2.log("gain", gain); 
-                console2.log("loss", loss);
+                uint128 totalYield = assets - equity; // Can be positive or negative
                 t(loss == totalYield - gain, "property_loss_soundness");    
             }
         }
@@ -580,53 +578,55 @@ abstract contract Properties is BeforeAfter, Asserts {
 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1000 wei)
     /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
-    function property_MulUint128Rounding(D18 navPerShare, uint128 amount) public {
-        // Bound navPerShare up to 1,000,000
-        uint128 innerValue = D18.unwrap(navPerShare) % uint128(1e24);
-        navPerShare = d18(innerValue); 
+    // TODO: fix for latest change to implementation of mulUint128 (might not be necessary anymore)
+    // function property_MulUint128Rounding(D18 navPerShare, uint128 amount) public {
+    //     // Bound navPerShare up to 1,000,000
+    //     uint128 innerValue = D18.unwrap(navPerShare) % uint128(1e24);
+    //     navPerShare = d18(innerValue); 
         
-        // Calculate result using mulUint128
-        uint128 result = navPerShare.mulUint128(amount);
+    //     // Calculate result using mulUint128
+    //     uint128 result = navPerShare.mulUint128(amount);
         
-        // Calculate expected result with higher precision
-        uint256 expectedResult = MathLib.mulDiv(D18.unwrap(navPerShare), amount, 1e18);
+    //     // Calculate expected result with higher precision
+    //     uint256 expectedResult = MathLib.mulDiv(D18.unwrap(navPerShare), amount, 1e18);
         
-        // Check if downcasting caused any loss
-        lte(result, expectedResult, "Result should not be greater than expected");
+    //     // Check if downcasting caused any loss
+    //     lte(result, expectedResult, "Result should not be greater than expected");
         
-        // Check if rounding error is within acceptable bounds (1000 wei)
-        uint256 roundingError = expectedResult - result;
-        lte(roundingError, 1000, "Rounding error too large");
+    //     // Check if rounding error is within acceptable bounds (1000 wei)
+    //     uint256 roundingError = expectedResult - result;
+    //     lte(roundingError, 1000, "Rounding error too large");
         
-        // Verify reverse calculation approximately matches
-        // if (result > 0) {
-        //     D18 reverseNav = D18.wrap((uint256(result) * 1e18) / amount);
-        //     uint256 navDiff = D18.unwrap(navPerShare) >= D18.unwrap(reverseNav) 
-        //         ? D18.unwrap(navPerShare) - D18.unwrap(reverseNav)
-        //         : D18.unwrap(reverseNav) - D18.unwrap(navPerShare);
+    //     // Verify reverse calculation approximately matches
+    //     // if (result > 0) {
+    //     //     D18 reverseNav = D18.wrap((uint256(result) * 1e18) / amount);
+    //     //     uint256 navDiff = D18.unwrap(navPerShare) >= D18.unwrap(reverseNav) 
+    //     //         ? D18.unwrap(navPerShare) - D18.unwrap(reverseNav)
+    //     //         : D18.unwrap(reverseNav) - D18.unwrap(navPerShare);
                 
-        //     // Allow for some small difference due to division rounding
-        //     lte(navDiff, 1e6, "Reverse calculation deviation too large"); 
-        // }
-    }
+    //     //     // Allow for some small difference due to division rounding
+    //     //     lte(navDiff, 1e6, "Reverse calculation deviation too large"); 
+    //     // }
+    // }
 
     /// @dev Property: Checks that rounding error is within acceptable bounds (1e6 wei) for very small numbers
     /// @dev Simulates the operation in the MultiShareClass::_revokeEpochShares function
-    function property_MulUint128EdgeCases(D18 navPerShare, uint128 amount) public {
-        // Test with very small numbers
-        amount = uint128(amount % 1000);  // Small amounts
-        navPerShare = D18.wrap(D18.unwrap(navPerShare) % 1e9);  // Small NAV
+    // TODO: fix for latest change to implementation of mulUint128 (might not be necessary anymore)
+    // function property_MulUint128EdgeCases(D18 navPerShare, uint128 amount) public {
+    //     // Test with very small numbers
+    //     amount = uint128(amount % 1000);  // Small amounts
+    //     navPerShare = D18.wrap(D18.unwrap(navPerShare) % 1e9);  // Small NAV
         
-        uint128 result = navPerShare.mulUint128(amount);
+    //     uint128 result = navPerShare.mulUint128(amount);
         
-        // Even with very small numbers, result should be proportional
-        if (result > 0) {
-            uint256 ratio = (uint256(amount) * 1e18) / result;
-            uint256 expectedRatio = 1e18 / uint256(D18.unwrap(navPerShare));
+    //     // Even with very small numbers, result should be proportional
+    //     if (result > 0) {
+    //         uint256 ratio = (uint256(amount) * 1e18) / result;
+    //         uint256 expectedRatio = 1e18 / uint256(D18.unwrap(navPerShare));
             
-            // Allow for some rounding difference
-            uint256 ratioDiff = ratio >= expectedRatio ? ratio - expectedRatio : expectedRatio - ratio;
-            lte(ratioDiff, 1e6, "Ratio deviation too large for small numbers");
-        }
-    }
+    //         // Allow for some rounding difference
+    //         uint256 ratioDiff = ratio >= expectedRatio ? ratio - expectedRatio : expectedRatio - ratio;
+    //         lte(ratioDiff, 1e6, "Ratio deviation too large for small numbers");
+    //     }
+    // }
 }

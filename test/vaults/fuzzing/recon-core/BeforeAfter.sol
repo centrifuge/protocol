@@ -4,10 +4,14 @@ pragma solidity ^0.8.0;
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {D18} from "src/misc/types/D18.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {Setup} from "./Setup.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {Ghosts} from "./helpers/Ghosts.sol";
+
 
 enum OpType {
     GENERIC, // generic operations can be performed by both users and admins
@@ -58,7 +62,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequestManager.investments(address(vault), actors[i]);
+            ) = asyncRequestManager.investments(vault, actors[i]);
             _before.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
@@ -105,7 +109,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequestManager.investments(address(vault), actors[i]);
+            ) = asyncRequestManager.investments(vault, actors[i]);
             _after.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
@@ -141,12 +145,12 @@ abstract contract BeforeAfter is Ghosts {
     }
 
     function _priceAssetNonZero() internal view returns (bool) {
-        (D18 priceAsset, ) = poolManager.pricePoolPerAsset(poolId, scId, assetId, false);
+        (D18 priceAsset, ) = poolManager.pricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), false);
         return priceAsset.raw() != 0;
     }
 
     function _priceShareNonZero() internal view returns (bool) {
-        (D18 priceShare, ) = poolManager.pricePoolPerShare(poolId, scId, false);
+        (D18 priceShare, ) = poolManager.pricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), false);
         return priceShare.raw() != 0;
     }
 }

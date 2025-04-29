@@ -7,7 +7,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {Setup} from "test/vaults/fuzzing/recon-core/Setup.sol";
 import {AsyncVaultProperties} from "test/vaults/fuzzing/recon-core/properties/AsyncVaultProperties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
@@ -106,7 +106,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 
-        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+        (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
     
         vm.prank(_getActor());
         try vault.deposit(depositAmount, _getActor()) returns (uint256 shares) {
@@ -116,7 +116,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             t(difference == maxDepositAfter, "rounding error in maxDeposit");
             
             if(depositAmount == maxDepositBefore) {
-                (,,,, uint128 pendingDeposit,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+                (,,,, uint128 pendingDeposit,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
                 
                 eq(pendingDeposit, 0, "pendingDeposit should be 0 after maxDeposit");
                 lte(shares, maxMint, "shares minted surpass maxMint");
@@ -143,7 +143,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             uint256 shares = vault.convertToShares(assets);
 
             if(mintAmount == maxMintBefore) {
-                (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+                (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
                 uint256 maxMintVaultAfter = vault.maxMint(_getActor());
 
                 eq(maxMint, 0, "maxMint in request should be 0 after maxMint");
@@ -172,7 +172,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             t(difference == maxWithdrawAfter, "rounding error in maxWithdraw");
             
             if(withdrawAmount == maxWithdrawBefore) {
-                (,,,,, uint128 pendingWithdrawRequest,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+                (,,,,, uint128 pendingWithdrawRequest,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
 
                 eq(pendingWithdrawRequest, 0, "pendingWithdrawRequest should be 0 after maxWithdraw");
                 lte(assets, maxWithdrawBefore, "shares withdrawn surpass maxWithdraw");
@@ -200,7 +200,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             t(difference == maxRedeemAfter, "rounding error in maxRedeem");
             
             if(redeemAmount == maxRedeemBefore) {
-                (,,,,, uint128 pendingRedeemRequest,,,,) = asyncRequestManager.investments(address(vault), _getActor());
+                (,,,,, uint128 pendingRedeemRequest,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
 
                 eq(pendingRedeemRequest, 0, "pendingRedeemRequest should be 0 after maxRedeem");
                 lte(shares, maxRedeemBefore, "shares redeemed surpass maxRedeem");

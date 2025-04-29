@@ -5,9 +5,9 @@ pragma solidity 0.8.28;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 // Src Deps | For cycling of values
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
@@ -15,6 +15,8 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -119,7 +121,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public notGovFuzzing asAdmin returns (uint128 assetId) {
-        assetId = poolManager.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId);
+        assetId = poolManager.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
@@ -128,7 +130,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
     // Step 3
     function poolManager_addPool(uint64 poolId) public notGovFuzzing asAdmin {
-        poolManager.addPool(poolId);
+        poolManager.addPool(PoolId.wrap(poolId));
     }
 
     // Step 4
@@ -140,9 +142,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         uint8 decimals,
         address hook
     ) public notGovFuzzing asAdmin returns (address, bytes16) {
-        address newToken = poolManager.addShareClass(
-            poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
+        poolManager.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
         );
+
+        address newToken = address(poolManager.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)));
 
         shareClassTokens.push(newToken);
 
@@ -151,13 +155,13 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
     // Step 5
     function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
-        return poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
+        return address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
     }
 
     // Step 6 deploy the pool
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing asAdmin returns (address) {
-        address newVault = poolManager.deployVault(poolId, scId, assetId, address(vaultFactory));
-        poolManager.linkVault(poolId, scId, assetId, newVault);
+        address newVault = address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
+        poolManager.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(newVault));
 
         vaults.push(newVault);
 
@@ -166,7 +170,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - Remove liquidity Pool
     function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin{
-        poolManager.unlinkVault(poolId, scId, assetId, vaults[0]);
+        poolManager.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vaults[0]));
     }
 
     function removeVault_clamped() public asAdmin{
@@ -179,14 +183,14 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public asAdmin {
         poolManager.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
     function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
-        poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
+        poolManager.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), price, computedAt);
+        poolManager.updatePricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, computedAt);
     }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {

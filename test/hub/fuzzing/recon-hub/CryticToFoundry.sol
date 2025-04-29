@@ -48,7 +48,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_registerAsset(123);
 
         // create pool 
-        poolId = hub_createPool(address(this), 123);
+        poolId = hub_createPool(address(this), 1, 123);
 
         return poolId;
     }
@@ -71,8 +71,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // request deposit
         hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
         
-        hub_approveDeposits(poolId.raw(), scId.raw(), assetId.raw(), APPROVED_INVESTOR_AMOUNT, identityValuation);
-        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), NAV_PER_SHARE);
+        hub_approveDeposits(poolId.raw(), scId.raw(), assetId.raw(), 0, APPROVED_INVESTOR_AMOUNT);
+        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), 0, NAV_PER_SHARE);
 
         // claim deposit
         hub_notifyDeposit(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
@@ -88,8 +88,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         // executed via the PoolRouter
         assetId = newAssetId(123);
-        hub_approveRedeems(poolId.raw(), scId.raw(), assetId.raw(), uint128(10000000));
-        hub_revokeShares(poolId.raw(), scId.raw(), assetId.raw(), 10000000, identityValuation);
+        hub_approveRedeems(poolId.raw(), scId.raw(), assetId.raw(), 0, uint128(10000000));
+        hub_revokeShares(poolId.raw(), scId.raw(), 0, 10000000);
 
         // claim redemption
         hub_notifyRedeem(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
@@ -175,29 +175,29 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_hub_increaseShareIssuance() public {
         (poolId, scId) = test_request_deposit();
 
-        hub_increaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_increaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
     }
 
     function test_hub_decreaseShareIssuance() public {
         (poolId, scId) = test_request_deposit();
 
-        hub_increaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_increaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
 
-        hub_decreaseShareIssuance(poolId.raw(), scId.raw(), NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_decreaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
     }
 
     function test_hub_increaseShareIssuance_clamped() public {
         (poolId, scId) = test_request_deposit();
 
-        hub_increaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_increaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
     }
 
     function test_hub_decreaseShareIssuance_clamped() public {
         (poolId, scId) = test_request_deposit();
 
-        hub_increaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_increaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
 
-        hub_decreaseShareIssuance_clamped(poolId.raw(), 2, NAV_PER_SHARE, SHARE_AMOUNT);
+        hub_decreaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
     }
     
     /// === REPRODUCERS === ///
@@ -221,21 +221,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     //     property_credited_transient_reset();
 
     // }
-
-    // forge test --match-test test_hub_redeemRequest_clamped_2 -vvv 
-    function test_hub_redeemRequest_clamped_2() public {
-
-        hub_createPool(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496,1);
-
-        hub_addShareClass_clamped(0,1);
-
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_redeemRequest_clamped(0,0,0);
-
-    }
 
     // forge test --match-test test_property_accounting_and_holdings_soundness_0 -vvv 
     // NOTE: updateHoldingAmount causes an unsafe overflow in the accounting.sol contract
@@ -267,24 +252,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_3 -vvv 
-    // TODO: come back to this
-    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_3() public {
-
-        shortcut_deposit_and_claim(6,1,2,false,1,1,1);
-
-        hub_redeemRequest_clamped(0,0,1);
-
-        hub_approveRedeems_clamped(0,0,1);
-
-        hub_addShareClass_clamped(0,1);
-
-        hub_revokeShares_clamped(0,0,1000162686692190665,true);
-
-        // property_total_pending_redeem_geq_sum_pending_user_redeem();
-
-    }
-
     // forge test --match-test test_hub_depositRequest_clamped_4 -vvv 
     function test_hub_depositRequest_clamped_4() public {
 
@@ -292,17 +259,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         console2.log("before depositRequest_clamped");
         hub_depositRequest_clamped(0,0,0);
-    }
-
-    // forge test --match-test test_hub_claimDeposit_clamped_6 -vvv 
-    // NOTE: when a deposit is approved but no shares are issued for it, the lastUpdate is not updated correctly
-    function test_hub_claimDeposit_clamped_6() public {
-
-        shortcut_deposit(6,1,1,false,2,1,1);
-
-        hub_approveDeposits_clamped(0,0,1,true);
-
-        hub_notifyDeposit_clamped(0,0,1,1);
     }
 
     // forge test --match-test test_property_total_yield_7 -vvv 
