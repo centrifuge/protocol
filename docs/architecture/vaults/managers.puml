@@ -1,0 +1,43 @@
+@startuml
+hide empty members
+
+interface IBaseInvestmentManager
+interface IVaultManager
+
+interface IDepositManager
+interface IRedeemManager
+
+interface IAsyncDepositManager
+interface ISyncDepositManager
+interface IAsyncRedeemManager
+
+interface IAsyncRequestManager
+interface ISyncRequestManager
+
+IDepositManager -up-|> IBaseInvestmentManager
+IRedeemManager -up-|> IBaseInvestmentManager
+
+IAsyncDepositManager -up-|> IDepositManager
+IAsyncDepositManager -up-|> IVaultManager
+ISyncDepositManager -up-|> IDepositManager
+ISyncDepositManager -up-|> IVaultManager
+IAsyncRedeemManager -up-|> IRedeemManager
+IAsyncRedeemManager -up-|> IVaultManager
+
+IAsyncRequestManager -up-|> IAsyncDepositManager
+IAsyncRequestManager -up-|> IAsyncRedeemManager
+
+ISyncRequestManager -up-|> ISyncDepositManager
+
+abstract BaseInvestmentManager
+class AsyncRequestManager
+class SyncRequestManager
+
+AsyncRequestManager -up-|> BaseInvestmentManager
+SyncRequestManager -up-|> BaseInvestmentManager
+
+BaseInvestmentManager -up-|> IBaseInvestmentManager
+AsyncRequestManager -up-|> IAsyncRequestManager
+SyncRequestManager -up-|> ISyncRequestManager
+
+@enduml

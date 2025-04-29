@@ -1,0 +1,63 @@
+@startuml
+hide empty members
+
+package misc {
+    abstract Recoverable
+}
+
+package hub {
+    class Hub
+}
+
+package vaults {
+    class PoolEscrow
+    class PoolManager
+    class AsyncRequestManager
+    class BalanceSheet
+}
+
+interface IAdapter
+
+class TokenRecoverer
+class Root
+class MessageDispatcher
+class MessageProcessor
+class Gateway
+class AxelarAdapter
+class WormholeAdapter
+class Guardian
+class GasService
+
+AxelarAdapter -up-|> IAdapter
+AxelarAdapter -up--> Gateway
+
+WormholeAdapter -up-|> IAdapter
+WormholeAdapter -up--> Gateway
+
+MessageProcessor --up-> Root
+MessageProcessor --up-> TokenRecoverer
+MessageProcessor --up-> Hub
+MessageProcessor --up-> PoolManager
+MessageProcessor --up-> AsyncRequestManager
+MessageProcessor --up-> BalanceSheet
+MessageProcessor --up-> Gateway
+
+MessageDispatcher ---> Root
+MessageDispatcher ---> TokenRecoverer
+MessageDispatcher ---> Gateway
+MessageDispatcher ---> Hub
+MessageDispatcher ---> PoolManager
+MessageDispatcher ---> AsyncRequestManager
+MessageDispatcher ---> BalanceSheet
+
+Guardian ---> Hub
+Guardian -left---> Root
+Guardian ---> MessageDispatcher
+
+Gateway -up--> GasService
+Gateway -up--|> Recoverable
+Gateway -right-> Root
+Gateway -down-->"n" IAdapter
+Gateway -left-> PoolEscrow
+
+@enduml

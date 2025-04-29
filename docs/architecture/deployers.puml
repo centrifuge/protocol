@@ -1,0 +1,28 @@
+@startuml
+hide empty members
+
+class JsonRegistry
+class CommonDeployer
+class HubDeployer
+class VaultsDeployer
+class FullDeployer
+
+class Axelar
+class Wormhole
+class Localhost
+
+CommonDeployer -up-|> JsonRegistry
+HubDeployer -up-|> CommonDeployer
+VaultsDeployer -up-|> CommonDeployer
+FullDeployer -up-|> HubDeployer
+FullDeployer -up-|> VaultsDeployer
+
+Axelar -up-|> FullDeployer
+Wormhole -up-|> FullDeployer
+Localhost -up-|> FullDeployer
+
+note right of VaultsDeployer: Used in CV ITs
+note left of HubDeployer: Used in CP ITs
+note bottom of Localhost: Used in CP-CV ITs
+
+@enduml
