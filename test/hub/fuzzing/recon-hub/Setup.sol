@@ -94,7 +94,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
     event LogString(string);
 
-    modifier stateless {
+    modifier statelessTest {
         _;
         revert("stateless");
     }
