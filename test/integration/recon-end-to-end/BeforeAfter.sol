@@ -190,12 +190,12 @@ abstract contract BeforeAfter is Ghosts {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         if(address(token) != address(0)) {
-            _structToUpdate.escrowTrancheTokenBalance = token.balanceOf(address(escrow));
+            _structToUpdate.escrowTrancheTokenBalance = token.balanceOf(address(globalEscrow));
             _structToUpdate.totalShareSupply = token.totalSupply();
         }
 
         if (address(vault) != address(0)) {
-            _structToUpdate.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(escrow));
+            _structToUpdate.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
             _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         }
     }

@@ -18,8 +18,10 @@ import {Root} from "src/common/Root.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
+import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
+import {Escrow} from "src/vaults/Escrow.sol";
 
 // Hub
 import {Accounting} from "src/hub/Accounting.sol";
@@ -63,7 +65,6 @@ import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
 import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
-import {EscrowWrapper} from "test/hub/fuzzing/recon-hub/utils/EscrowWrapper.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
@@ -73,8 +74,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     /// === Vaults === ///
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
+    PoolEscrowFactory poolEscrowFactory;
 
-    EscrowWrapper public escrow; // NOTE: Restriction Manager will query it
     AsyncRequestManager asyncRequestManager;
     SyncRequestManager syncRequestManager;
     PoolManager poolManager;
@@ -83,6 +84,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
+    Escrow globalEscrow;
 
     // Mocks
     MockMessageDispatcher messageDispatcher;
@@ -175,19 +177,19 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
     function setupVaults() internal {
         // Dependencies
-        escrow = new EscrowWrapper(address(this));
         root = new Root(48 hours, address(this));
-        root.endorse(address(escrow));
         gateway = new MockGateway();
-
+        globalEscrow = new Escrow(address(this));
+        root.endorse(address(globalEscrow));
 
         fullRestrictions = new FullRestrictions(address(root), address(this));
         balanceSheet = new BalanceSheet(root, address(this));
-        asyncRequestManager = new AsyncRequestManager(escrow, address(root), address(this));
-        syncRequestManager = new SyncRequestManager(escrow, address(root), address(this));
+        asyncRequestManager = new AsyncRequestManager(globalEscrow, address(root), address(this));
+        syncRequestManager = new SyncRequestManager(globalEscrow, address(root), address(this));
         vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
-
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
+        
         IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
         vaultFactories[0] = vaultFactory;
         poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
@@ -204,6 +206,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
         poolManager.file("balanceSheet", address(balanceSheet));
+        poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
@@ -215,12 +218,13 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         asyncRequestManager.rely(address(messageDispatcher));
         poolManager.rely(address(messageDispatcher));
         fullRestrictions.rely(address(poolManager));
-        escrow.rely(address(asyncRequestManager));
-        escrow.rely(address(poolManager));
-        escrow.rely(address(balanceSheet));
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncRequestManager));
         balanceSheet.rely(address(messageDispatcher));
+        globalEscrow.rely(address(asyncRequestManager));
+        globalEscrow.rely(address(syncRequestManager));
+        globalEscrow.rely(address(poolManager));
+        globalEscrow.rely(address(balanceSheet));
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));

@@ -11,6 +11,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {PoolEscrow} from "src/vaults/Escrow.sol";
 
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
@@ -113,7 +114,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             _before.investments[_getActor()].claimableCancelDepositRequest > _after.investments[_getActor()].claimableCancelDepositRequest
         ) {
             uint256 claimableCancelDepositRequestDelta = _before.investments[_getActor()].claimableCancelDepositRequest - _after.investments[_getActor()].claimableCancelDepositRequest;
-            // claiming a cancel deposit request means that the escrow token balance decreases
+            // claiming a cancel deposit request means that the globalEscrow token balance decreases
             uint256 escrowTokenDelta = _before.escrowTokenBalance - _after.escrowTokenBalance;
             eq(claimableCancelDepositRequestDelta, escrowTokenDelta, "claimableCancelDepositRequestDelta != escrowTokenDelta");
         }
@@ -133,7 +134,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             _before.investments[_getActor()].claimableCancelRedeemRequest > _after.investments[_getActor()].claimableCancelRedeemRequest
         ) {
             uint256 claimableCancelRedeemRequestDelta = _before.investments[_getActor()].claimableCancelRedeemRequest - _after.investments[_getActor()].claimableCancelRedeemRequest;
-            // claiming a cancel redeem request means that the escrow tranche token balance decreases
+            // claiming a cancel redeem request means that the globalEscrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before.escrowTrancheTokenBalance - _after.escrowTrancheTokenBalance;
             eq(claimableCancelRedeemRequestDelta, escrowTrancheTokenBalanceDelta, "claimableCancelRedeemRequestDelta != escrowTrancheTokenBalanceDelta");
         }
@@ -214,7 +215,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
      *     NOTE: Ignores donations
      */
     function property_E_1() public tokenIsSet {
-        if (address(escrow) == address(0)) {
+        if (address(globalEscrow) == address(0)) {
             return;
         }
         if (_getAsset() == address(0)) {
@@ -228,7 +229,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 ghostBalOfEscrow;
         address asset = vault.asset();
         // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(escrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
@@ -258,7 +259,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = token.balanceOf(address(escrow));
+        uint256 balanceOfEscrow = token.balanceOf(address(globalEscrow));
         unchecked {
             ghostBalanceOfEscrow = (
                 sumOfFullfilledDeposits[address(token)] + sumOfRedeemRequests[address(token)]
@@ -280,7 +281,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // Use acc to track max amount withdrawn for each actor
         address[] memory actors = _getActors();
@@ -305,7 +306,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = token.balanceOf(address(escrow));
+        uint256 balOfEscrow = token.balanceOf(address(globalEscrow));
         emit DebugWithString("balOfEscrow", balOfEscrow);
 
         // Use acc to get maxMint for each actor
@@ -327,7 +328,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
         uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
         
         uint256 differenceInAssets = totalAssets - actualAssets;
         uint256 differenceInShares = vault.convertToShares(differenceInAssets);
@@ -461,11 +462,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId _scId = shareClassManager.previewShareClassId(_poolId, j);
                 AssetId _assetId = hubRegistry.currency(_poolId);
+                (, uint256 _tokenId) = poolManager.idToAsset(_assetId);
 
-                // uint256 holding = escrow.getHolding(_poolId.raw(), _scId.raw(), _assetId.addr(), _assetId.raw());
-                // uint256 reserved = escrow.getReservedAmount(_poolId.raw(), _scId.raw(), _assetId.addr(), _assetId.raw());
+                PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(_poolId))));
 
-                // gte(holding, reserved, "holding must be greater than reserved");
+                (uint128 holding, uint128 reserved) = poolEscrow.holding(_scId, _assetId.addr(), _tokenId);
+                gte(reserved, holding, "reserved must be greater than holding");
             }
         }
     }
@@ -496,7 +498,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
         uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(escrow));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
         uint256 difference = totalAssets - actualAssets;
 
         uint256 differenceInShares = vault.convertToShares(difference);
@@ -541,7 +543,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Can we donate to this address?
     /// We explicitly preventing donations since we check for exact balances
     function _canDonate(address to) internal view returns (bool) {
-        if (to == address(escrow)) {
+        if (to == address(globalEscrow)) {
             return false;
         }
 

@@ -39,7 +39,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // B4 Balances
         uint256 balanceB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceOfEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balanceOfEscrowB4 = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         bool hasReverted;
 
@@ -69,7 +69,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // After Balances and Checks
         uint256 balanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 balanceOfEscrowAfter = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 balanceOfEscrowAfter = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
@@ -91,7 +91,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // B4 Balances
         uint256 balanceB4 = token.balanceOf(_getActor());
-        uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
+        uint256 balanceOfEscrowB4 = token.balanceOf(address(globalEscrow));
 
         vm.prank(_getActor());
         token.approve(address(vault), shares);
@@ -115,7 +115,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // After Balances and Checks
         uint256 balanceAfter = token.balanceOf(_getActor());
-        uint256 balanceOfEscrowAfter = token.balanceOf(address(escrow));
+        uint256 balanceOfEscrowAfter = token.balanceOf(address(globalEscrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
@@ -163,7 +163,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     function vault_deposit(uint256 assets) public updateGhosts {
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(_getActor());
-        uint256 shareEscrowB4 = token.balanceOf(address(escrow));
+        uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -174,7 +174,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(_getActor());
-        uint256 shareEscrowAfter = token.balanceOf(address(escrow));
+        uint256 shareEscrowAfter = token.balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -206,7 +206,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(_getActor());
-        uint256 shareEscrowB4 = token.balanceOf(address(escrow));
+        uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -217,7 +217,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(_getActor());
-        uint256 shareEscrowAfter = token.balanceOf(address(escrow));
+        uint256 shareEscrowAfter = token.balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -241,7 +241,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -252,7 +252,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -280,7 +280,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -291,7 +291,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(escrow));
+        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
