@@ -107,10 +107,23 @@ abstract contract Properties is BeforeAfter, Asserts {
         if(currentOperation == OpType.BATCH) {
             for (uint256 i = 0; i < createdPools.length; i++) {
                 PoolId poolId = createdPools[i];
-
-                uint32 epochIdDifference = _after.ghostEpochId[poolId] - _before.ghostEpochId[poolId];
-                // check that the epochId increased by at most 1
-                lte(epochIdDifference, 1, "epochId increased by more than 1");
+                uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+                // skip the first share class because it's never assigned
+                for (uint32 j = 1; j < shareClassCount; j++) { 
+                    ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                    AssetId assetId = hubRegistry.currency(poolId);
+                    
+                    uint32 depositEpochIdDifference = _after.ghostEpochId[scId][assetId].deposit - _before.ghostEpochId[scId][assetId].deposit;
+                    uint32 redeemEpochIdDifference = _after.ghostEpochId[scId][assetId].redeem - _before.ghostEpochId[scId][assetId].redeem;
+                    uint32 issueEpochIdDifference = _after.ghostEpochId[scId][assetId].issue - _before.ghostEpochId[scId][assetId].issue;
+                    uint32 revokeEpochIdDifference = _after.ghostEpochId[scId][assetId].revoke - _before.ghostEpochId[scId][assetId].revoke;
+                    
+                    // check that the epochId increased by at most 1
+                    lte(depositEpochIdDifference, 1, "deposit epochId increased by more than 1");
+                    lte(redeemEpochIdDifference, 1, "redeem epochId increased by more than 1");
+                    lte(issueEpochIdDifference, 1, "issue epochId increased by more than 1");
+                    lte(revokeEpochIdDifference, 1, "revoke epochId increased by more than 1");
+                }
             }
         }
     }
@@ -338,7 +351,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                     // precondition: pending has changed 
                     if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
                         // check that the lastUpdate was >= the latest redeem approval pointer
-                        gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostLatestRedeemApproval, "lastUpdate is > latest redeem approval");
+                        gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].redeem, "lastUpdate is > latest redeem approval");
                     }
                 }
             }

@@ -8,7 +8,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {UserOrder} from "src/hub/interfaces/IShareClassManager.sol";
+import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
@@ -37,14 +37,13 @@ abstract contract BeforeAfter is Ghosts {
         uint256 totalShareSupply;
         uint128 ghostDebited;
         uint128 ghostCredited;
-        uint32 ghostLatestRedeemApproval;
 
         mapping(address investor => AsyncInvestmentState) investments;
-        mapping(PoolId poolId => uint32) ghostEpochId;
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
+        mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
     }
 
     BeforeAfterVars internal _before;
@@ -80,13 +79,15 @@ abstract contract BeforeAfter is Ghosts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            // _before.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                // (,_before.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+                (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
+                _before.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
+                
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
@@ -124,13 +125,15 @@ abstract contract BeforeAfter is Ghosts {
         for (uint256 i = 0; i < createdPools.length; i++) {
             address[] memory _actors = _getActors();
             PoolId poolId = createdPools[i];
-            // _after.ghostEpochId[poolId] = shareClassManager.epochId(poolId);
+            
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
+
+                (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
+                _after.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
                 
-                // (,_after.ghostLatestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
