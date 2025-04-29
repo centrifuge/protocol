@@ -134,7 +134,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_redeemRequest(poolId.raw(), scId.raw(), 123, SHARE_AMOUNT);
 
-        hub_cancelRedeemRequest(poolId.raw(), scId.raw(), 123);
+        hub_cancelRedeemRequest(poolId.raw(), scId.raw());
     }
 
     function test_shortcut_notify_share_class() public {

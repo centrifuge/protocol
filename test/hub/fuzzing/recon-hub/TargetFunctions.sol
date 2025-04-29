@@ -133,7 +133,7 @@ abstract contract TargetFunctions is
         hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
 
         return (poolId, scId);
     }
@@ -156,7 +156,7 @@ abstract contract TargetFunctions is
         );
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
 
         return (poolId, scId);
     }
@@ -183,7 +183,7 @@ abstract contract TargetFunctions is
         hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
 
         return (poolId, scId);
     }
@@ -288,7 +288,7 @@ abstract contract TargetFunctions is
         hub_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
 
         // cancel redemption
-        hub_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode);
+        hub_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
     }
 
     function shortcut_create_pool_and_update_holding(

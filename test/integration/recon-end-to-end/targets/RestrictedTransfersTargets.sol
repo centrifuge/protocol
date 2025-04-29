@@ -18,7 +18,6 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
      */
     // NOTE: Same idea that we cycle through values via modifier
 
-    // TODO: Actory Cycling
     function restrictedTransfers_updateMemberBasic(uint64 validUntil) public asAdmin {
         fullRestrictions.updateMember(address(token), _getActor(), validUntil);
     }
@@ -29,7 +28,6 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
         fullRestrictions.updateMember(address(token), user, validUntil);
     }
 
-    // TODO: Actor Cycling
     function restrictedTransfers_freeze(address /*user*/ ) public asAdmin {
         fullRestrictions.freeze(address(token), _getActor());
     }

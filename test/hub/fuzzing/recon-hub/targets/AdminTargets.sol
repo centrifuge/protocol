@@ -21,6 +21,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../Properties.sol";
@@ -31,6 +32,8 @@ abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
 {
+    using CastLib for *;
+
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// === STATE FUNCTIONS === ///
@@ -215,34 +218,30 @@ abstract contract AdminTargets is
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    // TODO: fix this for latest changes to SCM
     function hub_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = CastLib.toBytes32(_getActor());
+        bytes32 investor = _getActor().toBytes32();
 
         try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
-            deposited = true;
-
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
-            // uint32 epochId = shareClassManager.epochId(poolId);
-            // (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
+            (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
 
             address[] memory _actors = _getActors();
             uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
             uint128 totalPendingUserDeposit = 0;
             for (uint256 k = 0; k < _actors.length; k++) {
                 address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, CastLib.toBytes32(actor));
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, actor.toBytes32());
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            // if(_canMutate(lastUpdate, pending, latestApproval)) {
-            //     eq(lastUpdate, epochId, "lastUpdate is not equal to epochId"); 
-            //     gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit is less than sum of pending user deposit amounts"); 
-            // }
+            if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
+                eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
+                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
+            }
         } catch (bytes memory reason) {
             // precondition: check that it wasn't an overflow because we only care about underflow
             uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
@@ -251,7 +250,7 @@ abstract contract AdminTargets is
                 t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
             }
         }  
-    }   
+    }    
 
     function hub_depositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
         PoolId poolId = _getRandomPoolId(poolIdEntropy);
@@ -288,70 +287,84 @@ abstract contract AdminTargets is
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    // TODO: fix this for latest changes to SCM
-    function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
+    function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId depositAssetId = newAssetId(isoCode);
-        bytes32 investor = CastLib.toBytes32(_getActor());
+        AssetId depositAssetId = hubRegistry.currency(poolId);
+        bytes32 investor = _getActor().toBytes32();
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
-        // (uint32 latestApproval,,,) = shareClassManager.epochPointers(scId, depositAssetId);
+        (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
         try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
-            // uint32 epochId = shareClassManager.epochId(poolId);
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, depositAssetId, investor);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            // if(_canMutate(lastUpdateBefore, pendingBefore, latestApproval)) {
-            //     eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId");
-            //     eq(pending, 0, "pending is not zero");
-            // }
+            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+                eq(lastUpdateAfter, depositEpochId, "lastUpdate != depositEpochId");
+                eq(pendingAfter, 0, "pending is not zero");
+            }
         } catch (bytes memory reason) {
-            // uint32 epochId = shareClassManager.epochId(poolId);
+            (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, depositAssetId);
             uint128 previousDepositApproved;
-            // if(epochId > 0) {
-            //     // we also check the previous epoch because approvals can increment the epochId
-            //     (,previousDepositApproved,,,,,) = shareClassManager.epochAmounts(scId, depositAssetId, epochId - 1);
-            // }
-            // (,uint128 currentDepositApproved,,,,,) = shareClassManager.epochAmounts(scId, depositAssetId, epochId);
+            if(depositEpochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId - 1);
+            }
+            (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId);
             // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
-            // if(previousDepositApproved == 0 && currentDepositApproved == 0) {
-            //     bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            //     t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
-            // }
+            if(previousDepositApproved == 0 && currentDepositApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+            }
         }
+    }
+
+    function hub_cancelDepositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        hub_cancelDepositRequest(poolId.raw(), scId.raw());
     }
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    // TODO: fix this for latest changes to SCM
-    function hub_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 isoCode) public updateGhosts {
+    function hub_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = newAssetId(isoCode);
-        bytes32 investor = CastLib.toBytes32(_getActor());
+        AssetId payoutAssetId = hubRegistry.currency(poolId);
+        bytes32 investor = _getActor().toBytes32();
+
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
 
         try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
-            // uint32 epochId = shareClassManager.epochId(poolId);
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
 
-            // eq(lastUpdate, epochId, "lastUpdate is not equal to current epochId after cancelRedeemRequest");
-            eq(pending, 0, "pending is not zero after cancelRedeemRequest");
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
+                eq(lastUpdateAfter, redeemEpochId, "lastUpdate != redeemEpochId");
+                eq(pendingAfter, 0, "pending != 0");
+            }
         } catch (bytes memory reason) {
-            // uint32 epochId = shareClassManager.epochId(poolId);
-            // uint128 previousRedeemApproved;
-            // if(epochId > 0) {
-            //     // we also check the previous epoch because approvals can increment the epochId
-            //     (,,,,, previousRedeemApproved,) = shareClassManager.epochAmounts(scId, payoutAssetId, epochId - 1);
-            // }
-            // (,,,,, uint128 currentRedeemApproved,) = shareClassManager.epochAmounts(scId, payoutAssetId, epochId);
-            // // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
-            // if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
-            //     bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-            //     t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
-            // }
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
+            uint128 previousRedeemApproved;
+            if(redeemEpochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId - 1);
+            }
+            (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId);
+            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+            if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+            }
         }
+    }
+
+    function hub_cancelRedeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        hub_cancelRedeemRequest(poolId.raw(), scId.raw());
     }
 
     function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {

@@ -22,7 +22,6 @@ import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
 import {RestrictedTransfersTargets} from "./targets/RestrictedTransfersTargets.sol";
 import {VaultTargets} from "./targets/VaultTargets.sol";
 import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
-import {VaultCallbackTargets} from "./targets/VaultCallbackTargets.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
 import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
@@ -36,7 +35,6 @@ abstract contract TargetFunctions is
     RestrictedTransfersTargets,
     VaultTargets,
     PoolManagerTargets,
-    VaultCallbackTargets, 
     ManagerTargets,
     HubTargets,
     AdminTargets,

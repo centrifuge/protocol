@@ -141,7 +141,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always mint an amount between 1 and maxMint have > 0 assets and are approved
     /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
     /// @dev Property: minting maxMint should not mint more than maxDeposit shares
-    // TODO: fix this for latest changes to SCM and Hub
     function asyncVault_maxMint(uint64 poolEntropy, uint32 scEntropy, uint256 mintAmount) public  {
         uint256 maxMintBefore = vault.maxMint(_getActor());
         uint256 maxDepositBefore = vault.maxDeposit(_getActor());
@@ -152,7 +151,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
+        (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
     
         vm.prank(_getActor());
         try vault.mint(mintAmount, _getActor()) returns (uint256 assets) {
@@ -171,13 +170,12 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             }
         }
         catch {
-            // t(latestDepositApproval < mintAmount, "reverts on mint for approved amount");
+            t(latestDepositApproval < mintAmount, "reverts on mint for approved amount");
         }
     }
 
     /// @dev user can always maxWithdraw if they have > 0 shares and are approved
     /// @dev user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
-    // TODO: fix this for latest changes to SCM and Hub
     function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public  {
         uint256 maxWithdrawBefore = vault.maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
@@ -187,7 +185,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        // (,uint32 latestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+        (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
     
         vm.prank(_getActor());
         try vault.withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
@@ -207,7 +205,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             }
         }
         catch {
-            // t(latestRedeemApproval < withdrawAmount, "reverts on withdraw for approved amount");
+            t(latestRedeemApproval < withdrawAmount, "reverts on withdraw for approved amount");
         }
     }
 
