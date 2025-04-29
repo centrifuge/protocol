@@ -453,7 +453,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    // TODO: fix this for latest changes to SCM and Hub
     function property_escrow_solvency() public {
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId _poolId = createdPools[i];
