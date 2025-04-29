@@ -491,6 +491,34 @@ contract BalanceSheetTest is BaseTest {
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
         assertEq(token.balanceOf(address(1)), defaultAmount);
     }
+
+    function testPriceOverride() public {
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.overridePricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerAsset);
+
+        D18 pricePerAsset = d18(3, 1);
+        D18 pricePerShare = d18(2, 1);
+
+        balanceSheet.overridePricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId, pricePerAsset);
+        balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, pricePerShare);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Deposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, pricePerAsset
+        );
+        balanceSheet.noteDeposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
+        );
+
+        vm.expectEmit();
+        emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), pricePerShare, defaultAmount);
+        balanceSheet.noteRevoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+    }
 }
 
 contract DispatcherSpy {
