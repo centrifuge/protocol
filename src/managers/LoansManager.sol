@@ -98,7 +98,9 @@ contract LoansManager is ERC6909NFT, IERC7726 {
         AccountId assetAccount = AccountId.wrap(uint32(loanId << 2));
         hub.createAccount(poolId, assetAccount, true);
 
-        hub.createHolding(poolId, scId, assetId, IERC7726(address(this)), assetAccount, equityAccount, lossAccount, gainAccount);
+        hub.createHolding(
+            poolId, scId, assetId, IERC7726(address(this)), assetAccount, equityAccount, lossAccount, gainAccount
+        );
     }
 
     function close(uint256 loanId) external {
