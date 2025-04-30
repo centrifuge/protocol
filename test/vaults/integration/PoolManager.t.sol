@@ -552,9 +552,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        D18 latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(IPoolManager.CannotSetOlderPrice.selector);
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
@@ -565,9 +564,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // NOTE: Unchecked version will work
-        (latestPrice, lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp - 1);
     }
 
     function testVaultMigration() public {

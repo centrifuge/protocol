@@ -473,19 +473,18 @@ contract PoolManager is
     function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
 
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
-        computedAt = poolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
@@ -494,14 +493,13 @@ contract PoolManager is
         }
 
         price = shareClass.pricePoolPerShare.asPrice();
-        computedAt = shareClass.pricePoolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
 
@@ -510,7 +508,6 @@ contract PoolManager is
         }
 
         price = poolPerAsset.asPrice();
-        computedAt = poolPerAsset.computedAt;
     }
 
     /// @inheritdoc IPoolManager
@@ -521,6 +518,22 @@ contract PoolManager is
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
         return (poolPerAsset.asPrice(), poolPerShare.asPrice());
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil) {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        computedAt = shareClass.pricePoolPerShare.computedAt;
+        maxAge = shareClass.pricePoolPerShare.maxAge;
+        validUntil = shareClass.pricePoolPerShare.validUntil();
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil) {
+        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
+        computedAt = poolPerAsset.computedAt;
+        maxAge = poolPerAsset.maxAge;
+        validUntil = poolPerAsset.validUntil();
     }
 
     //----------------------------------------------------------------------------------------------
