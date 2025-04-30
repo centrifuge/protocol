@@ -1,0 +1,36 @@
+@startuml
+hide empty members
+
+package misc {
+    abstract Multicall
+    abstract ReentrancyProtection
+    abstract Recoverable
+}
+
+package common {
+    class MessageDispatcher
+    class Gateway
+}
+
+class Holdings
+class HubRegistry
+class ShareClassManager
+class Accounting
+class Hub
+
+Hub -up-|> Multicall
+Multicall -up-|> ReentrancyProtection
+Hub -up-|> Recoverable
+
+Hub --> Holdings
+Hub --> HubRegistry
+Hub --> ShareClassManager
+Hub --> Accounting
+Hub -up-> MessageDispatcher
+Hub -up-> Gateway
+
+Holdings --> HubRegistry
+ShareClassManager --> HubRegistry
+Accounting --> HubRegistry
+
+@enduml
