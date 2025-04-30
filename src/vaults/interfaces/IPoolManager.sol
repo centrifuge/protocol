@@ -41,7 +41,7 @@ struct Price {
 /// timestamp <= computedAt + maxAge
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0 && price.price != 0) {
-        return block.timestamp <= price.computedAt + price.maxAge;
+        return block.timestamp <= uint256(price.computedAt) + uint256(price.maxAge);
     } else {
         return false;
     }
