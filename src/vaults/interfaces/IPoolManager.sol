@@ -326,7 +326,10 @@ interface IPoolManager {
     /// @return computedAt The timestamp when this price was computed
     /// @return maxAge The maximum age this price is allowed to have
     /// @return validUntil The timestamp until this price is valid
-    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
     /// @notice Returns the age related markers for an asset price
     ///
@@ -336,5 +339,8 @@ interface IPoolManager {
     /// @return computedAt The timestamp when this price was computed
     /// @return maxAge The maximum age this price is allowed to have
     /// @return validUntil The timestamp until this price is valid
-    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 }

@@ -268,7 +268,7 @@ contract PoolManager is
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         // Init the price with maxAge = uint64::MAX
-        if(poolPerAsset.computedAt == 0) {
+        if (poolPerAsset.computedAt == 0) {
             poolPerAsset.maxAge = type(uint64).max;
         }
         poolPerAsset.price = poolPerAsset_;
@@ -481,11 +481,7 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManager
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
-        public
-        view
-        returns (D18 price)
-    {
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         if (checkValidity) {
@@ -521,7 +517,11 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManager
-    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil) {
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         computedAt = shareClass.pricePoolPerShare.computedAt;
         maxAge = shareClass.pricePoolPerShare.maxAge;
@@ -529,7 +529,11 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManager
-    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint64 computedAt, uint64 maxAge, uint64 validUntil) {
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
         (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
         computedAt = poolPerAsset.computedAt;
         maxAge = poolPerAsset.maxAge;

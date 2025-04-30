@@ -72,7 +72,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
         (uint64 shareLastUpdated,,) = poolManager.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
-        (uint64 assetLastUpdated,,) = poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+        (uint64 assetLastUpdated,,) =
+            poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
         // Choose the latest update to be the marker
         lastUpdated = shareLastUpdated > assetLastUpdated ? shareLastUpdated : assetLastUpdated;
