@@ -158,7 +158,7 @@ abstract contract TargetFunctions is
         assetId = _assetId;
     }
 
-    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint32 nowDepositEpochId, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         transientValuation_setPrice_clamped(poolId, assetId, priceValuation);
         
         hub_updatePricePerShare(poolId, scId, pricePoolPerShare);
@@ -168,17 +168,31 @@ abstract contract TargetFunctions is
         
         vault_requestDeposit(amount, toEntropy);
 
-        shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), nowDepositEpochId, navPerShare);
+        uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+        shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), depositEpoch, navPerShare);
        
         hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(amount);
     }
 
-    function shortcut_redeem_and_claim(uint256 shares, uint32 nowRevokeEpochId, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
-        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), nowRevokeEpochId, navPerShare);
+        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), redeemEpoch, navPerShare);
+        
+        hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
+
+        vault_withdraw(shares, toEntropy);
+    }
+
+    function shortcut_redeem_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        shares %= (vault.maxRedeem(_getActor()) + 1);
+        vault_requestRedeem(shares, toEntropy);
+
+        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), redeemEpoch, navPerShare);
         
         hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
