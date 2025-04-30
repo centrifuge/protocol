@@ -24,8 +24,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseInvestmentManager, VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -368,7 +367,7 @@ contract PoolManager is
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
 
@@ -382,7 +381,7 @@ contract PoolManager is
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
 
@@ -543,11 +542,11 @@ contract PoolManager is
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
     function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
-        address manager = address(IBaseVault(vault).manager());
-        IAuth(address(shareToken_)).rely(manager);
+        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+        IAuth(address(shareToken_)).rely(address(manager));
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
-        (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
+        (VaultKind vaultKind, address secondaryVaultManager) = manager.vaultKind(vault);
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
             IAuth(address(shareToken_)).rely(secondaryVaultManager);
         }

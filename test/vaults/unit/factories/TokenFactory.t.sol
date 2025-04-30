@@ -6,7 +6,7 @@ import {Root} from "src/common/Root.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {Escrow} from "src/vaults/Escrow.sol";
-import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {BaseTest} from "test/vaults/BaseTest.sol";

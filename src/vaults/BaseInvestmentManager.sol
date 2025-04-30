@@ -5,15 +5,19 @@ import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseInvestmentManager, VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager {
     using MathLib for uint256;
@@ -23,6 +27,8 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
 
     IPoolManager public poolManager;
     IPoolEscrowProvider public poolEscrowProvider;
+
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
@@ -42,8 +48,56 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     }
 
     //----------------------------------------------------------------------------------------------
+    // Vault write methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBaseInvestmentManager
+    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
+        public
+        virtual
+        auth
+    {
+        require(vault_.asset() == asset_, AssetMismatch());
+        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
+
+        vault[poolId][scId][assetId] = IBaseVault(address(vault_));
+
+        address token = vault_.share();
+        IAuth(token).rely(address(vault_));
+        IShareToken(token).updateVault(vault_.asset(), address(vault_));
+        rely(address(vault_));
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
+    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
+        public
+        virtual
+        auth
+    {
+        require(vault_.asset() == asset_, AssetMismatch());
+        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
+
+        delete vault[poolId][scId][assetId];
+
+        address token = vault_.share();
+        IAuth(token).deny(address(vault_));
+        IShareToken(token).updateVault(vault_.asset(), address(0));
+        deny(address(vault_));
+    }
+
+    //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBaseInvestmentManager
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
+        return vault[poolId][scId][assetId];
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
+    function vaultKind(IBaseVault) public view virtual returns (VaultKind, address) {
+        return (VaultKind.Async, address(0));
+    }
 
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {

@@ -27,7 +27,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/vaults/token/ShareToken.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 
 // scripts

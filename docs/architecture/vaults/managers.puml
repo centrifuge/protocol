@@ -2,7 +2,6 @@
 hide empty members
 
 interface IBaseInvestmentManager
-interface IVaultManager
 
 interface IDepositManager
 interface IRedeemManager
@@ -18,11 +17,8 @@ IDepositManager -up-|> IBaseInvestmentManager
 IRedeemManager -up-|> IBaseInvestmentManager
 
 IAsyncDepositManager -up-|> IDepositManager
-IAsyncDepositManager -up-|> IVaultManager
 ISyncDepositManager -up-|> IDepositManager
-ISyncDepositManager -up-|> IVaultManager
 IAsyncRedeemManager -up-|> IRedeemManager
-IAsyncRedeemManager -up-|> IVaultManager
 
 IAsyncRequestManager -up-|> IAsyncDepositManager
 IAsyncRequestManager -up-|> IAsyncRedeemManager
