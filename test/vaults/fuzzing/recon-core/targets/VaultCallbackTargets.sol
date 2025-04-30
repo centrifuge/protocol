@@ -13,7 +13,7 @@ import {console2} from "forge-std/console2.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-
+import {D18} from "src/misc/types/D18.sol";
 // Src Deps 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
@@ -32,7 +32,8 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         uint128 currencyPayout,
         uint128 tokenPayout,
         uint128 /*decreaseByAmount*/,
-        uint256 investorEntropy
+        uint256 investorEntropy,
+        D18 pricePoolPerShare
     ) public notGovFuzzing updateGhostsWithType(OpType.ADMIN) {
         address investor = _getRandomActor(investorEntropy);
 
@@ -73,9 +74,13 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
             }
         }
 
+        MockERC20(address(token)).mint(address(escrow), tokenPayout);
+        
+        asyncRequestManager.revokedShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), currencyPayout, tokenPayout, pricePoolPerShare);
         asyncRequestManager.fulfillDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), currencyPayout, tokenPayout);
 
-        balanceSheet.noteDeposit(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(token), assetId, investor, currencyPayout);
+        (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(assetId));
+        balanceSheet.noteDeposit(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, tokenId, investor, currencyPayout);
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(token)] += tokenPayout;
 

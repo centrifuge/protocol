@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
-
+import {D18} from "src/misc/types/D18.sol";
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
@@ -42,7 +42,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0);
+        asyncRequests_fulfillDepositRequest(1e18 - 1, 1e18, 0, 0, D18.wrap(1e18));
 
         vault_deposit(1e18 - 1);
 
@@ -70,7 +70,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         poolManager_updatePricePoolPerShare(1,1525005619);
 
-        asyncRequests_fulfillDepositRequest(0,1000154974352403727,0,0);
+        asyncRequests_fulfillDepositRequest(0,1000154974352403727,0,0, D18.wrap(1e18));
 
         property_totalAssets_solvency();
     }

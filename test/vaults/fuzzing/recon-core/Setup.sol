@@ -32,6 +32,8 @@ import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
+import {MockHub} from "./mocks/MockHub.sol";
+import {MockAsyncRequestManager} from "./mocks/MockAsyncRequestManager.sol";
 
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
@@ -51,6 +53,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     MockMessageDispatcher messageDispatcher;
     MockGateway gateway;
+    MockHub hub;    
+    MockAsyncRequestManager investmentManager;
 
     bytes16 scId;
     uint64 poolId;
@@ -157,6 +161,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
         messageDispatcher = new MockMessageDispatcher(); 
         gateway = new MockGateway();
+        hub = new MockHub();
+        investmentManager = new MockAsyncRequestManager();
 
         // set dependencies
         asyncRequestManager.file("sender", address(messageDispatcher));
@@ -170,6 +176,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
         poolManager.file("balanceSheet", address(balanceSheet));
+        poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
@@ -178,6 +185,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
+        messageDispatcher.file("hub", address(hub));
+        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("balanceSheet", address(balanceSheet));
+        messageDispatcher.file("investmentManager", address(investmentManager));
         
         // authorize contracts
         asyncRequestManager.rely(address(poolManager));
