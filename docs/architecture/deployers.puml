@@ -23,6 +23,6 @@ Localhost -up-|> FullDeployer
 
 note right of VaultsDeployer: Used in CV ITs
 note left of HubDeployer: Used in CP ITs
-note bottom of Localhost: Used in CP-CV ITs
-
+note right of FullDeployer: Used in CP-CV ITs
+note bottom of Localhost: Used in Testnets
 @enduml
