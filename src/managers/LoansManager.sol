@@ -30,7 +30,7 @@ struct Loan {
 }
 
 contract LoansManager is ERC6909NFT, IERC7726 {
-    error InvalidLoan();
+    error NotTheOwner();
     error NonZeroOutstanding();
     error ExceedsLTV();
 
@@ -73,7 +73,7 @@ contract LoansManager is ERC6909NFT, IERC7726 {
 
     function close(uint256 loanId) external {
         Loan storage loan = loans[loanId];
-        require(loan.owner != address(0), InvalidLoan());
+        require(loan.owner == msg.sender, NotTheOwner());
         require(loan.outstanding.isNull(), NonZeroOutstanding());
 
         balanceSheet.withdraw(poolId, loan.scId, address(this), loanId, address(this), 1);
@@ -86,7 +86,7 @@ contract LoansManager is ERC6909NFT, IERC7726 {
 
     function borrow(uint256 loanId, uint128 amount, address receiver) external {
         Loan storage loan = loans[loanId];
-        require(loan.owner != address(0), InvalidLoan());
+        require(loan.owner == msg.sender, NotTheOwner());
         require(loan.outstanding + d18(amount) <= loan.ltv * loan.value, ExceedsLTV());
 
         loan.outstanding = loan.outstanding + d18(amount);
@@ -97,7 +97,7 @@ contract LoansManager is ERC6909NFT, IERC7726 {
 
     function repay(uint256 loanId, uint128 amount, address owner) external {
         Loan storage loan = loans[loanId];
-        require(loan.owner != address(0), InvalidLoan());
+        require(loan.owner == msg.sender, NotTheOwner());
 
         loan.outstanding = loan.outstanding - d18(amount);
         loan.totalRepaid = loan.totalRepaid + d18(amount);
