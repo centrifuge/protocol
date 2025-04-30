@@ -67,6 +67,8 @@ contract LoansManager is ERC6909NFT, IERC7726 {
         });
 
         balanceSheet.deposit(poolId, scId, address(this), loanId, address(this), 1);
+
+        // TODO: Hub.updateHoldingValuation()
     }
 
     function close(uint256 loanId) external {
