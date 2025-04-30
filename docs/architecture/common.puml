@@ -58,6 +58,8 @@ Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
 Gateway -down-->"n" IAdapter
-Gateway -left-> PoolEscrow
+Gateway --> PoolEscrow
+
+note bottom of PoolEscrow: Used as refund address
 
 @enduml
