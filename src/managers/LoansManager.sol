@@ -5,6 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {IERC6909NFT} from "src/misc/interfaces/IERC6909.sol";
 import {ERC6909NFT} from "src/misc/ERC6909NFT.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -21,7 +22,7 @@ struct Loan {
     D18 totalRepaid;
 }
 
-contract LoansManager is ERC6909NFT {
+contract LoansManager is ERC6909NFT, IERC7726 {
     error InvalidLoan();
     error NonZeroOutstanding();
 
@@ -38,6 +39,10 @@ contract LoansManager is ERC6909NFT {
         balanceSheet = balanceSheet_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Open/close
+    //----------------------------------------------------------------------------------------------
+
     function create(ShareClassId scId, address owner, address asset, string memory tokenURI) external {
         uint256 loanId = mint(address(this), tokenURI);
         poolManager.registerAsset(poolId.centrifugeId(), address(this), loanId);
@@ -53,6 +58,19 @@ contract LoansManager is ERC6909NFT {
 
         balanceSheet.deposit(poolId, scId, address(this), loanId, address(this), 1);
     }
+
+    function close(uint256 loanId) external {
+        Loan storage loan = loans[loanId];
+        require(loan.owner != address(0), InvalidLoan());
+        require(loan.outstanding.isNull(), NonZeroOutstanding());
+
+        balanceSheet.withdraw(poolId, loan.scId, address(this), loanId, address(this), 1);
+        _burn(address(this), loanId, 1);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Ongoing
+    //----------------------------------------------------------------------------------------------
 
     function borrow(uint256 loanId, uint128 amount, address receiver) external {
         Loan storage loan = loans[loanId];
@@ -74,12 +92,13 @@ contract LoansManager is ERC6909NFT {
         balanceSheet.deposit(poolId, loan.scId, loan.asset, loanId, owner, amount);
     }
 
-    function close(uint256 loanId) external {
-        Loan storage loan = loans[loanId];
-        require(loan.owner != address(0), InvalidLoan());
-        require(loan.outstanding.isNull(), NonZeroOutstanding());
-
-        balanceSheet.withdraw(poolId, loan.scId, address(this), loanId, address(this), 1);
-        _burn(address(this), loanId, 1);
+    //----------------------------------------------------------------------------------------------
+    // Valuation
+    //----------------------------------------------------------------------------------------------
+    
+    function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
+        // TODO: calculate valuation of loan using outstanding supply
+        quoteAmount = 0;
     }
+
 }
