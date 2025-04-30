@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {Auth} from "src/misc/Auth.sol";
+import {IERC6909NFT} from "src/misc/interfaces/IERC6909.sol";
+import {ERC6909NFT} from "src/misc/ERC6909NFT.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
+import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
+import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+
+struct Loan {
+    ShareClassId scId;
+    address owner;
+    address asset;
+    D18 outstanding;
+    D18 totalBorrowed;
+    D18 totalRepaid;
+}
+
+contract LoansManager is ERC6909NFT {
+    error InvalidLoan();
+    error NonZeroOutstanding();
+
+    PoolId public immutable poolId;
+
+    IPoolManager public poolManager;
+    IBalanceSheet public balanceSheet;
+
+    mapping (uint256 tokenId => Loan) public loans;
+
+    constructor(PoolId poolId_, IPoolManager poolManager_, IBalanceSheet balanceSheet_, address deployer) ERC6909NFT(deployer) {
+        poolId = poolId_;
+        poolManager = poolManager_;
+        balanceSheet = balanceSheet_;
+    }
+
+    function create(ShareClassId scId, address owner, address asset, string memory tokenURI) external {
+        uint256 loanId = mint(address(this), tokenURI);
+        poolManager.registerAsset(poolId.centrifugeId(), address(this), loanId);
+
+        loans[loanId] = Loan({
+            scId: scId,
+            owner: owner,
+            asset: asset,
+            outstanding: d18(0),
+            totalBorrowed: d18(0),
+            totalRepaid: d18(0)
+        });
+
+        balanceSheet.deposit(poolId, scId, address(this), loanId, address(this), 1);
+    }
+
+    function borrow(uint256 loanId, uint128 amount, address receiver) external {
+        Loan storage loan = loans[loanId];
+        require(loan.owner != address(0), InvalidLoan());
+
+        loan.outstanding = loan.outstanding + d18(amount);
+        loan.totalBorrowed = loan.totalBorrowed + d18(amount);
+
+        balanceSheet.withdraw(poolId, loan.scId, loan.asset, loanId, receiver, amount);
+    }
+
+    function repay(uint256 loanId, uint128 amount, address owner) external {
+        Loan storage loan = loans[loanId];
+        require(loan.owner != address(0), InvalidLoan());
+
+        loan.outstanding = loan.outstanding - d18(amount);
+        loan.totalRepaid = loan.totalRepaid + d18(amount);
+
+        balanceSheet.deposit(poolId, loan.scId, loan.asset, loanId, owner, amount);
+    }
+
+    function close(uint256 loanId) external {
+        Loan storage loan = loans[loanId];
+        require(loan.owner != address(0), InvalidLoan());
+        require(loan.outstanding.isNull(), NonZeroOutstanding());
+
+        balanceSheet.withdraw(poolId, loan.scId, address(this), loanId, address(this), 1);
+        _burn(address(this), loanId, 1);
+    }
+}

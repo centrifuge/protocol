@@ -92,6 +92,10 @@ function d18(uint128 num, uint128 den) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(num, 1e18, den).toUint128());
 }
 
+function isNull(D18 d) pure returns (bool) {
+    return D18.unwrap(d) == 0;
+}
+
 function eq(D18 a, D18 b) pure returns (bool) {
     return D18.unwrap(a) == D18.unwrap(b);
 }
@@ -112,5 +116,6 @@ using {
     reciprocalMulUint128,
     reciprocalMulUint256,
     reciprocal,
-    raw
+    raw,
+    isNull
 } for D18 global;
