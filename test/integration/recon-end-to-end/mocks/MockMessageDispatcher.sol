@@ -24,7 +24,6 @@ contract MockMessageDispatcher {
     using CastLib for *;
     using MathLib for uint256;
 
-
     IRoot public root;
     address public gateway;
     address public tokenRecoverer;
@@ -43,16 +42,20 @@ contract MockMessageDispatcher {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
     }
 
+    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
+        return 0;
+    }
+
     function setLocalCentrifugeId(uint16 _localCentrifugeId) external {
         localCentrifugeId = _localCentrifugeId;
     }
 
-    function sendNotifyPool(uint16 chainId, PoolId poolId) external  {
-       poolManager.addPool(poolId);
+    function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external {
+        poolManager.addPool(poolId);
     }
 
     function sendNotifyShareClass(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         string memory name,
@@ -60,11 +63,25 @@ contract MockMessageDispatcher {
         uint8 decimals,
         bytes32 salt,
         bytes32 hook
-    ) external  {
+    ) external {
         poolManager.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
     }
 
-    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
+    function sendNotifyShareMetadata(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol
+    ) external {
+        poolManager.updateShareMetadata(poolId, scId, name, symbol);
+    }
+
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external {
+        poolManager.updateShareHook(poolId, scId, hook.toAddress());
+    }
+
+    function sendNotifyPricePoolPerShare(uint16 centrifugeId, PoolId poolId, ShareClassId scId, D18 sharePrice)
         external
     {
         uint64 timestamp = block.timestamp.toUint64();
@@ -83,9 +100,9 @@ contract MockMessageDispatcher {
         bytes32 investor,
         uint128 assetAmount,
         uint128 shareAmount
-    ) external  {
+    ) external {
         investmentManager.fulfillDepositRequest(
-            poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
+            poolId, scId, investor.toAddress(), assetId, assetAmount, shareAmount
         );
     }
 
@@ -96,9 +113,9 @@ contract MockMessageDispatcher {
         bytes32 investor,
         uint128 assetAmount,
         uint128 shareAmount
-    ) external  {
+    ) external {
         investmentManager.fulfillRedeemRequest(
-            poolId, scId, address(bytes20(investor)), assetId, assetAmount, shareAmount
+            poolId, scId, investor.toAddress(), assetId, assetAmount, shareAmount
         );
     }
 
@@ -108,9 +125,9 @@ contract MockMessageDispatcher {
         AssetId assetId,
         bytes32 investor,
         uint128 cancelledAmount
-    ) external  {
+    ) external {
         investmentManager.fulfillCancelDepositRequest(
-            poolId, scId, address(bytes20(investor)), assetId, cancelledAmount, cancelledAmount
+            poolId, scId, investor.toAddress(), assetId, cancelledAmount, cancelledAmount
         );
     }
 
@@ -120,9 +137,9 @@ contract MockMessageDispatcher {
         AssetId assetId,
         bytes32 investor,
         uint128 cancelledShares
-    ) external  {
+    ) external {
         investmentManager.fulfillCancelRedeemRequest(
-            poolId, scId, address(bytes20(investor)), assetId, cancelledShares
+            poolId, scId, investor.toAddress(), assetId, cancelledShares
         );
     }
 
@@ -133,59 +150,79 @@ contract MockMessageDispatcher {
     }
 
     function sendUpdateContract(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
         bytes calldata payload
-    ) external  {
+    ) external {
+        poolManager.updateContract(poolId, scId, target.toAddress(), payload);
     }
 
-    function sendScheduleUpgrade(uint16 chainId, bytes32 target) external  {
+    function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external {
+        root.scheduleRely(target.toAddress());
     }
 
-    function sendCancelUpgrade(uint16 chainId, bytes32 target) external  {
+    function sendCancelUpgrade(uint16 centrifugeId, bytes32 target) external {
+        root.cancelRely(target.toAddress());
     }
 
-    function sendInitiateMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+    function sendRecoverTokens(
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes32 token,
+        uint256 tokenId,
+        bytes32 to,
+        uint256 amount
+    ) external {
+        // Mock implementation - no actual token recovery
+    }
+
+    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external
     {
+        // Mock implementation - no actual recovery initiation
     }
 
-    function sendDisputeMessageRecovery(uint16 chainId, uint16 adapterChainId, bytes32 adapter, bytes32 hash)
+    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
         external
     {
+        // Mock implementation - no actual recovery dispute
     }
 
-    function sendTransferShares(uint16 chainId, uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
+    function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
     {
-        poolManager.handleTransferShares(PoolId.wrap(poolId), ShareClassId.wrap(scId), address(bytes20(receiver)), amount);
+        poolManager.handleTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
 
-    function sendDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external
     {
-        hub.depositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount);
+        hub.depositRequest(poolId, scId, investor, assetId, amount);
     }
 
-    function sendRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external
     {
-        hub.redeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), amount);
+        hub.redeemRequest(poolId, scId, investor, assetId, amount);
     }
 
-    function sendCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external  {
-        hub.cancelDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId));
+    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external {
+        hub.cancelDepositRequest(poolId, scId, investor, assetId);
     }
 
-    function sendCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) external  {
-        hub.cancelRedeemRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId));
+    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external {
+        hub.cancelRedeemRequest(poolId, scId, investor, assetId);
     }
 
-    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, D18 pricePoolPerAsset)
-        external
-    {
+    function sendApprovedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external {
         investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
     }
 
@@ -199,7 +236,32 @@ contract MockMessageDispatcher {
         investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
     }
 
-    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount, D18 pricePoolPerShare) external  {
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        external
+    {
+        balanceSheet.triggerIssueShares(poolId, scId, who, shares);
+    }
+
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external {
+        balanceSheet.submitQueuedShares(poolId, scId);
+    }
+
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external {
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId);
+    }
+
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external {
+        balanceSheet.setQueue(poolId, scId, enabled);
+    }
+
+    function sendRevokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external {
         investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
     }
 
@@ -211,18 +273,16 @@ contract MockMessageDispatcher {
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease
-    ) external  {
+    ) external {
         hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease);
     }
 
-     function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external {
-        if (poolId.centrifugeId() == localCentrifugeId) {
-            if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, shares);
-            } else {
-                hub.decreaseShareIssuance(poolId, scId, shares);
-            }
-        } 
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external {
+        if (isIssuance) {
+            hub.increaseShareIssuance(poolId, scId, shares);
+        } else {
+            hub.decreaseShareIssuance(poolId, scId, shares);
+        }
     }
 
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external {
