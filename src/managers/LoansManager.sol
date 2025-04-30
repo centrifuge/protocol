@@ -14,18 +14,25 @@ import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 
 struct Loan {
+    // Fixed properties
     ShareClassId scId;
     address owner;
     address asset;
+    D18 ltv;
+    D18 value;
+
+    // TODO: add rate ID, integrate with Linear Accrual contract
+
+    // Ongoing
     D18 outstanding;
     D18 totalBorrowed;
     D18 totalRepaid;
-    // TODO: add rate ID, integrate with Linear Accrual contract
 }
 
 contract LoansManager is ERC6909NFT, IERC7726 {
     error InvalidLoan();
     error NonZeroOutstanding();
+    error ExceedsLTV();
 
     PoolId public immutable poolId;
 
@@ -44,7 +51,7 @@ contract LoansManager is ERC6909NFT, IERC7726 {
     // Open/close
     //----------------------------------------------------------------------------------------------
 
-    function create(ShareClassId scId, address owner, address asset, string memory tokenURI) external {
+    function create(ShareClassId scId, address owner, address asset, string memory tokenURI, uint128 ltv, uint128 value) external {
         uint256 loanId = mint(address(this), tokenURI);
         poolManager.registerAsset(poolId.centrifugeId(), address(this), loanId);
 
@@ -52,6 +59,8 @@ contract LoansManager is ERC6909NFT, IERC7726 {
             scId: scId,
             owner: owner,
             asset: asset,
+            ltv: d18(ltv),
+            value: d18(value),
             outstanding: d18(0),
             totalBorrowed: d18(0),
             totalRepaid: d18(0)
@@ -76,6 +85,7 @@ contract LoansManager is ERC6909NFT, IERC7726 {
     function borrow(uint256 loanId, uint128 amount, address receiver) external {
         Loan storage loan = loans[loanId];
         require(loan.owner != address(0), InvalidLoan());
+        require(loan.outstanding + d18(amount) <= loan.ltv * loan.value, ExceedsLTV());
 
         loan.outstanding = loan.outstanding + d18(amount);
         loan.totalBorrowed = loan.totalBorrowed + d18(amount);
