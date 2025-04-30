@@ -116,8 +116,8 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         root = new Root(7 days, address(this));
         accounting = new Accounting(address(this)); 
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(IERC6909Decimals(address(this)));
-        identityValuation = new IdentityValuation(hubRegistry, address(this));
+        transientValuation = new TransientValuation(IERC6909Decimals(address(hubRegistry)));
+        identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 

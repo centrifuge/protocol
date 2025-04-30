@@ -70,7 +70,7 @@ contract PoolManagerTestHelper is BaseTest {
     }
 
     function registerAssetErc20() public {
-        assetErc20 = address(_newErc20(tokenName, tokenSymbol, decimals));
+        assetErc20 = address(_newErc20("Test", "TEST", 18));
         assetIdErc20 = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, assetErc20, 0);
     }
 }
@@ -528,6 +528,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(scId.raw() > 0);
         poolManager.addPool(poolId);
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc20), 0);
+        console2.log("erc20 address", address(erc20));
+        console2.log("address from registerAsset", assetId.addr());
 
         address hook = address(new MockHook());
 
@@ -864,6 +866,8 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, 0);
 
+        console2.log("asset address", asset);
+        console2.log("assetId.addr()", assetId.addr());
         assertEq(assetId.raw(), defaultAssetId);
 
         // Allowance is set during vault deployment
@@ -996,6 +1000,10 @@ contract UpdateContractMock is IUpdateContract {
 
 contract PoolManagerUpdateContract is BaseTest, PoolManagerTestHelper {
     using MessageLib for *;
+
+    function testRegisterAsset() public {
+        registerAssetErc20();
+    }
 
     function testUpdateContractTargetThis(
         PoolId poolId_,

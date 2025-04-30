@@ -35,21 +35,21 @@ abstract contract HubTargets is
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
     
     /// === Permissionless Functions === ///
-    function hub_createPool(address admin, uint64 poolIdAsUint, uint128 assetIdAsUint) public updateGhosts asActor returns (PoolId poolId) {
+    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint) public updateGhosts asActor returns (PoolId poolId) {
         PoolId _poolId = PoolId.wrap(poolIdAsUint);
         AssetId _assetId = AssetId.wrap(assetIdAsUint); 
 
         hub.createPool(_poolId, admin, _assetId);
 
-        createdPools.push(poolId);
+        createdPools.push(_poolId);
 
-        return poolId;
+        return _poolId;
     }
 
     function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public updateGhosts asActor returns (PoolId poolId) {
         AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy); 
 
-        hub_createPool(_getActor(), poolIdAsUint, _assetId.raw());
+        hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 

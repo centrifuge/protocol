@@ -189,6 +189,16 @@ contract MockMessageDispatcher {
         investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
     }
 
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external {
+        investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
+    }
+
     function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount, D18 pricePoolPerShare) external  {
         investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
     }
@@ -205,21 +215,17 @@ contract MockMessageDispatcher {
         hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease);
     }
 
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address receiver,
-        uint128 shares,
-        bool isIssuance
-    ) external  {
-        if (isIssuance) {
-            hub.increaseShareIssuance(poolId, scId, shares);
-        } else {
-            hub.decreaseShareIssuance(poolId, scId, shares);
-        }
+     function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external {
+        if (poolId.centrifugeId() == localCentrifugeId) {
+            if (isIssuance) {
+                hub.increaseShareIssuance(poolId, scId, shares);
+            } else {
+                hub.decreaseShareIssuance(poolId, scId, shares);
+            }
+        } 
     }
 
-    function sendRegisterAsset( uint16 centrifugeId, uint128 assetId, uint8 decimals) external  {
-        hub.registerAsset(AssetId.wrap(assetId), decimals);
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external {
+        hub.registerAsset(assetId, decimals);
     }
 }

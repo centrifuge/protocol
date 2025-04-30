@@ -198,6 +198,7 @@ abstract contract AdminTargets is
 
     function hub_notifySharePrice_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        console2.log("poolId in hub_notifySharePrice_clamped", poolId.raw());
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifySharePrice(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID);
     }

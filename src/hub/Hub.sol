@@ -22,7 +22,7 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
-
+import {console2} from "forge-std/console2.sol";
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
 ///         Pools can assign hub managers which have full rights over all actions.
@@ -665,6 +665,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         // Retrieve amount of 1 asset unit in pool currency
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
+        console2.log("assetId.addr()", assetId.addr());
+        console2.log("poolCurrency.addr()", poolCurrency.addr());
         uint128 poolAmountPerAsset =
             valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
 

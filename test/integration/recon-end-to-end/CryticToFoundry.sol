@@ -31,18 +31,18 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
         // price needs to be set in valuation before calling updatePricePoolPerShare
-        transientValuation_setPrice_clamped(poolId, 1e18);
+        transientValuation_setPrice_clamped(poolId, assetId, 1e18);
 
         hub_updatePricePerShare(poolId, scId, 1e18);
-        hub_notifySharePrice_clamped(0,0);
         hub_notifyAssetPrice_clamped(0,0);
+        hub_notifySharePrice_clamped(0,0);
         
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
-        hub_approveDeposits(poolId, scId, assetId, 0, 1e18);
-        hub_issueShares(poolId, scId, assetId, 0, 1e18);
+        hub_approveDeposits(poolId, scId, assetId, 1, 1e18);
+        hub_issueShares(poolId, scId, assetId, 1, 1e18);
        
         // need to call claimDeposit first to mint the shares
         hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
@@ -53,13 +53,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_vault_deposit_and_fulfill_shortcut() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
         
-        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 0, 1e18, 0);
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1, 1e18, 0);
     }
 
     function test_vault_deposit_and_redeem() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
-        transientValuation_setPrice_clamped(poolId, 1e18);
+        transientValuation_setPrice_clamped(poolId, assetId, 1e18);
 
         hub_updatePricePerShare(poolId, scId, 1e18);
         hub_notifySharePrice_clamped(0,0);
@@ -68,10 +68,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         vault_requestDeposit(1e18, 0);
 
-        transientValuation_setPrice_clamped(poolId, 1e18);
+        transientValuation_setPrice_clamped(poolId, assetId, 1e18);
 
-        hub_approveDeposits(poolId, scId, assetId, 0, 1e18);
-        hub_issueShares(poolId, scId, assetId, 0, 1e18);
+        hub_approveDeposits(poolId, scId, assetId, 1, 1e18);
+        hub_issueShares(poolId, scId, assetId, 1, 1e18);
        
         // need to call claimDeposit first to mint the shares
         hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
@@ -80,8 +80,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestRedeem(1e18, 0);
 
-        hub_approveRedeems(poolId, scId, assetId, 0, 1e18);
-        hub_revokeShares(poolId, scId, 0, 1e18);
+        hub_approveRedeems(poolId, scId, assetId, 1, 1e18);
+        hub_revokeShares(poolId, scId, 1, 1e18);
         
         hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
@@ -91,15 +91,15 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_vault_redeem_and_fulfill_shortcut() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
-        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 0, 1e18, 0);
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1, 1e18, 0);
 
-        shortcut_redeem_and_claim(1e18, 0, 1e18, 0);
+        shortcut_redeem_and_claim(1e18, 1, 1e18, 0);
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false);
 
-        transientValuation_setPrice_clamped(poolId, 1e18);
+        transientValuation_setPrice_clamped(poolId, assetId, 1e18);
 
         hub_updatePricePerShare(poolId, scId, 1e18);
         hub_notifySharePrice_clamped(0,0);

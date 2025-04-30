@@ -212,6 +212,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
+        poolEscrowFactory.file("poolManager", address(poolManager));
+        poolEscrowFactory.file("gateway", address(gateway));
+        poolEscrowFactory.file("balanceSheet", address(balanceSheet));
+        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
 
         // authorize contracts
         asyncRequestManager.rely(address(poolManager));
@@ -234,8 +238,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
     function setupHub() internal {
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(IERC6909Decimals(address(this)));
-        identityValuation = new IdentityValuation(IHubRegistry(address(hubRegistry)), address(this));
+        transientValuation = new TransientValuation(IERC6909Decimals(address(hubRegistry)));
+        identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 

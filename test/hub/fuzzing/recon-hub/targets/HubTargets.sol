@@ -41,9 +41,9 @@ abstract contract HubTargets is
         hub.createPool(_poolId, admin, _assetId);
 
         poolCreated = true;
-        createdPools.push(poolId);
+        createdPools.push(_poolId);
 
-        return poolId;
+        return _poolId;
     }
 
     function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public updateGhosts asActor returns (PoolId poolId) {

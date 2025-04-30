@@ -94,6 +94,7 @@ abstract contract TargetFunctions is
 
         // 1. Deploy new token and register it as an asset
         _token = _newAsset(decimals);
+        console2.log("token address in shortcut_deployNewTokenPoolAndShare", address(_token));
         PoolId _poolId;
 
         {
@@ -103,7 +104,7 @@ abstract contract TargetFunctions is
         // 2. Deploy new pool and register it
         {
             _poolId = PoolId.wrap(POOL_ID_COUNTER);
-            hub_createPool(address(this), _poolId.raw(), _assetId);
+            hub_createPool(_poolId.raw(), _getActor(), _assetId);
 
             poolManager_addPool(_poolId.raw());
 
@@ -158,7 +159,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint32 nowDepositEpochId, uint128 navPerShare, uint256 toEntropy) public {
-        transientValuation_setPrice_clamped(poolId, priceValuation);
+        transientValuation_setPrice_clamped(poolId, assetId, priceValuation);
         
         hub_updatePricePerShare(poolId, scId, pricePoolPerShare);
         hub_notifySharePrice_clamped(0,0);
@@ -216,10 +217,11 @@ abstract contract TargetFunctions is
     }
 
     // set the price of the asset in the transient valuation for a given pool
-    function transientValuation_setPrice_clamped(uint64 poolId, uint128 price) public {
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
+    function transientValuation_setPrice_clamped(uint64 poolId, uint128 assetIdAsUint, uint128 price) public {
+        AssetId poolCurrency = hubRegistry.currency(PoolId.wrap(poolId));
+        AssetId assetId = AssetId.wrap(assetIdAsUint);
 
-        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), D18.wrap(price));
+        transientValuation.setPrice(address(assetId.addr()), address(poolCurrency.addr()), D18.wrap(price));
     }
 
     /// === Permission Functions === ///
