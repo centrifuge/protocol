@@ -215,7 +215,56 @@ abstract contract AdminTargets is
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifyAssetPrice(poolId.raw(), scId.raw());
     }
+
+    function hub_triggerIssueShares(uint16 centrifugeId, uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 shares) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        hub.triggerIssueShares(centrifugeId, poolId, scId, _getActor(), shares);
+    }
     
+    function hub_triggerIssueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 shares) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        hub_triggerIssueShares(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw(), shares);
+    }
+
+    function hub_triggerSubmitQueuedShares(uint16 centrifugeId, uint64 poolIdAsUint, bytes16 scIdAsBytes) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        hub.triggerSubmitQueuedShares(centrifugeId, poolId, scId);
+    }
+
+    function hub_triggerSubmitQueuedShares_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        hub_triggerSubmitQueuedShares(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw());
+    }
+
+    function hub_triggerSubmitQueuedAssets(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        hub.triggerSubmitQueuedAssets(poolId, scId, assetId);
+    }
+
+    function hub_triggerSubmitQueuedAssets_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        AssetId assetId = hubRegistry.currency(poolId);
+        hub_triggerSubmitQueuedAssets(poolId.raw(), scId.raw(), assetId.raw());
+    }
+    
+    function hub_setQueue(uint16 centrifugeId, uint64 poolIdAsUint, bytes16 scIdAsBytes, bool enabled) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        hub.setQueue(centrifugeId, poolId, scId, enabled);
+    }
+
+    function hub_setQueue_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool enabled) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+        hub_setQueue(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw(), enabled);
+    }
 
     function hub_revokeShares(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint32 nowRevokeEpochId, uint128 navPerShare) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
