@@ -45,9 +45,13 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     // Used to bypass stack too deep issue
     struct SendData {
         bytes32 batchHash;
-        uint128 batchGasLimit;
         bytes32 payloadId;
         uint256[] gasCost;
+    }
+
+    struct Underpaid {
+        uint128 counter;
+        uint128 gasLimit;
     }
 
     // --- Events ---
