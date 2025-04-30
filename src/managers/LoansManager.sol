@@ -20,6 +20,7 @@ struct Loan {
     D18 outstanding;
     D18 totalBorrowed;
     D18 totalRepaid;
+    // TODO: add rate ID, integrate with Linear Accrual contract
 }
 
 contract LoansManager is ERC6909NFT, IERC7726 {
