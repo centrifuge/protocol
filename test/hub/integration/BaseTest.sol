@@ -48,6 +48,12 @@ contract BaseTest is HubDeployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    AccountId constant ASSET_USDC_ACCOUNT = AccountId.wrap(0x01);
+    AccountId constant EQUITY_ACCOUNT = AccountId.wrap(0x02);
+    AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
+    AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
+    AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
+
     uint64 constant GAS = 100 wei;
 
     MockVaults cv;
