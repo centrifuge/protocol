@@ -49,6 +49,9 @@ import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
 import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
+import {MockAsyncRequestManager} from "test/vaults/fuzzing/recon-core/mocks/MockAsyncRequestManager.sol";
+import {MockPoolManager} from "test/hub/fuzzing/recon-hub/mocks/MockPoolManager.sol";
+import {MockBalanceSheet} from "test/hub/fuzzing/recon-hub/mocks/MockBalanceSheet.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Accounting accounting;
@@ -64,6 +67,9 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockGateway gateway;
     MockMessageDispatcher messageDispatcher;
     MockAccountValue mockAccountValue;
+    MockAsyncRequestManager investmentManager;
+    MockPoolManager poolManager;
+    MockBalanceSheet balanceSheet;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
@@ -120,6 +126,9 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
+        investmentManager = new MockAsyncRequestManager();
+        poolManager = new MockPoolManager();
+        balanceSheet = new MockBalanceSheet();
 
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
@@ -139,7 +148,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         messageDispatcher.file("poolManager", address(poolManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
         messageDispatcher.file("investmentManager", address(investmentManager));    
-        
+
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
         accounting.rely(address(hub));
