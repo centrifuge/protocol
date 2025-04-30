@@ -9,6 +9,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @dev Centrifuge pools
@@ -104,7 +105,8 @@ interface IPoolManager {
         address indexed asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IBaseVault vault
+        IBaseVault vault,
+        VaultKind kind
     );
     event PriceUpdate(
         PoolId indexed poolId,

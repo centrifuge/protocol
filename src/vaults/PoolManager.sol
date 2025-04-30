@@ -419,9 +419,9 @@ contract PoolManager is
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the manager approvals is not easy. We SHOULD do that if we phase-out a manager
-        _relyShareToken(vault, shareClass.shareToken);
+        VaultKind vaultKind = _relyShareToken(vault, shareClass.shareToken);
 
-        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vaultKind);
         return vault;
     }
 
@@ -563,7 +563,7 @@ contract PoolManager is
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
+    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
         address manager = address(IBaseVault(vault).manager());
         IAuth(address(shareToken_)).rely(manager);
 
@@ -572,6 +572,8 @@ contract PoolManager is
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
             IAuth(address(shareToken_)).rely(secondaryVaultManager);
         }
+
+        return vaultKind;
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
