@@ -199,9 +199,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("poolManager", address(poolManager));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));    
-        asyncRequestManager.file("sharePriceProvider", address(syncRequestManager));
+        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
         syncRequestManager.file("poolManager", address(poolManager));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
+        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
@@ -210,7 +211,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("sharePriceProvider", address(syncRequestManager));
+        balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
         // authorize contracts
         asyncRequestManager.rely(address(poolManager));
@@ -228,6 +229,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
+        poolEscrowFactory.rely(address(poolManager));
     }
 
     function setupHub() internal {

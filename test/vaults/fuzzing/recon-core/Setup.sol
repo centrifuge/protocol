@@ -15,6 +15,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
@@ -36,6 +37,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     // Dependencies
     AsyncVaultFactory vaultFactory;
     TokenFactory tokenFactory;
+    PoolEscrowFactory poolEscrowFactory;
 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequestManager asyncRequestManager;
@@ -148,6 +150,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         syncRequestManager = new SyncRequestManager(escrow, address(root), address(this));
         vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
 
         IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
         vaultFactories[0] = vaultFactory;
@@ -159,9 +162,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("poolManager", address(poolManager));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));    
-        asyncRequestManager.file("sharePriceProvider", address(syncRequestManager));
+        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
         syncRequestManager.file("poolManager", address(poolManager));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
+        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("tokenFactory", address(tokenFactory));
         poolManager.file("gateway", address(gateway));
@@ -169,7 +173,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("sharePriceProvider", address(syncRequestManager));
+        balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
         // authorize contracts
         asyncRequestManager.rely(address(poolManager));
         asyncRequestManager.rely(address(vaultFactory));
@@ -186,7 +190,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Permissions on factories
         vaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
-
+        poolEscrowFactory.rely(address(poolManager));
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncRequestManager));
     }
