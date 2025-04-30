@@ -135,7 +135,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         // set addresses on the PoolRouter
         hub.file("sender", address(messageDispatcher));
-
+        messageDispatcher.file("hub", address(hub));
+        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("balanceSheet", address(balanceSheet));
+        messageDispatcher.file("investmentManager", address(investmentManager));    
+        
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
         accounting.rely(address(hub));

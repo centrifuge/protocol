@@ -150,7 +150,7 @@ abstract contract TargetFunctions is
 
         vault = AsyncVault(_vault);
         token = ShareToken(_shareToken);
-        // fullRestrictions = FullRestrictions(address(root), address(this));
+        token.file("hook", address(fullRestrictions));
 
         // NOTE: Add to storage so these can be clamped in other functions
         scId = _scId;
