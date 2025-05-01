@@ -11,12 +11,7 @@ library CastLib {
     function toBytes32LeftPadded(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
     }
-
-    function toAddress(string calldata addr) internal pure returns (address) {
-        require(bytes(addr).length == 20, "Input should be 20 bytes");
-        return address(bytes20(bytes(addr)));
-    }
-
+    
     function toAddress(bytes32 addr) internal pure returns (address) {
         require(uint96(uint256(addr)) == 0, "Input should be 20 bytes");
         return address(bytes20(addr));
