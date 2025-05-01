@@ -13,6 +13,10 @@ function addr(AssetId assetId) pure returns (address) {
     return address(uint160(AssetId.unwrap(assetId)));
 }
 
+function assetIdFromAddr(address value) pure returns (AssetId assetId) {
+    return AssetId.wrap(uint128(uint160(value)));
+}
+
 function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }

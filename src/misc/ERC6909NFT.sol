@@ -18,7 +18,7 @@ contract ERC6909NFT is ERC6909, Auth, IERC6909NFT {
     /// @inheritdoc IERC6909URIExt
     mapping(uint256 tokenId => string URI) public tokenURI;
 
-    constructor(address _owner) Auth(_owner) {}
+    constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IERC6909NFT
     function setTokenURI(uint256 tokenId, string memory URI) public auth {
