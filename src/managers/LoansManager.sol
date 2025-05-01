@@ -22,12 +22,11 @@ struct Loan {
     // System properties
     ShareClassId scId;
     uint16 tokenId;
-    address owner;
+    address borrower;
     // Loan properties
     address borrowAsset;
     bytes32 rateId;
-    D18 ltv;
-    D18 value;
+    D18 maxBorrowAmount;
     // Ongoing properties
     int128 normalizedDebt;
     D18 totalBorrowed;
@@ -86,17 +85,16 @@ contract LoansManager is Auth, IERC7726 {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Open/close
+    // Owner actions
     //----------------------------------------------------------------------------------------------
 
     function create(
         ShareClassId scId,
-        address owner,
+        address borrower,
         address borrowAsset,
         bytes32 rateId,
         string memory tokenURI,
-        uint128 ltv,
-        uint128 value
+        uint128 maxBorrowAmount
     ) external auth {
         require(linearAccrual.rateIdExists(rateId), UnregisteredRateId());
 
@@ -107,11 +105,10 @@ contract LoansManager is Auth, IERC7726 {
         loans[assetId] = Loan({
             scId: scId,
             tokenId: uint16(tokenId),
-            owner: owner,
+            borrower: borrower,
             borrowAsset: borrowAsset,
             rateId: rateId,
-            ltv: d18(ltv),
-            value: d18(value),
+            maxBorrowAmount: d18(maxBorrowAmount),
             normalizedDebt: 0,
             totalBorrowed: d18(0),
             totalRepaid: d18(0)
@@ -128,25 +125,30 @@ contract LoansManager is Auth, IERC7726 {
         );
     }
 
-    function close(AssetId assetId) external {
+    function updateRate(AssetId assetId, bytes32 newRateId) external auth {
         Loan storage loan = loans[assetId];
-        require(loan.owner == msg.sender, NotTheOwner());
-        require(loan.normalizedDebt == 0, NonZeroOutstanding());
 
-        balanceSheet.withdraw(poolId, loan.scId, address(this), loan.tokenId, address(this), 1);
-        token.burn(loan.tokenId);
+        loan.normalizedDebt = linearAccrual.getRenormalizedDebt(loan.rateId, newRateId, loan.normalizedDebt);
+        loan.rateId = newRateId;
+    }
+
+    function updateMaxBorrowAmount(AssetId assetId, uint128 maxBorrowAmount) external auth {
+        Loan storage loan = loans[assetId];
+        require(linearAccrual.debt(loan.rateId, loan.normalizedDebt) <= int128(maxBorrowAmount), ExceedsLTV());
+
+        loan.maxBorrowAmount = d18(maxBorrowAmount);
     }
 
     //----------------------------------------------------------------------------------------------
-    // Ongoing
+    // Borrower actions
     //----------------------------------------------------------------------------------------------
 
     function borrow(AssetId assetId, uint128 amount, address receiver) external {
         Loan storage loan = loans[assetId];
-        require(loan.owner == msg.sender, NotTheOwner());
+        require(loan.borrower == msg.sender, NotTheOwner());
         require(
             linearAccrual.debt(loan.rateId, loan.normalizedDebt) + int128(amount)
-                <= int128((loan.ltv * loan.value).inner()),
+                <= int128(loan.maxBorrowAmount.inner()),
             ExceedsLTV()
         );
 
@@ -158,7 +160,7 @@ contract LoansManager is Auth, IERC7726 {
 
     function repay(AssetId assetId, uint128 amount, address owner) external {
         Loan storage loan = loans[assetId];
-        require(loan.owner == msg.sender, NotTheOwner());
+        require(loan.borrower == msg.sender, NotTheOwner());
 
         loan.normalizedDebt = linearAccrual.getModifiedNormalizedDebt(loan.rateId, loan.normalizedDebt, -int128(amount));
         loan.totalRepaid = loan.totalRepaid + d18(amount);
@@ -166,11 +168,20 @@ contract LoansManager is Auth, IERC7726 {
         balanceSheet.deposit(poolId, loan.scId, loan.borrowAsset, loan.tokenId, owner, amount);
     }
 
+    function close(AssetId assetId) external {
+        Loan storage loan = loans[assetId];
+        require(loan.borrower == msg.sender, NotTheOwner());
+        require(loan.normalizedDebt == 0, NonZeroOutstanding());
+
+        balanceSheet.withdraw(poolId, loan.scId, address(this), loan.tokenId, address(this), 1);
+        token.burn(loan.tokenId);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Valuation
     //----------------------------------------------------------------------------------------------
 
-    function getQuote(uint256, address base, address /* quote */) external view returns (uint256 quoteAmount) {
+    function getQuote(uint256, address base, address /* quote */ ) external view returns (uint256 quoteAmount) {
         // TODO: how to know conversion to quote asset?
 
         Loan storage loan = loans[assetIdFromAddr(base)];
