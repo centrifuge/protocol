@@ -170,7 +170,7 @@ contract LoansManager is Auth, IERC7726 {
     // Valuation
     //----------------------------------------------------------------------------------------------
 
-    function getQuote(uint256, address base, address quote) external view returns (uint256 quoteAmount) {
+    function getQuote(uint256, address base, address /* quote */) external view returns (uint256 quoteAmount) {
         // TODO: how to know conversion to quote asset?
 
         Loan storage loan = loans[assetIdFromAddr(base)];
