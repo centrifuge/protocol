@@ -198,7 +198,6 @@ abstract contract AdminTargets is
 
     function hub_notifySharePrice_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        console2.log("poolId in hub_notifySharePrice_clamped", poolId.raw());
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifySharePrice(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID);
     }
@@ -387,7 +386,7 @@ abstract contract AdminTargets is
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
-                eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
+                // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
                 gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
             }
 

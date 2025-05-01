@@ -31,7 +31,6 @@ import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
-
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.

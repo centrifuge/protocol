@@ -10,7 +10,7 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
 import {BaseValuation} from "src/misc/BaseValuation.sol";
-import {console2} from "forge-std/console2.sol";
+
 contract TransientValuation is BaseValuation, ReentrancyProtection {
     using TransientStorageLib for bytes32;
 
@@ -36,11 +36,8 @@ contract TransientValuation is BaseValuation, ReentrancyProtection {
     /// @inheritdoc IERC7726
     function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {
         bytes32 slot = keccak256(abi.encode(base, quote));
-        console2.log("before tloadUint256");
         D18 price = d18(uint128(slot.tloadUint256()));
-        console2.log("after tloadUint256");
         require(D18.unwrap(price) != 0, PriceNotSet(base, quote));
-        console2.log("after require");
 
         return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price);
     }

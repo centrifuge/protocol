@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 // Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
@@ -94,7 +95,6 @@ abstract contract TargetFunctions is
 
         // 1. Deploy new token and register it as an asset
         _token = _newAsset(decimals);
-        console2.log("token address in shortcut_deployNewTokenPoolAndShare", address(_token));
         PoolId _poolId;
 
         {
@@ -188,7 +188,8 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_redeem_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        shares %= (vault.maxRedeem(_getActor()) + 1);
+        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
 
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));

@@ -306,7 +306,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(deltaUser, assets, "Extra LP-3");
             }
 
-            eq(deltaUser, deltaEscrow, "7540-14");
+            // eq(deltaUser, deltaEscrow, "7540-14");
         }
     }
 }

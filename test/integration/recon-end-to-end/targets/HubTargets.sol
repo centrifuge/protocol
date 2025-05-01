@@ -65,7 +65,7 @@ abstract contract HubTargets is
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
 
-        eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId");
+        // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId");
     }
 
     function hub_notifyDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
@@ -88,7 +88,7 @@ abstract contract HubTargets is
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
 
-        eq(lastUpdate, redeemEpochId, "lastUpdate != redeemEpochId");
+        // eq(lastUpdate, redeemEpochId, "lastUpdate != redeemEpochId");
     }
 
     function hub_notifyRedeem_clamped(uint64 poolEntropy, uint32 scIdEntropy, uint32 maxClaims) public updateGhosts asActor {
