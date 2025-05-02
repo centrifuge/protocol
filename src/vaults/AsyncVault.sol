@@ -18,7 +18,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
 ///
-/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
+/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 tokens
 ///         against asset deposits based on the current share price.
 ///
 ///         ERC-7540 is an extension of the ERC-4626 standard by 'requestDeposit' & 'requestRedeem' methods, where
