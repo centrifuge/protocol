@@ -52,6 +52,7 @@ contract MockAxelarGasService is Mock {
 
 contract AxelarAdapterTest is Test {
     using CastLib for *;
+    using AxelarAddressToString for address;
 
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
@@ -113,35 +114,35 @@ contract AxelarAdapterTest is Test {
         axelarGateway.setReturn("validateContractCall", true);
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
         vm.prank(address(relayer));
-        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
 
-        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress);
+        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress.toAxelarString());
 
         // Incorrect address
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
-        adapter.execute(commandId, AXELAR_CHAIN_ID, invalidAddress.toString(), payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, invalidAddress.toAxelarString(), payload);
 
         // address(0) from invalid chain should fail
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
-        adapter.execute(commandId, invalidChain, address(0).toString(), payload);
+        adapter.execute(commandId, invalidChain, address(0).toAxelarString(), payload);
 
         // Incorrect chain
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
-        adapter.execute(commandId, invalidChain, validAddress.toString(), payload);
+        adapter.execute(commandId, invalidChain, validAddress.toAxelarString(), payload);
 
         // Axelar has not approved the payload
         axelarGateway.setReturn("validateContractCall", false);
         vm.prank(address(relayer));
         vm.expectRevert(IAxelarExecutable.NotApprovedByGateway.selector);
-        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
 
         // Correct
         axelarGateway.setReturn("validateContractCall", true);
         vm.prank(address(relayer));
-        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toString(), payload);
+        adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
     }
 
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund)
@@ -158,7 +159,9 @@ contract AxelarAdapterTest is Test {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter"));
+        adapter.file(
+            "destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString()
+        );
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
@@ -169,12 +172,31 @@ contract AxelarAdapterTest is Test {
         assertEq(call[0], 0.1 ether);
         assertEq(axelarGasService.values_address("sender"), address(adapter));
         assertEq(axelarGasService.values_string("destinationChain"), AXELAR_CHAIN_ID);
-        assertEq(axelarGasService.values_string("destinationAddress"), makeAddr("DestinationAdapter").toString());
+        assertEq(axelarGasService.values_string("destinationAddress"), makeAddr("DestinationAdapter").toAxelarString());
         assertEq(axelarGasService.values_bytes("payload"), payload);
         assertEq(axelarGasService.values_address("refundAddress"), refund);
 
         assertEq(axelarGateway.values_string("destinationChain"), AXELAR_CHAIN_ID);
-        assertEq(axelarGateway.values_string("contractAddress"), makeAddr("DestinationAdapter").toString());
+        assertEq(axelarGateway.values_string("contractAddress"), makeAddr("DestinationAdapter").toAxelarString());
         assertEq(axelarGateway.values_bytes("payload"), payload);
+    }
+}
+
+// From https://github.com/axelarnetwork/axelar-gmp-sdk-solidity/blob/main/contracts/libs/AddressString.sol#L30C26-L45C6
+library AxelarAddressToString {
+    function toAxelarString(address address_) internal pure returns (string memory) {
+        bytes memory addressBytes = abi.encodePacked(address_);
+        bytes memory characters = "0123456789abcdef";
+        bytes memory stringBytes = new bytes(42);
+
+        stringBytes[0] = "0";
+        stringBytes[1] = "x";
+
+        for (uint256 i; i < 20; ++i) {
+            stringBytes[2 + i * 2] = characters[uint8(addressBytes[i] >> 4)];
+            stringBytes[3 + i * 2] = characters[uint8(addressBytes[i] & 0x0f)];
+        }
+
+        return string(stringBytes);
     }
 }

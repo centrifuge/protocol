@@ -219,7 +219,7 @@ contract TestEndToEnd is Test {
         h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
         h.hub.createHolding(
-            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
+            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 
         h.hub.updatePricePerShare(poolId, scId, IDENTITY_PRICE);
