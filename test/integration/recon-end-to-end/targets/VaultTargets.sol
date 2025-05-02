@@ -9,8 +9,10 @@ import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
-import {Properties} from "../properties/Properties.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
 /**
  * A collection of handlers that interact with the Liquidity Pool
@@ -161,7 +163,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     function vault_deposit(uint256 assets) public updateGhosts {
-        // Bal b4
+        // check if vault is sync or async
+        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
+
         uint256 shareUserB4 = token.balanceOf(_getActor());
         uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
 
@@ -189,7 +193,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(deltaUser, assets, "Extra LP-2");
             }
 
-            eq(deltaUser, deltaEscrow, "7540-13");
+            // NOTE: async vaults transfer shares from global escrow
+            if(isAsyncVault) {
+                eq(deltaUser, deltaEscrow, "7540-13");
+            }
+
+            // NOTE: sync vaults mint shares directly to the user
         }
     }
 
@@ -203,6 +212,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     // TODO: Receiver -> Not this
     function vault_mint(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
+
+        // check if vault is sync or async
+        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
 
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(_getActor());
@@ -232,16 +244,25 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(deltaUser, shares, "Extra LP-2");
             }
 
-            eq(deltaUser, deltaEscrow, "7540-13");
+            // NOTE: async vaults transfer shares from global escrow
+            if(isAsyncVault) {
+                eq(deltaUser, deltaEscrow, "7540-13");
+            }
+
+            // NOTE: sync vaults mint shares directly to the user
         }
     }
 
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
 
+        // check if vault is sync or async
+        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
+        address escrow = isAsyncVault ? address(globalEscrow) : address(poolEscrowFactory.deployedEscrow(PoolId.wrap(poolId)));
+
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
+        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -252,7 +273,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
+        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(escrow);
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -278,9 +299,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
 
+        // check if vault is sync or async
+        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
+        address escrow = isAsyncVault ? address(globalEscrow) : address(poolEscrowFactory.deployedEscrow(PoolId.wrap(poolId)));
+
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
+        uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -291,7 +316,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
+        uint256 tokenEscrowAfter = MockERC20(_getAsset()).balanceOf(escrow);
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -306,7 +331,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(deltaUser, assets, "Extra LP-3");
             }
 
-            // eq(deltaUser, deltaEscrow, "7540-14");
+            eq(deltaUser, deltaEscrow, "7540-14");
         }
     }
 }

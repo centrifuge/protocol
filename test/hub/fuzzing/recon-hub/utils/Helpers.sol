@@ -8,6 +8,9 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
+import {IERC7887Deposit} from "src/misc/interfaces/IERC7540.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 library Helpers {
     /**
@@ -53,5 +56,9 @@ library Helpers {
     /// @dev performs the same check as SCM::_updateQueued
     function canMutate(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
         return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;
+    }
+
+    function isAsyncVault(address vault) internal view returns (bool) {
+        return IERC165(vault).supportsInterface(type(IERC7540Deposit).interfaceId) || IERC165(vault).supportsInterface(type(IERC7887Deposit).interfaceId);
     }
 }

@@ -62,13 +62,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         poolManager_updateMember(type(uint64).max);
         
-        vault_requestDeposit(1e18, 0);
+        // vault_requestDeposit(1e18, 0);
 
-        hub_approveDeposits(poolId, scId, assetId, 1, 1e18);
-        hub_issueShares(poolId, scId, assetId, 1, 1e18);
+        // hub_approveDeposits(poolId, scId, assetId, 1, 1e18);
+        // hub_issueShares(poolId, scId, assetId, 1, 1e18);
        
-        // need to call claimDeposit first to mint the shares
-        hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
+        // // need to call claimDeposit first to mint the shares
+        // hub_notifyDeposit(poolId, scId, assetId, MAX_CLAIMS);
 
         vault_deposit(1e18);
     }

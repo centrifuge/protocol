@@ -143,9 +143,9 @@ abstract contract TargetFunctions is
         asyncRequestManager.rely(address(_vault));
 
         // 6. approve and mint initial amount of underlying asset to all actors
-        address[] memory approvals = new address[](2);
+        address[] memory approvals = new address[](3);
         approvals[0] = address(poolManager);
-        approvals[1] = address(vault);
+        approvals[1] = address(_vault);
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 
         vault = AsyncVault(_vault);
