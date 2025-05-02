@@ -267,7 +267,7 @@ contract PoolManager is
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
-        // Init the price with maxAge = uint64::MAX
+        // Disable expiration of the price
         if (poolPerAsset.computedAt == 0) {
             poolPerAsset.maxAge = type(uint64).max;
         }
