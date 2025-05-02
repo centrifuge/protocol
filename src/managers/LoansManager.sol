@@ -8,12 +8,11 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {ILinearAccrual} from "src/misc/interfaces/ILinearAccrual.sol";
 
+import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId, assetIdFromAddr} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-
-import {IHub} from "src/hub/interfaces/IHub.sol";
 
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
@@ -36,9 +35,9 @@ struct Loan {
 // TODO: maturity date and/or open term
 
 contract LoansManager is Auth, IERC7726 {
+    error UnknownUpdateContractType();
     error UnregisteredRateId();
     error TooManyLoans();
-    error NotHubChain();
     error NotTheOwner();
     error NonZeroOutstanding();
     error ExceedsLTV();
@@ -51,7 +50,6 @@ contract LoansManager is Auth, IERC7726 {
     IERC6909NFT public immutable token;
     ILinearAccrual public immutable linearAccrual;
 
-    IHub public hub;
     IPoolManager public poolManager;
     IBalanceSheet public balanceSheet;
 
@@ -61,7 +59,6 @@ contract LoansManager is Auth, IERC7726 {
         PoolId poolId_,
         IERC6909NFT token_,
         ILinearAccrual linearAccrual_,
-        IHub hub_,
         IPoolManager poolManager_,
         IBalanceSheet balanceSheet_,
         AccountId equityAccount_,
@@ -69,8 +66,6 @@ contract LoansManager is Auth, IERC7726 {
         AccountId gainAccount_,
         address deployer
     ) Auth(deployer) {
-        require(hub_.sender().localCentrifugeId() == poolId_.centrifugeId(), NotHubChain());
-
         poolId = poolId_;
         equityAccount = equityAccount_;
         lossAccount = lossAccount_;
@@ -79,7 +74,6 @@ contract LoansManager is Auth, IERC7726 {
         token = token_;
         linearAccrual = linearAccrual_;
 
-        hub = hub_;
         poolManager = poolManager_;
         balanceSheet = balanceSheet_;
     }
@@ -88,14 +82,42 @@ contract LoansManager is Auth, IERC7726 {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
+    function update(PoolId /* poolId */, ShareClassId, /* scId */ bytes calldata payload) external auth {
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.LoanMaxBorrowAmount)) {
+            MessageLib.UpdateContractLoanMaxBorrowAmount memory m = MessageLib.deserializeUpdateContractLoanMaxBorrowAmount(payload);
+
+            Loan storage loan = loans[AssetId.wrap(m.assetId)];
+            require(linearAccrual.debt(loan.rateId, loan.normalizedDebt) <= int128(m.maxBorrowAmount), ExceedsLTV());
+
+            loan.maxBorrowAmount = d18(m.maxBorrowAmount);
+            // emit UpdateLoanMaxBorrowAmount();
+        } else if (kind == uint8(UpdateContractType.LoanRate)) {
+
+            MessageLib.UpdateContractLoanRate memory m = MessageLib.deserializeUpdateContractLoanRate(payload);
+
+            Loan storage loan = loans[AssetId.wrap(m.assetId)];
+
+            loan.normalizedDebt = linearAccrual.getRenormalizedDebt(loan.rateId, m.rateId, loan.normalizedDebt);
+            loan.rateId = m.rateId;
+            // emit UpdateLoanRate();
+        } else {
+            revert UnknownUpdateContractType();
+        }
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Borrower actions
+    //----------------------------------------------------------------------------------------------
+
     function create(
         ShareClassId scId,
         address borrower,
         address borrowAsset,
         bytes32 rateId,
-        string memory tokenURI,
-        uint128 maxBorrowAmount
-    ) external auth {
+        string memory tokenURI
+    ) external {
         require(linearAccrual.rateIdExists(rateId), UnregisteredRateId());
 
         uint256 tokenId = token.mint(address(this), tokenURI);
@@ -108,7 +130,7 @@ contract LoansManager is Auth, IERC7726 {
             borrower: borrower,
             borrowAsset: borrowAsset,
             rateId: rateId,
-            maxBorrowAmount: d18(maxBorrowAmount),
+            maxBorrowAmount: d18(0),
             normalizedDebt: 0,
             totalBorrowed: d18(0),
             totalRepaid: d18(0)
@@ -116,32 +138,8 @@ contract LoansManager is Auth, IERC7726 {
 
         balanceSheet.deposit(poolId, scId, address(this), uint16(tokenId), address(this), 1);
 
-        // TODO: how to ensure unique loan ID?
-        AccountId assetAccount = AccountId.wrap(uint32(uint16(tokenId) << 2));
-        hub.createAccount(poolId, assetAccount, true);
-
-        hub.createHolding(
-            poolId, scId, assetId, IERC7726(address(this)), assetAccount, equityAccount, lossAccount, gainAccount
-        );
+        // emit NewLoan(..);
     }
-
-    function updateRate(AssetId assetId, bytes32 newRateId) external auth {
-        Loan storage loan = loans[assetId];
-
-        loan.normalizedDebt = linearAccrual.getRenormalizedDebt(loan.rateId, newRateId, loan.normalizedDebt);
-        loan.rateId = newRateId;
-    }
-
-    function updateMaxBorrowAmount(AssetId assetId, uint128 maxBorrowAmount) external auth {
-        Loan storage loan = loans[assetId];
-        require(linearAccrual.debt(loan.rateId, loan.normalizedDebt) <= int128(maxBorrowAmount), ExceedsLTV());
-
-        loan.maxBorrowAmount = d18(maxBorrowAmount);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Borrower actions
-    //----------------------------------------------------------------------------------------------
 
     function borrow(AssetId assetId, uint128 amount, address receiver) external {
         Loan storage loan = loans[assetId];
