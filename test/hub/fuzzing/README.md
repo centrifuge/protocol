@@ -1,6 +1,6 @@
 # Centrifuge Pools Invariant Suite
 
-This repository contains the invariant suite for the Centrifuge Pools.
+This folder contains the invariant suite for the Centrifuge Pools.
 
 ## Testing 
 
