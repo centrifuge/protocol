@@ -1041,19 +1041,21 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// sound
     function _getSystemAddresses() internal view returns (address[] memory systemAddresses) {
         // uint256 SYSTEM_ADDRESSES_LENGTH = GOV_FUZZING ? 10 : 8;
-        uint256 SYSTEM_ADDRESSES_LENGTH = 8;
+        uint256 SYSTEM_ADDRESSES_LENGTH = 10;
 
         systemAddresses = new address[](SYSTEM_ADDRESSES_LENGTH);
         
         // NOTE: Skipping escrow which can have non-zero bal
-        systemAddresses[0] = address(vaultFactory);
-        systemAddresses[1] = address(tokenFactory);
-        systemAddresses[2] = address(asyncRequestManager);
-        systemAddresses[3] = address(poolManager);
-        systemAddresses[4] = address(vault);
-        systemAddresses[5] = address(vault.asset());
-        systemAddresses[6] = address(token);
-        systemAddresses[7] = address(fullRestrictions);
+        systemAddresses[0] = address(asyncVaultFactory);
+        systemAddresses[1] = address(syncVaultFactory);
+        systemAddresses[2] = address(tokenFactory);
+        systemAddresses[3] = address(asyncRequestManager);
+        systemAddresses[4] = address(syncRequestManager);
+        systemAddresses[5] = address(poolManager);
+        systemAddresses[6] = address(vault);
+        systemAddresses[7] = address(vault.asset());
+        systemAddresses[8] = address(token);
+        systemAddresses[9] = address(fullRestrictions);
 
         // if (GOV_FUZZING) {
         //     systemAddresses[8] = address(gateway);

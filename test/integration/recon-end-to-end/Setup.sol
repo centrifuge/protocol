@@ -17,6 +17,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
 import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
@@ -72,7 +73,8 @@ import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValu
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, Utils {
 
     /// === Vaults === ///
-    AsyncVaultFactory vaultFactory;
+    AsyncVaultFactory asyncVaultFactory;
+    SyncDepositVaultFactory syncVaultFactory;
     TokenFactory tokenFactory;
     PoolEscrowFactory poolEscrowFactory;
 
@@ -186,12 +188,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         balanceSheet = new BalanceSheet(root, address(this));
         asyncRequestManager = new AsyncRequestManager(globalEscrow, address(root), address(this));
         syncRequestManager = new SyncRequestManager(globalEscrow, address(root), address(this));
-        vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
+        asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
+        syncVaultFactory = new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
-        vaultFactories[0] = vaultFactory;
+        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
+        vaultFactories[0] = asyncVaultFactory;
+        vaultFactories[1] = syncVaultFactory;
         poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
         messageDispatcher = new MockMessageDispatcher(); 
 
@@ -219,8 +223,15 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
         // authorize contracts
         asyncRequestManager.rely(address(poolManager));
-        asyncRequestManager.rely(address(vaultFactory));
+        asyncRequestManager.rely(address(asyncVaultFactory));
+        asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
+        asyncRequestManager.rely(address(syncRequestManager));
+        syncRequestManager.rely(address(poolManager));
+        syncRequestManager.rely(address(asyncVaultFactory));
+        syncRequestManager.rely(address(syncVaultFactory));
+        syncRequestManager.rely(address(messageDispatcher));
+        syncRequestManager.rely(address(asyncRequestManager));
         poolManager.rely(address(messageDispatcher));
         fullRestrictions.rely(address(poolManager));
         balanceSheet.rely(address(asyncRequestManager));
@@ -231,7 +242,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         globalEscrow.rely(address(poolManager));
         globalEscrow.rely(address(balanceSheet));
         // Permissions on factories
-        vaultFactory.rely(address(poolManager));
+        asyncVaultFactory.rely(address(poolManager));
+        syncVaultFactory.rely(address(poolManager));
         tokenFactory.rely(address(poolManager));
         poolEscrowFactory.rely(address(poolManager));
     }

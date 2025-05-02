@@ -101,15 +101,20 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 4 - deploy the pool
-    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
-        address vault = address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
+    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId, bool isAsync) public asAdmin returns (address) {
+        address vault;
+        if (isAsync) {
+            vault = address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), asyncVaultFactory));
+        } else {
+            vault = address(poolManager.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), syncVaultFactory));
+        }
         vaults.push(vault);
 
         return vault;
     }
 
     function poolManager_deployVault_clamped() public asAdmin returns (address) {
-        return poolManager_deployVault(poolId, scId, assetId);
+        return poolManager_deployVault(poolId, scId, assetId, true);
     }
 
     // Step 5 - link the vault

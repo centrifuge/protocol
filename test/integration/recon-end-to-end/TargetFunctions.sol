@@ -72,7 +72,7 @@ abstract contract TargetFunctions is
     /// === Shortcut Functions === ///
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
-    function shortcut_deployNewTokenPoolAndShare(uint8 decimals, uint256 salt, bool isIdentityValuation, bool isDebitNormal)
+    function shortcut_deployNewTokenPoolAndShare(uint8 decimals, uint256 salt, bool isIdentityValuation, bool isDebitNormal, bool isAsyncVault)
         public
         returns (address _token, address _shareToken, address _vault, uint128 _assetId, bytes16 _scId)
     {
@@ -138,7 +138,7 @@ abstract contract TargetFunctions is
         }
 
         // 5. Deploy new vault and register it
-        _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId);
+        _vault = poolManager_deployVault(_poolId.raw(), _scId, _assetId, isAsyncVault);
         poolManager_linkVault(_poolId.raw(), _scId, _assetId, _vault);
         asyncRequestManager.rely(address(_vault));
 
