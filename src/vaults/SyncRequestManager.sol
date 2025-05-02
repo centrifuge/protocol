@@ -269,7 +269,7 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         ISyncDepositValuation valuation_ = valuation[poolId][scId];
 
         if (address(valuation_) == address(0)) {
-            (price,) = poolManager.pricePoolPerShare(poolId, scId, true);
+            price = poolManager.pricePoolPerShare(poolId, scId, true);
         } else {
             price = valuation_.pricePoolPerShare(poolId, scId);
         }
@@ -278,7 +278,7 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
     /// @inheritdoc ISyncRequestManager
     function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
-        (priceData.poolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        priceData.poolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
     }
 

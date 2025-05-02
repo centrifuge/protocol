@@ -90,6 +90,7 @@ contract VaultsDeployer is CommonDeployer {
         register("syncDepositVaultFactory", address(syncDepositVaultFactory));
         register("poolManager", address(poolManager));
         register("vaultRouter", address(vaultRouter));
+        register("balanceSheet", address(balanceSheet));
     }
 
     function _vaultsEndorse() private {
