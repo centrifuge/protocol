@@ -76,7 +76,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
             poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
         // Choose the latest update to be the marker
-        lastUpdated = shareLastUpdated > assetLastUpdated ? shareLastUpdated : assetLastUpdated;
+        lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated);
     }
 
     /// @inheritdoc IBaseInvestmentManager
