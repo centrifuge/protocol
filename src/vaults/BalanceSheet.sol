@@ -342,7 +342,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
                 d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId))));
         }
 
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        D18 pricePoolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         return pricePoolPerAsset;
     }
 
@@ -351,7 +351,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
         }
 
-        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        D18 pricePoolPerShare = poolManager.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
     }
 }

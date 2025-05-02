@@ -71,7 +71,12 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+        (uint64 shareLastUpdated,,) = poolManager.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
+        (uint64 assetLastUpdated,,) =
+            poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+
+        // Choose the latest update to be the marker
+        lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
     }
 
     /// @inheritdoc IBaseInvestmentManager
