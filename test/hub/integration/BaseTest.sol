@@ -24,6 +24,7 @@ import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
+import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
@@ -57,10 +58,13 @@ contract BaseTest is HubDeployer, Test {
     uint64 constant GAS = 100 wei;
 
     MockVaults cv;
+    MockValuation valuation;
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
         wire(CHAIN_CV, cv, address(this));
+
+        valuation = new MockValuation(hubRegistry);
     }
 
     function setUp() public virtual {
