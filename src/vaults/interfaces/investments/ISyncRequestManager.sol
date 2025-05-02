@@ -38,10 +38,7 @@ interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUp
     );
 
     error ExceedsMaxMint();
-    error VaultDoesNotExist();
-    error VaultAlreadyExists();
     error ShareTokenDoesNotExist();
-    error AssetMismatch();
 
     /// @notice Sets the valuation for a specific pool and share class.
     ///

@@ -19,6 +19,10 @@ enum VaultKind {
 /// @notice Interface for the vault manager contract, needed to link/unlink vaults correctly.
 /// @dev Must be implemented by all vault managers
 interface IVaultManager {
+    error AssetMismatch();
+    error VaultAlreadyExists();
+    error VaultDoesNotExist();
+
     /// @notice Adds new vault for `poolId`, `scId` and `asset`.
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
 
