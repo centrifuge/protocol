@@ -346,10 +346,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare
     ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
-        _isManager(poolId);
+        _isManagerAndPaid(poolId);
 
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
+
         sender.sendIssuedShares(poolId, scId, depositAssetId, issuedShareAmount, navPoolPerShare);
     }
 
