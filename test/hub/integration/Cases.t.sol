@@ -41,7 +41,7 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         hub.createHolding(
-            poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
+            poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
         hub.createHolding(
             poolId,
@@ -50,8 +50,8 @@ contract TestCases is BaseTest {
             transientValuation,
             ASSET_EUR_STABLE_ACCOUNT,
             EQUITY_ACCOUNT,
-            LOSS_ACCOUNT,
-            GAIN_ACCOUNT
+            GAIN_ACCOUNT,
+            LOSS_ACCOUNT
         );
         hub.updateContract{value: GAS}(
             poolId,

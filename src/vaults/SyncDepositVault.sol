@@ -16,7 +16,7 @@ import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInv
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
 ///         and asynchronous redemptions following ERC-7540.
 ///
-/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
+/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 tokens
 ///         against asset deposits based on the current share price.
 contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
     constructor(
