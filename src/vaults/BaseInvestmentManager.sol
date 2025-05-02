@@ -131,11 +131,6 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         return vault[poolId][scId][assetId];
     }
 
-    /// @inheritdoc IVaultManager
-    function vaultKind(IBaseVault) public pure returns (VaultKind, address) {
-        return (VaultKind.Async, address(0));
-    }
-
     function _assetToShareAmount(
         IBaseVault vault_,
         VaultDetails memory vaultDetails,

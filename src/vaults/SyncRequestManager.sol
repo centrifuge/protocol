@@ -250,6 +250,15 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
     }
 
+    /// @inheritdoc IVaultManager
+    function vaultKind(IBaseVault vault_) public view returns (VaultKind, address) {
+        if (IERC165(address(vault_)).supportsInterface(type(IERC7540Redeem).interfaceId)) {
+            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(address(vault_)).asyncRedeemManager()));
+        } else {
+            return (VaultKind.Sync, address(0));
+        }
+    }
+
     //----------------------------------------------------------------------------------------------
     // Internal
     //----------------------------------------------------------------------------------------------

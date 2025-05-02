@@ -29,6 +29,7 @@ import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFa
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -505,6 +506,11 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(IBaseVault vault_, address user) public view returns (uint256 shares) {
         shares = investments[vault_][user].claimableCancelRedeemRequest;
+    }
+
+    /// @inheritdoc IVaultManager
+    function vaultKind(IBaseVault) public pure returns (VaultKind, address) {
+        return (VaultKind.Async, address(0));
     }
 
     //----------------------------------------------------------------------------------------------
