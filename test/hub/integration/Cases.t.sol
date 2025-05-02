@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import "test/hub/integration/BaseTest.sol";
-import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 
 contract TestCases is BaseTest {
     using CastLib for string;
@@ -10,13 +9,6 @@ contract TestCases is BaseTest {
     using MathLib for *;
     using MessageLib for *;
     using PricingLib for *;
-
-    TransientValuation transientValuation;
-
-    function setUp() public override {
-        super.setUp();
-        transientValuation = new TransientValuation(hubRegistry);
-    }
 
     /// forge-config: default.isolate = true
     function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
@@ -44,14 +36,7 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
         );
         hub.createHolding(
-            poolId,
-            scId,
-            EUR_STABLE_C2,
-            transientValuation,
-            ASSET_EUR_STABLE_ACCOUNT,
-            EQUITY_ACCOUNT,
-            LOSS_ACCOUNT,
-            GAIN_ACCOUNT
+            poolId, scId, EUR_STABLE_C2, valuation, ASSET_EUR_STABLE_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
         );
         hub.updateContract{value: GAS}(
             poolId,
@@ -210,6 +195,7 @@ contract TestCases is BaseTest {
         assertEq(totalIssuance2, 55);
     }
 
+    /// forge-config: default.isolate = true
     function testNotifyPricePoolPerShare() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation();
         D18 sharePrice = d18(100, 1);
@@ -217,7 +203,7 @@ contract TestCases is BaseTest {
         D18 poolPerEurPrice = d18(4, 1);
         AssetId poolCurrency = hubRegistry.currency(poolId);
 
-        transientValuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
+        valuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
 
         vm.startPrank(FM);
         hub.updatePricePerShare(poolId, scId, sharePrice);
