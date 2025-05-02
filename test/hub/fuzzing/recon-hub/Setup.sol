@@ -46,7 +46,6 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 // Test Utils
 import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
-import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 import {MockAsyncRequestManager} from "test/vaults/fuzzing/recon-core/mocks/MockAsyncRequestManager.sol";
@@ -58,7 +57,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     HubRegistry hubRegistry;
     Holdings holdings;
     Hub hub;
-    ShareClassManagerWrapper shareClassManager;
+    ShareClassManager shareClassManager;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
     Root root;
@@ -131,7 +130,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         balanceSheet = new MockBalanceSheet();
 
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
-        shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
+        shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
         messageDispatcher = new MockMessageDispatcher();
         hub = new Hub(
             IShareClassManager(address(shareClassManager)), 

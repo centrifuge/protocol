@@ -40,6 +40,7 @@ import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 // Interfaces
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -65,7 +66,6 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
-import {ShareClassManagerWrapper} from "test/hub/fuzzing/recon-hub/utils/ShareClassManagerWrapper.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 
@@ -108,7 +108,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     HubRegistry hubRegistry;
     Holdings holdings;
     Hub hub;
-    ShareClassManagerWrapper shareClassManager;
+    ShareClassManager shareClassManager;
     TransientValuation transientValuation;
     IdentityValuation identityValuation;
 
@@ -258,7 +258,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         // Core Hub Contracts
         accounting = new Accounting(address(this)); 
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
-        shareClassManager = new ShareClassManagerWrapper(IHubRegistry(address(hubRegistry)), address(this));
+        shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
         hub = new Hub(
             IShareClassManager(address(shareClassManager)), 
             IHubRegistry(address(hubRegistry)), 
