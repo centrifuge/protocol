@@ -422,9 +422,9 @@ abstract contract AdminTargets is
             requestRedeeemed[_getActor()] += amount;
 
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
-            // uint32 epochId = shareClassManager.epochId(poolId);
+            (, uint32 redeemEpochId,, ) = shareClassManager.epochId(scId, payoutAssetId);
 
-            // eq(lastUpdate, epochId, "lastUpdate is not equal to epochId after redeemRequest");
+            eq(lastUpdate, redeemEpochId, "lastUpdate is not equal to epochId after redeemRequest");
 
             // state space enrichment   
             if(amount > 0) {
