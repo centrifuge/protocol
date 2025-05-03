@@ -11,9 +11,6 @@ interface IPoolEscrowProvider {
     ///
     /// @dev Does not check, whether the escrow was already deployed.
     function escrow(PoolId poolId) external view returns (IPoolEscrow);
-
-    /// @notice Returns the address of the corresponding deployed escrow contract if it exists
-    function deployedEscrow(PoolId poolId) external view returns (IPoolEscrow);
 }
 
 interface IPoolEscrowFactory is IPoolEscrowProvider {
