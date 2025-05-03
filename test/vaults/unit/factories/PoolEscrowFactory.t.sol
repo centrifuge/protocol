@@ -31,7 +31,6 @@ contract PoolEscrowFactoryTest is Test {
         factory.file("asyncRequestManager", asyncRequestManager);
     }
 
-
     function testDeployEscrowAtDeterministicAddress(PoolId poolId) public {
         address expectedEscrow = address(factory.escrow(poolId));
         address actual = address(factory.newEscrow(poolId));
