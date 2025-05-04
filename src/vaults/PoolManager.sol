@@ -318,8 +318,8 @@ contract PoolManager is
     }
 
     /// @inheritdoc IUpdateContract
-    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
-    /// the vault
+    /// @dev The pool manager either deploys the vault if a factory address is provided
+    ///      or it simply links/unlinks the vault
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
@@ -565,8 +565,8 @@ contract PoolManager is
         }
     }
 
-    /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
-    /// secondary manager (in case of partially sync vault)
+    /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially
+    ///      a secondary manager (in case of partially sync vault).
     function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
         address manager = address(IBaseVault(vault).manager());
         IAuth(address(shareToken_)).rely(manager);
