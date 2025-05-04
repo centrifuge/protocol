@@ -45,9 +45,9 @@ import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is
-    ReentrancyProtection,
     Auth,
     Recoverable,
+    ReentrancyProtection,
     IPoolManager,
     IUpdateContract,
     IPoolManagerGatewayHandler
@@ -85,7 +85,7 @@ contract PoolManager is
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration thods
+    // Administration methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
