@@ -279,7 +279,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
-        bytes memory message = MessageLib.TransferShares(poolId.raw(), scId.raw(), centChainAddress, amount).serialize();
+        bytes memory message =
+            MessageLib.TransferShares(poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount).serialize();
         assertEq(adapter1.sent(message), 1);
     }
 

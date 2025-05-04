@@ -7,7 +7,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageType, MessageLib, MessageDirection} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
@@ -66,8 +66,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16, bytes calldata message) external auth {
+    function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
+
+        if (message.messageDirection() == MessageDirection.HubToVaults) {
+            // Hub => Vaults messages should only be able to interact with pools from that Hub chain
+            require(message.messagePoolId().centrifugeId() == centrifugeId, InvalidSourceChain());
+        }
 
         if (kind == MessageType.InitiateRecovery) {
             MessageLib.InitiateRecovery memory m = message.deserializeInitiateRecovery();
@@ -88,6 +93,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.NotifyPool) {
             poolManager.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
@@ -120,6 +129,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
+
+            // TODO: forward to target chain if m.centrifugeId != localCentrifugeId
+
             poolManager.handleTransferShares(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver.toAddress(), m.amount
             );
@@ -133,21 +145,37 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.depositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.RedeemRequest) {
             MessageLib.RedeemRequest memory m = message.deserializeRedeemRequest();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.redeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId), m.amount
             );
         } else if (kind == MessageType.CancelDepositRequest) {
             MessageLib.CancelDepositRequest memory m = message.deserializeCancelDepositRequest();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.cancelDepositRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
         } else if (kind == MessageType.CancelRedeemRequest) {
             MessageLib.CancelRedeemRequest memory m = message.deserializeCancelRedeemRequest();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.cancelRedeemRequest(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.investor, AssetId.wrap(m.assetId)
             );
@@ -197,6 +225,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
+
+            // Vaults => Hub messages should only be able to interact with assets from that chain
+            require(AssetId.wrap(m.assetId).centrifugeId() == centrifugeId, InvalidSourceChain());
+
             hub.updateHoldingAmount(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
@@ -207,6 +239,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
+
+            // TODO: how can we restrict this?
+
             if (m.isIssuance) {
                 hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {

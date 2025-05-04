@@ -548,8 +548,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.TransferShares({poolId: poolId.raw(), scId: scId.raw(), receiver: receiver, amount: amount})
-                    .serialize()
+                MessageLib.TransferShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    centrifugeId: centrifugeId,
+                    receiver: receiver,
+                    amount: amount
+                }).serialize()
             );
         }
     }
