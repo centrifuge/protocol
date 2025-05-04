@@ -132,8 +132,13 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice Mints share class tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferShares(PoolId poolId, ShareClassId scId, address destinationAddress, uint128 amount)
-        external;
+    function handleTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external;
 
     /// @notice Updates the target address. Generic update function from CP to CV
     /// @param  poolId The centrifuge pool id

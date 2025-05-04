@@ -119,6 +119,7 @@ contract PoolManager is
         protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
+        require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
             share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
             CrossChainTransferNotAllowed()
@@ -130,7 +131,7 @@ contract PoolManager is
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount, false);
     }
 
     // @inheritdoc IPoolManager
@@ -304,13 +305,20 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferShares(PoolId poolId, ShareClassId scId, address destinationAddress, uint128 amount)
-        public
-        auth
-    {
+    function handleTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
 
-        shareToken_.mint(destinationAddress, amount);
+        if (centrifugeId == sender.localCentrifugeId()) {
+            shareToken_.mint(receiver.toAddress(), amount);
+        } else {
+            sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount, true);
+        }
     }
 
     /// @inheritdoc IUpdateContract

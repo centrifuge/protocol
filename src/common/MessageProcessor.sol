@@ -130,10 +130,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
 
-            // TODO: forward to target chain if m.centrifugeId != localCentrifugeId
+            // TODO: should only allow forwarding if poolId is enabled on the source chain
 
             poolManager.handleTransferShares(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver.toAddress(), m.amount
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.centrifugeId, m.receiver, m.amount
             );
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);

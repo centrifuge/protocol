@@ -171,8 +171,14 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 /// @notice Interface for dispatch-only gateway
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external;
+    function sendTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        bool forward
+    ) external;
 
     /// @notice Creates and send the message
     function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)

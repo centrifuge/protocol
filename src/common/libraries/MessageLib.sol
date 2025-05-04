@@ -169,6 +169,7 @@ library MessageLib {
         uint8 kind = message.toUint8(0);
 
         if (kind <= uint8(MessageType.RecoverTokens) || kind == uint8(MessageType.TransferShares)) {
+            // All messages from InitiateRecovery to RecoverTokens, as well as TransferShares, are bidirectional.
             return MessageDirection.Bidirectional;
         } else if (
             kind == uint8(MessageType.RegisterAsset) || kind == uint8(MessageType.DepositRequest)

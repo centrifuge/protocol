@@ -539,24 +539,24 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            poolManager.handleTransferShares(poolId, scId, receiver.toAddress(), amount);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.TransferShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    centrifugeId: centrifugeId,
-                    receiver: receiver,
-                    amount: amount
-                }).serialize()
-            );
-        }
+    function sendTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        bool forward
+    ) external auth {
+        gateway.send(
+            forward ? centrifugeId : poolId.centrifugeId(),
+            MessageLib.TransferShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                centrifugeId: centrifugeId,
+                receiver: receiver,
+                amount: amount
+            }).serialize()
+        );
     }
 
     /// @inheritdoc IVaultMessageSender

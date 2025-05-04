@@ -155,6 +155,7 @@ interface IPoolManager {
     error InvalidPrice();
     error AssetMissingDecimals();
     error ShareTokenDoesNotExist();
+    error LocalTransferNotAllowed();
     error CrossChainTransferNotAllowed();
     error ShareTokenTransferFailed();
     error TransferFromFailed();
