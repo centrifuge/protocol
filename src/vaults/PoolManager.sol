@@ -45,9 +45,9 @@ import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is
-    ReentrancyProtection,
     Auth,
     Recoverable,
+    ReentrancyProtection,
     IPoolManager,
     IUpdateContract,
     IPoolManagerGatewayHandler
@@ -75,17 +75,12 @@ contract PoolManager is
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
-    constructor(ITokenFactory tokenFactory_, IVaultFactory[] memory vaultFactories, address deployer) Auth(deployer) {
+    constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {
         tokenFactory = tokenFactory_;
-
-        for (uint256 i = 0; i < vaultFactories.length; i++) {
-            IVaultFactory factory = vaultFactories[i];
-            vaultFactory[factory] = true;
-        }
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration thods
+    // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
@@ -99,6 +94,7 @@ contract PoolManager is
         emit File(what, data);
     }
 
+    /// @inheritdoc IPoolManager
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") {
             vaultFactory[IVaultFactory(factory)] = status;
@@ -119,6 +115,7 @@ contract PoolManager is
         protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
+        require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
             share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
             CrossChainTransferNotAllowed()
@@ -314,8 +311,8 @@ contract PoolManager is
     }
 
     /// @inheritdoc IUpdateContract
-    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
-    /// the vault
+    /// @notice The pool manager either deploys the vault if a factory address is provided
+    ///         or it simply links/unlinks the vault.
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
@@ -562,7 +559,7 @@ contract PoolManager is
     }
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
-    /// secondary manager (in case of partially sync vault)
+    ///      secondary manager (in case of partially sync vault)
     function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
         address manager = address(IBaseVault(vault).manager());
         IAuth(address(shareToken_)).rely(manager);

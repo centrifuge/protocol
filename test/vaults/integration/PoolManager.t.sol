@@ -87,11 +87,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
                 && nonWard != address(gateway)
         );
 
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
-        vaultFactories[0] = asyncVaultFactory;
-
         // redeploying within test to increase coverage
-        new PoolManager(tokenFactory, vaultFactories, address(this));
+        new PoolManager(tokenFactory, address(this));
+        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
 
         // values set correctly
         assertEq(address(messageDispatcher.poolManager()), address(poolManager));
