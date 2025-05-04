@@ -57,11 +57,7 @@ contract VaultsDeployer is CommonDeployer {
         syncDepositVaultFactory =
             new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, deployer);
 
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
-        vaultFactories[0] = asyncVaultFactory;
-        vaultFactories[1] = syncDepositVaultFactory;
-
-        poolManager = new PoolManager(tokenFactory, vaultFactories, deployer);
+        poolManager = new PoolManager(tokenFactory, deployer);
         balanceSheet = new BalanceSheet(root, deployer);
         vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
 
@@ -178,6 +174,9 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
+
+        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
+        poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
 
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("poolManager", address(poolManager));

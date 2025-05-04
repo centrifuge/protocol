@@ -87,11 +87,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
                 && nonWard != address(gateway)
         );
 
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
-        vaultFactories[0] = asyncVaultFactory;
-
         // redeploying within test to increase coverage
-        new PoolManager(tokenFactory, vaultFactories, address(this));
+        new PoolManager(tokenFactory, address(this));
+        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
 
         // values set correctly
         assertEq(address(messageDispatcher.poolManager()), address(poolManager));
@@ -302,7 +300,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.handleTransferShares(PoolId.wrap(poolId.raw() + 1), scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.handleTransferShares(
+            PoolId.wrap(poolId.raw() + 1), scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount
+        );
 
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
         poolManager.handleTransferShares(poolId, scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount);

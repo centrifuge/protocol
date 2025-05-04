@@ -75,13 +75,8 @@ contract PoolManager is
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
-    constructor(ITokenFactory tokenFactory_, IVaultFactory[] memory vaultFactories, address deployer) Auth(deployer) {
+    constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {
         tokenFactory = tokenFactory_;
-
-        for (uint256 i = 0; i < vaultFactories.length; i++) {
-            IVaultFactory factory = vaultFactories[i];
-            vaultFactory[factory] = true;
-        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -99,6 +94,7 @@ contract PoolManager is
         emit File(what, data);
     }
 
+    /// @inheritdoc IPoolManager
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") {
             vaultFactory[IVaultFactory(factory)] = status;
