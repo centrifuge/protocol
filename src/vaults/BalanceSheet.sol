@@ -169,7 +169,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId)), true);
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -340,7 +340,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
                 d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId))));
         }
 
-        (D18 pricePoolPerAsset,) = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        D18 pricePoolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         return pricePoolPerAsset;
     }
 
@@ -349,7 +349,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
         }
 
-        (D18 pricePoolPerShare,) = poolManager.pricePoolPerShare(poolId, scId, true);
+        D18 pricePoolPerShare = poolManager.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
     }
 }

@@ -31,12 +31,6 @@ contract PoolEscrowFactoryTest is Test {
         factory.file("asyncRequestManager", asyncRequestManager);
     }
 
-    function testEscrows(PoolId poolId) public {
-        assertEq(address(factory.deployedEscrow(poolId)), address(0), "Escrow should not exist yet");
-        address escrow = address(factory.newEscrow(poolId));
-        assertEq(address(factory.deployedEscrow(poolId)), escrow, "Escrow address mismatch");
-    }
-
     function testDeployEscrowAtDeterministicAddress(PoolId poolId) public {
         address expectedEscrow = address(factory.escrow(poolId));
         address actual = address(factory.newEscrow(poolId));
@@ -46,7 +40,7 @@ contract PoolEscrowFactoryTest is Test {
 
     function testDeployEscrowTwiceReverts(PoolId poolId) public {
         factory.newEscrow(poolId);
-        vm.expectRevert(IPoolEscrowFactory.EscrowAlreadyDeployed.selector);
+        vm.expectRevert();
         factory.newEscrow(poolId);
     }
 

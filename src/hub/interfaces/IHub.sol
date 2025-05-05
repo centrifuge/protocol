@@ -37,7 +37,7 @@ enum AccountType {
 interface IHub {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
-    event NotifySharePrice(
+    event NotifyShareMetadata(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
     event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
@@ -130,7 +130,8 @@ interface IHub {
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
-        payable;
+        payable
+        returns (ShareClassId scId);
 
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -228,14 +229,14 @@ interface IHub {
     /// It will register the different accounts used for holdings.
     /// The accounts have to be created beforehand.
     /// The same account can be used for different kinds.
-    /// e.g.: The equity, loss, and gain account can be the same account.
+    /// e.g.: The equity, gain, and loss account can be the same account.
     /// They can also be shared across assets.
     /// e.g.: All assets can use the same equity account.
     /// @param valuation Used to transform between payment assets and pool currency
     /// @param assetAccount Used to track the asset value
     /// @param equityAccount Used to track the equity value
-    /// @param lossAccount Used to track the loss value
     /// @param gainAccount Used to track the gain value
+    /// @param lossAccount Used to track the loss value
     function createHolding(
         PoolId poolId,
         ShareClassId scId,
@@ -243,8 +244,8 @@ interface IHub {
         IERC7726 valuation,
         AccountId assetAccount,
         AccountId equityAccount,
-        AccountId lossAccount,
-        AccountId gainAccount
+        AccountId gainAccount,
+        AccountId lossAccount
     ) external payable;
 
     /// @notice Create a new liablity associated to the asset in a share class.

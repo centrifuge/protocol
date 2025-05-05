@@ -45,9 +45,13 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     // Used to bypass stack too deep issue
     struct SendData {
         bytes32 batchHash;
-        uint128 batchGasLimit;
         bytes32 payloadId;
         uint256[] gasCost;
+    }
+
+    struct Underpaid {
+        uint128 counter;
+        uint128 gasLimit;
     }
 
     // --- Events ---
@@ -156,6 +160,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
+
+    /// @notice Retry a failed message.
+    function retry(uint16 centrifugeId, bytes memory message) external;
 
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;

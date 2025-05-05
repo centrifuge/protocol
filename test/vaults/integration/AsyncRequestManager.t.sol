@@ -11,7 +11,7 @@ import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
@@ -76,7 +76,7 @@ contract AsyncRequestManagerTest is BaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
+        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         asyncRequestManager.file("random", self);
 
         assertEq(address(asyncRequestManager.poolManager()), address(poolManager));
@@ -104,7 +104,7 @@ contract AsyncRequestManagerTest is BaseTest {
 
         poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
+        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
         asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
     }
 

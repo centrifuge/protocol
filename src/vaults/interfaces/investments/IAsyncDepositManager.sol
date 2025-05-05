@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
-interface IAsyncDepositManager is IDepositManager, IVaultManager {
+interface IAsyncDepositManager is IDepositManager {
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
     ///         on the corresponding CP instance. Once the next epoch is executed on the corresponding CP instance,
