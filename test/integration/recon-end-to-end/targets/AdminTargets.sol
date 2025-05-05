@@ -334,8 +334,20 @@ abstract contract AdminTargets is
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_updatePricePerShare(poolId.raw(), scId.raw(), navPerShare);
+    } 
+
+    function syncRequestManager_setValuation(uint64 poolIdAsUint, bytes16 scIdAsBytes, address valuation) public {
+        PoolId poolId = PoolId.wrap(poolIdAsUint);
+        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+        syncRequestManager.setValuation(poolId, scId, valuation);
     }
-    
+
+    function syncRequestManager_setValuation_clamped(uint64 poolIdAsUint, uint32 scIdAsUint, bool isIdentityValuation) public {
+        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdAsUint);
+        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdAsUint);
+        address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
+        syncRequestManager_setValuation(poolId.raw(), scId.raw(), valuation);
+    }
     
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
