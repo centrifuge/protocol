@@ -552,9 +552,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        D18 latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(IPoolManager.CannotSetOlderPrice.selector);
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
@@ -565,9 +564,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // NOTE: Unchecked version will work
-        (latestPrice, lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp - 1);
     }
 
     function testVaultMigration() public {
@@ -772,7 +770,9 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)));
+        emit IPoolManager.DeployVault(
+            poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)), VaultKind.Async
+        );
         IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);

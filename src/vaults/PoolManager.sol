@@ -266,6 +266,10 @@ contract PoolManager is
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
+        // Disable expiration of the price
+        if (poolPerAsset.computedAt == 0) {
+            poolPerAsset.maxAge = type(uint64).max;
+        }
         poolPerAsset.price = poolPerAsset_;
         poolPerAsset.computedAt = computedAt;
 
@@ -414,9 +418,9 @@ contract PoolManager is
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the manager approvals is not easy. We SHOULD do that if we phase-out a manager
-        _relyShareToken(vault, shareClass.shareToken);
+        VaultKind vaultKind = _relyShareToken(vault, shareClass.shareToken);
 
-        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vaultKind);
         return vault;
     }
 
@@ -468,20 +472,15 @@ contract PoolManager is
     function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
 
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
-        computedAt = poolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
-        public
-        view
-        returns (D18 price, uint64 computedAt)
-    {
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         if (checkValidity) {
@@ -489,14 +488,13 @@ contract PoolManager is
         }
 
         price = shareClass.pricePoolPerShare.asPrice();
-        computedAt = shareClass.pricePoolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
 
@@ -505,7 +503,6 @@ contract PoolManager is
         }
 
         price = poolPerAsset.asPrice();
-        computedAt = poolPerAsset.computedAt;
     }
 
     /// @inheritdoc IPoolManager
@@ -516,6 +513,30 @@ contract PoolManager is
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
         return (poolPerAsset.asPrice(), poolPerShare.asPrice());
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        computedAt = shareClass.pricePoolPerShare.computedAt;
+        maxAge = shareClass.pricePoolPerShare.maxAge;
+        validUntil = shareClass.pricePoolPerShare.validUntil();
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
+        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
+        computedAt = poolPerAsset.computedAt;
+        maxAge = poolPerAsset.maxAge;
+        validUntil = poolPerAsset.validUntil();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -541,8 +562,8 @@ contract PoolManager is
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
-    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
-        IBaseInvestmentManager manager = IBaseVault(vault).manager();
+    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
+        IBaseInvestmentManager manager = vault.manager();
         IAuth(address(shareToken_)).rely(address(manager));
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
@@ -550,6 +571,8 @@ contract PoolManager is
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
             IAuth(address(shareToken_)).rely(secondaryVaultManager);
         }
+
+        return vaultKind;
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

@@ -9,6 +9,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
@@ -47,22 +48,18 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         emit File(what, data);
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Vault write methods
-    //----------------------------------------------------------------------------------------------
-
     /// @inheritdoc IBaseInvestmentManager
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
         virtual
         auth
     {
+        address token = vault_.share();
+
         require(vault_.asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
 
         vault[poolId][scId][assetId] = IBaseVault(address(vault_));
-
-        address token = vault_.share();
         IAuth(token).rely(address(vault_));
         IShareToken(token).updateVault(vault_.asset(), address(vault_));
         rely(address(vault_));
@@ -74,12 +71,13 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         virtual
         auth
     {
+        address token = vault_.share();
+
         require(vault_.asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
 
-        address token = vault_.share();
         IAuth(token).deny(address(vault_));
         IShareToken(token).updateVault(vault_.asset(), address(0));
         deny(address(vault_));
@@ -88,17 +86,6 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBaseInvestmentManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
-        return vault[poolId][scId][assetId];
-    }
-
-    /// @inheritdoc IBaseInvestmentManager
-    function vaultKind(IBaseVault) public view virtual returns (VaultKind, address) {
-        return (VaultKind.Async, address(0));
-    }
-
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
@@ -125,12 +112,27 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
-        (, lastUpdated) = poolManager.priceAssetPerShare(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+        (uint64 shareLastUpdated,,) = poolManager.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
+        (uint64 assetLastUpdated,,) =
+            poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+
+        // Choose the latest update to be the marker
+        lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
     }
 
     /// @inheritdoc IBaseInvestmentManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
         return poolEscrowProvider.escrow(poolId);
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
+        return vault[poolId][scId][assetId];
+    }
+
+    /// @inheritdoc IBaseInvestmentManager
+    function vaultKind(IBaseVault) public view virtual returns (VaultKind, address) {
+        return (VaultKind.Async, address(0));
     }
 
     function _assetToShareAmount(

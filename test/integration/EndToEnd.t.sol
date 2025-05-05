@@ -219,7 +219,7 @@ contract TestEndToEnd is Test {
         h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
         h.hub.createHolding(
-            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
+            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 
         h.hub.updatePricePerShare(poolId, scId, IDENTITY_PRICE);
@@ -256,17 +256,19 @@ contract TestEndToEnd is Test {
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
         vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
 
-        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
         vm.startPrank(FM);
+        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
         h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, depositEpochId, INVESTOR_A_AMOUNT);
-        h.hub.issueShares(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
+        h.hub.issueShares{value: GAS}(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
-        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), 1);
+        uint32 maxClaims = h.shareClassManager.maxDepositClaims(scId, INVESTOR_A.toBytes32(), assetId);
+        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), maxClaims);
 
-        //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
+        vm.startPrank(INVESTOR_A);
+        vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
 
-        //assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
+        assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
     }
 
     /// forge-config: default.isolate = true

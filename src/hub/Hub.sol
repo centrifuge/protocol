@@ -346,10 +346,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare
     ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
-        _isManager(poolId);
+        _isManagerAndPaid(poolId);
 
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
+
         sender.sendIssuedShares(poolId, scId, depositAssetId, issuedShareAmount, navPoolPerShare);
     }
 
@@ -413,8 +414,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         IERC7726 valuation,
         AccountId assetAccount,
         AccountId equityAccount,
-        AccountId lossAccount,
-        AccountId gainAccount
+        AccountId gainAccount,
+        AccountId lossAccount
     ) external payable {
         _isManager(poolId);
 
@@ -428,8 +429,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
         accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
 
         holdings.create(poolId, scId, assetId, valuation, false, accounts);
     }
@@ -466,7 +467,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
 
-        // NOTE: Safe a diff=0 update gas cost
+        // Save a diff=0 update gas cost
         if (isPositive && diff > 0) {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
@@ -475,7 +476,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
                 accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
             }
-        } else {
+        } else if (diff > 0) {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
                 accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);

@@ -15,6 +15,7 @@ import {
 } from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
@@ -110,6 +111,36 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
 
         vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
         syncRequestManager.deposit(vault, 1, address(0), address(0));
+    }
+
+    function testAddVaultEmptySecondaryManager() public {
+        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = AssetId.wrap(assetId_);
+
+        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
+
+        vm.prank(address(root));
+        vault.file("asyncRedeemManager", address(0));
+
+        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        syncRequestManager.addVault(poolId, scId, vault, vaultDetails.asset, assetId);
+    }
+
+    function testRemoveVaultEmptySecondaryManager() public {
+        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = AssetId.wrap(assetId_);
+
+        vm.prank(address(root));
+        vault.file("asyncRedeemManager", address(0));
+
+        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
     }
 }
 

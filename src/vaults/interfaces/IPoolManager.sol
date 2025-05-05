@@ -10,6 +10,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -41,9 +42,20 @@ struct Price {
 /// timestamp <= computedAt + maxAge
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0 && price.price != 0) {
-        return block.timestamp <= price.computedAt + price.maxAge;
+        return block.timestamp <= price.validUntil();
     } else {
         return false;
+    }
+}
+
+/// @dev Computes the timestamp until the price is valid. Saturates at uint64.MAX.
+function validUntil(Price memory price) pure returns (uint64) {
+    unchecked {
+        uint64 validUntil_ = price.computedAt + price.maxAge;
+        if (validUntil_ < price.computedAt) {
+            return type(uint64).max;
+        }
+        return validUntil_;
     }
 }
 
@@ -52,7 +64,7 @@ function asPrice(Price memory price) pure returns (D18) {
     return d18(price.price);
 }
 
-using {isValid, asPrice} for Price global;
+using {isValid, asPrice, validUntil} for Price global;
 
 struct VaultDetails {
     /// @dev AssetId of the asset
@@ -93,7 +105,8 @@ interface IPoolManager {
         address indexed asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IBaseVault vault
+        IBaseVault vault,
+        VaultKind kind
     );
     event PriceUpdate(
         PoolId indexed poolId,
@@ -261,11 +274,10 @@ interface IPoolManager {
     /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
     /// @param checkValidity Whether to check if the price is valid
     /// @return price The asset price per share
-    /// @return computedAt The timestamp at which the price was computed
     function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         external
         view
-        returns (D18 price, uint64 computedAt);
+        returns (D18 price);
 
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
@@ -275,11 +287,10 @@ interface IPoolManager {
     /// @param scId The share class id
     /// @param checkValidity Whether to check if the price is valid
     /// @return price The pool price per share
-    /// @return computedAt The timestamp at which the price was computed
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
         external
         view
-        returns (D18 price, uint64 computedAt);
+        returns (D18 price);
 
     /// @notice Returns the price per asset for a given pool, share class and the underlying asset id. The Provided
     /// price is defined as POOL_UNIT/ASSET_UNIT.
@@ -290,11 +301,10 @@ interface IPoolManager {
     /// @param assetId The asset id for which we want to know the POOL_UNIT/ASSET_UNIT.
     /// @param checkValidity Whether to check if the price is valid
     /// @return price The pool price per asset unit
-    /// @return computedAt The timestamp at which the price was computed
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         external
         view
-        returns (D18 price, uint64 computedAt);
+        returns (D18 price);
 
     /// @notice Returns the both prices per pool for a given pool, share class and the underlying asset id. The Provided
     /// prices is defined as POOL_UNIT/ASSET_UNIT and POOL_UNIT/SHARE_UNIT.
@@ -310,4 +320,29 @@ interface IPoolManager {
         external
         view
         returns (D18 pricePoolPerAsset, D18 pricePoolPerShare);
+
+    /// @notice Returns the age related markers for a share class price
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @return computedAt The timestamp when this price was computed
+    /// @return maxAge The maximum age this price is allowed to have
+    /// @return validUntil The timestamp until this price is valid
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+
+    /// @notice Returns the age related markers for an asset price
+    ///
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id for which we want to know pool price per asset
+    /// @return computedAt The timestamp when this price was computed
+    /// @return maxAge The maximum age this price is allowed to have
+    /// @return validUntil The timestamp until this price is valid
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 }

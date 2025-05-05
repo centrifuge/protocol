@@ -6,7 +6,6 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -30,6 +29,7 @@ import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
