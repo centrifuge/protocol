@@ -220,6 +220,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
+    /// @inheritdoc IGateway
     function retry(uint16 centrifugeId, bytes memory message) external pauseable {
         bytes32 messageHash = keccak256(message);
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());

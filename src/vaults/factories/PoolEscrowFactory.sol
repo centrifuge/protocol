@@ -9,15 +9,13 @@ import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/vaults/interfaces/fac
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 
-contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
+contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;
 
-    address public poolManager;
     address public gateway;
+    address public poolManager;
     address public balanceSheet;
     address public asyncRequestManager;
-
-    mapping(PoolId poolId => IPoolEscrow) public escrows;
 
     constructor(address root_, address deployer) Auth(deployer) {
         root = root_;
@@ -35,7 +33,6 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
 
     /// @inheritdoc IPoolEscrowFactory
     function newEscrow(PoolId poolId) public auth returns (IPoolEscrow) {
-        require(address(escrows[poolId]) == address(0), EscrowAlreadyDeployed());
         PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId.raw()))}(poolId, address(this));
 
         escrow_.rely(root);
@@ -46,25 +43,22 @@ contract PoolEscrowFactory is IPoolEscrowFactory, Auth {
 
         escrow_.deny(address(this));
 
-        escrows[poolId] = escrow_;
-
         emit DeployPoolEscrow(poolId, address(escrow_));
         return IPoolEscrow(escrow_);
     }
 
-    // --- View methods ---
     /// @inheritdoc IPoolEscrowProvider
     function escrow(PoolId poolId) external view returns (IPoolEscrow) {
         bytes32 salt = bytes32(uint256(poolId.raw()));
-        bytes memory bytecode = abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, address(this)));
-
-        bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(bytecode)));
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                salt,
+                keccak256(abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId, address(this))))
+            )
+        );
 
         return IPoolEscrow(address(uint160(uint256(hash))));
-    }
-
-    /// @inheritdoc IPoolEscrowProvider
-    function deployedEscrow(PoolId poolId) external view returns (IPoolEscrow) {
-        return escrows[poolId];
     }
 }
