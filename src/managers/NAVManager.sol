@@ -28,8 +28,7 @@ contract NAVManager is Auth {
     IAccounting public immutable accounting;
     IShareClassManager public immutable shareClassManager;
 
-    AccountId internal assetAccount;
-    AccountId internal expenseAccount;
+    AccountId internal nextAccountId;
 
     constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address deployer) Auth(deployer) {
         require(hub.shareClassManager().shareClassCount(poolId_) == 1, InvalidShareClassCount());
@@ -49,7 +48,7 @@ contract NAVManager is Auth {
         hub.createAccount(poolId, gainAccount, false);
         hub.createAccount(poolId, lossAccount, false);
 
-        assetAccount = AccountId.wrap(5);
+        nextAccountId = AccountId.wrap(5);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -57,15 +56,15 @@ contract NAVManager is Auth {
     //----------------------------------------------------------------------------------------------
 
     function createHolding(AssetId assetId, IERC7726 valuation) external auth {
-        hub.createAccount(poolId, assetAccount, true);
-        hub.createHolding(poolId, scId, assetId, valuation, assetAccount, equityAccount, gainAccount, lossAccount);
-        assetAccount = assetAccount.increment();
+        hub.createAccount(poolId, nextAccountId, true);
+        hub.createHolding(poolId, scId, assetId, valuation, nextAccountId, equityAccount, gainAccount, lossAccount);
+        nextAccountId = nextAccountId.increment();
     }
 
     function createLiability(AssetId assetId, IERC7726 valuation) external auth {
-        hub.createAccount(poolId, expenseAccount, true);
-        hub.createLiability(poolId, scId, assetId, valuation, expenseAccount, liabilityAccount);
-        expenseAccount = expenseAccount.increment();
+        hub.createAccount(poolId, nextAccountId, true);
+        hub.createLiability(poolId, scId, assetId, valuation, nextAccountId, liabilityAccount);
+        nextAccountId = nextAccountId.increment();
     }
 
     //----------------------------------------------------------------------------------------------
