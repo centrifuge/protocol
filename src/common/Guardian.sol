@@ -9,15 +9,14 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;
 
     IRoot public immutable root;
 
-    IHub public hub;
+    IHubGuardianActions public hub;
     ISafe public safe;
     IRootMessageSender public sender;
 
@@ -45,7 +44,7 @@ contract Guardian is IGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "hub") hub = IHub(data);
+        else if (what == "hub") hub = IHubGuardianActions(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
