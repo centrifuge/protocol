@@ -62,8 +62,8 @@ contract BalanceSheetTest is BaseTest {
     function testDeployment(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(asyncRequestManager)
-                && nonWard != address(syncRequestManager) && nonWard != address(gateway)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
+                && nonWard != address(syncRequestManager) && nonWard != address(messageProcessor)
+                && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
@@ -71,7 +71,6 @@ contract BalanceSheetTest is BaseTest {
 
         // values set correctly
         assertEq(address(balanceSheet.root()), address(root));
-        assertEq(address(balanceSheet.gateway()), address(gateway));
         assertEq(address(balanceSheet.poolManager()), address(poolManager));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
@@ -91,12 +90,9 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IBalanceSheet.FileUnrecognizedParam.selector);
         balanceSheet.file("random", self);
 
-        assertEq(address(balanceSheet.gateway()), address(gateway));
         // success
         balanceSheet.file("poolManager", randomUser);
         assertEq(address(balanceSheet.poolManager()), randomUser);
-        balanceSheet.file("gateway", randomUser);
-        assertEq(address(balanceSheet.gateway()), randomUser);
         balanceSheet.file("sender", randomUser);
         assertEq(address(balanceSheet.sender()), randomUser);
         balanceSheet.file("poolEscrowProvider", randomUser);
