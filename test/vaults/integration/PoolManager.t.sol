@@ -20,7 +20,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 
@@ -585,7 +585,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // Remove old vault
         address vaultManager = address(oldVault.manager());
-        IBaseInvestmentManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
+        IBaseRequestManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault

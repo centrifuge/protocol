@@ -5,6 +5,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
+
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
@@ -18,7 +19,7 @@ enum VaultKind {
     SyncDepositAsyncRedeem
 }
 
-interface IBaseInvestmentManager {
+interface IBaseRequestManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 

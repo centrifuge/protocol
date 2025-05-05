@@ -1,7 +1,7 @@
 @startuml
 hide empty members
 
-interface IBaseInvestmentManager
+interface IBaseRequestManager
 
 interface IDepositManager
 interface IRedeemManager
@@ -13,8 +13,8 @@ interface IAsyncRedeemManager
 interface IAsyncRequestManager
 interface ISyncRequestManager
 
-IDepositManager -up-|> IBaseInvestmentManager
-IRedeemManager -up-|> IBaseInvestmentManager
+IDepositManager -up-|> IBaseRequestManager
+IRedeemManager -up-|> IBaseRequestManager
 
 IAsyncDepositManager -up-|> IDepositManager
 ISyncDepositManager -up-|> IDepositManager
@@ -25,14 +25,14 @@ IAsyncRequestManager -up-|> IAsyncRedeemManager
 
 ISyncRequestManager -up-|> ISyncDepositManager
 
-abstract BaseInvestmentManager
+abstract BaseRequestManager
 class AsyncRequestManager
 class SyncRequestManager
 
-AsyncRequestManager -up-|> BaseInvestmentManager
-SyncRequestManager -up-|> BaseInvestmentManager
+AsyncRequestManager -up-|> BaseRequestManager
+SyncRequestManager -up-|> BaseRequestManager
 
-BaseInvestmentManager -up-|> IBaseInvestmentManager
+BaseRequestManager -up-|> IBaseRequestManager
 AsyncRequestManager -up-|> IAsyncRequestManager
 SyncRequestManager -up-|> ISyncRequestManager
 

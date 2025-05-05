@@ -24,7 +24,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IBaseInvestmentManager, VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager, VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -370,7 +370,7 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
+        IBaseRequestManager manager = vault.manager();
         manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
@@ -384,7 +384,7 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
+        IBaseRequestManager manager = vault.manager();
         manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
@@ -563,7 +563,7 @@ contract PoolManager is
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     /// secondary manager (in case of partially sync vault)
     function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
-        IBaseInvestmentManager manager = vault.manager();
+        IBaseRequestManager manager = vault.manager();
         IAuth(address(shareToken_)).rely(address(manager));
 
         // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)

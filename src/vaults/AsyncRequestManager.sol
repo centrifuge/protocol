@@ -9,7 +9,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -22,10 +22,10 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {IBaseInvestmentManager, VaultKind} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager, VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncVault, IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
+import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
@@ -34,7 +34,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
+contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -46,14 +46,14 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer)
-        BaseInvestmentManager(globalEscrow_, root_, deployer)
+        BaseRequestManager(globalEscrow_, root_, deployer)
     {}
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
+    function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
@@ -153,7 +153,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function approvedDeposits(
         PoolId poolId,
         ShareClassId scId,
@@ -172,13 +172,13 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function revokedShares(
         PoolId poolId,
         ShareClassId scId,
@@ -195,7 +195,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         balanceSheet.revoke(poolId, scId, address(globalEscrow), shareAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -219,7 +219,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -245,7 +245,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillCancelDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -268,7 +268,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         public
         auth

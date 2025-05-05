@@ -16,7 +16,7 @@ import {
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
@@ -83,7 +83,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
+        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         syncRequestManager.file("random", self);
 
         assertEq(address(syncRequestManager.poolManager()), address(poolManager));
@@ -109,7 +109,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(0), d18(0));
         poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
+        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
         syncRequestManager.deposit(vault, 1, address(0), address(0));
     }
 

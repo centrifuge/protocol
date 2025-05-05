@@ -13,7 +13,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
-    IInvestmentManagerGatewayHandler,
+    IRequestManagerGatewayHandler,
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler
@@ -40,7 +40,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerGatewayHandler public investmentManager;
+    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(
@@ -64,7 +64,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 

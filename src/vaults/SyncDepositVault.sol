@@ -10,7 +10,7 @@ import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
@@ -38,7 +38,7 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(BaseAsyncRedeemVault, BaseVault) auth {
-        if (what == "manager") manager = IBaseInvestmentManager(data);
+        if (what == "manager") manager = IBaseRequestManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         else if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
         else revert FileUnrecognizedParam();
