@@ -7,6 +7,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
+import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+
 struct QueueAmount {
     // Issuances of shares / deposits of assets
     uint128 increase;
@@ -42,6 +44,8 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
+    
+    function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     /// @notice Overloaded increase with asset transfer
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
