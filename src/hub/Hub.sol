@@ -211,7 +211,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
 
-        emit NotifySharePrice(centrifugeId, poolId, scId, name, symbol);
+        emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
         sender.sendNotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
     }
 
@@ -300,10 +300,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
         payable
+        returns (ShareClassId scId)
     {
         _isManager(poolId);
 
-        shareClassManager.addShareClass(poolId, name, symbol, salt);
+        return shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
     /// @inheritdoc IHub
@@ -528,9 +529,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler {
         _isManager(poolId);
 
         accounting.unlock(poolId);
-
         accounting.addJournal(debits, credits);
-
         accounting.lock();
     }
 
