@@ -170,24 +170,10 @@ library MathLib {
         return uint64(value);
     }
 
-    /// @notice Safe type conversion from uint128 to int128
-    function toInt128(uint128 _value) internal pure returns (int128) {
-        require(_value <= uint128(type(int128).max), "MathLib/uint128-to-int128-overflow");
-
-        return int128(_value);
-    }
     /// @notice Safe type conversion from uint256 to uint128.
-
     function toUint128(uint256 value) internal pure returns (uint128) {
         require(value <= type(uint128).max, Uint128_Overflow());
         return uint128(value);
-    }
-
-    /// @notice Safe type conversion from int128 to uint128
-    function toUint256(int128 _value) internal pure returns (uint256) {
-        require(_value >= 0, "MathLib/int128-to-uint256-underflow");
-
-        return uint256(int256(_value));
     }
 
     /// @notice Returns the smallest of two numbers.
