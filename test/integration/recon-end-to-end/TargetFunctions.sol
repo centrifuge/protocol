@@ -158,7 +158,7 @@ abstract contract TargetFunctions is
         assetId = _assetId;
     }
 
-    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_request_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint256 toEntropy) public {
         transientValuation_setPrice_clamped(poolId, assetId, priceValuation);
         
         hub_updatePricePerShare(poolId, scId, pricePoolPerShare);
@@ -167,6 +167,10 @@ abstract contract TargetFunctions is
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(amount, toEntropy);
+    }
+
+    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
         uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
         shortcut_approve_and_issue_shares(poolId, scId, uint128(amount), depositEpoch, navPerShare);
@@ -176,42 +180,57 @@ abstract contract TargetFunctions is
         vault_deposit(amount);
     }
 
-    function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_and_cancel(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
+
+        vault_cancelDepositRequest();
+    }
+
+    function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
         shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), redeemEpoch, navPerShare);
-        
-        hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
-
-        vault_withdraw(shares, toEntropy);
     }
 
-    function shortcut_withdraw_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
-        uint256 sharesAsAssets = vault.convertToAssets(shares);
-        vault_requestRedeem(sharesAsAssets, toEntropy);
-
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
-        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), redeemEpoch, navPerShare);
-        
+    function shortcut_claim_withdrawal(uint256 assets, uint256 toEntropy) public {
         hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
-        vault_withdraw(sharesAsAssets, toEntropy);
+        vault_withdraw(assets, toEntropy);
     }
 
-    function shortcut_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
-        vault_requestRedeem(shares, toEntropy);
-
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), AssetId.wrap(assetId));
-        shortcut_approve_and_revoke_shares(poolId, scId, uint128(shares), redeemEpoch, navPerShare);
-        
+    function shortcut_claim_redemption(uint256 shares, uint256 toEntropy) public {
         hub_notifyRedeem(poolId, ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
 
         vault_redeem(shares, toEntropy);
+    }
+
+    function shortcut_redeem_and_claim(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        shortcut_claim_withdrawal(shares, toEntropy);
+    }
+
+    function shortcut_withdraw_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        uint256 sharesAsAssets = vault.convertToAssets(shares);
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
+    }
+
+    function shortcut_redeem_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        shortcut_claim_redemption(shares, toEntropy);
+    }
+
+    function shortcut_cancel_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
+        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+
+        vault_cancelRedeemRequest();
     }
 
 
