@@ -86,6 +86,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IBaseInvestmentManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
