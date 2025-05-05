@@ -173,6 +173,25 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheet
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        public
+        view
+        returns (uint128)
+    {
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
+        return escrow.availableBalanceOf(scId, asset, tokenId);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset) external view returns (uint128) {
+        availableBalanceOf(poolId, scId, asset, 0);
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 

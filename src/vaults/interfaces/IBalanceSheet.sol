@@ -76,4 +76,11 @@ interface IBalanceSheet {
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external;
 
     function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
+
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128);
+
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset) external view returns (uint128);
 }
