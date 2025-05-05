@@ -23,9 +23,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -39,6 +38,8 @@ import {
     VaultDetails,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 /// @title  Pool Manager
@@ -65,6 +66,8 @@ contract PoolManager is
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
+    IAsyncRequestManager public asyncRequestManager;
+    ISyncRequestManager public syncRequestManager;
 
     uint64 internal _assetCounter;
 
@@ -90,6 +93,8 @@ contract PoolManager is
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
+        else if (what == "asyncRequestManager") asyncRequestManager = IAsyncRequestManager(data);
+        else if (what == "syncRequestManager") syncRequestManager = ISyncRequestManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -368,8 +373,8 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IBaseRequestManager manager = vault.manager();
+        manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
 
@@ -382,8 +387,8 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IBaseRequestManager manager = vault.manager();
+        manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
 
@@ -561,13 +566,13 @@ contract PoolManager is
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
     ///      secondary manager (in case of partially sync vault)
     function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
-        address manager = address(IBaseVault(vault).manager());
-        IAuth(address(shareToken_)).rely(manager);
+        IBaseRequestManager manager = vault.manager();
+        IAuth(address(shareToken_)).rely(address(manager));
 
-        // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
-        (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
+        // For sync deposit & async redeem vault, also repeat above for async manager
+        VaultKind vaultKind = vault.vaultKind();
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            IAuth(address(shareToken_)).rely(secondaryVaultManager);
+            IAuth(address(shareToken_)).rely(address(asyncRequestManager));
         }
 
         return vaultKind;

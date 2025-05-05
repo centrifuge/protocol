@@ -8,7 +8,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
 
 /// @dev Solely used locally as protection against stack-too-deep
@@ -39,6 +38,7 @@ interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUp
 
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
+    error SecondaryManagerDoesNotExist();
 
     /// @notice Sets the valuation for a specific pool and share class.
     ///

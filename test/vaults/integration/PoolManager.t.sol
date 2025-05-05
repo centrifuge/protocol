@@ -20,7 +20,9 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 
@@ -144,6 +146,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         emit IPoolManager.File("vaultFactory", address(newVaultFactory), false);
         poolManager.file("vaultFactory", address(newVaultFactory), false);
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
+
+        IAsyncRequestManager newAsyncRequestManager = IAsyncRequestManager(makeAddr("newAsyncRequestManager"));
+        vm.expectEmit();
+        emit IPoolManager.File("asyncRequestManager", address(newAsyncRequestManager));
+        poolManager.file("asyncRequestManager", address(newAsyncRequestManager));
+        assertEq(address(poolManager.asyncRequestManager()), address(newAsyncRequestManager));
+
+        IAsyncRequestManager newSyncRequestManager = IAsyncRequestManager(makeAddr("newSyncRequestManager"));
+        vm.expectEmit();
+        emit IPoolManager.File("syncRequestManager", address(newSyncRequestManager));
+        poolManager.file("syncRequestManager", address(newSyncRequestManager));
+        assertEq(address(poolManager.syncRequestManager()), address(newSyncRequestManager));
 
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert(IPoolManager.FileUnrecognizedParam.selector);
@@ -583,7 +597,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // Remove old vault
         address vaultManager = address(oldVault.manager());
-        IVaultManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
+        IBaseRequestManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault
@@ -827,7 +841,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 5;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 7;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

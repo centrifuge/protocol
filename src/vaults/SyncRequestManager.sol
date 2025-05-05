@@ -17,13 +17,12 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
+import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {
     ISyncRequestManager,
     Prices,
@@ -34,11 +33,12 @@ import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDeposi
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
+contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     using BytesLib for bytes;
     using MathLib for *;
     using CastLib for *;
@@ -51,15 +51,15 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         public maxReserve;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer)
-        BaseInvestmentManager(globalEscrow_, root_, deployer)
+        BaseRequestManager(globalEscrow_, root_, deployer)
     {}
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBaseInvestmentManager
-    function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
+    /// @inheritdoc IBaseRequestManager
+    function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
@@ -90,10 +90,10 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         }
     }
 
-    /// @inheritdoc IVaultManager
+    /// @inheritdoc IBaseRequestManager
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
-        override(BaseInvestmentManager, IVaultManager)
+        override(BaseRequestManager, IBaseRequestManager)
         auth
     {
         super.addVault(poolId, scId, vault_, asset_, assetId);
@@ -101,16 +101,18 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
+        VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).addVault(poolId, scId, vault_, asset_, assetId);
+            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
+            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
+            asyncRequestManager.addVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
-    /// @inheritdoc IVaultManager
+    /// @inheritdoc IBaseRequestManager
     function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
-        override(BaseInvestmentManager, IVaultManager)
+        override(BaseRequestManager, IBaseRequestManager)
         auth
     {
         super.removeVault(poolId, scId, vault_, asset_, assetId);
@@ -118,9 +120,11 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         delete maxReserve[poolId][scId][asset_][tokenId];
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
+        VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IVaultManager(secondaryManager).removeVault(poolId, scId, vault_, asset_, assetId);
+            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
+            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
+            asyncRequestManager.removeVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
@@ -207,11 +211,11 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
     }
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets)
         public
         view
-        override(IBaseInvestmentManager, BaseInvestmentManager)
+        override(IBaseRequestManager, BaseRequestManager)
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
@@ -222,11 +226,11 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         );
     }
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares)
         public
         view
-        override(IBaseInvestmentManager, BaseInvestmentManager)
+        override(IBaseRequestManager, BaseRequestManager)
         returns (uint256 assets)
     {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
@@ -248,15 +252,6 @@ contract SyncRequestManager is BaseInvestmentManager, ISyncRequestManager {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
         priceData.poolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
-    }
-
-    /// @inheritdoc IVaultManager
-    function vaultKind(IBaseVault vault_) public view returns (VaultKind, address) {
-        if (IERC165(address(vault_)).supportsInterface(type(IERC7540Redeem).interfaceId)) {
-            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(address(vault_)).asyncRedeemManager()));
-        } else {
-            return (VaultKind.Sync, address(0));
-        }
     }
 
     //----------------------------------------------------------------------------------------------

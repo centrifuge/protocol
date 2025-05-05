@@ -14,7 +14,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import "test/vaults/BaseTest.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 contract DepositTest is BaseTest {
@@ -150,7 +150,7 @@ contract DepositTest is BaseTest {
         // minting or depositing more should revert
         vm.expectRevert(IAsyncRequestManager.ExceedsDepositLimits.selector);
         vault.mint(1, self);
-        vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(2, self, self);
 
         // remainder is rounding difference
@@ -757,7 +757,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), investor.toBytes32(), assetId, uint128(amount), uint128(amount)
         );
-        vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(amount, investor);
 
         vm.prank(investor);
