@@ -157,6 +157,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_and_cancel(1e18, 1e18, 1e18, 1e18, 0);
     }
 
+    function test_shortcut_deposit_cancel_claim() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        shortcut_deposit_cancel_claim(1e18, 1e18, 1e18, 1e18, 0);
+    }
+
+    function test_shortcut_cancel_redeem_claim_clamped() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, 0);
+
+        shortcut_cancel_redeem_claim_clamped(1e18 - 1, 1e18, 0);
+    }
+
     function test_shortcut_deployNewTokenPoolAndShare_change_price() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
