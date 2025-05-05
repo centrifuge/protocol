@@ -72,8 +72,12 @@ contract NAVManager is Auth {
     // Price updates
     //----------------------------------------------------------------------------------------------
 
+    function updateHoldingValue(AssetId assetId) external {
+        hub.updateHoldingValue(poolId, scId, assetId);
+    }
+
     function updatePricePerShare() external {
-        (D18 current, D18 stored) = navPoolPerShare();
+        (D18 current,) = navPoolPerShare();
         hub.updatePricePerShare(poolId, scId, current);
     }
 
@@ -83,8 +87,12 @@ contract NAVManager is Auth {
 
     /// @dev NAV = equity + gain - loss - liability
     function netAssetValue() public view returns (D18) {
-        return d18(accounting.accountValue(poolId, equityAccount)) + d18(accounting.accountValue(poolId, gainAccount))
-            - d18(accounting.accountValue(poolId, lossAccount)) - d18(accounting.accountValue(poolId, liabilityAccount));
+        // TODO: how to handle when one of the accounts is not positive
+        (, uint128 equity) = accounting.accountValue(poolId, equityAccount);
+        (, uint128 gain) = accounting.accountValue(poolId, gainAccount);
+        (, uint128 loss) = accounting.accountValue(poolId, lossAccount);
+        (, uint128 liability) = accounting.accountValue(poolId, liabilityAccount);
+        return d18(equity) + d18(gain) - d18(loss) - d18(liability);
     }
 
     /// @dev Price = NAV / share class issuance
@@ -92,7 +100,7 @@ contract NAVManager is Auth {
         D18 nav = netAssetValue();
         (uint128 issuance, D18 prev) = shareClassManager.metrics(scId);
 
-        current = netAssetValue / d18(issuance);
+        current = nav / d18(issuance);
         stored = prev;
     }
 }

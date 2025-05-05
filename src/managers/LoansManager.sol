@@ -82,11 +82,12 @@ contract LoansManager is Auth, IERC7726 {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    function update(PoolId /* poolId */, ShareClassId, /* scId */ bytes calldata payload) external auth {
+    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.LoanMaxBorrowAmount)) {
-            MessageLib.UpdateContractLoanMaxBorrowAmount memory m = MessageLib.deserializeUpdateContractLoanMaxBorrowAmount(payload);
+            MessageLib.UpdateContractLoanMaxBorrowAmount memory m =
+                MessageLib.deserializeUpdateContractLoanMaxBorrowAmount(payload);
 
             Loan storage loan = loans[AssetId.wrap(m.assetId)];
             require(linearAccrual.debt(loan.rateId, loan.normalizedDebt) <= int128(m.maxBorrowAmount), ExceedsLTV());
@@ -94,7 +95,6 @@ contract LoansManager is Auth, IERC7726 {
             loan.maxBorrowAmount = d18(m.maxBorrowAmount);
             // emit UpdateLoanMaxBorrowAmount();
         } else if (kind == uint8(UpdateContractType.LoanRate)) {
-
             MessageLib.UpdateContractLoanRate memory m = MessageLib.deserializeUpdateContractLoanRate(payload);
 
             Loan storage loan = loans[AssetId.wrap(m.assetId)];
@@ -111,13 +111,9 @@ contract LoansManager is Auth, IERC7726 {
     // Borrower actions
     //----------------------------------------------------------------------------------------------
 
-    function create(
-        ShareClassId scId,
-        address borrower,
-        address borrowAsset,
-        bytes32 rateId,
-        string memory tokenURI
-    ) external {
+    function create(ShareClassId scId, address borrower, address borrowAsset, bytes32 rateId, string memory tokenURI)
+        external
+    {
         require(linearAccrual.rateIdExists(rateId), UnregisteredRateId());
 
         uint256 tokenId = token.mint(address(this), tokenURI);
