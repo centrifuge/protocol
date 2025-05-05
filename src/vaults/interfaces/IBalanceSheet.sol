@@ -44,7 +44,7 @@ interface IBalanceSheet {
     // --- Errors ---
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
-    
+
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     /// @notice Overloaded increase with asset transfer
