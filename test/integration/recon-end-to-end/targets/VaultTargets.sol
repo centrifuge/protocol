@@ -343,8 +343,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     // TODO: See how these go
     // TODO: Receiver -> Not this
-    function vault_mint(uint256 shares, uint256 toEntropy) public updateGhosts {
-        address to = _getRandomActor(toEntropy);
+    function vault_mint(uint256 shares) public updateGhosts {
+        address to = _getActor();
 
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(address(vault));

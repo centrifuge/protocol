@@ -169,6 +169,30 @@ abstract contract TargetFunctions is
         vault_requestDeposit(amount, toEntropy);
     }
 
+    function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
+        transientValuation_setPrice_clamped(poolId, assetId, navPerShare);
+
+        hub_updatePricePerShare(poolId, scId, navPerShare);
+        hub_notifyAssetPrice(poolId, scId);
+        hub_notifySharePrice(poolId, scId, CENTIFUGE_CHAIN_ID);
+        
+        poolManager_updateMember(type(uint64).max);
+
+        vault_deposit(assets);
+    }
+
+    function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
+        transientValuation_setPrice_clamped(poolId, assetId, navPerShare);
+
+        hub_updatePricePerShare(poolId, scId, navPerShare);
+        hub_notifyAssetPrice(poolId, scId);
+        hub_notifySharePrice(poolId, scId, CENTIFUGE_CHAIN_ID);
+        
+        poolManager_updateMember(type(uint64).max);
+
+        vault_mint(shares);
+    }
+
     function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
