@@ -79,10 +79,6 @@ interface IHub {
     /// sender' as string value.
     function file(bytes32 what, address data) external;
 
-    /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
-    /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    function createPool(PoolId poolId, address admin, AssetId currency) external payable;
-
     /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
         external

@@ -188,7 +188,6 @@ contract VaultsDeployer is CommonDeployer {
         syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("poolManager", address(poolManager));
-        balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 

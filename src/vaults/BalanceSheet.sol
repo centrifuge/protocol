@@ -41,7 +41,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     IRoot public immutable root;
 
-    IGateway public gateway;
     IPoolManager public poolManager;
     IVaultMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
@@ -66,8 +65,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGateway(data);
-        else if (what == "poolManager") poolManager = IPoolManager(data);
+        if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
