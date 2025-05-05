@@ -7,4 +7,8 @@ function raw(AccountId accountId_) pure returns (uint32) {
     return AccountId.unwrap(accountId_);
 }
 
-using {raw} for AccountId global;
+function increment(AccountId accountId_) pure returns (AccountId) {
+    return AccountId.wrap(AccountId.unwrap(accountId_) + 1);
+}
+
+using {raw, increment} for AccountId global;
