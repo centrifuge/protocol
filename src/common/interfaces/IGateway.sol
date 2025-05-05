@@ -161,6 +161,9 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
+    /// @notice Retry a failed message.
+    function retry(uint16 centrifugeId, bytes memory message) external;
+
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 

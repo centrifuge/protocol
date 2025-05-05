@@ -37,7 +37,7 @@ enum AccountType {
 interface IHub {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
-    event NotifySharePrice(
+    event NotifyShareMetadata(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
     event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
@@ -134,7 +134,8 @@ interface IHub {
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
-        payable;
+        payable
+        returns (ShareClassId scId);
 
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.
