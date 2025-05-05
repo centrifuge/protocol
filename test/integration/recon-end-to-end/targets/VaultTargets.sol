@@ -38,15 +38,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     // === REQUEST === //
-    /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
         address to = _getRandomActor(toEntropy);
-        // PoolId poolId = PoolId.wrap(poolIdAsUint);
-        // ShareClassId scId = ShareClassId.wrap(scId);
-        // AssetId assetId = hubRegistry.currency(poolId);
 
         vm.prank(_getActor());
         MockERC20(_getAsset()).approve(address(vault), assets);
@@ -79,7 +76,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
-                // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
+                // nowDepositEpoch = depositEpochId + 1
+                eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch"); 
                 gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
             }
         } catch (bytes memory reason) {
@@ -132,7 +130,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vault_requestDeposit(assets, toEntropy);
     }
 
-    /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch
     function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
 
@@ -155,7 +153,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
 
-            eq(lastUpdate, redeemEpochId, "lastUpdate is not equal to epochId after redeemRequest");
+            // nowRedeemEpoch = redeemEpochId + 1
+            eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch after redeemRequest");
         } catch {
             hasReverted = true;
         }
@@ -197,7 +196,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     // === CANCEL === //
 
-    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
@@ -215,7 +214,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
-                eq(lastUpdateAfter, depositEpochId, "lastUpdate != depositEpochId");
+                // nowDepositEpoch = depositEpochId + 1
+                eq(lastUpdateAfter, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
@@ -241,7 +241,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vault_cancelDepositRequest(_getActor());
     }
 
-    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
     function vault_cancelRedeemRequest(address controller) public updateGhosts asActor {
@@ -256,7 +256,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
-                eq(lastUpdateAfter, redeemEpochId, "lastUpdate != redeemEpochId");
+                // nowRedeemEpoch = redeemEpochId + 1
+                eq(lastUpdateAfter, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
                 eq(pendingAfter, 0, "pending != 0");
             }
         } catch (bytes memory reason) {
