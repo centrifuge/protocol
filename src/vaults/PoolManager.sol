@@ -23,9 +23,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/vaults/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
@@ -39,15 +38,17 @@ import {
     VaultDetails,
     IPoolManager
 } from "src/vaults/interfaces/IPoolManager.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 
 /// @title  Pool Manager
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
 contract PoolManager is
-    ReentrancyProtection,
     Auth,
     Recoverable,
+    ReentrancyProtection,
     IPoolManager,
     IUpdateContract,
     IPoolManagerGatewayHandler
@@ -65,6 +66,8 @@ contract PoolManager is
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
+    IAsyncRequestManager public asyncRequestManager;
+    ISyncRequestManager public syncRequestManager;
 
     uint64 internal _assetCounter;
 
@@ -75,17 +78,12 @@ contract PoolManager is
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
-    constructor(ITokenFactory tokenFactory_, IVaultFactory[] memory vaultFactories, address deployer) Auth(deployer) {
+    constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {
         tokenFactory = tokenFactory_;
-
-        for (uint256 i = 0; i < vaultFactories.length; i++) {
-            IVaultFactory factory = vaultFactories[i];
-            vaultFactory[factory] = true;
-        }
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration thods
+    // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolManager
@@ -95,10 +93,13 @@ contract PoolManager is
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
+        else if (what == "asyncRequestManager") asyncRequestManager = IAsyncRequestManager(data);
+        else if (what == "syncRequestManager") syncRequestManager = ISyncRequestManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
+    /// @inheritdoc IPoolManager
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") {
             vaultFactory[IVaultFactory(factory)] = status;
@@ -119,6 +120,7 @@ contract PoolManager is
         protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
+        require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
             share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
             CrossChainTransferNotAllowed()
@@ -267,6 +269,10 @@ contract PoolManager is
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
+        // Disable expiration of the price
+        if (poolPerAsset.computedAt == 0) {
+            poolPerAsset.maxAge = type(uint64).max;
+        }
         poolPerAsset.price = poolPerAsset_;
         poolPerAsset.computedAt = computedAt;
 
@@ -310,8 +316,8 @@ contract PoolManager is
     }
 
     /// @inheritdoc IUpdateContract
-    /// @notice The pool manager either deploys the vault if a factory address is provided or it simply links/unlinks
-    /// the vault
+    /// @notice The pool manager either deploys the vault if a factory address is provided
+    ///         or it simply links/unlinks the vault.
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
@@ -367,8 +373,8 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).addVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IBaseRequestManager manager = vault.manager();
+        manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = true;
 
@@ -381,8 +387,8 @@ contract PoolManager is
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseInvestmentManager manager = vault.manager();
-        IVaultManager(address(manager)).removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IBaseRequestManager manager = vault.manager();
+        manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
 
         _vaultDetails[vault].isLinked = false;
 
@@ -415,9 +421,9 @@ contract PoolManager is
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
         // NOTE - Reverting the manager approvals is not easy. We SHOULD do that if we phase-out a manager
-        _relyShareToken(vault, shareClass.shareToken);
+        VaultKind vaultKind = _relyShareToken(vault, shareClass.shareToken);
 
-        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vaultKind);
         return vault;
     }
 
@@ -469,20 +475,15 @@ contract PoolManager is
     function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
 
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
-        computedAt = poolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity)
-        public
-        view
-        returns (D18 price, uint64 computedAt)
-    {
+    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         if (checkValidity) {
@@ -490,14 +491,13 @@ contract PoolManager is
         }
 
         price = shareClass.pricePoolPerShare.asPrice();
-        computedAt = shareClass.pricePoolPerShare.computedAt;
     }
 
     /// @inheritdoc IPoolManager
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
-        returns (D18 price, uint64 computedAt)
+        returns (D18 price)
     {
         (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
 
@@ -506,7 +506,6 @@ contract PoolManager is
         }
 
         price = poolPerAsset.asPrice();
-        computedAt = poolPerAsset.computedAt;
     }
 
     /// @inheritdoc IPoolManager
@@ -517,6 +516,30 @@ contract PoolManager is
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
         return (poolPerAsset.asPrice(), poolPerShare.asPrice());
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        computedAt = shareClass.pricePoolPerShare.computedAt;
+        maxAge = shareClass.pricePoolPerShare.maxAge;
+        validUntil = shareClass.pricePoolPerShare.validUntil();
+    }
+
+    /// @inheritdoc IPoolManager
+    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
+    {
+        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
+        computedAt = poolPerAsset.computedAt;
+        maxAge = poolPerAsset.maxAge;
+        validUntil = poolPerAsset.validUntil();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -541,16 +564,18 @@ contract PoolManager is
     }
 
     /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
-    /// secondary manager (in case of partially sync vault)
-    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal {
-        address manager = address(IBaseVault(vault).manager());
-        IAuth(address(shareToken_)).rely(manager);
+    ///      secondary manager (in case of partially sync vault)
+    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
+        IBaseRequestManager manager = vault.manager();
+        IAuth(address(shareToken_)).rely(address(manager));
 
-        // For sync deposit & async redeem vault, also repeat above for async manager (base manager is sync one)
-        (VaultKind vaultKind, address secondaryVaultManager) = IVaultManager(manager).vaultKind(vault);
+        // For sync deposit & async redeem vault, also repeat above for async manager
+        VaultKind vaultKind = vault.vaultKind();
         if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            IAuth(address(shareToken_)).rely(secondaryVaultManager);
+            IAuth(address(shareToken_)).rely(address(asyncRequestManager));
         }
+
+        return vaultKind;
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {

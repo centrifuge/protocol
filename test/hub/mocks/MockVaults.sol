@@ -26,7 +26,6 @@ contract MockVaults is Test, Auth, IAdapter {
     IMessageHandler public handler;
     uint16 public sourceChainId;
 
-    uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
     constructor(uint16 centrifugeId, IMessageHandler handler_) Auth(msg.sender) {
@@ -70,13 +69,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint16 centrifugeId, bytes memory data, uint256, address)
-        external
-        payable
-        returns (bytes32 adapterData)
-    {
-        lastChainDestinations.push(centrifugeId);
-
+    function send(uint16, bytes memory data, uint256, address) external payable returns (bytes32 adapterData) {
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();
             bytes memory message = data.slice(0, messageLength);
@@ -130,7 +123,6 @@ contract MockVaults is Test, Auth, IAdapter {
     }
 
     function resetMessages() external {
-        delete lastChainDestinations;
         delete lastMessages;
     }
 
@@ -138,11 +130,15 @@ contract MockVaults is Test, Auth, IAdapter {
         return lastMessages.length;
     }
 
-    function popMessage() external returns (bytes memory) {
+    function popMessage() external returns (bytes memory message) {
         require(lastMessages.length > 0, "mockVaults/no-msgs");
 
-        bytes memory popped = lastMessages[lastMessages.length - 1];
+        message = lastMessages[0];
+
+        for (uint256 i = 1; i < lastMessages.length; i++) {
+            lastMessages[i - 1] = lastMessages[i];
+        }
+
         lastMessages.pop();
-        return popped;
     }
 }

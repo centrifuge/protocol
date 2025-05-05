@@ -6,11 +6,10 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -23,19 +22,19 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {BaseInvestmentManager} from "src/vaults/BaseInvestmentManager.sol";
+import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
+import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
+contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -45,57 +44,22 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IAsyncVault vault))) public vault;
 
     constructor(IEscrow globalEscrow_, address root_, address deployer)
-        BaseInvestmentManager(globalEscrow_, root_, deployer)
+        BaseRequestManager(globalEscrow_, root_, deployer)
     {}
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external override(IBaseInvestmentManager, BaseInvestmentManager) auth {
+    function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc IVaultManager
-    /// @dev vault_ Must be an IAsyncVault
-    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
-        public
-        auth
-    {
-        address token = vault_.share();
-
-        require(vault_.asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
-
-        vault[poolId][scId][assetId] = IAsyncVault(address(vault_));
-        IAuth(token).rely(address(vault_));
-        IShareToken(token).updateVault(vault_.asset(), address(vault_));
-        rely(address(vault_));
-    }
-
-    /// @inheritdoc IVaultManager
-    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
-        public
-        auth
-    {
-        address token = vault_.share();
-
-        require(vault_.asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
-
-        delete vault[poolId][scId][assetId];
-
-        IAuth(token).deny(address(vault_));
-        IShareToken(token).updateVault(vault_.asset(), address(0));
-        deny(address(vault_));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -189,7 +153,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function approvedDeposits(
         PoolId poolId,
         ShareClassId scId,
@@ -208,13 +172,13 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function revokedShares(
         PoolId poolId,
         ShareClassId scId,
@@ -231,7 +195,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         balanceSheet.revoke(poolId, scId, address(globalEscrow), shareAmount);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -240,7 +204,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         uint128 assets,
         uint128 shares
     ) public auth {
-        IAsyncVault vault_ = vault[poolId][scId][assetId];
+        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -255,7 +219,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onDepositClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -264,7 +228,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         uint128 assets,
         uint128 shares
     ) public auth {
-        IAsyncVault vault_ = vault[poolId][scId][assetId];
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -281,7 +245,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onRedeemClaimable(user, assets, shares);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillCancelDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -290,7 +254,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         uint128 assets,
         uint128 fulfillment
     ) public auth {
-        IAsyncVault vault_ = vault[poolId][scId][assetId];
+        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelDepositRequest == true, NoPendingRequest());
@@ -304,12 +268,12 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
         vault_.onCancelDepositClaimable(user, assets);
     }
 
-    /// @inheritdoc IInvestmentManagerGatewayHandler
+    /// @inheritdoc IRequestManagerGatewayHandler
     function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
         public
         auth
     {
-        IAsyncVault vault_ = vault[poolId][scId][assetId];
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
 
@@ -434,7 +398,7 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Cancelation claim handlers
+    // Cancellation claim handlers
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAsyncDepositManager
@@ -542,16 +506,6 @@ contract AsyncRequestManager is BaseInvestmentManager, IAsyncRequestManager {
     /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(IBaseVault vault_, address user) public view returns (uint256 shares) {
         shares = investments[vault_][user].claimableCancelRedeemRequest;
-    }
-
-    /// @inheritdoc IVaultManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
-        return vault[poolId][scId][assetId];
-    }
-
-    /// @inheritdoc IVaultManager
-    function vaultKind(IBaseVault) public pure returns (VaultKind, address) {
-        return (VaultKind.Async, address(0));
     }
 
     //----------------------------------------------------------------------------------------------

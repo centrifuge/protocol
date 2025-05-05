@@ -1,0 +1,18 @@
+@startuml
+left to right direction
+collections Common_Adapter
+collections CP_Managers
+collections CV_Managers
+
+[CP_Managers] <-left- [Common_MessageProcessor]
+[CP_Managers] <-right-> [Common_MessageDispatcher]
+
+[CV_Managers] <-- [Common_MessageProcessor]
+[CV_Managers] <--> [Common_MessageDispatcher]
+
+[Common_MessageProcessor] <-down- [Common_Gateway]
+[Common_MessageDispatcher] -down-> [Common_Gateway]
+
+[Common_Gateway] <-down-> Common_Adapter
+
+@enduml
