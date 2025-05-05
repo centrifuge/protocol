@@ -20,7 +20,9 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 
@@ -87,11 +89,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
                 && nonWard != address(gateway)
         );
 
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
-        vaultFactories[0] = asyncVaultFactory;
-
         // redeploying within test to increase coverage
-        new PoolManager(tokenFactory, vaultFactories, address(this));
+        new PoolManager(tokenFactory, address(this));
+        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
 
         // values set correctly
         assertEq(address(messageDispatcher.poolManager()), address(poolManager));
@@ -146,6 +146,18 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         emit IPoolManager.File("vaultFactory", address(newVaultFactory), false);
         poolManager.file("vaultFactory", address(newVaultFactory), false);
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
+
+        IAsyncRequestManager newAsyncRequestManager = IAsyncRequestManager(makeAddr("newAsyncRequestManager"));
+        vm.expectEmit();
+        emit IPoolManager.File("asyncRequestManager", address(newAsyncRequestManager));
+        poolManager.file("asyncRequestManager", address(newAsyncRequestManager));
+        assertEq(address(poolManager.asyncRequestManager()), address(newAsyncRequestManager));
+
+        IAsyncRequestManager newSyncRequestManager = IAsyncRequestManager(makeAddr("newSyncRequestManager"));
+        vm.expectEmit();
+        emit IPoolManager.File("syncRequestManager", address(newSyncRequestManager));
+        poolManager.file("syncRequestManager", address(newSyncRequestManager));
+        assertEq(address(poolManager.syncRequestManager()), address(newSyncRequestManager));
 
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert(IPoolManager.FileUnrecognizedParam.selector);
@@ -552,9 +564,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-        (D18 latestPrice, uint64 lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        D18 latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp);
 
         vm.expectRevert(IPoolManager.CannotSetOlderPrice.selector);
         poolManager.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
@@ -565,9 +576,8 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.priceAssetPerShare(poolId, scId, assetId, true);
 
         // NOTE: Unchecked version will work
-        (latestPrice, lastUpdated) = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
+        latestPrice = poolManager.priceAssetPerShare(poolId, scId, assetId, false);
         assertEq(latestPrice.raw(), price);
-        assertEq(lastUpdated, block.timestamp - 1);
     }
 
     function testVaultMigration() public {
@@ -587,7 +597,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
 
         // Remove old vault
         address vaultManager = address(oldVault.manager());
-        IVaultManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
+        IBaseRequestManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy new vault
@@ -772,7 +782,9 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         // Check event except for vault address which cannot be known
         AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
         vm.expectEmit(true, true, true, false);
-        emit IPoolManager.DeployVault(poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)));
+        emit IPoolManager.DeployVault(
+            poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)), VaultKind.Async
+        );
         IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
@@ -829,7 +841,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 5;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 7;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

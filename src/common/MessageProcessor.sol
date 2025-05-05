@@ -18,7 +18,7 @@ import {
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IInvestmentManagerGatewayHandler
+    IRequestManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -37,7 +37,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IGatewayHandler public gateway;
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerGatewayHandler public investmentManager;
+    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
@@ -54,7 +54,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         if (what == "gateway") gateway = IGatewayHandler(data);
         else if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 

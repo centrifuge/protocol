@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IInvestmentManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
@@ -33,10 +33,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IInvestmentManagerGatewayHandler {
-    error AssetMismatch();
-    error VaultAlreadyExists();
-    error VaultDoesNotExist();
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManagerGatewayHandler {
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();

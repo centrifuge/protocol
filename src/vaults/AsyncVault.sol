@@ -9,7 +9,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseVault, BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
@@ -18,7 +18,7 @@ import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
 ///
-/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 or ERC-6909 tokens
+/// @dev    Each vault issues shares of Centrifuge share class tokens as restricted ERC-20 tokens
 ///         against asset deposits based on the current share price.
 ///
 ///         ERC-7540 is an extension of the ERC-4626 standard by 'requestDeposit' & 'requestRedeem' methods, where
@@ -167,5 +167,13 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     function onCancelDepositClaimable(address controller, uint256 assets) public virtual auth {
         emit CancelDepositClaimable(controller, REQUEST_ID, assets);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // IBaseVault view
+    //----------------------------------------------------------------------------------------------
+
+    function vaultKind() public pure returns (VaultKind vaultKind_) {
+        return VaultKind.Async;
     }
 }

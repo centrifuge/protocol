@@ -21,7 +21,7 @@ import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {ISyncRequestManager} from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -159,7 +159,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(

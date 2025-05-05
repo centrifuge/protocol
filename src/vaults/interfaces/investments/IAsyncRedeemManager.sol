@@ -2,10 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {IVaultManager} from "src/vaults/interfaces/IVaultManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
-interface IAsyncRedeemManager is IRedeemManager, IVaultManager {
+interface IAsyncRedeemManager is IRedeemManager {
     /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
     ///         requests are added to the order book on the corresponding CP instance. Once the next epoch is
