@@ -19,10 +19,10 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRedeemVault, IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IBaseRequestManager, VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {
     ISyncRequestManager,
     Prices,
@@ -33,6 +33,7 @@ import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDeposi
 import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -100,10 +101,11 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
+        VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            require(secondaryManager != address(0), SecondaryManagerDoesNotExist());
-            IBaseRequestManager(secondaryManager).addVault(poolId, scId, vault_, asset_, assetId);
+            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
+            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
+            asyncRequestManager.addVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
@@ -118,10 +120,11 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         (, uint256 tokenId) = poolManager.idToAsset(assetId);
         delete maxReserve[poolId][scId][asset_][tokenId];
 
-        (VaultKind vaultKind_, address secondaryManager) = vaultKind(vault_);
+        VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            require(secondaryManager != address(0), SecondaryManagerDoesNotExist());
-            IBaseRequestManager(secondaryManager).removeVault(poolId, scId, vault_, asset_, assetId);
+            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
+            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
+            asyncRequestManager.removeVault(poolId, scId, vault_, asset_, assetId);
         }
     }
 
@@ -249,20 +252,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
         priceData.poolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
-    }
-
-    /// @inheritdoc IBaseRequestManager
-    function vaultKind(IBaseVault vault_)
-        public
-        view
-        override(BaseRequestManager, IBaseRequestManager)
-        returns (VaultKind, address)
-    {
-        if (IERC165(address(vault_)).supportsInterface(type(IERC7540Redeem).interfaceId)) {
-            return (VaultKind.SyncDepositAsyncRedeem, address(IAsyncRedeemVault(address(vault_)).asyncRedeemManager()));
-        } else {
-            return (VaultKind.Sync, address(0));
-        }
     }
 
     //----------------------------------------------------------------------------------------------

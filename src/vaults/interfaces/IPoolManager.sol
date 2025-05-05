@@ -9,8 +9,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

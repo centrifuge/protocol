@@ -22,9 +22,9 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
 import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
 import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {IBaseRequestManager, VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault, IBaseVault, IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";

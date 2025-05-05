@@ -14,9 +14,9 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseRequestManager, VaultKind} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
@@ -129,11 +129,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     /// @inheritdoc IBaseRequestManager
     function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
         return vault[poolId][scId][assetId];
-    }
-
-    /// @inheritdoc IBaseRequestManager
-    function vaultKind(IBaseVault) public view virtual returns (VaultKind, address) {
-        return (VaultKind.Async, address(0));
     }
 
     function _assetToShareAmount(
