@@ -5,11 +5,15 @@ pragma solidity 0.8.28;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
@@ -23,6 +27,8 @@ import {Properties} from "test/integration/recon-end-to-end/properties/Propertie
  * - vault_file
  */
 abstract contract VaultTargets is BaseTargetFunctions, Properties {
+    using CastLib for *;
+    
     /// @dev Get the balance of the current assetErc20 and _getActor()
     function _getTokenAndBalanceForVault() internal view returns (uint256) {
         // Token
@@ -32,12 +38,18 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     // === REQUEST === //
+    /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: _updateDepositRequest should never revert due to underflow
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
+        address to = _getRandomActor(toEntropy);
+        // PoolId poolId = PoolId.wrap(poolIdAsUint);
+        // ShareClassId scId = ShareClassId.wrap(scId);
+        // AssetId assetId = hubRegistry.currency(poolId);
 
         vm.prank(_getActor());
         MockERC20(_getAsset()).approve(address(vault), assets);
-        address to = _getRandomActor(toEntropy);
 
         // B4 Balances
         uint256 balanceB4 = MockERC20(_getAsset()).balanceOf(_getActor());
@@ -48,12 +60,37 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         try vault.requestDeposit(assets, to, _getActor()) {
-            // TF-1
+            // ghost tracking
+            requestDeposited[_getActor()] += assets;
             sumOfDepositRequests[address(_getAsset())] += assets;
-
             requestDepositAssets[_getActor()][address(_getAsset())] += assets;
-        } catch {
+
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), to.toBytes32());
+            (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+
+            address[] memory _actors = _getActors();
+            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+            uint128 totalPendingUserDeposit = 0;
+            for (uint256 k = 0; k < _actors.length; k++) {
+                address actor = _actors[k];
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actor.toBytes32());
+                totalPendingUserDeposit += pendingUserDeposit;
+            }
+
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
+                // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
+                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
+            }
+        } catch (bytes memory reason) {
             hasReverted = true;
+
+            // precondition: check that it wasn't an overflow because we only care about underflow
+            uint128 pendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+            if(uint256(pendingDeposit) + uint256(assets) < uint256(type(uint128).max)) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
+            }
         }
 
         // If not member
@@ -88,6 +125,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    function vault_requestDeposit_clamped(uint256 assets, uint256 toEntropy) public {
+        assets = between(assets, 0, MockERC20(_getAsset()).balanceOf(_getActor()));
+        address to = _getRandomActor(toEntropy);
+
+        vault_requestDeposit(assets, toEntropy);
+    }
+
+    /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
 
@@ -102,8 +147,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         try vault.requestRedeem(shares, to, _getActor()) {
+            // ghost tracking
             sumOfRedeemRequests[address(token)] += shares; // E-2
             requestRedeemShares[_getActor()][address(token)] += shares;
+            requestRedeeemed[_getActor()] += shares;
+
+            (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+            (, uint32 redeemEpochId,, ) = shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+
+            eq(lastUpdate, redeemEpochId, "lastUpdate is not equal to epochId after redeemRequest");
         } catch {
             hasReverted = true;
         }
@@ -138,14 +190,94 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    // === CANCEL === //
-
-    function vault_cancelDepositRequest() public updateGhosts asActor {
-        vault.cancelDepositRequest(REQUEST_ID, _getActor());
+    function vault_requestRedeem_clamped(uint256 shares, uint256 toEntropy) public {
+        shares = between(shares, 0, token.balanceOf(_getActor()));
+        vault_requestRedeem(shares, toEntropy);
     }
 
-    function vault_cancelRedeemRequest() public updateGhosts asActor {
-        vault.cancelRedeemRequest(REQUEST_ID, _getActor());
+    // === CANCEL === //
+
+    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
+    /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
+    /// @dev Property: _updateDepositRequest should never revert due to underflow
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
+    function vault_cancelDepositRequest(address controller) public updateGhosts asActor {
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+        (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+
+        // REQUEST_ID is always passed as 0 (unused in the function)
+        try vault.cancelDepositRequest(REQUEST_ID, controller) {
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+
+            // update ghosts
+            cancelledDeposits[_getActor()] += (pendingBefore - pendingAfter);
+
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+                eq(lastUpdateAfter, depositEpochId, "lastUpdate != depositEpochId");
+                eq(pendingAfter, 0, "pending is not zero");
+            }
+        } catch (bytes memory reason) {
+            (uint32 depositEpochId,,,) = shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+            uint128 previousDepositApproved;
+            if(depositEpochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(scId), AssetId.wrap(assetId), depositEpochId - 1);
+            }
+
+            (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(scId), AssetId.wrap(assetId), depositEpochId);
+            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+            if(previousDepositApproved == 0 && currentDepositApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+            }
+        }
+
+
+    }
+
+    function vault_cancelDepositRequest_clamped() public {
+        vault_cancelDepositRequest(_getActor());
+    }
+
+    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
+    /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
+    /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
+    function vault_cancelRedeemRequest(address controller) public updateGhosts asActor {
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+        
+        try vault.cancelRedeemRequest(REQUEST_ID, controller) {
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+
+            // update ghosts
+            cancelledRedemptions[_getActor()] += (pendingBefore - pendingAfter);
+
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
+                eq(lastUpdateAfter, redeemEpochId, "lastUpdate != redeemEpochId");
+                eq(pendingAfter, 0, "pending != 0");
+            }
+        } catch (bytes memory reason) {
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+            (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(scId), AssetId.wrap(assetId), redeemEpochId);
+            uint128 previousRedeemApproved;
+            if(redeemEpochId > 0) {
+                // we also check the previous epoch because approvals can increment the epochId
+                (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(scId), AssetId.wrap(assetId), redeemEpochId - 1);
+            }
+
+            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+            if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
+                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+                t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+            }
+        }
+    }
+
+    function vault_cancelRedeemRequest_clamped() public {
+        vault_cancelRedeemRequest(_getActor());
     }
 
     function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {

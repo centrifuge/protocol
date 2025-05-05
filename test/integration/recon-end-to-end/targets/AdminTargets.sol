@@ -337,108 +337,108 @@ abstract contract AdminTargets is
     }
     
     
-
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
     // === PoolManager === //
     /// Gateway owner methods: these get called directly because we're not using the gateway in our setup
     /// @notice These don't prank asAdmin because there are external calls first, 
     /// @notice admin is the tester contract (address(this)) so we leave out an explicit prank directly before the call to the target function
-    
-    function hub_registerAsset(uint128 assetIdAsUint) public updateGhosts {
-        AssetId assetId_ = AssetId.wrap(assetIdAsUint); 
-        uint8 decimals = MockERC20(_getAsset()).decimals();
+    /// NOTE: commented functions don't need to have handlers anymore because they're called as callbacks to operations in the Vault 
 
-        hub.registerAsset(assetId_, decimals);
+    // function hub_registerAsset(uint128 assetIdAsUint) public updateGhosts {
+    //     AssetId assetId_ = AssetId.wrap(assetIdAsUint); 
+    //     uint8 decimals = MockERC20(_getAsset()).decimals();
 
-        createdAssetIds.push(assetId_);
-    }  
+    //     hub.registerAsset(assetId_, decimals);
 
-    function hub_registerAsset_clamped() public updateGhosts {
-        uint128 assetId = assetAddressToAssetId[_getAsset()];
-        hub_registerAsset(assetId);
-    }
+    //     createdAssetIds.push(assetId_);
+    // }  
+
+    // function hub_registerAsset_clamped() public updateGhosts {
+    //     uint128 assetId = assetAddressToAssetId[_getAsset()];
+    //     hub_registerAsset(assetId);
+    // }
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function hub_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = _getActor().toBytes32();
+    // function hub_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     AssetId depositAssetId = hubRegistry.currency(poolId);
+    //     bytes32 investor = _getActor().toBytes32();
 
-        try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
-            (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
+    //     try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
+    //         (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+    //         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
 
-            // ghost tracking
-            requestDeposited[_getActor()] += amount;
+    //         // ghost tracking
+    //         requestDeposited[_getActor()] += amount;
 
-            address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
-            uint128 totalPendingUserDeposit = 0;
-            for (uint256 k = 0; k < _actors.length; k++) {
-                address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, actor.toBytes32());
-                totalPendingUserDeposit += pendingUserDeposit;
-            }
+    //         address[] memory _actors = _getActors();
+    //         uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
+    //         uint128 totalPendingUserDeposit = 0;
+    //         for (uint256 k = 0; k < _actors.length; k++) {
+    //             address actor = _actors[k];
+    //             (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, actor.toBytes32());
+    //             totalPendingUserDeposit += pendingUserDeposit;
+    //         }
 
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
-                // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
-                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
-            }
+    //         // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+    //         if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
+    //             // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
+    //             gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
+    //         }
 
-            // state space enrichment
-            if(amount > 0) {
-                emit InterestingCoverageLog();
-            }
-        } catch (bytes memory reason) {
-            // precondition: check that it wasn't an overflow because we only care about underflow
-            uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
-            if(uint256(pendingDeposit) + uint256(amount) < uint256(type(uint128).max)) {
-                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-                t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
-            }
-        }  
-    }   
+    //         // state space enrichment
+    //         if(amount > 0) {
+    //             emit InterestingCoverageLog();
+    //         }
+    //     } catch (bytes memory reason) {
+    //         // precondition: check that it wasn't an overflow because we only care about underflow
+    //         uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
+    //         if(uint256(pendingDeposit) + uint256(amount) < uint256(type(uint128).max)) {
+    //             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+    //             t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
+    //         }
+    //     }  
+    // }   
 
-    function hub_depositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_depositRequest(poolId.raw(), scId.raw(), amount);
-    }
+    // function hub_depositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     hub_depositRequest(poolId.raw(), scId.raw(), amount);
+    // }
 
     /// @dev Property: After successfully calling redeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
-    function hub_redeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
-        bytes32 investor = _getActor().toBytes32();
+    // function hub_redeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
+    //     bytes32 investor = _getActor().toBytes32();
 
-        try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
-            // ghost tracking
-            requestRedeeemed[_getActor()] += amount;
+    //     try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+    //         // ghost tracking
+    //         requestRedeeemed[_getActor()] += amount;
 
-            (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
-            (, uint32 redeemEpochId,, ) = shareClassManager.epochId(scId, payoutAssetId);
+    //         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+    //         (, uint32 redeemEpochId,, ) = shareClassManager.epochId(scId, payoutAssetId);
 
-            eq(lastUpdate, redeemEpochId, "lastUpdate is not equal to epochId after redeemRequest");
+    //         eq(lastUpdate, redeemEpochId, "lastUpdate is not equal to epochId after redeemRequest");
 
-            // state space enrichment   
-            if(amount > 0) {
-                emit InterestingCoverageLog();
-            }
-        } catch {}
-    }  
+    //         // state space enrichment   
+    //         if(amount > 0) {
+    //             emit InterestingCoverageLog();
+    //         }
+    //     } catch {}
+    // }  
 
-    function hub_redeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub_redeemRequest(poolId.raw(), scId.raw(), payoutAssetId.raw(), amount);
-    }
+    // function hub_redeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     AssetId payoutAssetId = hubRegistry.currency(poolId);
+    //     hub_redeemRequest(poolId.raw(), scId.raw(), payoutAssetId.raw(), amount);
+    // }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
@@ -446,118 +446,119 @@ abstract contract AdminTargets is
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId depositAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = _getActor().toBytes32();
+    // function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     AssetId depositAssetId = hubRegistry.currency(poolId);
+    //     bytes32 investor = _getActor().toBytes32();
 
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
-        (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
-        try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+    //     (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
+    //     (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
+    //     try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
+    //         (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, depositAssetId, investor);
 
-            // update ghosts
-            cancelledDeposits[_getActor()] += (pendingBefore - pendingAfter);
+    //         // update ghosts
+    //         cancelledDeposits[_getActor()] += (pendingBefore - pendingAfter);
 
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
-                eq(lastUpdateAfter, depositEpochId, "lastUpdate != depositEpochId");
-                eq(pendingAfter, 0, "pending is not zero");
-            }
-        } catch (bytes memory reason) {
-            (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, depositAssetId);
-            uint128 previousDepositApproved;
-            if(depositEpochId > 0) {
-                // we also check the previous epoch because approvals can increment the epochId
-                (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId - 1);
-            }
-            (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId);
-            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
-            if(previousDepositApproved == 0 && currentDepositApproved == 0) {
-                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-                t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
-            }
-        }
-    }
+    //         // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+    //         if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
+    //             eq(lastUpdateAfter, depositEpochId, "lastUpdate != depositEpochId");
+    //             eq(pendingAfter, 0, "pending is not zero");
+    //         }
+    //     } catch (bytes memory reason) {
+    //         (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, depositAssetId);
+    //         uint128 previousDepositApproved;
+    //         if(depositEpochId > 0) {
+    //             // we also check the previous epoch because approvals can increment the epochId
+    //             (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId - 1);
+    //         }
+    //         (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(scId, depositAssetId, depositEpochId);
+    //         // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+    //         if(previousDepositApproved == 0 && currentDepositApproved == 0) {
+    //             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+    //             t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
+    //         }
+    //     }
+    // }
 
-    function hub_cancelDepositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_cancelDepositRequest(poolId.raw(), scId.raw());
-    }
+    // function hub_cancelDepositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     hub_cancelDepositRequest(poolId.raw(), scId.raw());
+    // }
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function hub_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        bytes32 investor = _getActor().toBytes32();
+    // function hub_cancelRedeemRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     AssetId payoutAssetId = hubRegistry.currency(poolId);
+    //     bytes32 investor = _getActor().toBytes32();
 
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+    //     (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
 
-        try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
-            (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
+    //     try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
+    //         (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
+    //         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
 
-            // update ghosts
-            cancelledRedemptions[_getActor()] += (pendingBefore - pendingAfter);
+    //         // update ghosts
+    //         cancelledRedemptions[_getActor()] += (pendingBefore - pendingAfter);
 
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
-                eq(lastUpdateAfter, redeemEpochId, "lastUpdate != redeemEpochId");
-                eq(pendingAfter, 0, "pending != 0");
-            }
-        } catch (bytes memory reason) {
-            (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
-            uint128 previousRedeemApproved;
-            if(redeemEpochId > 0) {
-                // we also check the previous epoch because approvals can increment the epochId
-                (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId - 1);
-            }
-            (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId);
-            // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
-            if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
-                bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
-                t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
-            }
-        }
-    }
+    //         // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+    //         if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
+    //             eq(lastUpdateAfter, redeemEpochId, "lastUpdate != redeemEpochId");
+    //             eq(pendingAfter, 0, "pending != 0");
+    //         }
+    //     } catch (bytes memory reason) {
+    //         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
+    //         uint128 previousRedeemApproved;
+    //         if(redeemEpochId > 0) {
+    //             // we also check the previous epoch because approvals can increment the epochId
+    //             (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId - 1);
+    //         }
+    //         (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(scId, payoutAssetId, redeemEpochId);
+    //         // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
+    //         if(previousRedeemApproved == 0 && currentRedeemApproved == 0) {
+    //             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
+    //             t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
+    //         }
+    //     }
+    // }
 
-    function hub_cancelRedeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_cancelRedeemRequest(poolId.raw(), scId.raw());
-    }
+    // function hub_cancelRedeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     hub_cancelRedeemRequest(poolId.raw(), scId.raw());
+    // }
 
-    function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingAmount(poolId, scId, assetId, amount, D18.wrap(pricePerUnit), isIncrease);
-    }
+    // function hub_updateHoldingAmount(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     AssetId assetId = AssetId.wrap(assetIdAsUint);
+    //     hub.updateHoldingAmount(poolId, scId, assetId, amount, D18.wrap(pricePerUnit), isIncrease);
+    // }
 
-    function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+    // function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     AssetId assetId = hubRegistry.currency(poolId);
 
-        JournalEntry[] memory debits = new JournalEntry[](1);
-        debits[0] = JournalEntry({
-            value: amount,
-            accountId: Helpers.getRandomAccountId(holdings, poolId, scId, assetId, accountEntropy)
-        });
-        JournalEntry[] memory credits = new JournalEntry[](1);
-        credits[0] = JournalEntry({
-            value: amount,
-            accountId: Helpers.getRandomAccountId(holdings, poolId, scId, assetId, accountEntropy)
-        });
+    //     JournalEntry[] memory debits = new JournalEntry[](1);
+    //     debits[0] = JournalEntry({
+    //         value: amount,
+    //         accountId: Helpers.getRandomAccountId(holdings, poolId, scId, assetId, accountEntropy)
+    //     });
+    //     JournalEntry[] memory credits = new JournalEntry[](1);
+    //     credits[0] = JournalEntry({
+    //         value: amount,
+    //         accountId: Helpers.getRandomAccountId(holdings, poolId, scId, assetId, accountEntropy)
+    //     });
 
-        hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease);
-    }
+    //     hub_updateHoldingAmount(poolId.raw(), scId.raw(), assetId.raw(), amount, pricePerUnit, isIncrease);
+    // }
 
+    // NOTE: might potentially cause false positives because it's an admin function that's not regularly called
     function hub_updateHoldingValue(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -594,27 +595,27 @@ abstract contract AdminTargets is
         hub_updateJournal(poolId.raw(), debits, credits);
     }
 
-    function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.increaseShareIssuance(poolId, scId, amount);
-    }
+    // function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     hub.increaseShareIssuance(poolId, scId, amount);
+    // }
 
-    function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerShare, uint128 amount) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_increaseShareIssuance(poolId.raw(), scId.raw(), amount);
-    }
+    // function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerShare, uint128 amount) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     hub_increaseShareIssuance(poolId.raw(), scId.raw(), amount);
+    // }
 
-    function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.decreaseShareIssuance(poolId, scId, amount);
-    }
+    // function hub_decreaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
+    //     PoolId poolId = PoolId.wrap(poolIdAsUint);
+    //     ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    //     hub.decreaseShareIssuance(poolId, scId, amount);
+    // }
 
-    function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        hub_decreaseShareIssuance(poolId.raw(), scId.raw(), amount);
-    }
+    // function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
+    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
+    //     hub_decreaseShareIssuance(poolId.raw(), scId.raw(), amount);
+    // }
 }

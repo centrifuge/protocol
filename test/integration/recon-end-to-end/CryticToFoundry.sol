@@ -111,6 +111,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         vault_withdraw(1e18, 0);
     }
 
+    function test_vault_deposit_shortcut() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, 0);
+    }
+
     function test_vault_redeem_and_fulfill_shortcut() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
