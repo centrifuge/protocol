@@ -9,20 +9,22 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId, newAccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {IGasService} from "src/common/interfaces/IGasService.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV, PROOF_COST_ENV} from "script/CommonDeployer.s.sol";
+import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
+import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
+import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
@@ -47,19 +49,27 @@ contract BaseTest is HubDeployer, Test {
     uint128 constant APPROVED_SHARE_AMOUNT = SHARE_AMOUNT / 5;
     D18 immutable NAV_PER_SHARE = d18(2, 1);
 
+    AccountId constant ASSET_USDC_ACCOUNT = AccountId.wrap(0x01);
+    AccountId constant EQUITY_ACCOUNT = AccountId.wrap(0x02);
+    AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
+    AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
+    AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
+
     uint64 constant GAS = 100 wei;
 
     MockVaults cv;
+    MockValuation valuation;
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, gateway);
         wire(CHAIN_CV, cv, address(this));
+
+        valuation = new MockValuation(hubRegistry);
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         // Pre deployment
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-        vm.setEnv(PROOF_COST_ENV, vm.toString(GAS));
 
         // Deployment
         deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
@@ -70,7 +80,6 @@ contract BaseTest is HubDeployer, Test {
         vm.deal(FM, 1 ether);
 
         // Label contracts & actors (for debugging)
-        vm.label(address(transientValuation), "TransientValuation");
         vm.label(address(identityValuation), "IdentityValuation");
         vm.label(address(hubRegistry), "HubRegistry");
         vm.label(address(accounting), "Accounting");
@@ -84,5 +93,14 @@ contract BaseTest is HubDeployer, Test {
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
+    }
+
+    function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
+        internal
+        view
+    {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
     }
 }

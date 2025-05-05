@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
-interface IRedeemManager is IBaseInvestmentManager {
+interface IRedeemManager is IBaseRequestManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -22,7 +23,7 @@ interface IRedeemManager is IBaseInvestmentManager {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function redeem(address vaultAddr, uint256 shares, address receiver, address owner)
+    function redeem(IBaseVault vault, uint256 shares, address receiver, address owner)
         external
         returns (uint256 assets);
 
@@ -35,15 +36,15 @@ interface IRedeemManager is IBaseInvestmentManager {
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the withdrawal have already been reserved in escrow on
     ///         fulfillRedeemtRequest.
-    function withdraw(address vaultAddr, uint256 assets, address receiver, address owner)
+    function withdraw(IBaseVault vault, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
 
     /// @notice Returns the max amount of shares based on the unclaimed number of assets after at least one successful
     ///         redeem order fulfillment on the corresponding CP instance.
-    function maxRedeem(address vaultAddr, address user) external view returns (uint256 shares);
+    function maxRedeem(IBaseVault vault, address user) external view returns (uint256 shares);
 
     /// @notice Returns the max amount of assets a user can claim after at least one successful redeem order fulfillment
     ///         on the corresponding CP instance.
-    function maxWithdraw(address vaultAddr, address user) external view returns (uint256 assets);
+    function maxWithdraw(IBaseVault vault, address user) external view returns (uint256 assets);
 }

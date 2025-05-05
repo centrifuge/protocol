@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "test/vaults/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {
@@ -21,7 +21,7 @@ contract MintTest is BaseTest {
         root.relyContract(address(shareToken), self); // give self auth permissions
         vm.expectRevert(IHook.TransferBlocked.selector);
         shareToken.mint(investor, amount);
-        centrifugeChain.updateMember(vault.poolId(), vault.trancheId(), investor, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
 
         // success
         shareToken.mint(investor, amount);

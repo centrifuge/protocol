@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IERC7575Share, IERC165} from "src/misc/interfaces/IERC7575.sol";
+
 import {
     IHook,
     HookData,
@@ -10,15 +13,13 @@ import {
     SUCCESS_MESSAGE,
     ERROR_CODE_ID,
     ERROR_MESSAGE
-} from "src/vaults/interfaces/token/IHook.sol";
-import {IERC7575Share, IERC165} from "src/vaults/interfaces/IERC7575.sol";
+} from "src/common/interfaces/IHook.sol";
 import {IShareToken, IERC1404} from "src/vaults/interfaces/token/IShareToken.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-/// @title  Centrifuge Token
+/// @title  Share Token
 /// @notice Extension of ERC20 + ERC1404,
 ///         integrating an external hook optionally for ERC20 callbacks and ERC1404 checks.
-contract CentrifugeToken is ERC20, IShareToken {
+contract ShareToken is ERC20, IShareToken {
     using MathLib for uint256;
 
     mapping(address => Balance) private balances;
@@ -36,7 +37,10 @@ contract CentrifugeToken is ERC20, IShareToken {
         _;
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IShareToken
     function file(bytes32 what, address data) external authOrHook {
         if (what == "hook") hook = data;
@@ -55,7 +59,10 @@ contract CentrifugeToken is ERC20, IShareToken {
         emit VaultUpdate(asset, vault_);
     }
 
-    // --- ERC20 overrides ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-20 overrides
+    //----------------------------------------------------------------------------------------------
+
     function _balanceOf(address user) internal view override returns (uint256) {
         return balances[user].amount;
     }
@@ -122,15 +129,15 @@ contract CentrifugeToken is ERC20, IShareToken {
     {
         success = _transferFrom(sender, from, to, value);
         address hook_ = hook;
-        require(
-            hook_ == address(0)
-                || IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
-                    == IHook.onERC20AuthTransfer.selector,
-            RestrictionsFailed()
-        );
+        if (hook_ != address(0)) {
+            IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)));
+        }
     }
 
-    // --- ERC1404 implementation ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-1404
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IShareToken
     function checkTransferRestriction(address from, address to, uint256 value) public view returns (bool) {
         return detectTransferRestriction(from, to, value) == SUCCESS_CODE_ID;
@@ -150,7 +157,10 @@ contract CentrifugeToken is ERC20, IShareToken {
         return restrictionCode == SUCCESS_CODE_ID ? SUCCESS_MESSAGE : ERROR_MESSAGE;
     }
 
-    // --- ERC165 support ---
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return interfaceId == type(IERC7575Share).interfaceId || interfaceId == type(IERC165).interfaceId;

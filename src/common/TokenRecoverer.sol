@@ -17,7 +17,7 @@ contract TokenRecoverer is Auth, ITokenRecoverer {
 
     /// @notice inheritdoc ITokenRecoverer
     function recoverTokens(IRecoverable target, address token, uint256 tokenId, address to, uint256 amount)
-        public
+        external
         auth
     {
         root.relyContract(address(target), address(this));

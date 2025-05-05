@@ -12,7 +12,6 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {JournalEntry} from "src/common/libraries/JournalEntryLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -27,7 +26,6 @@ contract MockVaults is Test, Auth, IAdapter {
     IMessageHandler public handler;
     uint16 public sourceChainId;
 
-    uint32[] public lastChainDestinations;
     bytes[] public lastMessages;
 
     constructor(uint16 centrifugeId, IMessageHandler handler_) Auth(msg.sender) {
@@ -71,9 +69,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint16 centrifugeId, bytes memory data, uint256, address) external payable {
-        lastChainDestinations.push(centrifugeId);
-
+    function send(uint16, bytes memory data, uint256, address) external payable returns (bytes32 adapterData) {
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();
             bytes memory message = data.slice(0, messageLength);
@@ -82,6 +78,8 @@ contract MockVaults is Test, Auth, IAdapter {
 
             data = data.slice(messageLength, data.length - messageLength);
         }
+
+        adapterData = bytes32("");
     }
 
     function updateHoldingAmount(
@@ -90,9 +88,7 @@ contract MockVaults is Test, Auth, IAdapter {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        JournalEntry[] memory debits,
-        JournalEntry[] memory credits
+        bool isIncrease
     ) public {
         handler.handle(
             sourceChainId,
@@ -104,30 +100,8 @@ contract MockVaults is Test, Auth, IAdapter {
                 amount: amount,
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,
-                isIncrease: isIncrease,
-                debits: debits,
-                credits: credits
+                isIncrease: isIncrease
             }).serialize()
-        );
-    }
-
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset) public {
-        handler.handle(
-            sourceChainId,
-            MessageLib.UpdateHoldingValue({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                assetId: assetId.raw(),
-                pricePerUnit: pricePoolPerAsset.raw(),
-                timestamp: 0
-            }).serialize()
-        );
-    }
-
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {
-        handler.handle(
-            sourceChainId,
-            MessageLib.UpdateJournal({poolId: poolId.raw(), debits: debits, credits: credits}).serialize()
         );
     }
 
@@ -137,8 +111,6 @@ contract MockVaults is Test, Auth, IAdapter {
             MessageLib.UpdateShares({
                 poolId: poolId.raw(),
                 scId: scId.raw(),
-                who: bytes32(0),
-                pricePerShare: d18(1, 1).raw(),
                 shares: amount,
                 timestamp: 0,
                 isIssuance: isIssuance
@@ -151,7 +123,6 @@ contract MockVaults is Test, Auth, IAdapter {
     }
 
     function resetMessages() external {
-        delete lastChainDestinations;
         delete lastMessages;
     }
 
@@ -159,11 +130,15 @@ contract MockVaults is Test, Auth, IAdapter {
         return lastMessages.length;
     }
 
-    function popMessage() external returns (bytes memory) {
+    function popMessage() external returns (bytes memory message) {
         require(lastMessages.length > 0, "mockVaults/no-msgs");
 
-        bytes memory popped = lastMessages[lastMessages.length - 1];
+        message = lastMessages[0];
+
+        for (uint256 i = 1; i < lastMessages.length; i++) {
+            lastMessages[i - 1] = lastMessages[i];
+        }
+
         lastMessages.pop();
-        return popped;
     }
 }

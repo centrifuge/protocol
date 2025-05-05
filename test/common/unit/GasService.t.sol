@@ -10,31 +10,19 @@ import {GasService, IGasService} from "src/common/GasService.sol";
 contract GasServiceTest is Test {
     using MessageLib for *;
 
-    uint64 constant MESSAGE_GAS_LIMIT = 40000000000000000;
-    uint64 constant PROOF_GAS_LIMIT = 20000000000000000;
-    uint16 constant CHAIN_ID = 1;
+    uint128 constant MESSAGE_GAS_LIMIT = 0.04 ether;
+    uint128 constant MAX_BATCH_SIZE = 10_000_000 ether;
+    uint16 constant CENTRIFUGE_ID = 1;
 
-    GasService service;
-
-    function setUp() public {
-        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
-    }
-
-    function testDeployment() public {
-        service = new GasService(MESSAGE_GAS_LIMIT, PROOF_GAS_LIMIT);
-        assertEq(service.messageGasLimit(), MESSAGE_GAS_LIMIT);
-        assertEq(service.proofGasLimit(), PROOF_GAS_LIMIT);
-    }
+    GasService service = new GasService(MAX_BATCH_SIZE, MESSAGE_GAS_LIMIT);
 
     function testGasLimit(bytes calldata message) public view {
-        vm.assume(message.length > 1);
-        vm.assume(message.messageCode() != uint8(MessageType.MessageProof));
-        bytes memory proof = MessageLib.MessageProof(keccak256(message)).serialize();
-
-        uint256 messageGasLimit = service.gasLimit(CHAIN_ID, message);
+        uint256 messageGasLimit = service.gasLimit(CENTRIFUGE_ID, message);
         assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
+    }
 
-        uint256 proofGasLimit = service.gasLimit(CHAIN_ID, proof);
-        assertEq(proofGasLimit, PROOF_GAS_LIMIT);
+    function testMaxBatchSize(bytes calldata) public view {
+        uint256 maxBatchSize = service.maxBatchSize(CENTRIFUGE_ID);
+        assertEq(maxBatchSize, MAX_BATCH_SIZE);
     }
 }

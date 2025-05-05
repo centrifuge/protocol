@@ -10,7 +10,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -27,6 +27,8 @@ contract AssetShareConversionTest is BaseTest {
         asset.approve(vault_, investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
+
+        assertEq(asset.balanceOf(address(globalEscrow)), investmentAmount);
 
         // trigger executed collectInvest at a price of 1.0
         uint128 shares = 100000000000000000000; // 100 * 10**18
@@ -73,7 +75,7 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000, uint64(block.timestamp));
@@ -117,9 +119,9 @@ contract AssetShareConversionTest is BaseTest {
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, restrictedTransfers, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        IShareToken(address(AsyncVault(vault_).share()));
+        IShareToken(address(vault.share()));
 
         assertEq(vault.priceLastUpdated(), block.timestamp);
         assertEq(vault.pricePerShare(), 1e6);
@@ -127,7 +129,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.unlinkVault(poolId, scId, assetId, address(vault));
+        poolManager.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vault);
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
