@@ -30,3 +30,7 @@ This is because the `fulfillDepositRequest`, `fulfillRedeemRequest`, `fulfillCan
 The core system components are deployed in the `Setup` contract but to introduce additional randomness and test all possible configurations the `TargetFunctions::shortcut_deployNewTokenPoolAndShare` is used to deploy an instance of the `ShareToken`, pool, shareClass and `vault`.
 
 The additional shortcut functions in the `TargetFunctions` contract are meant to make state exploration faster by executing all the necessary calls for a deposit/withdrawal since the multiple steps required with specific values is difficult for the fuzzer to reach.  
+
+### Properties
+
+Properties have been implemented in the `Properties` contract as well as in handlers in contracts in the `targets/` folder. 
