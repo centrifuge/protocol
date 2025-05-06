@@ -81,6 +81,4 @@ interface IBalanceSheet {
         external
         view
         returns (uint128);
-
-    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset) external view returns (uint128);
 }
