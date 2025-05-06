@@ -188,7 +188,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheet
     function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset) external view returns (uint128) {
-        availableBalanceOf(poolId, scId, asset, 0);
+        return availableBalanceOf(poolId, scId, asset, 0);
     }
 
     //----------------------------------------------------------------------------------------------
