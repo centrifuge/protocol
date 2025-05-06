@@ -53,7 +53,7 @@ abstract contract HubTargets is
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
-    /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the current epoch id for the redeem
+    /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
     function hub_notifyDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -62,10 +62,11 @@ abstract contract HubTargets is
 
         hub.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
-        (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
+        (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
 
-        // eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId");
+        // nowDepositEpoch = depositEpochId + 1
+        eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
     }
 
     function hub_notifyDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
@@ -77,6 +78,7 @@ abstract contract HubTargets is
         hub_notifyDeposit(poolId.raw(), scId.raw(), assetId.raw(), maxClaims);
     }
 
+    /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -88,7 +90,8 @@ abstract contract HubTargets is
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
 
-        // eq(lastUpdate, redeemEpochId, "lastUpdate != redeemEpochId");
+        // nowRedeemEpoch = redeemEpochId + 1
+        eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
     }
 
     function hub_notifyRedeem_clamped(uint64 poolEntropy, uint32 scIdEntropy, uint32 maxClaims) public updateGhosts asActor {
