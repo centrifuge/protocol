@@ -201,18 +201,21 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
     /// @dev Property: _updateDepositRequest should never revert due to underflow
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
-    function vault_cancelDepositRequest(address controller) public updateGhosts asActor {
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+    function vault_cancelDepositRequest() public updateGhosts asActor {
+        address controller = _getActor();
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
         (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
 
         // REQUEST_ID is always passed as 0 (unused in the function)
         try vault.cancelDepositRequest(REQUEST_ID, controller) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
 
             // update ghosts
-            cancelledDeposits[_getActor()] += (pendingBefore - pendingAfter);
+            cancelledDeposits[controller] += (pendingBefore - pendingAfter);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            console2.log("actor in _updatePending");
+            console2.logBytes32(controller.toBytes32());
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
                 // nowDepositEpoch = depositEpochId + 1
                 eq(lastUpdateAfter, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
@@ -233,26 +236,21 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 t(!arithmeticRevert, "cancelDepositRequest reverts with arithmetic panic");
             }
         }
-
-
-    }
-
-    function vault_cancelDepositRequest_clamped() public {
-        vault_cancelDepositRequest(_getActor());
     }
 
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function vault_cancelRedeemRequest(address controller) public updateGhosts asActor {
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+    function vault_cancelRedeemRequest() public updateGhosts asActor {
+        address controller = _getActor();
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
         
         try vault.cancelRedeemRequest(REQUEST_ID, controller) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
             (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
 
             // update ghosts
-            cancelledRedemptions[_getActor()] += (pendingBefore - pendingAfter);
+            cancelledRedemptions[controller] += (pendingBefore - pendingAfter);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
@@ -275,10 +273,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
             }
         }
-    }
-
-    function vault_cancelRedeemRequest_clamped() public {
-        vault_cancelRedeemRequest(_getActor());
     }
 
     function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {

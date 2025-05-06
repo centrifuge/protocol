@@ -67,6 +67,8 @@ abstract contract HubTargets is
 
         // nowDepositEpoch = depositEpochId + 1
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+
+        __globals();
     }
 
     function hub_notifyDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
@@ -92,6 +94,8 @@ abstract contract HubTargets is
 
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+
+        __globals();
     }
 
     function hub_notifyRedeem_clamped(uint64 poolEntropy, uint32 scIdEntropy, uint32 maxClaims) public updateGhosts asActor {

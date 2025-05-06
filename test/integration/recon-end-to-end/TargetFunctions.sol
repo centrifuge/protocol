@@ -207,13 +207,13 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_cancel(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
-        vault_cancelDepositRequest_clamped();
+        vault_cancelDepositRequest();
     }
 
     function shortcut_deposit_cancel_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
-        vault_cancelDepositRequest_clamped();
+        vault_cancelDepositRequest();
 
         vault_claimCancelDepositRequest(toEntropy);
     }
@@ -262,7 +262,7 @@ abstract contract TargetFunctions is
         shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
-        vault_cancelRedeemRequest_clamped();
+        vault_cancelRedeemRequest();
     }
 
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
@@ -270,7 +270,7 @@ abstract contract TargetFunctions is
         shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
-        vault_cancelRedeemRequest_clamped();
+        vault_cancelRedeemRequest();
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
