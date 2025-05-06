@@ -147,10 +147,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         try vault.requestRedeem(shares, to, _getActor()) {
             // ghost tracking
             sumOfRedeemRequests[address(token)] += shares; // E-2
-            requestRedeemShares[_getActor()][address(token)] += shares;
-            requestRedeeemed[_getActor()] += shares;
+            requestRedeemShares[to][address(token)] += shares;
+            requestRedeeemed[to] += shares;
 
-            (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), _getActor().toBytes32());
+            (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), to.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
 
             // nowRedeemEpoch = redeemEpochId + 1
