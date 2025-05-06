@@ -149,7 +149,7 @@ interface IPoolManagerGatewayHandler {
 }
 
 /// @notice Interface for CV methods related to async investments called by messages
-interface IInvestmentManagerGatewayHandler {
+interface IRequestManagerGatewayHandler {
     /// @notice Signal from the Hub that an asynchronous investment order has been approved
     ///
     /// @dev This message needs to trigger making the asset amounts available to the pool-share-class.

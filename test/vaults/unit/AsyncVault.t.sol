@@ -10,7 +10,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
@@ -70,7 +70,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(IBaseInvestmentManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);

@@ -19,7 +19,7 @@ import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
@@ -28,7 +28,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     IRoot public immutable root;
     /// @dev this naming MUST NEVER change - due to legacy v2 vaults
-    IBaseInvestmentManager public manager;
+    IBaseRequestManager public manager;
 
     /// @inheritdoc IBaseVault
     PoolId public immutable poolId;
@@ -62,7 +62,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         address asset_,
         IShareToken token_,
         address root_,
-        IBaseInvestmentManager manager_
+        IBaseRequestManager manager_
     ) Auth(msg.sender) {
         poolId = poolId_;
         scId = scId_;
@@ -70,7 +70,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
-        manager = IBaseInvestmentManager(manager_);
+        manager = IBaseRequestManager(manager_);
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -83,7 +83,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external virtual auth {
-        if (what == "manager") manager = IBaseInvestmentManager(data);
+        if (what == "manager") manager = IBaseRequestManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -218,7 +218,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external virtual override auth {
-        if (what == "manager") manager = IBaseInvestmentManager(data);
+        if (what == "manager") manager = IBaseRequestManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);

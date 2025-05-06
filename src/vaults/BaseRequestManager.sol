@@ -7,20 +7,20 @@ import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IVaultManager, VaultKind} from "src/vaults/interfaces/IVaultManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
-abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentManager, IVaultManager {
+abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     using MathLib for uint256;
 
     address public immutable root;
@@ -40,7 +40,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "poolManager") poolManager = IPoolManager(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
@@ -48,7 +48,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         emit File(what, data);
     }
 
-    /// @inheritdoc IVaultManager
+    /// @inheritdoc IBaseRequestManager
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
         virtual
@@ -65,7 +65,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         rely(address(vault_));
     }
 
-    /// @inheritdoc IVaultManager
+    /// @inheritdoc IBaseRequestManager
     function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
         virtual
@@ -87,7 +87,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
@@ -98,7 +98,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         );
     }
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
@@ -109,7 +109,7 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         );
     }
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
 
@@ -121,12 +121,12 @@ abstract contract BaseInvestmentManager is Auth, Recoverable, IBaseInvestmentMan
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
     }
 
-    /// @inheritdoc IBaseInvestmentManager
+    /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
         return poolEscrowProvider.escrow(poolId);
     }
 
-    /// @inheritdoc IVaultManager
+    /// @inheritdoc IBaseRequestManager
     function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
         return vault[poolId][scId][assetId];
     }

@@ -174,6 +174,10 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
+        poolManager.file("asyncRequestManager", address(asyncRequestManager));
+        poolManager.file("syncRequestManager", address(syncRequestManager));
+        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
+        poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
 
         poolManager.file("vaultFactory", address(asyncVaultFactory), true);
         poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
@@ -188,7 +192,6 @@ contract VaultsDeployer is CommonDeployer {
         syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("poolManager", address(poolManager));
-        balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 

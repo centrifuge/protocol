@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
 
-interface IBaseInvestmentManager {
+interface IBaseRequestManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
@@ -14,6 +17,9 @@ interface IBaseInvestmentManager {
     error SenderNotVault();
     error AssetNotAllowed();
     error ExceedsMaxDeposit();
+    error AssetMismatch();
+    error VaultAlreadyExists();
+    error VaultDoesNotExist();
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'poolManager'.
@@ -37,4 +43,16 @@ interface IBaseInvestmentManager {
 
     /// @notice Escrow per pool. Funds are associated to a specific pool
     function poolEscrow(PoolId poolId) external view returns (IPoolEscrow);
+
+    /// @notice Adds new vault for `poolId`, `scId` and `asset`.
+    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
+
+    /// @notice Removes `vault` from `who`'s authorized callers
+    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
+
+    /// @notice Returns the address of the vault for a given pool, share class and asset
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (IBaseVault vault);
 }

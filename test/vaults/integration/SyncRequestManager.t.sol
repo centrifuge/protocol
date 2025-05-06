@@ -15,7 +15,8 @@ import {
 } from "src/vaults/interfaces/investments/ISyncRequestManager.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import "test/vaults/BaseTest.sol";
@@ -82,7 +83,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
-        vm.expectRevert(IBaseInvestmentManager.FileUnrecognizedParam.selector);
+        vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         syncRequestManager.file("random", self);
 
         assertEq(address(syncRequestManager.poolManager()), address(poolManager));
@@ -108,8 +109,38 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(0), d18(0));
         poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseInvestmentManager.AssetNotAllowed.selector);
+        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
         syncRequestManager.deposit(vault, 1, address(0), address(0));
+    }
+
+    function testAddVaultEmptySecondaryManager() public {
+        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = AssetId.wrap(assetId_);
+
+        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
+
+        vm.prank(address(root));
+        vault.file("asyncRedeemManager", address(0));
+
+        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        syncRequestManager.addVault(poolId, scId, vault, vaultDetails.asset, assetId);
+    }
+
+    function testRemoveVaultEmptySecondaryManager() public {
+        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
+        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = AssetId.wrap(assetId_);
+
+        vm.prank(address(root));
+        vault.file("asyncRedeemManager", address(0));
+
+        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
     }
 }
 

@@ -37,7 +37,7 @@ enum AccountType {
 interface IHub {
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
     event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
-    event NotifySharePrice(
+    event NotifyShareMetadata(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
     event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
@@ -78,10 +78,6 @@ interface IHub {
     /// Accepts a `bytes32` representation of 'hubRegistry', 'assetRegistry', 'accounting', 'holdings', 'gateway' and '
     /// sender' as string value.
     function file(bytes32 what, address data) external;
-
-    /// @notice Creates a new pool. `msg.sender` will be the admin of the created pool.
-    /// @param currency The pool currency. Usually an AssetId identifying by a ISO4217 code.
-    function createPool(PoolId poolId, address admin, AssetId currency) external payable;
 
     /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
@@ -134,7 +130,8 @@ interface IHub {
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
-        payable;
+        payable
+        returns (ShareClassId scId);
 
     /// @notice Approves an asset amount of all deposit requests for the given triplet of pool id, share class id and
     /// deposit asset id.

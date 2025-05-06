@@ -9,7 +9,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseVault, BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
@@ -167,5 +167,13 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     function onCancelDepositClaimable(address controller, uint256 assets) public virtual auth {
         emit CancelDepositClaimable(controller, REQUEST_ID, assets);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // IBaseVault view
+    //----------------------------------------------------------------------------------------------
+
+    function vaultKind() public pure returns (VaultKind vaultKind_) {
+        return VaultKind.Async;
     }
 }

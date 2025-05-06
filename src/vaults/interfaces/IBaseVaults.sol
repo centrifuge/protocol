@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.5.0;
 
+enum VaultKind {
+    /// @dev Refers to AsyncVault
+    Async,
+    /// @dev not yet supported
+    Sync,
+    /// @dev Refers to SyncDepositVault
+    SyncDepositAsyncRedeem
+}
+
 import {IERC7575, IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {
     IERC7540Operator,
@@ -16,7 +25,7 @@ import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseInvestmentManager} from "src/vaults/interfaces/investments/IBaseInvestmentManager.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
 
 /// @notice Interface for the all vault contracts
@@ -47,8 +56,13 @@ interface IBaseVault is IERC7540Operator, IERC7741, IERC7714, IERC7575, IRecover
 
     /// @notice Returns the base investment manager contract handling the vault.
     /// @dev This naming MUST NOT change due to requirements of legacy vaults (v2)
-    /// @return IBaseInvestmentManager The address of the manager contract that is between vault and gateway
-    function manager() external view returns (IBaseInvestmentManager);
+    /// @return IBaseRequestManager The address of the manager contract that is between vault and gateway
+    function manager() external view returns (IBaseRequestManager);
+
+    /// @notice Checks whether the vault is partially (a)synchronous.
+    ///
+    /// @return vaultKind_ The kind of the vault
+    function vaultKind() external view returns (VaultKind vaultKind_);
 }
 
 /**
