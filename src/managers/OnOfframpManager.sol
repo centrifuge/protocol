@@ -6,6 +6,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC165.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -14,7 +15,9 @@ import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.so
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
 
-contract OnOfframpManager is Auth, Recoverable {
+import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+
+contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManager {
     using MathLib for uint256;
 
     error NotAllowedOnrampAsset();
@@ -45,7 +48,8 @@ contract OnOfframpManager is Auth, Recoverable {
     // Permissionless actions
     //----------------------------------------------------------------------------------------------
 
-    function deposit(address asset, uint256 /* tokenId */) external {
+    /// @inheritdoc IDepositManager
+    function deposit(address asset, uint256, /* tokenId */ uint128 /* amount */ ) external {
         require(allowedOnrampAsset[asset], NotAllowedOnrampAsset());
 
         uint128 amount = IERC20(asset).balanceOf(address(this)).toUint128();
@@ -56,7 +60,8 @@ contract OnOfframpManager is Auth, Recoverable {
         balanceSheet.deposit(poolId, scId, asset, 0, address(this), amount);
     }
 
-    function withdraw(address asset, uint256 /* tokenId */) external {
+    /// @inheritdoc IWithdrawManager
+    function withdraw(address asset, uint256, /* tokenId */ uint128 /* amount */ ) external {
         address offrampDestination_ = offrampDestination[asset];
         require(offrampDestination_ != address(0), NoOfframpDestinationSet());
 
@@ -64,5 +69,15 @@ contract OnOfframpManager is Auth, Recoverable {
         uint128 amount = escrow.availableBalanceOf(scId, asset, 0);
 
         balanceSheet.withdraw(poolId, scId, asset, 0, offrampDestination_, amount);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC-165
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
+        return interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IWithdrawManager).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 }
