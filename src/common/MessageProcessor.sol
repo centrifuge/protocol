@@ -127,11 +127,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShareHook) {
             MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
             poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
-        } else if (kind == MessageType.TransferShares) {
-            MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
-
-            // TODO: should only allow forwarding if poolId is enabled on the source chain
-
+            // TODO: handle InitiateTransferShares
+        } else if (kind == MessageType.ExecuteTransferShares) {
+            MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
             poolManager.handleTransferShares(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.centrifugeId, m.receiver, m.amount
             );

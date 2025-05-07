@@ -26,7 +26,8 @@ enum MessageType {
     NotifyPricePoolPerAsset,
     NotifyShareMetadata,
     UpdateShareHook,
-    TransferShares,
+    InitiateTransferShares,
+    ExecuteTransferShares,
     UpdateRestriction,
     UpdateContract,
     ApprovedDeposits,
@@ -106,7 +107,8 @@ library MessageLib {
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
-        (75  << uint8(MessageType.TransferShares) * 8) +
+        (75  << uint8(MessageType.InitiateTransferShares) * 8) +
+        (75  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
@@ -122,11 +124,11 @@ library MessageLib {
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
-        (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+        (73  << uint8(MessageType.TriggerIssueShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
+        (25 << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
@@ -168,14 +170,14 @@ library MessageLib {
     function messageDirection(bytes memory message) internal pure returns (MessageDirection) {
         uint8 kind = message.toUint8(0);
 
-        if (kind <= uint8(MessageType.RecoverTokens) || kind == uint8(MessageType.TransferShares)) {
-            // All messages from InitiateRecovery to RecoverTokens, as well as TransferShares, are bidirectional.
+        if (kind <= uint8(MessageType.RecoverTokens)) {
+            // All messages from InitiateRecovery to RecoverTokens are bidirectional.
             return MessageDirection.AnyToAny;
         } else if (
             kind == uint8(MessageType.RegisterAsset) || kind == uint8(MessageType.DepositRequest)
                 || kind == uint8(MessageType.RedeemRequest) || kind == uint8(MessageType.CancelDepositRequest)
                 || kind == uint8(MessageType.CancelRedeemRequest) || kind == uint8(MessageType.UpdateHoldingAmount)
-                || kind == uint8(MessageType.UpdateShares)
+                || kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)
         ) {
             return MessageDirection.VaultsToHub;
         } else {
@@ -472,10 +474,10 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TransferShares
+    //    InitiateTransferShares
     //---------------------------------------
 
-    struct TransferShares {
+    struct InitiateTransferShares {
         uint64 poolId;
         bytes16 scId;
         uint16 centrifugeId;
@@ -483,9 +485,13 @@ library MessageLib {
         uint128 amount;
     }
 
-    function deserializeTransferShares(bytes memory data) internal pure returns (TransferShares memory) {
-        require(messageType(data) == MessageType.TransferShares, UnknownMessageType());
-        return TransferShares({
+    function deserializeInitiateTransferShares(bytes memory data)
+        internal
+        pure
+        returns (InitiateTransferShares memory)
+    {
+        require(messageType(data) == MessageType.InitiateTransferShares, UnknownMessageType());
+        return InitiateTransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             centrifugeId: data.toUint16(25),
@@ -494,8 +500,37 @@ library MessageLib {
         });
     }
 
-    function serialize(TransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
+    function serialize(InitiateTransferShares memory t) internal pure returns (bytes memory) {
+        return
+            abi.encodePacked(MessageType.InitiateTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
+    }
+
+    //---------------------------------------
+    //    ExecuteTransferShares
+    //---------------------------------------
+
+    struct ExecuteTransferShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint16 centrifugeId;
+        bytes32 receiver;
+        uint128 amount;
+    }
+
+    function deserializeExecuteTransferShares(bytes memory data) internal pure returns (ExecuteTransferShares memory) {
+        require(messageType(data) == MessageType.ExecuteTransferShares, UnknownMessageType());
+        return ExecuteTransferShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            centrifugeId: data.toUint16(25),
+            receiver: data.toBytes32(27),
+            amount: data.toUint128(59)
+        });
+    }
+
+    function serialize(ExecuteTransferShares memory t) internal pure returns (bytes memory) {
+        return
+            abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
     }
 
     //---------------------------------------

@@ -547,6 +547,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 amount,
         bool forward
     ) external auth {
+        // TODO: update
         gateway.send(
             forward ? centrifugeId : poolId.centrifugeId(),
             MessageLib.TransferShares({

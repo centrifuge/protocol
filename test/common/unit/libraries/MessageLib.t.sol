@@ -208,18 +208,21 @@ contract TestMessageLibIdentities is Test {
         assertTrue(a.serialize().messageDirection() == MessageDirection.HubToVaults);
     }
 
-    function testTransferShares(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 receiver, uint128 amount)
-        public
-        pure
-    {
-        MessageLib.TransferShares memory a = MessageLib.TransferShares({
+    function testInitiateTransferShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) public pure {
+        MessageLib.InitiateTransferShares memory a = MessageLib.InitiateTransferShares({
             poolId: poolId,
             scId: scId,
             centrifugeId: centrifugeId,
             receiver: receiver,
             amount: amount
         });
-        MessageLib.TransferShares memory b = MessageLib.deserializeTransferShares(a.serialize());
+        MessageLib.InitiateTransferShares memory b = MessageLib.deserializeInitiateTransferShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -229,7 +232,34 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.VaultsToHub);
+    }
+
+    function testExecuteTransferShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) public pure {
+        MessageLib.ExecuteTransferShares memory a = MessageLib.ExecuteTransferShares({
+            poolId: poolId,
+            scId: scId,
+            centrifugeId: centrifugeId,
+            receiver: receiver,
+            amount: amount
+        });
+        MessageLib.ExecuteTransferShares memory b = MessageLib.deserializeExecuteTransferShares(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.centrifugeId, b.centrifugeId);
+        assertEq(a.receiver, b.receiver);
+        assertEq(a.amount, b.amount);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.HubToVaults);
     }
 
     function testUpdateRestriction(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
