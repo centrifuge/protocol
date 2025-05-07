@@ -475,8 +475,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         accounting.unlock(poolId);
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
-
-        // Save a diff=0 update gas cost
         if (isPositive && diff > 0) {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
