@@ -101,11 +101,8 @@ contract PoolManager is
 
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address factory, bool status) external auth {
-        if (what == "vaultFactory") {
-            vaultFactory[IVaultFactory(factory)] = status;
-        } else {
-            revert FileUnrecognizedParam();
-        }
+        if (what == "vaultFactory") vaultFactory[IVaultFactory(factory)] = status;
+        else revert FileUnrecognizedParam();
         emit File(what, factory, status);
     }
 
