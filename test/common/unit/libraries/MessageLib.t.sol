@@ -29,7 +29,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.centrifugeId, b.centrifugeId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testDisputeRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
@@ -42,7 +42,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.centrifugeId, b.centrifugeId);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testScheduleUpgrade(bytes32 target) public pure {
@@ -52,7 +52,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.target, b.target);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testCancelUpgrade(bytes32 target) public pure {
@@ -62,7 +62,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.target, b.target);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testRecoverTokens(bytes32 target, bytes32 token, uint256 tokenId, bytes32 to, uint256 amount)
@@ -80,7 +80,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.amount, b.amount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length, "XXX");
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testRegisterAsset(uint128 assetId, uint8 decimals) public pure {
@@ -229,7 +229,7 @@ contract TestMessageLibIdentities is Test {
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.Bidirectional);
+        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
     }
 
     function testUpdateRestriction(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
