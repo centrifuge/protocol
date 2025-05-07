@@ -585,26 +585,32 @@ abstract contract AdminTargets is
         hub_updateHoldingValue(poolId.raw(), scId.raw(), assetId.raw());
     }
 
-    function hub_updateJournal(uint64 poolIdAsUint, JournalEntry[] memory debits, JournalEntry[] memory credits) public updateGhosts {
+    function hub_updateJournal(uint64 poolIdAsUint, uint32 debitAccountId, uint32 creditAccountId, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
+        // prevents false positives for property_account_totalDebit_and_totalCredit_leq_max_int128
+        amount = uint128(between(amount, 0, uint128(type(int128).max)));
+
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({
+            value: amount,
+            accountId: AccountId.wrap(debitAccountId)
+        });
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({
+            value: amount,
+            accountId: AccountId.wrap(creditAccountId)
+        });
+
         hub.updateJournal(poolId, debits, credits);
     }
 
     function hub_updateJournal_clamped(uint64 poolIdEntropy, uint8 accountEntropy, uint128 amount) public updateGhosts {
         PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
         
-        JournalEntry[] memory debits = new JournalEntry[](1);
-        debits[0] = JournalEntry({
-            value: amount,
-            accountId: Helpers.getRandomAccountId(createdAccountIds, accountEntropy)
-        });
-        JournalEntry[] memory credits = new JournalEntry[](1);
-        credits[0] = JournalEntry({
-            value: amount,
-            accountId: Helpers.getRandomAccountId(createdAccountIds, accountEntropy)
-        });
+        uint32 debitAccountId = Helpers.getRandomAccountId(createdAccountIds, accountEntropy).raw();
+        uint32 creditAccountId = Helpers.getRandomAccountId(createdAccountIds, accountEntropy).raw();
 
-        hub_updateJournal(poolId.raw(), debits, credits);
+        hub_updateJournal(poolId.raw(), debitAccountId, creditAccountId, amount);
     }
 
     // function hub_increaseShareIssuance(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {

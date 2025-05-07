@@ -67,7 +67,9 @@ abstract contract HubTargets is
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
         uint256 investorSharesAfter =  token.balanceOf(_getActor());
 
-        sumOfFullfilledDeposits[address(token)] += (investorSharesAfter - investorSharesBefore);
+        uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
+        sumOfFullfilledDeposits[address(token)] += investorShareDelta;
+        executedInvestments[address(token)] += investorShareDelta;
 
         // nowDepositEpoch = depositEpochId + 1
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
@@ -90,11 +92,15 @@ abstract contract HubTargets is
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = CastLib.toBytes32(_getActor());
-
+        uint256 investorSharesBefore =  token.balanceOf(_getActor());
         hub.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
+        uint256 investorSharesAfter =  token.balanceOf(_getActor());
+        uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
+        
+        executedRedemptions[address(token)] += investorShareDelta;
 
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");

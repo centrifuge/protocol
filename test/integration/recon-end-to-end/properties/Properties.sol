@@ -339,7 +339,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
         uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
+        address escrow = address(poolEscrowFactory.escrow(PoolId.wrap(poolId)));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
         
         uint256 differenceInAssets = totalAssets - actualAssets;
         uint256 differenceInShares = vault.convertToShares(differenceInAssets);
@@ -805,6 +806,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 (,uint128 loss) = accounting.accountValue(poolId, lossAccountId);   
                 
                 uint128 totalYield = assets - equity; // Can be positive or negative
+                console2.log("loss:", loss);
+                console2.log("assets:", assets);
+                console2.log("equity:", equity);
+                console2.log("totalYield:", totalYield);
+                console2.log("gain:", gain);
+                console2.log("totalYield - gain:", totalYield - gain);
                 t(loss == totalYield - gain, "property_loss_soundness");    
             }
         }

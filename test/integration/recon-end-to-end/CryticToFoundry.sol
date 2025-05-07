@@ -249,6 +249,75 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // recipient of requestDeposit is a member
         console2.log("to isMember:", isMemberTo);
         vault_requestDeposit_clamped(1,0);
+    }
+
+    // forge test --match-test test_property_loss_soundness_21 -vvv 
+    function test_property_loss_soundness_21() public {
+
+        shortcut_deployNewTokenPoolAndShare(11,2,true,false,false);
+
+        shortcut_mint_sync(1,10001530783476391801262800);
+
+        hub_createHolding_clamped(0,0,false,0,2,0,0);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_loss_soundness();
+
+    }
+
+    // forge test --match-test test_property_accounting_and_holdings_soundness_22 -vvv 
+    function test_property_accounting_and_holdings_soundness_22() public {
+
+        shortcut_deployNewTokenPoolAndShare(3,1,false,false,false);
+
+        hub_createHolding_clamped(0,0,true,0,0,0,0);
+
+        hub_addShareClass_clamped(0,2);
+
+        shortcut_mint_sync(1,1000928848737691948490550833297442);
+
+        property_accounting_and_holdings_soundness();
+
+    }
+
+    // forge test --match-test test_vault_requestDeposit_23 -vvv 
+    // NOTE: same as test_vault_requestDeposit_clamped_18
+    function test_vault_requestDeposit_23() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
+
+        poolManager_updateMember(1524841016);
+
+        switch_actor(1);
+
+        vault_requestDeposit(1,0);
+
+    }
+
+    // forge test --match-test test_property_gain_soundness_25 -vvv 
+    function test_property_gain_soundness_25() public {
+
+        shortcut_deployNewTokenPoolAndShare(18,2,false,false,false);
+
+        shortcut_mint_sync(1,1000408793793931473);
+
+        hub_createHolding_clamped(0,0,false,0,0,2,0);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_gain_soundness();
+
+    }
+
+    // forge test --match-test test_property_totalAssets_solvency_27 -vvv 
+    function test_property_totalAssets_solvency_27() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        property_totalAssets_solvency();
 
     }
 }

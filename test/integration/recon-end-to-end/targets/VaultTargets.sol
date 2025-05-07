@@ -307,6 +307,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // for sync vaults, deposits are fulfilled immediately
         if(!Helpers.isAsyncVault(address(vault))) {
             sumOfFullfilledDeposits[address(token)] += shares;
+            executedInvestments[address(token)] += shares;
         }
 
         // Bal after
@@ -362,6 +363,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // for sync vaults, deposits are fulfilled immediately
         if(!Helpers.isAsyncVault(address(vault))) {
             sumOfFullfilledDeposits[address(token)] += shares;
+            executedInvestments[address(token)] += shares;
         }
 
         // Bal after
@@ -405,6 +407,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // E-1
         sumOfClaimedRedemptions[address(_getAsset())] += assets;
+        
+        // if sync vault, redeem is fulfilled immediately
+        if(!Helpers.isAsyncVault(address(vault))) {
+            executedRedemptions[address(token)] += assets;
+        }
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(_getAsset()).balanceOf(_getActor());
