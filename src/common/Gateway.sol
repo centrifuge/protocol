@@ -449,7 +449,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     function endBatching() external auth {
         require(isBatching, NoBatched());
         
-        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
         isBatching = false;
 
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
@@ -463,6 +462,8 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+
+        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
 
         _refundTransaction();
     }
