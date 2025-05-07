@@ -181,5 +181,67 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     /// === REPRODUCERS === ///
+    // forge test --match-test test_property_price_per_share_overall_2 -vvv 
+    function test_property_price_per_share_overall_2() public {
 
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        property_price_per_share_overall();
+    }
+
+    // forge test --match-test test_property_global_1_6 -vvv 
+    function test_property_global_1_6() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        property_global_1();
+    }
+
+    // forge test --match-test test_property_asset_soundness_7 -vvv 
+    function test_property_asset_soundness_7() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,2,false,false,false);
+
+        shortcut_deposit_sync(1,1000597925025159896);
+
+        hub_createHolding_clamped(0,0,false,0,0,0,2);
+
+        hub_addShareClass_clamped(0,1);
+
+        property_asset_soundness();
+
+    }
+
+    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_8 -vvv 
+    function test_property_user_cannot_mutate_pending_redeem_8() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,356,true,false,true);
+
+        hub_addShareClass_clamped(0,154591680653806130421);
+
+        shortcut_deposit_and_claim(33321005491,6432384007748401500056681183121112,4369999,4369999,292948973611283239402029828536645829108380928802296476463930447206379624861);
+
+        vault_requestRedeem_clamped(79314606078668675351414686616174580970519539374726669971771,2144343559908308263444127176406281849471917493390513644671787);
+
+        property_user_cannot_mutate_pending_redeem();
+
+    }
+
+    // forge test --match-test test_vault_requestDeposit_clamped_18 -vvv 
+    // NOTE: most likely an incorrect property spec which needs to include a check for if the recipient is a member instead of the controller
+    function test_vault_requestDeposit_clamped_18() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
+
+        shortcut_request_deposit(0,1,0,0);
+
+        switch_actor(1);
+
+        vault_requestDeposit_clamped(1,0);
+
+    }
 }
