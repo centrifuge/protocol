@@ -241,6 +241,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         switch_actor(1);
 
+        address to = _getRandomActor(0);
+        (bool isMember,) = fullRestrictions.isMember(address(token), _getActor());
+        (bool isMemberTo,) = fullRestrictions.isMember(address(token), to);
+        // caller of requestDeposit is not a member
+        console2.log("actor isMember:", isMember);
+        // recipient of requestDeposit is a member
+        console2.log("to isMember:", isMemberTo);
         vault_requestDeposit_clamped(1,0);
 
     }

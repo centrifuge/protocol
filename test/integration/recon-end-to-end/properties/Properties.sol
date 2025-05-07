@@ -239,8 +239,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         
         uint256 ghostBalOfEscrow;
         address asset = vault.asset();
-        // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
-        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(poolId)));
+        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
@@ -513,9 +513,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, assetId);
+                uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
                 uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
-                (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, depositEpochId);
+                (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
 
                 gte(pendingDeposit, approvedAssetAmount, "pendingDeposit < approvedAssetAmount");
                 gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");

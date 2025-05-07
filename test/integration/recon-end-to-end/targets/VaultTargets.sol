@@ -93,6 +93,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // If not member
         (bool isMember,) = fullRestrictions.isMember(address(token), _getActor());
+        (bool isMemberTo,) = fullRestrictions.isMember(address(token), to);
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
