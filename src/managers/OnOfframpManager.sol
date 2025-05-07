@@ -45,7 +45,7 @@ contract OnOfframpManager is Auth, Recoverable {
     // Permissionless actions
     //----------------------------------------------------------------------------------------------
 
-    function onramp(address asset) external {
+    function deposit(address asset, uint256 /* tokenId */) external {
         require(allowedOnrampAsset[asset], NotAllowedOnrampAsset());
 
         uint128 amount = IERC20(asset).balanceOf(address(this)).toUint128();
@@ -56,7 +56,7 @@ contract OnOfframpManager is Auth, Recoverable {
         balanceSheet.deposit(poolId, scId, asset, 0, address(this), amount);
     }
 
-    function offramp(address asset) external {
+    function withdraw(address asset, uint256 /* tokenId */) external {
         address offrampDestination_ = offrampDestination[asset];
         require(offrampDestination_ != address(0), NoOfframpDestinationSet());
 
