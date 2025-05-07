@@ -58,9 +58,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try vault.requestDeposit(assets, to, _getActor()) {
             // ghost tracking
-            requestDeposited[_getActor()] += assets;
+            requestDeposited[to] += assets;
             sumOfDepositRequests[address(_getAsset())] += assets;
-            requestDepositAssets[_getActor()][address(_getAsset())] += assets;
+            requestDepositAssets[to][address(_getAsset())] += assets;
 
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), to.toBytes32());
             (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
@@ -205,17 +205,18 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address controller = _getActor();
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
         (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(scId), AssetId.wrap(assetId));
+        uint256 pendingCancelBefore = vault.claimableCancelDepositRequest(0, _getActor());
 
         // REQUEST_ID is always passed as 0 (unused in the function)
         try vault.cancelDepositRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), controller.toBytes32());
+            uint256 pendingCancelAfter = vault.claimableCancelDepositRequest(0, _getActor());
 
             // update ghosts
             cancelledDeposits[controller] += (pendingBefore - pendingAfter);
+            cancelDepositCurrencyPayout[_getAsset()] += pendingCancelAfter - pendingCancelBefore;
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
-            console2.log("actor in _updatePending");
-            console2.logBytes32(controller.toBytes32());
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
                 // nowDepositEpoch = depositEpochId + 1
                 eq(lastUpdateAfter, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
@@ -302,6 +303,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Processed Deposit | E-2 | Global-1
         sumOfClaimedDeposits[address(token)] += shares;
+        // for sync vaults, deposits are fulfilled immediately
+        if(!Helpers.isAsyncVault(address(vault))) {
+            sumOfFullfilledDeposits[address(token)] += shares;
+        }
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(_getActor());
@@ -353,6 +358,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // Processed Deposit | E-2
         sumOfClaimedDeposits[address(token)] += shares;
+        // for sync vaults, deposits are fulfilled immediately
+        if(!Helpers.isAsyncVault(address(vault))) {
+            sumOfFullfilledDeposits[address(token)] += shares;
+        }
 
         // Bal after
         uint256 shareUserAfter = token.balanceOf(_getActor());

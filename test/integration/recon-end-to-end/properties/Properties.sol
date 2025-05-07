@@ -18,6 +18,7 @@ import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
+import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     using CastLib for *;
@@ -54,7 +55,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share class tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_global_1() public tokenIsSet {
         // Mint and Deposit
-        lte(sumOfClaimedDeposits[address(token)], sumOfFullfilledDeposits[address(token)], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
+        // only valid for async vaults because sync vaults don't have to fulfill deposit requests
+        if(Helpers.isAsyncVault(address(vault))) {
+            lte(sumOfClaimedDeposits[address(token)], sumOfFullfilledDeposits[address(token)], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
+        }
     }
 
     function property_global_2() public assetIsSet {
@@ -267,7 +271,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // functions permanently reverting
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = token.balanceOf(address(globalEscrow));
-        unchecked {
+        unchecked {        
             ghostBalanceOfEscrow = (
                 sumOfFullfilledDeposits[address(token)] + sumOfRedeemRequests[address(token)]
                         - sumOfClaimedDeposits[address(token)] - sumOfClaimedRedeemCancelations[address(token)]
@@ -436,7 +440,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
             // user order pending
             // user order amount
-
 
             // NOTE: We are missign the cancellation part, we're assuming that won't matter but idk
             eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "property_actor_pending_and_queued_deposits");
@@ -716,7 +719,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
                 // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
-                t(assets == equity + gain - loss, "property_asset_soundness"); // Loss is already negative
+                console2.log("assets:", assets);
+                console2.log("equity:", equity);
+                console2.log("gain:", gain);
+                console2.log("loss:", loss);
+                console2.log("equity + gain + loss:", equity + gain + loss);
+                t(assets == equity + gain + loss, "property_asset_soundness"); // Loss is already negative
             }
         }
     }
@@ -804,8 +812,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
-        address[] memory _actors = _getActors();
-
         for (uint256 i = 0; i < createdPools.length; i++) {
             PoolId poolId = createdPools[i];
             uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
@@ -814,14 +820,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
                 AssetId assetId = hubRegistry.currency(poolId);
 
-                // loop over all actors
-                for (uint256 k = 0; k < _actors.length; k++) {
-                    bytes32 actor = CastLib.toBytes32(_actors[k]);
-                    // precondition: pending has changed 
-                    if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
-                        // check that the lastUpdate was >= the latest redeem approval pointer
-                        gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].redeem, "lastUpdate is > latest redeem approval");
-                    }
+                bytes32 actor = CastLib.toBytes32(_getActor());
+                // precondition: pending has changed 
+                if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
+                    // check that the lastUpdate was > the latest redeem revoke pointer
+                    gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].revoke, "lastUpdate is <= latest redeem revoke");
                 }
             }
         }

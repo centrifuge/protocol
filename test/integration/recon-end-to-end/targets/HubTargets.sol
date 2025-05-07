@@ -59,11 +59,15 @@ abstract contract HubTargets is
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = CastLib.toBytes32(_getActor());
-
+        uint256 investorSharesBefore =  token.balanceOf(_getActor());
+        
         hub.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
         (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
+        uint256 investorSharesAfter =  token.balanceOf(_getActor());
+
+        sumOfFullfilledDeposits[address(token)] += (investorSharesAfter - investorSharesBefore);
 
         // nowDepositEpoch = depositEpochId + 1
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
