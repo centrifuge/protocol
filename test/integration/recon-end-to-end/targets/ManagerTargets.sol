@@ -24,10 +24,13 @@ abstract contract ManagerTargets is
         _switchActor(entropy);
     }
 
-
     /// @dev Starts using a new asset
     function switch_asset(uint256 entropy) public {
         _switchAsset(entropy);
+    }
+
+    function switch_pool(uint256 entropy) public {
+        _switchPool(entropy);
     }
 
     /// @dev Deploy a new token and add it to the list of assets, then set it as the current asset

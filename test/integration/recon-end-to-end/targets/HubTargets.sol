@@ -41,7 +41,7 @@ abstract contract HubTargets is
 
         hub.createPool(_poolId, admin, _assetId);
 
-        createdPools.push(_poolId);
+        _addPool(_poolId.raw());
 
         return _poolId;
     }

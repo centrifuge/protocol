@@ -239,7 +239,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         
         uint256 ghostBalOfEscrow;
         address asset = vault.asset();
-        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(poolId)));
+        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
         uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
             // Deposit Requests + Transfers In
@@ -339,7 +339,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
         uint256 totalAssets = vault.totalAssets();
-        address escrow = address(poolEscrowFactory.escrow(PoolId.wrap(poolId)));
+        address escrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
         uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
         
         uint256 differenceInAssets = totalAssets - actualAssets;

@@ -68,9 +68,10 @@ import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
+import {ReconPoolManager} from "./helpers/ReconPoolManager.sol";
 
 
-abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, Utils {
+abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, Utils {
 
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
@@ -94,7 +95,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
 
     // Clamping
     bytes16 scId;
-    uint64 poolId;
+    // uint64 poolId;
     uint128 assetId;
     uint128 currencyId;
 

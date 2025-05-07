@@ -395,7 +395,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
 
-        address escrow = address(poolEscrowFactory.deployedEscrow(PoolId.wrap(poolId)));
+        address escrow = address(poolEscrowFactory.deployedEscrow(PoolId.wrap(_getPool())));
 
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
@@ -441,7 +441,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
 
-        address escrow = address(poolEscrowFactory.deployedEscrow(PoolId.wrap(poolId)));
+        address escrow = address(poolEscrowFactory.deployedEscrow(PoolId.wrap(_getPool())));
         // Bal b4
         uint256 tokenUserB4 = MockERC20(_getAsset()).balanceOf(_getActor());
         uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(escrow);
