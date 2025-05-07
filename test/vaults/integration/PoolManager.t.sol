@@ -268,7 +268,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
             MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
 
-        poolManager.handleTransferShares(vault.poolId(), vault.scId(), THIS_CHAIN_ID, address(this).toBytes32(), amount);
+        poolManager.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount); // Verify the address(this) has the expected amount
 
         poolManager.updateRestriction(
@@ -291,8 +291,9 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
-        bytes memory message =
-            MessageLib.TransferShares(poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount).serialize();
+        bytes memory message = MessageLib.InitiateTransferShares(
+            poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount
+        ).serialize();
         assertEq(adapter1.sent(message), 1);
     }
 
@@ -308,18 +309,16 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         vm.expectRevert(IHook.TransferBlocked.selector);
-        poolManager.handleTransferShares(poolId, scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
 
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.handleTransferShares(
-            PoolId.wrap(poolId.raw() + 1), scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount
-        );
+        poolManager.executeTransferShares(PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount);
 
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
-        poolManager.handleTransferShares(poolId, scId, THIS_CHAIN_ID, destinationAddress.toBytes32(), amount);
+        poolManager.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
         assertEq(shareToken.balanceOf(destinationAddress), amount);
     }
 
@@ -346,7 +345,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with samount
-        poolManager.handleTransferShares(vault.poolId(), vault.scId(), THIS_CHAIN_ID, address(this).toBytes32(), amount);
+        poolManager.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         poolManager.updateRestriction(
@@ -633,7 +632,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
         // Fund this address with amount
-        poolManager.handleTransferShares(vault.poolId(), vault.scId(), THIS_CHAIN_ID, address(this).toBytes32(), amount);
+        poolManager.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         // fails for invalid share class token

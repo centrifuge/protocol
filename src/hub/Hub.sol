@@ -633,6 +633,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHubGatewayHandler
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
+        _auth();
+
+        require(hubRegistry.chain(poolId, centrifugeId), DisabledChain());
+        sender.sendExecuteTransferShares(poolId, scId, centrifugeId, receiver, amount);
+    }
+
+    /// @inheritdoc IHubGatewayHandler
     function increaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external {
         _auth();
 

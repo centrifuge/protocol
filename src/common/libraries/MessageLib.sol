@@ -108,7 +108,7 @@ library MessageLib {
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
         (75  << uint8(MessageType.InitiateTransferShares) * 8) +
-        (75  << uint8(MessageType.ExecuteTransferShares) * 8) +
+        (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
@@ -512,7 +512,6 @@ library MessageLib {
     struct ExecuteTransferShares {
         uint64 poolId;
         bytes16 scId;
-        uint16 centrifugeId;
         bytes32 receiver;
         uint128 amount;
     }
@@ -522,15 +521,13 @@ library MessageLib {
         return ExecuteTransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            centrifugeId: data.toUint16(25),
-            receiver: data.toBytes32(27),
-            amount: data.toUint128(59)
+            receiver: data.toBytes32(25),
+            amount: data.toUint128(57)
         });
     }
 
     function serialize(ExecuteTransferShares memory t) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
+        return abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.receiver, t.amount);
     }
 
     //---------------------------------------

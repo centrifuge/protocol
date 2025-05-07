@@ -235,25 +235,13 @@ contract TestMessageLibIdentities is Test {
         assertTrue(a.serialize().messageDirection() == MessageDirection.VaultsToHub);
     }
 
-    function testExecuteTransferShares(
-        uint64 poolId,
-        bytes16 scId,
-        uint16 centrifugeId,
-        bytes32 receiver,
-        uint128 amount
-    ) public pure {
-        MessageLib.ExecuteTransferShares memory a = MessageLib.ExecuteTransferShares({
-            poolId: poolId,
-            scId: scId,
-            centrifugeId: centrifugeId,
-            receiver: receiver,
-            amount: amount
-        });
+    function testExecuteTransferShares(uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount) public pure {
+        MessageLib.ExecuteTransferShares memory a =
+            MessageLib.ExecuteTransferShares({poolId: poolId, scId: scId, receiver: receiver, amount: amount});
         MessageLib.ExecuteTransferShares memory b = MessageLib.deserializeExecuteTransferShares(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
-        assertEq(a.centrifugeId, b.centrifugeId);
         assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
 

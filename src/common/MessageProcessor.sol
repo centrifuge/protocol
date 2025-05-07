@@ -127,12 +127,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShareHook) {
             MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
             poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
-            // TODO: handle InitiateTransferShares
+        } else if (kind == MessageType.InitiateTransferShares) {
+            MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
+            hub.initiateTransferShares(
+                m.centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount
+            );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
-            poolManager.handleTransferShares(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.centrifugeId, m.receiver, m.amount
-            );
+            poolManager.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             poolManager.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);

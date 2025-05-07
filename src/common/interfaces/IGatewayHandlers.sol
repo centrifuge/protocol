@@ -32,25 +32,25 @@ interface IGatewayHandler {
 
 /// @notice Interface for CP methods called by messages
 interface IHubGatewayHandler {
-    /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
+    /// @notice Tells that an asset was already registered in vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
-    /// @notice Perform a deposit that was requested from CV.
+    /// @notice Perform a deposit that was requested from vaults.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external;
 
-    /// @notice Perform a redeem that was requested from CV.
+    /// @notice Perform a redeem that was requested from vaults.
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
         external;
 
-    /// @notice Perform a deposit cancellation that was requested from CV.
+    /// @notice Perform a deposit cancellation that was requested from vaults.
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external;
 
-    /// @notice Perform a redeem cancellation that was requested from CV.
+    /// @notice Perform a redeem cancellation that was requested from vaults.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 
-    /// @notice Update a holding by request from CAL.
+    /// @notice Update a holding by request from vaults.
     function updateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
@@ -60,10 +60,19 @@ interface IHubGatewayHandler {
         bool isIncrease
     ) external;
 
-    /// @notice Increases the total issuance of shares by request from CAL.
+    /// @notice Forward an initiated share transfer to the destination chain.
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external;
+
+    /// @notice Increases the total issuance of shares by request from vaults.
     function increaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external;
 
-    /// @notice Decreases the total issuance of shares by request from CAL.
+    /// @notice Decreases the total issuance of shares by request from vaults.
     function decreaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external;
 }
 
@@ -132,13 +141,7 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice Mints share class tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes32 receiver,
-        uint128 amount
-    ) external;
+    function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
     /// @notice Updates the target address. Generic update function from CP to CV
     /// @param  poolId The centrifuge pool id

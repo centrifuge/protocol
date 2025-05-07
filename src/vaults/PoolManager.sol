@@ -132,7 +132,7 @@ contract PoolManager is
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount, false);
+        sender.sendInitiateTransferShares(poolId, scId, centrifugeId, receiver, amount);
     }
 
     // @inheritdoc IPoolManager
@@ -306,20 +306,9 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes32 receiver,
-        uint128 amount
-    ) public auth {
+    function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
-
-        if (centrifugeId == sender.localCentrifugeId()) {
-            shareToken_.mint(receiver.toAddress(), amount);
-        } else {
-            sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount, true);
-        }
+        shareToken_.mint(receiver.toAddress(), amount);
     }
 
     /// @inheritdoc IUpdateContract
