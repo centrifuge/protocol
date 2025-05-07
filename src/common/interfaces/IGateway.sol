@@ -221,10 +221,10 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
     ///         on the destination chain and bridging its payload proofs on n-1 adapter
     ///         and settling on the destination chain.
-    /// @param  payload Used in gas cost calculations.
+    /// @param  actions Used in gas cost calculations.
     /// @dev    Currenly the payload is not taken into consideration.
     /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total);
+    function estimate(uint16 centrifugeId, bytes4[] memory actions) external view returns (uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for

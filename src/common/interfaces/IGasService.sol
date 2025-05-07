@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+struct MessageCost {
+    uint32 messageSize;
+    uint128 gasCost;
+}
+
 interface IGasService {
     /// @notice Gas limit for the execution cost of an individual message in a remote chain.
     /// @dev    NOTE: In the future we could want to dispatch:
@@ -16,4 +21,6 @@ interface IGasService {
     /// @param centrifugeId Where to the cost is defined
     /// @return Max cost in WEI units
     function maxBatchSize(uint16 centrifugeId) external view returns (uint128);
+
+    function actionCost(bytes4 action) external view returns (uint32, uint128);
 }

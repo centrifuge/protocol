@@ -76,9 +76,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageDispatcher
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
+    function estimate(uint16 centrifugeId, bytes4[] calldata actions) external view returns (uint256 amount) {
         if (centrifugeId == localCentrifugeId) return 0;
-        return gateway.estimate(centrifugeId, payload);
+        return gateway.estimate(centrifugeId, actions);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -18,5 +18,5 @@ interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMe
 
     /// @notice Estimate sending a message through the gateway.
     /// If the message is to the same centrifugeId, then the estimation is 0.
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount);
+    function estimate(uint16 centrifugeId, bytes4[] calldata actions) external view returns (uint256 amount);
 }

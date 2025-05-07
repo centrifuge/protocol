@@ -117,7 +117,10 @@ contract BaseTest is VaultsDeployer, Test {
 
         mockedGasService.setReturn("estimate", uint256(0.5 gwei));
 
-        defaultGas = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
+        bytes4[] memory actions = new bytes4[](1);
+        actions[0] = PoolManager.registerAsset.selector;
+
+        defaultGas = gateway.estimate(OTHER_CHAIN_ID, actions);
         defaultSubsidy = defaultGas * 100;
 
         // Label contracts

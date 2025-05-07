@@ -429,9 +429,11 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEstimate() public view {
-        bytes memory message = MessageLib.NotifyPool(1).serialize();
-        uint256 estimated = vaultRouter.estimate(CHAIN_ID, message);
-        uint256 gatewayEstimated = gateway.estimate(CHAIN_ID, message);
+        bytes4[] memory actions = new bytes4[](1);
+        actions[0] = VaultRouter.requestDeposit.selector;
+
+        uint256 estimated = vaultRouter.estimate(CHAIN_ID, actions);
+        uint256 gatewayEstimated = gateway.estimate(CHAIN_ID, actions);
         assertEq(estimated, gatewayEstimated);
     }
 
@@ -451,7 +453,10 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.lockDepositRequest(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(routerEscrow)), amount);
 
-        uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        bytes4[] memory actions = new bytes4[](1);
+        actions[0] = VaultRouter.requestDeposit.selector;
+
+        uint256 gasLimit = vaultRouter.estimate(CHAIN_ID, actions);
 
         vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
         vaultRouter.executeLockedDepositRequest{value: gasLimit}(vault, self);
@@ -466,6 +471,9 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256) {
-        return gateway.estimate(CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        bytes4[] memory actions = new bytes4[](1);
+        actions[0] = VaultRouter.requestDeposit.selector;
+
+        return gateway.estimate(CHAIN_ID, actions);
     }
 }

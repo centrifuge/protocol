@@ -688,8 +688,11 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault);
 
-        uint256 gasLimit =
-            gateway.estimate(OTHER_CHAIN_ID, bytes.concat(PAYLOAD_FOR_GAS_ESTIMATION, PAYLOAD_FOR_GAS_ESTIMATION));
+        bytes4[] memory actions = new bytes4[](2);
+        actions[0] = VaultRouter.requestDeposit.selector;
+        actions[1] = VaultRouter.requestDeposit.selector;
+
+        uint256 gasLimit = gateway.estimate(OTHER_CHAIN_ID, actions);
 
         vm.expectRevert(IPoolManager.UnknownVault.selector);
         vaultRouter.requestDeposit{value: gasLimit}(IAsyncVault(makeAddr("maliciousVault")), amount, self, self);
@@ -782,6 +785,9 @@ contract VaultRouterTest is BaseTest {
     }
 
     function estimateGas() internal view returns (uint256) {
-        return gateway.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION);
+        bytes4[] memory actions = new bytes4[](1);
+        actions[0] = PoolManager.registerAsset.selector;
+
+        return gateway.estimate(OTHER_CHAIN_ID, actions);
     }
 }

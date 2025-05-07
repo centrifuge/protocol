@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IGasService, MessageCost} from "src/common/interfaces/IGasService.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used to determine the execution gas limit
@@ -9,6 +9,7 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 contract GasService is IGasService {
     uint128 internal immutable _maxBatchSize;
     uint128 internal immutable _messageGasLimit;
+    mapping(bytes4 action => MessageCost cost) public actionCost;
 
     constructor(uint128 maxBatchSize_, uint128 messageGasLimit) {
         _maxBatchSize = maxBatchSize_;

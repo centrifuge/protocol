@@ -489,20 +489,22 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total) {
-        bytes memory proof = keccak256(payload).serializeMessageProof();
-
-        uint256 gasLimit = 0;
-        for (uint256 pos; pos < payload.length;) {
-            bytes calldata inner = payload[pos:payload.length];
-            gasLimit += gasService.gasLimit(centrifugeId, inner);
-            pos += processor.messageLength(inner);
+    function estimate(uint16 centrifugeId, bytes4[] memory actions) external view returns (uint256 total) {
+        uint32 batchSize = 0;
+        uint128 batchCost = 0;
+        for (uint256 i; i < actions.length; i++) {
+            (uint32 messageSize, uint128 gasCost) = gasService.actionCost(actions[i]);
+            batchSize += messageSize;
+            batchCost += gasCost;
         }
+
+        bytes memory placeholderBatch = new bytes(batchSize);
+        bytes memory placeholderProof = keccak256(placeholderBatch).serializeMessageProof();
 
         uint256 adaptersCount = adapters[centrifugeId].length;
         for (uint256 i; i < adaptersCount; i++) {
-            bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            total += IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
+            bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? placeholderBatch : placeholderProof;
+            total += IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasService.gasLimit(centrifugeId, message));
         }
     }
 

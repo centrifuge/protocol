@@ -17,4 +17,8 @@ contract MockGasService is Mock, IGasService {
     function maxBatchSize(uint16) public view returns (uint128) {
         return uint128(values_uint256_return["maxBatchSize"]);
     }
+
+    function actionCost(bytes4) external view returns (uint32, uint128) {
+        return (10, uint128(values_uint256_return["gasLimit"]));
+    }
 }
