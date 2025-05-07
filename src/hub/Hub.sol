@@ -642,6 +642,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _auth();
 
         require(hubRegistry.chain(poolId, centrifugeId), DisabledChain());
+        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
         sender.sendExecuteTransferShares(poolId, scId, centrifugeId, receiver, amount);
     }
 
