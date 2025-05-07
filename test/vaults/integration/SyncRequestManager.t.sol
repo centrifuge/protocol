@@ -105,11 +105,19 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
     }
 
     // --- Simple Errors ---
-    function testDepositUnlinkedVault() public {
-        (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(0), d18(0));
+    function testMintUnlinkedVault() public {
+        (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
         poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
+        vm.expectRevert(ISyncRequestManager.ExceedsMaxMint.selector);
+        syncRequestManager.mint(vault, 1, address(0), address(0));
+    }
+
+    function testDepositUnlinkedVault() public {
+        (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
+        poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+
+        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         syncRequestManager.deposit(vault, 1, address(0), address(0));
     }
 

@@ -167,9 +167,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         auth
         returns (uint256 shares)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        require(poolManager.isLinked(vault_.poolId(), vault_.scId(), vaultDetails.asset, vault_), AssetNotAllowed());
-
         require(maxDeposit(vault_, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vault_, owner, assets);
 
@@ -201,14 +198,15 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        uint128 maxAssets = _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
+        uint128 maxAssets =
+            _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
         return convertToShares(vault_, maxAssets);
     }
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
-        return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId);
+        return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
     }
 
     /// @inheritdoc IBaseRequestManager
@@ -275,11 +273,13 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
-    function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+    function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IBaseVault vault_)
         internal
         view
         returns (uint128 maxDeposit_)
     {
+        if (!poolManager.isLinked(poolId, scId, asset, vault_)) return 0;
+
         uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
 
