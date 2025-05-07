@@ -225,8 +225,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         bytes32 messageHash = keccak256(message);
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
 
-        processor.handle(centrifugeId, message);
         failedMessages[centrifugeId][messageHash]--;
+        processor.handle(centrifugeId, message);
 
         emit ExecuteMessage(centrifugeId, message);
     }
@@ -377,8 +377,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId poolId = processor.messagePoolId(batch);
         if (msg.value > 0) subsidizePool(poolId);
 
-        require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
         underpaid[centrifugeId][batchHash].counter--;
+        require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
         emit RepayBatch(centrifugeId, batch);
     }
@@ -448,8 +448,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IGateway
     function endBatching() external auth {
         require(isBatching, NoBatched());
-
         bytes32[] memory locators = TransientArrayLib.getBytes32(BATCH_LOCATORS_SLOT);
+
+        isBatching = false;
+        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
+
         for (uint256 i; i < locators.length; i++) {
             (uint16 centrifugeId, PoolId poolId) = _parseLocator(locators[i]);
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
@@ -460,9 +463,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
-
-        TransientArrayLib.clear(BATCH_LOCATORS_SLOT);
-        isBatching = false;
 
         _refundTransaction();
     }
