@@ -17,10 +17,6 @@ library CastLib {
         return address(bytes20(addr));
     }
 
-    function toString(address addr) internal pure returns (string memory) {
-        return string(abi.encodePacked(addr));
-    }
-
     function toBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(bytes20(addr));
     }
