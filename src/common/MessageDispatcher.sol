@@ -475,15 +475,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32 receiver,
         uint128 amount
     ) external auth {
-        gateway.send(
-            centrifugeId,
-            MessageLib.ExecuteTransferShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                receiver: receiver,
-                amount: amount
-            }).serialize()
-        );
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.executeTransferShares(poolId, scId, receiver, amount);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.ExecuteTransferShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IRootMessageSender
