@@ -14,6 +14,7 @@ interface IHubRegistry is IERC6909Decimals {
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdateDependency(bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
+    event UpdateChain(PoolId indexed poolId, uint16 indexed centrifugeId, bool isEnabled);
 
     error NonExistingPool(PoolId id);
     error AssetAlreadyRegistered();
@@ -41,6 +42,9 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, AssetId currency) external;
 
+    /// @notice enables/disables a chain for a given pool
+    function updateChain(PoolId poolId, uint16 centrifugeId, bool isEnabled) external;
+
     /// @notice returns the metadata attached to the pool, if any.
     function metadata(PoolId poolId) external view returns (bytes memory);
 
@@ -52,6 +56,9 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice returns whether the account is a manager
     function manager(PoolId poolId, address who) external view returns (bool);
+
+    /// @notice returns whether the chain is enabled for the pool
+    function chain(PoolId poolId, uint16 centrifugeId) external view returns (bool);
 
     /// @notice compute a pool ID given an ID postfix
     function poolId(uint16 centrifugeId, uint48 postfix) external view returns (PoolId poolId);

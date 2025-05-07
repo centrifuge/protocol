@@ -240,12 +240,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
 
-            // TODO: how can we restrict this?
-
             if (m.isIssuance) {
-                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                hub.increaseShareIssuance(centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {
-                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                hub.decreaseShareIssuance(centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();

@@ -61,10 +61,10 @@ interface IHubGatewayHandler {
     ) external;
 
     /// @notice Increases the total issuance of shares by request from CAL.
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    function increaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external;
 
     /// @notice Decreases the total issuance of shares by request from CAL.
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    function decreaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external;
 }
 
 /// -----------------------------------------------------

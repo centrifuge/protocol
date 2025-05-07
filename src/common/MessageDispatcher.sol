@@ -674,9 +674,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, shares);
+                hub.increaseShareIssuance(localCentrifugeId, poolId, scId, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, shares);
+                hub.decreaseShareIssuance(localCentrifugeId, poolId, scId, shares);
             }
         } else {
             gateway.send(

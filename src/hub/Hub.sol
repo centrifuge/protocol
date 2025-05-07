@@ -188,8 +188,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
         _isManagerAndPaid(poolId);
 
+        hubRegistry.updateChain(poolId, centrifugeId, true);
+
         emit NotifyPool(centrifugeId, poolId);
         sender.sendNotifyPool(centrifugeId, poolId);
+    }
+
+    /// @inheritdoc IHub
+    function updateChain(PoolId poolId, uint16 centrifugeId, bool enabled) external payable {
+        _isManagerAndPaid(poolId);
+
+        hubRegistry.updateChain(poolId, centrifugeId, enabled);
     }
 
     /// @inheritdoc IHub
@@ -550,6 +559,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _auth();
 
+        require(hubRegistry.chain(poolId, depositAssetId.centrifugeId()), DisabledChain());
         shareClassManager.requestDeposit(poolId, scId, amount, investor, depositAssetId);
     }
 
@@ -559,6 +569,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _auth();
 
+        require(hubRegistry.chain(poolId, payoutAssetId.centrifugeId()), DisabledChain());
         shareClassManager.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
     }
 
@@ -568,6 +579,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _auth();
 
+        require(hubRegistry.chain(poolId, depositAssetId.centrifugeId()), DisabledChain());
         uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
@@ -580,6 +592,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external {
         _auth();
 
+        require(hubRegistry.chain(poolId, payoutAssetId.centrifugeId()), DisabledChain());
         uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
@@ -599,6 +612,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
+        require(hubRegistry.chain(poolId, assetId.centrifugeId()), DisabledChain());
         accounting.unlock(poolId);
 
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
@@ -619,16 +633,18 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
+    function increaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external {
         _auth();
 
+        require(hubRegistry.chain(poolId, centrifugeId), DisabledChain());
         shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
+    function decreaseShareIssuance(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount) external {
         _auth();
 
+        require(hubRegistry.chain(poolId, centrifugeId), DisabledChain());
         shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
     }
 

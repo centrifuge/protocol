@@ -66,6 +66,8 @@ interface IHub {
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
 
+    error DisabledChain();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -92,6 +94,9 @@ interface IHub {
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable;
+
+    /// @notice Enable/disable a chain for a pool
+    function updateChain(PoolId poolId, uint16 centrifugeId, bool enabled) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param centrifugeId Chain where CV instance lives

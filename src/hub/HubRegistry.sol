@@ -20,6 +20,7 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => AssetId) public currency;
     mapping(bytes32 => address) public dependency;
     mapping(PoolId => mapping(address => bool)) public manager;
+    mapping(PoolId => mapping(uint16 centrifugeId => bool)) public chain;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -86,6 +87,15 @@ contract HubRegistry is Auth, IHubRegistry {
         currency[poolId_] = currency_;
 
         emit UpdateCurrency(poolId_, currency_);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function updateChain(PoolId poolId_, uint16 centrifugeId, bool isEnabled) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
+
+        chain[poolId_][centrifugeId] = isEnabled;
+
+        emit UpdateChain(poolId_, centrifugeId, isEnabled);
     }
 
     //----------------------------------------------------------------------------------------------
