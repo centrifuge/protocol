@@ -110,7 +110,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
@@ -148,7 +148,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         mintAmount = between(mintAmount, 1, maxMintBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
@@ -182,7 +182,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         withdrawAmount = between(withdrawAmount, 1, maxWithdrawBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
@@ -218,7 +218,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         redeemAmount = between(redeemAmount, 1, maxRedeemBefore);
 
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         // (,uint32 latestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);

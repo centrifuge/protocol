@@ -17,8 +17,6 @@ abstract contract ManagerTargets is
     BaseTargetFunctions,
     Properties
 {
-    // == ACTOR HANDLERS == //
-    
     /// @dev Start acting as another actor
     function switch_actor(uint256 entropy) public {
         _switchActor(entropy);
@@ -29,6 +27,7 @@ abstract contract ManagerTargets is
         _switchAsset(entropy);
     }
 
+    /// @dev Starts using a new pool
     function switch_pool(uint256 entropy) public {
         _switchPool(entropy);
     }

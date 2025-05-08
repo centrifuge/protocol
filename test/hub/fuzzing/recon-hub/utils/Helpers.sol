@@ -27,6 +27,10 @@ library Helpers {
         return createdPools[poolEntropy % createdPools.length];
     }
 
+    function getRandomPoolId(uint64[] memory createdPools, uint64 poolEntropy) internal pure returns (PoolId) {
+        return PoolId.wrap(createdPools[poolEntropy % createdPools.length]);
+    }
+
     function getRandomShareClassIdForPool(IShareClassManager shareClassManager, PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
         uint32 randomIndex = scEntropy % (shareClassCount + 1);

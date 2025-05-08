@@ -78,7 +78,7 @@ abstract contract HubTargets is
     }
 
     function hub_notifyDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdAsUint);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdAsUint);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         bytes32 investor = CastLib.toBytes32(_getActor());
@@ -109,7 +109,7 @@ abstract contract HubTargets is
     }
 
     function hub_notifyRedeem_clamped(uint64 poolEntropy, uint32 scIdEntropy, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
 

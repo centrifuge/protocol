@@ -50,7 +50,7 @@ abstract contract AdminTargets is
     }
 
     function hub_addShareClass_clamped(uint64 poolIdEntropy, uint256 salt) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         hub_addShareClass(poolId.raw(), salt);
     }
 
@@ -68,7 +68,7 @@ abstract contract AdminTargets is
     }
 
     function hub_approveDeposits_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowDepositEpochId, uint128 maxApproval) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId paymentAssetId = hubRegistry.currency(poolId);
         hub_approveDeposits(poolId.raw(), scId.raw(), paymentAssetId.raw(), nowDepositEpochId, maxApproval);
@@ -88,7 +88,7 @@ abstract contract AdminTargets is
     }
 
     function hub_approveRedeems_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowRedeemEpochId, uint128 maxApproval) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         hub_approveRedeems(poolId.raw(), scId.raw(), payoutAssetId.raw(), nowRedeemEpochId, maxApproval);
@@ -103,7 +103,7 @@ abstract contract AdminTargets is
     }
 
     function hub_createAccount_clamped(uint64 poolIdEntropy, uint32 accountAsInt, bool isDebitNormal) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         hub_createAccount(poolId.raw(), accountAsInt, isDebitNormal);
     }
 
@@ -125,7 +125,7 @@ abstract contract AdminTargets is
     }
 
     function hub_createHolding_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation, uint8 assetAccountEntropy, uint8 equityAccountEntropy, uint8 lossAccountEntropy, uint8 gainAccountEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         AccountId assetAccount = Helpers.getRandomAccountId(createdAccountIds, assetAccountEntropy);
@@ -144,7 +144,7 @@ abstract contract AdminTargets is
     }
     
     function hub_createLiability_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation, uint8 expenseAccountEntropy, uint8 liabilityAccountEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
@@ -162,7 +162,7 @@ abstract contract AdminTargets is
     }
 
     function hub_issueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint32 nowIssueEpochId,  uint128 navPerShare) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), nowIssueEpochId, navPerShare);
@@ -174,7 +174,7 @@ abstract contract AdminTargets is
     }
 
     function hub_notifyPool_clamped(uint64 poolIdEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         hub_notifyPool(poolId.raw(), CENTIFUGE_CHAIN_ID);
     }
 
@@ -185,7 +185,7 @@ abstract contract AdminTargets is
     }
 
     function hub_notifyShareClass_clamped(uint64 poolIdEntropy, uint32 scEntropy, bytes32 hook) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), hook);
     }
@@ -197,7 +197,7 @@ abstract contract AdminTargets is
     }
 
     function hub_notifySharePrice_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifySharePrice(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID);
     }
@@ -210,7 +210,7 @@ abstract contract AdminTargets is
     }
 
     function hub_notifyAssetPrice_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_notifyAssetPrice(poolId.raw(), scId.raw());
     }
@@ -222,7 +222,7 @@ abstract contract AdminTargets is
     }
     
     function hub_triggerIssueShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 shares) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_triggerIssueShares(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw(), shares);
     }
@@ -234,7 +234,7 @@ abstract contract AdminTargets is
     }
 
     function hub_triggerSubmitQueuedShares_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_triggerSubmitQueuedShares(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw());
     }
@@ -247,7 +247,7 @@ abstract contract AdminTargets is
     }
 
     function hub_triggerSubmitQueuedAssets_clamped(uint64 poolIdEntropy, uint32 scEntropy) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         hub_triggerSubmitQueuedAssets(poolId.raw(), scId.raw(), assetId.raw());
@@ -260,7 +260,7 @@ abstract contract AdminTargets is
     }
 
     function hub_setQueue_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool enabled) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_setQueue(CENTIFUGE_CHAIN_ID, poolId.raw(), scId.raw(), enabled);
     }
@@ -273,7 +273,7 @@ abstract contract AdminTargets is
     }
 
     function hub_revokeShares_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare, uint32 nowRevokeEpochId) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_revokeShares(poolId.raw(), scId.raw(), nowRevokeEpochId, navPerShare);
     }
@@ -305,7 +305,7 @@ abstract contract AdminTargets is
     }
 
     function hub_updateHoldingValuation_clamped(uint64 poolIdEntropy, uint32 scEntropy, bool isIdentityValuation) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
@@ -319,7 +319,7 @@ abstract contract AdminTargets is
     }
 
     function hub_updateRestriction_clamped(uint64 poolIdEntropy, uint32 scEntropy, bytes calldata payload) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_updateRestriction(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), payload);
     }
@@ -331,7 +331,7 @@ abstract contract AdminTargets is
     }
 
     function hub_updatePricePerShare_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 navPerShare) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         hub_updatePricePerShare(poolId.raw(), scId.raw(), navPerShare);
     } 
@@ -343,7 +343,7 @@ abstract contract AdminTargets is
     }
 
     function syncRequestManager_setValuation_clamped(uint64 poolIdAsUint, uint32 scIdAsUint, bool isIdentityValuation) public {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdAsUint);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdAsUint);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdAsUint);
         address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
         syncRequestManager_setValuation(poolId.raw(), scId.raw(), valuation);
@@ -417,7 +417,7 @@ abstract contract AdminTargets is
     // }   
 
     // function hub_depositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     hub_depositRequest(poolId.raw(), scId.raw(), amount);
     // }
@@ -446,7 +446,7 @@ abstract contract AdminTargets is
     // }  
 
     // function hub_redeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     AssetId payoutAssetId = hubRegistry.currency(poolId);
     //     hub_redeemRequest(poolId.raw(), scId.raw(), payoutAssetId.raw(), amount);
@@ -494,7 +494,7 @@ abstract contract AdminTargets is
     // }
 
     // function hub_cancelDepositRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     hub_cancelDepositRequest(poolId.raw(), scId.raw());
     // }
@@ -539,7 +539,7 @@ abstract contract AdminTargets is
     // }
 
     // function hub_cancelRedeemRequest_clamped(uint64 poolIdEntropy, uint32 scEntropy) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     hub_cancelRedeemRequest(poolId.raw(), scId.raw());
     // }
@@ -552,7 +552,7 @@ abstract contract AdminTargets is
     // }
 
     // function hub_updateHoldingAmount_clamped(uint64 poolEntropy, uint32 scEntropy, uint8 accountEntropy, uint128 amount, uint128 pricePerUnit, bool isIncrease) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     AssetId assetId = hubRegistry.currency(poolId);
 
@@ -579,7 +579,7 @@ abstract contract AdminTargets is
     }
 
     function hub_updateHoldingValue_clamped(uint64 poolEntropy, uint32 scEntropy) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
         hub_updateHoldingValue(poolId.raw(), scId.raw(), assetId.raw());
@@ -605,7 +605,7 @@ abstract contract AdminTargets is
     }
 
     function hub_updateJournal_clamped(uint64 poolIdEntropy, uint8 accountEntropy, uint128 amount) public updateGhosts {
-        PoolId poolId = Helpers.getRandomPoolId(createdPools, poolIdEntropy);
+        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdEntropy);
         
         uint32 debitAccountId = Helpers.getRandomAccountId(createdAccountIds, accountEntropy).raw();
         uint32 creditAccountId = Helpers.getRandomAccountId(createdAccountIds, accountEntropy).raw();
@@ -620,7 +620,7 @@ abstract contract AdminTargets is
     // }
 
     // function hub_increaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 pricePerShare, uint128 amount) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     hub_increaseShareIssuance(poolId.raw(), scId.raw(), amount);
     // }
@@ -632,7 +632,7 @@ abstract contract AdminTargets is
     // }
 
     // function hub_decreaseShareIssuance_clamped(uint64 poolEntropy, uint32 scEntropy, uint128 amount) public updateGhosts {
-    //     PoolId poolId = Helpers.getRandomPoolId(createdPools, poolEntropy);
+    //     PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
     //     ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
     //     hub_decreaseShareIssuance(poolId.raw(), scId.raw(), amount);
     // }

@@ -76,9 +76,10 @@ abstract contract BeforeAfter is Ghosts {
         // Hub
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
-        for (uint256 i = 0; i < createdPools.length; i++) {
+        uint64[] memory _createdPools = _getPools();
+        for (uint256 i = 0; i < _createdPools.length; i++) {
             address[] memory _actors = _getActors();
-            PoolId poolId = createdPools[i];
+            PoolId poolId = PoolId.wrap(_createdPools[i]);
             
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
@@ -122,9 +123,10 @@ abstract contract BeforeAfter is Ghosts {
         // Hub
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
-        for (uint256 i = 0; i < createdPools.length; i++) {
+        uint64[] memory _createdPools = _getPools();
+        for (uint256 i = 0; i < _createdPools.length; i++) {
             address[] memory _actors = _getActors();
-            PoolId poolId = createdPools[i];
+            PoolId poolId = PoolId.wrap(_createdPools[i]);
             
             // loop through all share classes for the pool
             for (uint32 j = 0; j < shareClassManager.shareClassCount(poolId); j++) {
