@@ -3,11 +3,13 @@ pragma solidity ^0.8.0;
 
 import {Asserts} from "@chimera/Asserts.sol";
 import {vm} from "@chimera/Hevm.sol";
+import "forge-std/console2.sol";
 
 import {Setup} from "../Setup.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import "forge-std/console2.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+
 
 /// @dev ERC-7540 Properties
 /// TODO: Make pointers with Reverts
@@ -17,7 +19,7 @@ import "forge-std/console2.sol";
 /// These are the re-usable ones, which do alter the state
 /// And we will not call
 abstract contract AsyncVaultProperties is Setup, Asserts {
-    // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), token.decimals())
+    // TODO: change to 10 ** max(MockERC20(_getAsset()).decimals(), IShareToken(_getShareToken()).decimals())
     uint256 MAX_ROUNDING_ERROR = 10 ** 18;
 
     /// @dev 7540-3	convertToAssets(totalSupply) == totalAssets unless price is 0.0
@@ -185,7 +187,7 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
             return; // Skip
         }
 
-        uint256 actualBal = token.balanceOf(_getActor());
+        uint256 actualBal = IERC20Metadata(_getShareToken()).balanceOf(_getActor());
         uint256 balWeWillUse = actualBal + shares;
 
         if (balWeWillUse == 0) {
@@ -193,8 +195,8 @@ abstract contract AsyncVaultProperties is Setup, Asserts {
         }
 
         // NOTE: Avoids more false positives
-        token.approve(address(asyncVaultTarget), 0);
-        token.approve(address(asyncVaultTarget), type(uint256).max);
+        IERC20Metadata(_getShareToken()).approve(address(asyncVaultTarget), 0);
+        IERC20Metadata(_getShareToken()).approve(address(asyncVaultTarget), type(uint256).max);
 
         uint256 hasReverted;
         try IAsyncVault(asyncVaultTarget).requestRedeem(balWeWillUse, _getActor(), _getActor()) {

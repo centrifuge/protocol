@@ -13,6 +13,7 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -32,7 +33,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if(assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
@@ -40,7 +41,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(sharesReceived);
 
         uint256 expectedAssetsSpent = (sharesReceived * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assets / ppfsBefore) - (10 ** token.decimals());
+        uint256 expectedSharesReceived = (assets / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         // should always round in protocol's favor, requiring more assets to be spent than shares received
         gte(sharesAsAssets, expectedAssetsSpent, "sharesAsAssets < expectedAssetsSpent");
@@ -59,7 +60,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsSpent = assets;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if(shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
@@ -67,7 +68,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         uint256 assetsAsShares = IBaseVault(_getVault()).convertToShares(assetsSpent);
 
         uint256 expectedAssetsSpent = (assetsAsShares * ppfsBefore) + (10 ** MockERC20(_getAsset()).decimals());
-        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** token.decimals());
+        uint256 expectedSharesReceived = (assetsSpent / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         gte(assetsSpent, expectedAssetsSpent, "assetsSpent < expectedAssetsSpent");
         lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
@@ -86,15 +87,15 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsReceived = assets;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if(shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
         }
         uint256 assetsAsShares = IBaseVault(_getVault()).convertToShares(assetsReceived);
 
-        uint256 expectedAssets = (shares * ppfsBefore) + (10 ** token.decimals());
-        uint256 expectedAssetsAsShares = (IBaseVault(_getVault()).convertToAssets(shares) / ppfsBefore) - (10 ** token.decimals());
+        uint256 expectedAssets = (shares * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (IBaseVault(_getVault()).convertToAssets(shares) / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         lte(assetsReceived, expectedAssets, "assetsReceived > expectedAssets");
         gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
@@ -113,15 +114,15 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(address(token), _getActor());
+            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
             if(assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }
         }
         uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(sharesReceived);
 
-        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** token.decimals());
-        uint256 expectedAssetsAsShares = (assets / ppfsBefore) - (10 ** token.decimals());
+        uint256 expectedAssets = (assetsAsSharesBefore * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (assets / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
 
         gte(sharesAsAssets, expectedAssets, "sharesAsAssets < expectedAssets");
         lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");

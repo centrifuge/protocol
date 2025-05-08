@@ -18,6 +18,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -55,7 +56,7 @@ abstract contract TargetFunctions is
 
     function canary_doesShareGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
-            return shareClassTokens.length < 10;
+            return _getShareTokens().length < 10;
         }
 
         return true;
@@ -95,11 +96,11 @@ abstract contract TargetFunctions is
         decimals = decimals % RECON_MODULO_DECIMALS;
 
         // 1. Deploy new token and register it as an asset
-        _token = _newAsset(decimals);
+        _newAsset(decimals);
         PoolId _poolId;
 
         {
-            _assetId = poolManager_registerAsset(address(_token), 0);
+            poolManager_registerAsset(_getAsset(), 0);
         }
 
         // 2. Deploy new pool and register it
@@ -121,7 +122,7 @@ abstract contract TargetFunctions is
             hub_addShareClass(salt);
 
             // TODO: Should we customize decimals and permissions here?
-            (_shareToken,) = poolManager_addShareClass(_scId, 18, address(fullRestrictions));
+            poolManager_addShareClass(_scId, 18, address(fullRestrictions));
         }
 
         // 4. Create accounts and holding
@@ -149,9 +150,15 @@ abstract contract TargetFunctions is
         approvals[1] = address(_getVault());
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 
-        // vault = AsyncVault(_vault);
-        token = ShareToken(_shareToken);
-        token.file("hook", address(fullRestrictions));
+        IShareToken(_getShareToken()).file("hook", address(fullRestrictions));
+
+        _token = _getAsset(); 
+        _shareToken = _getShareToken();
+        _vault = _getVault();
+        _assetId = _getAssetId();
+        _scId = _getShareClassId();
+
+        return (_token, _shareToken, _vault, _assetId, _scId);
     }
 
     function shortcut_request_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint256 toEntropy) public {

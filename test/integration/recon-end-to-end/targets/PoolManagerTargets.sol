@@ -96,8 +96,8 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         );
         address newToken = address(poolManager.shareToken(PoolId.wrap(_getPool()), ShareClassId.wrap(scId)));
 
-        shareClassTokens.push(newToken);
         _addShareClassId(scId);
+        _addShareToken(newToken);
 
         return (newToken, scId);
     }

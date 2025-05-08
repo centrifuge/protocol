@@ -7,6 +7,7 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
@@ -242,8 +243,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         switch_actor(1);
 
         address to = _getRandomActor(0);
-        (bool isMember,) = fullRestrictions.isMember(address(token), _getActor());
-        (bool isMemberTo,) = fullRestrictions.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+        (bool isMemberTo,) = fullRestrictions.isMember(_getShareToken(), to);
         // caller of requestDeposit is not a member
         console2.log("actor isMember:", isMember);
         // recipient of requestDeposit is a member

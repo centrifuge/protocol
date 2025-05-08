@@ -14,12 +14,13 @@ import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PoolEscrow} from "src/vaults/Escrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     using CastLib for *;
@@ -42,13 +43,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return; // Skip if setting is off
         }
 
-        if (address(token) == address(0)) {
+        if (_getShareToken() == address(0)) {
             return; // Skip
         }
         
         // Dig until we get non-zero share class balance
         // Afaict this will never work
-        eq(token.balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
+        eq(IShareToken(_getShareToken()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
     }
 
     // == VAULT == //
@@ -58,7 +59,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // Mint and Deposit
         // only valid for async vaults because sync vaults don't have to fulfill deposit requests
         if(Helpers.isAsyncVault(address(IBaseVault(_getVault())))) {
-            lte(sumOfClaimedDeposits[address(token)], sumOfFullfilledDeposits[address(token)], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
+            lte(sumOfClaimedDeposits[address(_getShareToken())], sumOfFullfilledDeposits[address(_getShareToken())], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
         }
     }
 
@@ -88,12 +89,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         uint256 ghostTotalSupply;
-        uint256 totalSupply = token.totalSupply();
+        uint256 totalSupply = IShareToken(_getShareToken()).totalSupply();
         unchecked {
             
             // NOTE: Includes `shareMints` which are arbitrary mints
-            ghostTotalSupply = shareMints[address(token)] + executedInvestments[address(token)] + incomingTransfers[address(token)]
-                - outGoingTransfers[address(token)] - executedRedemptions[address(token)];
+            ghostTotalSupply = shareMints[address(_getShareToken())] + executedInvestments[address(_getShareToken())] + incomingTransfers[address(_getShareToken())]
+                - outGoingTransfers[address(_getShareToken())] - executedRedemptions[address(_getShareToken())];
         }
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
@@ -107,7 +108,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
             if (MockERC20(_getAsset()).balanceOf(systemAddresses[i]) > 0) {
                 emit DebugNumber(i); // Number to index
-                eq(token.balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
+                eq(IShareToken(_getShareToken()).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
             }
         }
     }
@@ -136,7 +137,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // fulfillCancelRedeemRequest.shares
     function property_global_6() public tokenIsSet {
         // claimCancelRedeemRequest
-        lte(sumOfClaimedRedeemCancelations[address(token)], cancelRedeemShareTokenPayout[address(token)], "sumOfClaimedRedeemCancelations !<= cancelRedeemTrancheTokenPayout");
+        lte(sumOfClaimedRedeemCancelations[address(_getShareToken())], cancelRedeemShareTokenPayout[address(_getShareToken())], "sumOfClaimedRedeemCancelations !<= cancelRedeemTrancheTokenPayout");
     }
 
     // Inductive implementation of property_global_6
@@ -163,13 +164,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try token.balanceOf(actors[i]) returns (uint256 bal) {
+            try IShareToken(_getShareToken()).balanceOf(actors[i]) returns (uint256 bal) {
                 acc += bal;
             } catch {}
         }
 
         // NOTE: This ensures that supply doesn't overflow
-        lte(acc, token.totalSupply(), "sum of user balances > token.totalSupply()");
+        lte(acc, IShareToken(_getShareToken()).totalSupply(), "sum of user balances > token.totalSupply()");
     }
 
     function property_IM_1() public {
@@ -271,12 +272,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = token.balanceOf(address(globalEscrow));
+        uint256 balanceOfEscrow = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         unchecked {        
             ghostBalanceOfEscrow = (
-                sumOfFullfilledDeposits[address(token)] + sumOfRedeemRequests[address(token)]
-                        - sumOfClaimedDeposits[address(token)] - sumOfClaimedRedeemCancelations[address(token)]
-                        - sumOfClaimedRequests[address(token)]
+                sumOfFullfilledDeposits[address(_getShareToken())] + sumOfRedeemRequests[address(_getShareToken())]
+                        - sumOfClaimedDeposits[address(_getShareToken())] - sumOfClaimedRedeemCancelations[address(_getShareToken())]
+                        - sumOfClaimedRequests[address(_getShareToken())]
             );
         }
         eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");
@@ -318,7 +319,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         //     return; // Canary for actor swaps
         // }
 
-        uint256 balOfEscrow = token.balanceOf(address(globalEscrow));
+        uint256 balOfEscrow = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         emit DebugWithString("balOfEscrow", balOfEscrow);
 
         // Use acc to get maxMint for each actor
@@ -347,7 +348,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(differenceInAssets);
 
         // precondition: check if the difference is greater than one share
-        if (differenceInShares > (10 ** token.decimals()) - 1) {
+        if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
             lte(totalAssets, actualAssets, "totalAssets > actualAssets");
         }
     }
@@ -1048,7 +1049,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
 
-        if (differenceInShares > (10 ** token.decimals()) - 1) {
+        if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
             return int256(difference);
         }
 
@@ -1075,7 +1076,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[5] = address(poolManager);
         systemAddresses[6] = address(IBaseVault(_getVault()));
         systemAddresses[7] = address(IBaseVault(_getVault()).asset());
-        systemAddresses[8] = address(token);
+        systemAddresses[8] = _getShareToken();
         systemAddresses[9] = address(fullRestrictions);
 
         // if (GOV_FUZZING) {

@@ -52,10 +52,6 @@ abstract contract SharedStorage {
     mapping(address => uint128) assetAddressToAssetId;
     mapping(uint128 => address) assetIdToAssetAddress;
 
-    // TODO: Consider refactoring to a address of Currency or Share to get the rest of the details
-    address[] shareClassTokens; // TODO: Share to ID
-    // address[] vaults; // TODO: Liquidity To ID?
-
     // === invariant_E_1 === //
     // Currency
     // Indexed by Currency

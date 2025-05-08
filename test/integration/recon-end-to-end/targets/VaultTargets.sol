@@ -16,6 +16,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
@@ -93,15 +94,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         // If not member
-        (bool isMember,) = fullRestrictions.isMember(address(token), _getActor());
-        (bool isMemberTo,) = fullRestrictions.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+        (bool isMemberTo,) = fullRestrictions.isMember(_getShareToken(), to);
         if (!isMember) {
             t(hasReverted, "LP-1 Must Revert");
         }
 
         if (
-            fullRestrictions.isFrozen(address(token), _getActor()) == true
-                || fullRestrictions.isFrozen(address(token), to) == true
+            fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+                || fullRestrictions.isFrozen(_getShareToken(), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
@@ -137,19 +138,19 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
 
         // B4 Balances
-        uint256 balanceB4 = token.balanceOf(_getActor());
-        uint256 balanceOfEscrowB4 = token.balanceOf(address(globalEscrow));
+        uint256 balanceB4 = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 balanceOfEscrowB4 = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         vm.prank(_getActor());
-        token.approve(_getVault(), shares);
+        IShareToken(_getShareToken()).approve(_getVault(), shares);
 
         bool hasReverted;
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestRedeem(shares, to, _getActor()) {
             // ghost tracking
-            sumOfRedeemRequests[address(token)] += shares; // E-2
-            requestRedeemShares[to][address(token)] += shares;
+            sumOfRedeemRequests[_getShareToken()] += shares; // E-2
+            requestRedeemShares[to][_getShareToken()] += shares;
             requestRedeeemed[to] += shares;
 
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), to.toBytes32());
@@ -162,15 +163,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         if (
-            fullRestrictions.isFrozen(address(token), _getActor()) == true
-                || fullRestrictions.isFrozen(address(token), to) == true
+            fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
+                || fullRestrictions.isFrozen(_getShareToken(), to) == true
         ) {
             t(hasReverted, "LP-2 Must Revert");
         }
 
         // After Balances and Checks
-        uint256 balanceAfter = token.balanceOf(_getActor());
-        uint256 balanceOfEscrowAfter = token.balanceOf(address(globalEscrow));
+        uint256 balanceAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 balanceOfEscrowAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
@@ -192,7 +193,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     function vault_requestRedeem_clamped(uint256 shares, uint256 toEntropy) public {
-        shares = between(shares, 0, token.balanceOf(_getActor()));
+        shares = between(shares, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
         vault_requestRedeem(shares, toEntropy);
     }
 
@@ -289,31 +290,31 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getRandomActor(toEntropy);
 
         uint256 shares = IAsyncVault(_getVault()).claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
-        sumOfClaimedRedeemCancelations[address(token)] += shares;
+        sumOfClaimedRedeemCancelations[address(_getShareToken())] += shares;
     }
 
     function vault_deposit(uint256 assets) public updateGhosts {
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(_getVault());
 
-        uint256 shareUserB4 = token.balanceOf(_getActor());
-        uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
+        uint256 shareUserB4 = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 shareEscrowB4 = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         uint256 shares = IBaseVault(_getVault()).deposit(assets, _getActor());
 
         // Processed Deposit | E-2 | Global-1
-        sumOfClaimedDeposits[address(token)] += shares;
+        sumOfClaimedDeposits[address(_getShareToken())] += shares;
         // for sync vaults, deposits are fulfilled immediately
         if(!Helpers.isAsyncVault(_getVault())) {
-            sumOfFullfilledDeposits[address(token)] += shares;
-            executedInvestments[address(token)] += shares;
+            sumOfFullfilledDeposits[address(_getShareToken())] += shares;
+            executedInvestments[address(_getShareToken())] += shares;
         }
 
         // Bal after
-        uint256 shareUserAfter = token.balanceOf(_getActor());
-        uint256 shareEscrowAfter = token.balanceOf(address(globalEscrow));
+        uint256 shareUserAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 shareEscrowAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -352,24 +353,24 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool isAsyncVault = Helpers.isAsyncVault(_getVault());
 
         // Bal b4
-        uint256 shareUserB4 = token.balanceOf(_getActor());
-        uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
+        uint256 shareUserB4 = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 shareEscrowB4 = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         IBaseVault(_getVault()).mint(shares, to);
 
         // Processed Deposit | E-2
-        sumOfClaimedDeposits[address(token)] += shares;
+        sumOfClaimedDeposits[address(_getShareToken())] += shares;
         // for sync vaults, deposits are fulfilled immediately
         if(!Helpers.isAsyncVault(_getVault())) {
-            sumOfFullfilledDeposits[address(token)] += shares;
-            executedInvestments[address(token)] += shares;
+            sumOfFullfilledDeposits[address(_getShareToken())] += shares;
+            executedInvestments[address(_getShareToken())] += shares;
         }
 
         // Bal after
-        uint256 shareUserAfter = token.balanceOf(_getActor());
-        uint256 shareEscrowAfter = token.balanceOf(address(globalEscrow));
+        uint256 shareUserAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 shareEscrowAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
@@ -411,7 +412,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         
         // if sync vault, redeem is fulfilled immediately
         if(!Helpers.isAsyncVault(_getVault())) {
-            executedRedemptions[address(token)] += assets;
+            executedRedemptions[address(_getShareToken())] += assets;
         }
 
         // Bal after

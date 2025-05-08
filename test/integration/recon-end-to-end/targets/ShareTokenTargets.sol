@@ -8,6 +8,7 @@ import {vm} from "@chimera/Hevm.sol";
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 import {Properties} from "../properties/Properties.sol";
 
@@ -18,12 +19,12 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
-        value = between(value, 0, token.balanceOf(_getActor()));
+        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
 
         bool hasReverted;
 
         vm.prank(_getActor());
-        try token.transfer(to, value) {
+        try IShareToken(_getShareToken()).transfer(to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
             // NOTE: May revert for a myriad of reasons!
@@ -32,14 +33,14 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            fullRestrictions.isFrozen(address(token), to) == true
-                || fullRestrictions.isFrozen(address(token), _getActor()) == true
+            fullRestrictions.isFrozen(_getShareToken(), to) == true
+                || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = fullRestrictions.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }
@@ -47,7 +48,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
     // NOTE: We need this for transferFrom to work
     function token_approve(address spender, uint256 value) public asActor {
-        token.approve(spender, value);
+        IShareToken(_getShareToken()).approve(spender, value);
     }
 
     // Check
@@ -55,11 +56,11 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 
-        value = between(value, 0, token.balanceOf(from));
+        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(from));
 
         bool hasReverted;
         vm.prank(from);
-        try token.transferFrom(from, to, value) {
+        try IShareToken(_getShareToken()).transferFrom(from, to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
             // NOTE: May revert for a myriad of reasons!
@@ -68,14 +69,14 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         // TT-1 Always revert if one of them is frozen
         if (
-            fullRestrictions.isFrozen(address(token), to) == true
-                || fullRestrictions.isFrozen(address(token), from) == true
+            fullRestrictions.isFrozen(_getShareToken(), to) == true
+                || fullRestrictions.isFrozen(_getShareToken(), from) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }
 
         // Not a member | NOTE: Non member actor and from can move tokens?
-        (bool isMember,) = fullRestrictions.isMember(address(token), to);
+        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
         if (!isMember) {
             t(hasReverted, "TT-3 Must Revert");
         }

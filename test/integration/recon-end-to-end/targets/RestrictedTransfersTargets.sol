@@ -19,21 +19,21 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
     // NOTE: Same idea that we cycle through values via modifier
 
     function restrictedTransfers_updateMemberBasic(uint64 validUntil) public asAdmin {
-        fullRestrictions.updateMember(address(token), _getActor(), validUntil);
+        fullRestrictions.updateMember(_getShareToken(), _getActor(), validUntil);
     }
 
     // TODO: We prob want to keep one generic
     // And one with limited actors
     function restrictedTransfers_updateMember(address user, uint64 validUntil) public asAdmin {
-        fullRestrictions.updateMember(address(token), user, validUntil);
+        fullRestrictions.updateMember(_getShareToken(), user, validUntil);
     }
 
     function restrictedTransfers_freeze(address /*user*/ ) public asAdmin {
-        fullRestrictions.freeze(address(token), _getActor());
+        fullRestrictions.freeze(_getShareToken(), _getActor());
     }
 
     function restrictedTransfers_unfreeze(address /*user*/ ) public asAdmin {
-        fullRestrictions.unfreeze(address(token), _getActor());
+        fullRestrictions.unfreeze(_getShareToken(), _getActor());
     }
 
     /**

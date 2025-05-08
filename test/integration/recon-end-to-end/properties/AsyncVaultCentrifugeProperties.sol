@@ -259,7 +259,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         if (address(_getVault()) == address(0)) {
             return false;
         }
-        if (address(token) == address(0)) {
+        if (_getShareToken() == address(0)) {
             return false;
         }
         if (address(fullRestrictions) == address(0)) {

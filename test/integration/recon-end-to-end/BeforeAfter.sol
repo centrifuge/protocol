@@ -195,9 +195,9 @@ abstract contract BeforeAfter is Ghosts {
     function _updateValuesIfNonZero(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        if(address(token) != address(0)) {
-            _structToUpdate.escrowTrancheTokenBalance = token.balanceOf(address(globalEscrow));
-            _structToUpdate.totalShareSupply = token.totalSupply();
+        if(_getShareToken() != address(0)) {
+            _structToUpdate.escrowTrancheTokenBalance = MockERC20(_getShareToken()).balanceOf(address(globalEscrow));
+            _structToUpdate.totalShareSupply = MockERC20(_getShareToken()).totalSupply();
         }
 
         if (address(_getVault()) != address(0)) {

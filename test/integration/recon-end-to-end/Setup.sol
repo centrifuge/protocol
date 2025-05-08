@@ -72,7 +72,7 @@ import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/Recon
 import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers/ReconShareClassManager.sol";
 import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";
 import {ReconVaultManager} from "test/integration/recon-end-to-end/managers/ReconVaultManager.sol";
-
+import {ReconShareManager} from "test/integration/recon-end-to-end/managers/ReconShareManager.sol";
 abstract contract Setup is 
     BaseSetup, 
     SharedStorage, 
@@ -82,6 +82,7 @@ abstract contract Setup is
     ReconShareClassManager, 
     ReconAssetIdManager, 
     ReconVaultManager, 
+    ReconShareManager,
     Utils 
 {
 
@@ -95,7 +96,7 @@ abstract contract Setup is
     SyncRequestManager syncRequestManager;
     PoolManager poolManager;
     // AsyncVault vault;
-    ShareToken token;
+    // ShareToken token;
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
@@ -166,7 +167,7 @@ abstract contract Setup is
     }
 
     modifier tokenIsSet() {
-        require(address(token) != address(0));
+        require(_getShareToken() != address(0));
         _;
     }
 
