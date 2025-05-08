@@ -209,7 +209,7 @@ abstract contract BeforeAfter is Ghosts {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceAsset;
-        try poolManager.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), AssetId.wrap(assetId), false) returns (D18 _priceAsset, uint64) {
+        try poolManager.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), false) returns (D18 _priceAsset, uint64) {
             priceAsset = _priceAsset;
         } catch (bytes memory reason) {
             bool expected = checkError(reason, "ShareTokenDoesNotExist()");
@@ -230,7 +230,7 @@ abstract contract BeforeAfter is Ghosts {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceShare;
-        try poolManager.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), false) returns (D18 _priceShare, uint64) {
+        try poolManager.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), false) returns (D18 _priceShare, uint64) {
             priceShare = _priceShare;
         } catch (bytes memory reason) {
             bool expected = checkError(reason, "ShareTokenDoesNotExist()");

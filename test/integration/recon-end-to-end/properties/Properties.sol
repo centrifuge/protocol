@@ -435,8 +435,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
 
 
             // user order pending
@@ -452,8 +452,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(scId), AssetId.wrap(assetId), actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
 
             // user order pending
             // user order amount
@@ -497,7 +497,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             }
 
             // if the share amount changed, check if it used the correct price per share set by the admin
-            (, D18 navPerShare) = shareClassManager.metrics(ShareClassId.wrap(scId));
+            (, D18 navPerShare) = shareClassManager.metrics(ShareClassId.wrap(_getShareClassId()));
             uint256 expectedShareDelta = navPerShare.mulUint256(assetDelta, MathLib.Rounding.Down);
             eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
         }

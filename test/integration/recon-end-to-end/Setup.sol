@@ -69,9 +69,9 @@ import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "./mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 import {ReconPoolManager} from "./helpers/ReconPoolManager.sol";
+import {ReconShareClassManager} from "./helpers/ReconShareClassManager.sol";
 
-
-abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, Utils {
+abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, ReconShareClassManager, Utils {
 
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
@@ -94,13 +94,13 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     MockGateway gateway;
 
     // Clamping
-    bytes16 scId;
+    // bytes16 scId;
     // uint64 poolId;
     uint128 assetId;
     uint128 currencyId;
 
     // CROSS CHAIN
-    uint16 CENTIFUGE_CHAIN_ID = 1;
+    uint16 CENTRIFUGE_CHAIN_ID = 1;
     uint256 REQUEST_ID = 0;  // LP request ID is always 0
     bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224);
 
@@ -117,7 +117,6 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     MockAccountValue mockAccountValue;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
-    PoolId[] internal createdPools;
     AccountId[] internal createdAccountIds;
     AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
@@ -253,7 +252,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
         hubRegistry = new HubRegistry(address(this)); 
         transientValuation = new TransientValuation(IERC6909Decimals(address(hubRegistry)));
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
-        mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
+        mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
         // Core Hub Contracts

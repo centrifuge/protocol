@@ -32,6 +32,11 @@ abstract contract ManagerTargets is
         _switchPool(entropy);
     }
 
+    /// @dev Starts using a new share class
+    function switch_share_class(uint256 entropy) public {
+        _switchShareClassId(entropy);
+    }
+
     /// @dev Deploy a new token and add it to the list of assets, then set it as the current asset
     function add_new_asset(uint8 decimals) public returns (address) {
         address newAsset = _newAsset(decimals);

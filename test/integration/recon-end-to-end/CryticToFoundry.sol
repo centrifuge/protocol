@@ -33,19 +33,19 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(assetId, 1e18);
 
-        hub_updatePricePerShare(_getPool(), scId, 1e18);
-        hub_notifyAssetPrice_clamped(0,0);
-        hub_notifySharePrice_clamped(0,0);
+        hub_updatePricePerShare(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
         
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
-        hub_approveDeposits(_getPool(), scId, assetId, 1, 1e18);
-        hub_issueShares(_getPool(), scId, assetId, 1, 1e18);
+        hub_approveDeposits(1, 1e18);
+        hub_issueShares(assetId, 1, 1e18);
        
         // need to call claimDeposit first to mint the shares
-        hub_notifyDeposit(_getPool(), scId, assetId, MAX_CLAIMS);
+        hub_notifyDeposit(assetId, MAX_CLAIMS);
 
         vault_deposit(1e18);
     }
@@ -56,9 +56,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(assetId, 1e18);
 
-        hub_updatePricePerShare(_getPool(), scId, 1e18);
-        hub_notifyAssetPrice_clamped(0,0);
-        hub_notifySharePrice_clamped(0,0);
+        hub_updatePricePerShare(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
         
         poolManager_updateMember(type(uint64).max);
 
@@ -76,29 +76,29 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(assetId, 1e18);
 
-        hub_updatePricePerShare(_getPool(), scId, 1e18);
-        hub_notifySharePrice_clamped(0,0);
-        hub_notifyAssetPrice_clamped(0,0);
+        hub_updatePricePerShare(1e18);
+        hub_notifySharePrice_clamped();
+        hub_notifyAssetPrice();
         poolManager_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
         transientValuation_setPrice_clamped(assetId, 1e18);
 
-        hub_approveDeposits(_getPool(), scId, assetId, 1, 1e18);
-        hub_issueShares(_getPool(), scId, assetId, 1, 1e18);
+        hub_approveDeposits(1, 1e18);
+        hub_issueShares(assetId, 1, 1e18);
        
         // need to call claimDeposit first to mint the shares
-        hub_notifyDeposit(_getPool(), scId, assetId, MAX_CLAIMS);
+        hub_notifyDeposit(assetId, MAX_CLAIMS);
 
         vault_deposit(1e18);
 
         vault_requestRedeem(1e18, 0);
 
-        hub_approveRedeems(_getPool(), scId, assetId, 1, 1e18);
-        hub_revokeShares(_getPool(), scId, 1, 1e18);
+        hub_approveRedeems(assetId, 1, 1e18);
+        hub_revokeShares(1, 1e18);
         
-        hub_notifyRedeem(_getPool(), ShareClassId.wrap(scId).raw(), assetId, MAX_CLAIMS);
+        hub_notifyRedeem(assetId, MAX_CLAIMS);
 
         vault_withdraw(1e18, 0);
     }
@@ -158,9 +158,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(assetId, 1e18);
 
-        hub_updatePricePerShare(_getPool(), scId, 1e18);
-        hub_notifySharePrice_clamped(0,0);
-        hub_notifyAssetPrice_clamped(0,0);
+        hub_updatePricePerShare(1e18);
+        hub_notifySharePrice_clamped();
+        hub_notifyAssetPrice();
         poolManager_updateMember(type(uint64).max);
     }
 
@@ -208,9 +208,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_sync(1,1000597925025159896);
 
-        hub_createHolding_clamped(0,0,false,0,0,0,2);
+        hub_createHolding_clamped(false,0,0,0,2);
 
-        hub_addShareClass_clamped(0,1);
+        hub_addShareClass(1);
 
         property_asset_soundness();
 
@@ -221,7 +221,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deployNewTokenPoolAndShare(2,356,true,false,true);
 
-        hub_addShareClass_clamped(0,154591680653806130421);
+        hub_addShareClass(154591680653806130421);
 
         shortcut_deposit_and_claim(33321005491,6432384007748401500056681183121112,4369999,4369999,292948973611283239402029828536645829108380928802296476463930447206379624861);
 
@@ -258,9 +258,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_mint_sync(1,10001530783476391801262800);
 
-        hub_createHolding_clamped(0,0,false,0,2,0,0);
+        hub_createHolding_clamped(false,0,2,0,0);
 
-        hub_addShareClass_clamped(0,1);
+        hub_addShareClass(1);
 
         property_loss_soundness();
 
@@ -271,9 +271,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deployNewTokenPoolAndShare(3,1,false,false,false);
 
-        hub_createHolding_clamped(0,0,true,0,0,0,0);
+        hub_createHolding_clamped(true,0,0,0,0);
 
-        hub_addShareClass_clamped(0,2);
+        hub_addShareClass(2);
 
         shortcut_mint_sync(1,1000928848737691948490550833297442);
 
@@ -302,9 +302,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_mint_sync(1,1000408793793931473);
 
-        hub_createHolding_clamped(0,0,false,0,0,2,0);
+        hub_createHolding_clamped(false,0,0,2,0);
 
-        hub_addShareClass_clamped(0,1);
+        hub_addShareClass(1);
 
         property_gain_soundness();
 

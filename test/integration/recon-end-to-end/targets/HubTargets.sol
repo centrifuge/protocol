@@ -53,10 +53,10 @@ abstract contract HubTargets is
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
-    /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
-    function hub_notifyDeposit(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
+    function hub_notifyDeposit(uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
+        PoolId poolId = PoolId.wrap(_getPool());
+        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore =  token.balanceOf(_getActor());
@@ -77,19 +77,17 @@ abstract contract HubTargets is
         __globals();
     }
 
-    function hub_notifyDeposit_clamped(uint64 poolIdAsUint, uint32 scIdEntropy, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolIdAsUint);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+    function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhosts asActor {
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
         bytes32 investor = CastLib.toBytes32(_getActor());
 
-        hub_notifyDeposit(poolId.raw(), scId.raw(), assetId.raw(), maxClaims);
+        hub_notifyDeposit(assetId.raw(), maxClaims);
     }
 
-    /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
-    function hub_notifyRedeem(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
+    /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
+    function hub_notifyRedeem(uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
+        PoolId poolId = PoolId.wrap(_getPool());
+        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore =  token.balanceOf(_getActor());
@@ -108,12 +106,10 @@ abstract contract HubTargets is
         __globals();
     }
 
-    function hub_notifyRedeem_clamped(uint64 poolEntropy, uint32 scIdEntropy, uint32 maxClaims) public updateGhosts asActor {
-        PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
-        ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scIdEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+    function hub_notifyRedeem_clamped(uint32 maxClaims) public updateGhosts asActor {
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
 
-        hub_notifyRedeem(poolId.raw(), scId.raw(), assetId.raw(), maxClaims);
+        hub_notifyRedeem(assetId.raw(), maxClaims);
     }
 
     /// === EXECUTION FUNCTIONS === ///

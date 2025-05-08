@@ -95,17 +95,18 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         address newToken = address(poolManager.shareToken(PoolId.wrap(_getPool()), ShareClassId.wrap(scId)));
 
         shareClassTokens.push(newToken);
+        _addShareClassId(scId);
 
         return (newToken, scId);
     }
 
     // Step 4 - deploy the pool
-    function poolManager_deployVault(bytes16 scId, uint128 assetId, bool isAsync) public asAdmin returns (address) {
+    function poolManager_deployVault(uint128 assetId, bool isAsync) public asAdmin returns (address) {
         address vault;
         if (isAsync) {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), AssetId.wrap(assetId), asyncVaultFactory));
+            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), asyncVaultFactory));
         } else {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), AssetId.wrap(assetId), syncVaultFactory));
+            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), syncVaultFactory));
         }
         vaults.push(vault);
 
@@ -113,26 +114,21 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_deployVault_clamped() public asAdmin returns (address) {
-        return poolManager_deployVault(scId, assetId, true);
+        return poolManager_deployVault(assetId, true);
     }
 
     // Step 5 - link the vault
-    function poolManager_linkVault(bytes16 scId, uint128 assetId, address vault) public  asAdmin {
-        poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vault));
+    function poolManager_linkVault(uint128 assetId, address vault) public  asAdmin {
+        poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), IBaseVault(vault));
     }
 
     function poolManager_linkVault_clamped() public asAdmin {
-        poolManager_linkVault(scId, assetId, address(vault));
+        poolManager_linkVault(assetId, address(vault));
     }
 
     // Extra 6 - remove the vault
-    function poolManager_unlinkVault(bytes16 scId, uint128 assetId) public asAdmin{
-        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vaults[0]));
-    }
-
-    function poolManager_unlinkVault_clamped() public asAdmin{
-        // use poolId, scId, assetId deployed in shortcut_deployNewTokenPoolAndShare
-        poolManager_unlinkVault(scId, assetId);
+    function poolManager_unlinkVault(uint128 assetId) public asAdmin{
+        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), IBaseVault(vaults[0]));
     }
 
     /**
@@ -140,7 +136,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     */
     function poolManager_updateMember(uint64 validUntil) public asAdmin {
         poolManager.updateRestriction(
-            PoolId.wrap(_getPool()), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
+            PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
@@ -151,14 +147,14 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
-        poolManager.updateShareMetadata(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), tokenName, tokenSymbol);
+        poolManager.updateShareMetadata(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public asAdmin {
-        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public asAdmin {
-        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
+        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 }
