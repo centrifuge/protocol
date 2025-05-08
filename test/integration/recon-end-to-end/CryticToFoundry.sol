@@ -199,7 +199,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_sync(1,1);
 
-        property_global_1();
+        property_sum_of_shares_received();
     }
 
     // forge test --match-test test_property_asset_soundness_7 -vvv 

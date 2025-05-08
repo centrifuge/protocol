@@ -110,7 +110,7 @@ abstract contract SharedStorage {
      *         - asyncRequests_fulfillCancelRedeemRequest
      *         - asyncRequests_fulfillRedeemRequest // NOTE: Used by E_1
      */
-    mapping(address => uint256) mintedByCurrencyPayout;
+    mapping(address => uint256) currencyPayout;
     /**
      * See:
      *         - asyncRequests_fulfillDepositRequest

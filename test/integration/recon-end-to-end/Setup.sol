@@ -176,6 +176,11 @@ abstract contract Setup is
         _;
     }
 
+    modifier vaultIsSet() {
+        require(_getVault() != address(0));
+        _;
+    }
+
     modifier statelessTest() {
         _;
         revert("statelessTest");

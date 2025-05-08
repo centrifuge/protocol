@@ -87,14 +87,19 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 investorBalanceBefore = MockERC20(_getAsset()).balanceOf(_getActor());
+
         hub.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
         uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
         uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
+        uint256 investorBalanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
+        uint256 investorBalanceDelta = investorBalanceAfter - investorBalanceBefore;
         
         executedRedemptions[_getShareToken()] += investorShareDelta;
+        currencyPayout[_getAsset()] += investorBalanceDelta;
 
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
