@@ -19,6 +19,7 @@ import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     using CastLib for *;
@@ -56,7 +57,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_global_1() public tokenIsSet {
         // Mint and Deposit
         // only valid for async vaults because sync vaults don't have to fulfill deposit requests
-        if(Helpers.isAsyncVault(address(vault))) {
+        if(Helpers.isAsyncVault(address(IBaseVault(_getVault())))) {
             lte(sumOfClaimedDeposits[address(token)], sumOfFullfilledDeposits[address(token)], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
         }
     }
@@ -115,7 +116,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_global_5() public assetIsSet {
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
-        lte(sumOfClaimedDepositCancelations[address(vault.asset())], cancelDepositCurrencyPayout[address(vault.asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
+        lte(sumOfClaimedDepositCancelations[address(IBaseVault(_getVault()).asset())], cancelDepositCurrencyPayout[address(IBaseVault(_getVault()).asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
     // Inductive implementation of property_global_5
@@ -175,7 +176,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (address(asyncRequestManager) == address(0)) {
             return;
         }
-        if (address(vault) == address(0)) {
+        if (address(IBaseVault(_getVault())) == address(0)) {
             return;
         }
         if (_getActor() != address(this)) {
@@ -198,7 +199,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (address(asyncRequestManager) == address(0)) {
             return;
         }
-        if (address(vault) == address(0)) {
+        if (address(IBaseVault(_getVault())) == address(0)) {
             return;
         }
         if (_getActor() != address(this)) {
@@ -238,7 +239,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // functions permanently reverting
         
         uint256 ghostBalOfEscrow;
-        address asset = vault.asset();
+        address asset = IBaseVault(_getVault()).asset();
         address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
         uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         unchecked {
@@ -284,7 +285,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // TODO: Multi Assets -> Iterate over all existing combinations
 
     function property_E_3() public {
-        if (address(vault) == address(0)) {
+        if (address(IBaseVault(_getVault())) == address(0)) {
             return;
         }
 
@@ -299,7 +300,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
+            try IBaseVault(_getVault()).maxWithdraw(actors[i]) returns (uint256 amt) {
                 emit DebugWithString("maxWithdraw", amt);
                 acc += amt;
             } catch {}
@@ -309,7 +310,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     function property_E_4() public {
-        if (address(vault) == address(0)) {
+        if (address(IBaseVault(_getVault())) == address(0)) {
             return;
         }
 
@@ -326,7 +327,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo share class
-            try vault.maxMint(actors[i]) returns (uint256 amt) {
+            try IBaseVault(_getVault()).maxMint(actors[i]) returns (uint256 amt) {
                 emit DebugWithString("maxMint", amt);
                 acc += amt;
             } catch {}
@@ -338,12 +339,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
-        uint256 totalAssets = vault.totalAssets();
+        uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
         address escrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
+        uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(escrow);
         
         uint256 differenceInAssets = totalAssets - actualAssets;
-        uint256 differenceInShares = vault.convertToShares(differenceInAssets);
+        uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(differenceInAssets);
 
         // precondition: check if the difference is greater than one share
         if (differenceInShares > (10 ** token.decimals()) - 1) {
@@ -1041,11 +1042,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
-        uint256 totalAssets = vault.totalAssets();
-        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
+        uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
+        uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
         uint256 difference = totalAssets - actualAssets;
 
-        uint256 differenceInShares = vault.convertToShares(difference);
+        uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
 
         if (differenceInShares > (10 ** token.decimals()) - 1) {
             return int256(difference);
@@ -1072,8 +1073,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[3] = address(asyncRequestManager);
         systemAddresses[4] = address(syncRequestManager);
         systemAddresses[5] = address(poolManager);
-        systemAddresses[6] = address(vault);
-        systemAddresses[7] = address(vault.asset());
+        systemAddresses[6] = address(IBaseVault(_getVault()));
+        systemAddresses[7] = address(IBaseVault(_getVault()).asset());
         systemAddresses[8] = address(token);
         systemAddresses[9] = address(fullRestrictions);
 

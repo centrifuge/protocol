@@ -42,6 +42,11 @@ abstract contract ManagerTargets is
         _switchAssetId(entropy);
     }
 
+    /// @dev Starts using a new vault
+    function switch_vault(uint256 entropy) public {
+        _switchVault(entropy);
+    }
+
     /// @dev Deploy a new token and add it to the list of assets, then set it as the current asset
     function add_new_asset(uint8 decimals) public returns (address) {
         address newAsset = _newAsset(decimals);

@@ -110,7 +110,8 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         } else {
             vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), syncVaultFactory));
         }
-        vaults.push(vault);
+
+        _addVault(vault);
 
         return vault;
     }
@@ -125,12 +126,12 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_linkVault_clamped() public asAdmin {
-        poolManager_linkVault(address(vault));
+        poolManager_linkVault(_getVault());
     }
 
     // Extra 6 - remove the vault
     function poolManager_unlinkVault() public asAdmin{
-        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vaults[0]));
+        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(_getVault()));
     }
 
     /**

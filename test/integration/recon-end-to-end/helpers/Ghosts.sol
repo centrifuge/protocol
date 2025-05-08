@@ -48,7 +48,7 @@ abstract contract Ghosts is Setup {
     }
     
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
-        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), address(_getActor()));
+        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
 
         return (depositPrice, redeemPrice);
     }

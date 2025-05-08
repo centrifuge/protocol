@@ -71,8 +71,19 @@ import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValu
 import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/ReconPoolManager.sol";
 import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers/ReconShareClassManager.sol";
 import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";
+import {ReconVaultManager} from "test/integration/recon-end-to-end/managers/ReconVaultManager.sol";
 
-abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, ReconShareClassManager, ReconAssetIdManager, Utils {
+abstract contract Setup is 
+    BaseSetup, 
+    SharedStorage, 
+    ActorManager, 
+    AssetManager, 
+    ReconPoolManager, 
+    ReconShareClassManager, 
+    ReconAssetIdManager, 
+    ReconVaultManager, 
+    Utils 
+{
 
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
@@ -83,7 +94,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     AsyncRequestManager asyncRequestManager;
     SyncRequestManager syncRequestManager;
     PoolManager poolManager;
-    AsyncVault vault;
+    // AsyncVault vault;
     ShareToken token;
     FullRestrictions fullRestrictions;
     IRoot root;

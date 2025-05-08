@@ -54,7 +54,7 @@ abstract contract SharedStorage {
 
     // TODO: Consider refactoring to a address of Currency or Share to get the rest of the details
     address[] shareClassTokens; // TODO: Share to ID
-    address[] vaults; // TODO: Liquidity To ID?
+    // address[] vaults; // TODO: Liquidity To ID?
 
     // === invariant_E_1 === //
     // Currency

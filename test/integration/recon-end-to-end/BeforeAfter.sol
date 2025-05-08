@@ -12,6 +12,7 @@ import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
+import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 
 import {Ghosts} from "./helpers/Ghosts.sol";
@@ -174,7 +175,7 @@ abstract contract BeforeAfter is Ghosts {
                 uint128 claimableCancelRedeemRequest,
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
-            ) = asyncRequestManager.investments(IBaseVault(address(vault)), actors[i]);
+            ) = asyncRequestManager.investments(IBaseVault(address(_getVault())), actors[i]);
             
             _structToUpdate.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
@@ -199,9 +200,9 @@ abstract contract BeforeAfter is Ghosts {
             _structToUpdate.totalShareSupply = token.totalSupply();
         }
 
-        if (address(vault) != address(0)) {
-            _structToUpdate.escrowTokenBalance = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
-            _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
+        if (address(_getVault()) != address(0)) {
+            _structToUpdate.escrowTokenBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+            _structToUpdate.actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(_getVault()));
         }
     }
 
@@ -220,7 +221,7 @@ abstract contract BeforeAfter is Ghosts {
         }
         
         if (priceAsset.raw() != 0) {
-            _structToUpdate.totalAssets = vault.totalAssets();
+            _structToUpdate.totalAssets = IBaseVault(_getVault()).totalAssets();
         } else {
             _structToUpdate.totalAssets = 0;
         }
@@ -241,7 +242,7 @@ abstract contract BeforeAfter is Ghosts {
         }
         
         if (priceShare.raw() != 0) {
-            _structToUpdate.pricePerShare = vault.pricePerShare();
+            _structToUpdate.pricePerShare = BaseVault(_getVault()).pricePerShare();
         } else {
             _structToUpdate.pricePerShare = 0;
         }

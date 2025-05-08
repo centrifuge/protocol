@@ -17,6 +17,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -62,7 +63,7 @@ abstract contract TargetFunctions is
 
     function canary_doesVaultGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
-            return vaults.length < 10;
+            return _getVaults().length < 10;
         }
 
         return true;
@@ -138,17 +139,17 @@ abstract contract TargetFunctions is
         }
 
         // 5. Deploy new vault and register it
-        _vault = poolManager_deployVault(isAsyncVault);
-        poolManager_linkVault(_vault);
-        asyncRequestManager.rely(address(_vault));
+        poolManager_deployVault(isAsyncVault);
+        poolManager_linkVault(_getVault());
+        asyncRequestManager.rely(address(_getVault()));
 
         // 6. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](3);
         approvals[0] = address(poolManager);
-        approvals[1] = address(_vault);
+        approvals[1] = address(_getVault());
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 
-        vault = AsyncVault(_vault);
+        // vault = AsyncVault(_vault);
         token = ShareToken(_shareToken);
         token.file("hook", address(fullRestrictions));
     }
@@ -239,22 +240,22 @@ abstract contract TargetFunctions is
 
     function shortcut_withdraw_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
-        uint256 sharesAsAssets = vault.convertToAssets(shares);
+        shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
+        uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(shares);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
     }
 
     function shortcut_redeem_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_redemption(shares, toEntropy);
     }
 
     function shortcut_cancel_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
@@ -262,7 +263,7 @@ abstract contract TargetFunctions is
 
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
-        shares %= (MockERC20(address(vault.share())).balanceOf(_getActor()) + 1);
+        shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();

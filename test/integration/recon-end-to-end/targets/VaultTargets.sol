@@ -14,7 +14,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
@@ -46,7 +47,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getRandomActor(toEntropy);
 
         vm.prank(_getActor());
-        MockERC20(_getAsset()).approve(address(vault), assets);
+        MockERC20(_getAsset()).approve(_getVault(), assets);
 
         // B4 Balances
         uint256 balanceB4 = MockERC20(_getAsset()).balanceOf(_getActor());
@@ -56,7 +57,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        try vault.requestDeposit(assets, to, _getActor()) {
+        try IAsyncVault(_getVault()).requestDeposit(assets, to, _getActor()) {
             // ghost tracking
             requestDeposited[to] += assets;
             sumOfDepositRequests[address(_getAsset())] += assets;
@@ -140,12 +141,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 balanceOfEscrowB4 = token.balanceOf(address(globalEscrow));
 
         vm.prank(_getActor());
-        token.approve(address(vault), shares);
+        token.approve(_getVault(), shares);
 
         bool hasReverted;
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        try vault.requestRedeem(shares, to, _getActor()) {
+        try IAsyncVault(_getVault()).requestRedeem(shares, to, _getActor()) {
             // ghost tracking
             sumOfRedeemRequests[address(token)] += shares; // E-2
             requestRedeemShares[to][address(token)] += shares;
@@ -206,12 +207,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address controller = _getActor();
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
         (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        uint256 pendingCancelBefore = vault.claimableCancelDepositRequest(0, _getActor());
+        uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelDepositRequest(0, _getActor());
 
         // REQUEST_ID is always passed as 0 (unused in the function)
-        try vault.cancelDepositRequest(REQUEST_ID, controller) {
+        try IAsyncVault(_getVault()).cancelDepositRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
-            uint256 pendingCancelAfter = vault.claimableCancelDepositRequest(0, _getActor());
+            uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelDepositRequest(0, _getActor());
 
             // update ghosts
             cancelledDeposits[controller] += (pendingBefore - pendingAfter);
@@ -247,7 +248,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address controller = _getActor();
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
         
-        try vault.cancelRedeemRequest(REQUEST_ID, controller) {
+        try IAsyncVault(_getVault()).cancelRedeemRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
             (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
 
@@ -280,32 +281,32 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
-        uint256 assets = vault.claimCancelDepositRequest(REQUEST_ID, to, _getActor());
+        uint256 assets = IAsyncVault(_getVault()).claimCancelDepositRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedDepositCancelations[address(_getAsset())] += assets;
     }
 
     function vault_claimCancelRedeemRequest(uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
-        uint256 shares = vault.claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
+        uint256 shares = IAsyncVault(_getVault()).claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedRedeemCancelations[address(token)] += shares;
     }
 
     function vault_deposit(uint256 assets) public updateGhosts {
         // check if vault is sync or async
-        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
+        bool isAsyncVault = Helpers.isAsyncVault(_getVault());
 
         uint256 shareUserB4 = token.balanceOf(_getActor());
         uint256 shareEscrowB4 = token.balanceOf(address(globalEscrow));
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        uint256 shares = vault.deposit(assets, _getActor());
+        uint256 shares = IBaseVault(_getVault()).deposit(assets, _getActor());
 
         // Processed Deposit | E-2 | Global-1
         sumOfClaimedDeposits[address(token)] += shares;
         // for sync vaults, deposits are fulfilled immediately
-        if(!Helpers.isAsyncVault(address(vault))) {
+        if(!Helpers.isAsyncVault(_getVault())) {
             sumOfFullfilledDeposits[address(token)] += shares;
             executedInvestments[address(token)] += shares;
         }
@@ -348,7 +349,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getActor();
 
         // check if vault is sync or async
-        bool isAsyncVault = Helpers.isAsyncVault(address(vault));
+        bool isAsyncVault = Helpers.isAsyncVault(_getVault());
 
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(_getActor());
@@ -356,12 +357,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        vault.mint(shares, to);
+        IBaseVault(_getVault()).mint(shares, to);
 
         // Processed Deposit | E-2
         sumOfClaimedDeposits[address(token)] += shares;
         // for sync vaults, deposits are fulfilled immediately
-        if(!Helpers.isAsyncVault(address(vault))) {
+        if(!Helpers.isAsyncVault(_getVault())) {
             sumOfFullfilledDeposits[address(token)] += shares;
             executedInvestments[address(token)] += shares;
         }
@@ -403,13 +404,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        uint256 assets = vault.redeem(shares, to, _getActor());
+        uint256 assets = IBaseVault(_getVault()).redeem(shares, to, _getActor());
 
         // E-1
         sumOfClaimedRedemptions[address(_getAsset())] += assets;
         
         // if sync vault, redeem is fulfilled immediately
-        if(!Helpers.isAsyncVault(address(vault))) {
+        if(!Helpers.isAsyncVault(_getVault())) {
             executedRedemptions[address(token)] += assets;
         }
 
@@ -448,7 +449,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        vault.withdraw(assets, to, _getActor());
+        IBaseVault(_getVault()).withdraw(assets, to, _getActor());
 
         // E-1
         sumOfClaimedRedemptions[address(_getAsset())] += assets;
