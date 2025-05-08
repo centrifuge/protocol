@@ -67,7 +67,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         adminSafe = adminSafe_;
 
         // deployer is not actually an implementation of ISafe but for deployment this is not an issue
-        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
+        guardian = new Guardian(ISafe(deployer), gateway, root, messageDispatcher);
 
         _commonRegister();
         _commonRely();

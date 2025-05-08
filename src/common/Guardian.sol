@@ -7,6 +7,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
@@ -16,12 +17,14 @@ contract Guardian is IGuardian {
 
     IRoot public immutable root;
 
-    IHubGuardianActions public hub;
     ISafe public safe;
+    IGateway public gateway;
+    IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
+    constructor(ISafe safe_, IGateway gateway_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
+        gateway = gateway_;
         safe = safe_;
         sender = messageDispatcher_;
     }
@@ -102,19 +105,13 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external
-        onlySafe
-    {
-        sender.sendInitiateRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
+        gateway.initiateRecovery(centrifugeId, adapter, hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external
-        onlySafe
-    {
-        sender.sendDisputeRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
+        gateway.disputeRecovery(centrifugeId, adapter, hash);
     }
 
     //----------------------------------------------------------------------------------------------

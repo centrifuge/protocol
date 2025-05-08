@@ -76,10 +76,6 @@ contract MockProcessor is IMessageProperties {
         return processed[centrifugeId].length;
     }
 
-    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        return message.toUint8(0) == uint8(MessageKind.Recovery);
-    }
-
     function messageLength(bytes calldata message) external pure returns (uint16) {
         return MessageKind(message.toUint8(0)).length();
     }

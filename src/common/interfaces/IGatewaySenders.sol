@@ -28,14 +28,6 @@ interface IRootMessageSender {
         bytes32 to,
         uint256 amount
     ) external;
-
-    /// @notice Creates and send the message
-    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external;
-
-    /// @notice Creates and send the message
-    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external;
 }
 
 /// @notice Interface for dispatch-only gateway

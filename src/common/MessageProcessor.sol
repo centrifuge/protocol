@@ -69,13 +69,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.InitiateRecovery) {
-            MessageLib.InitiateRecovery memory m = message.deserializeInitiateRecovery();
-            gateway.initiateRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
-        } else if (kind == MessageType.DisputeRecovery) {
-            MessageLib.DisputeRecovery memory m = message.deserializeDisputeRecovery();
-            gateway.disputeRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
-        } else if (kind == MessageType.ScheduleUpgrade) {
+        if (kind == MessageType.ScheduleUpgrade) {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
@@ -248,12 +242,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
-    }
-
-    /// @inheritdoc IMessageProperties
-    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        uint8 code = message.messageCode();
-        return code == uint8(MessageType.InitiateRecovery) || code == uint8(MessageType.DisputeRecovery);
     }
 
     /// @inheritdoc IMessageProperties
