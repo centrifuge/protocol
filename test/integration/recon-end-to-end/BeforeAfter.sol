@@ -15,7 +15,6 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 
-import {Ghosts} from "./helpers/Ghosts.sol";
 import {Setup} from "./Setup.sol";
 
 enum OpType {
@@ -23,11 +22,20 @@ enum OpType {
     ADMIN, // admin operations can only be performed by admins
     DEPOSIT,
     REDEEM,
-    BATCH // batch operations that make multiple calls in one transaction
+    BATCH, // batch operations that make multiple calls in one transaction
+    NOTIFY
 }
 
 
-abstract contract BeforeAfter is Ghosts {
+abstract contract BeforeAfter is Setup {
+    struct PriceVars {
+        // See IM_1
+        uint256 maxDepositPrice;
+        uint256 minDepositPrice;
+        // See IM_2
+        uint256 maxRedeemPrice;
+        uint256 minRedeemPrice;
+    }
 
     struct BeforeAfterVars {
         uint256 escrowTokenBalance;
@@ -45,6 +53,9 @@ abstract contract BeforeAfter is Ghosts {
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
+        
+        // global ghost variable only updated as needed
+        mapping(address investor => PriceVars) investorsGlobals;
     }
 
     BeforeAfterVars internal _before;
@@ -63,6 +74,10 @@ abstract contract BeforeAfter is Ghosts {
         __before();
         _;
         __after();
+
+        if(op == OpType.NOTIFY) {
+            __globals();
+        }
     }
 
     function __before() internal {
@@ -157,6 +172,45 @@ abstract contract BeforeAfter is Ghosts {
                 }
             }
         }
+    }
+
+    /// @dev This only needs to be called if the current operation is NOTIFY
+    /// @dev This is used for additional checks that don't need to be updated for every operation
+    function __globals() internal {
+        (uint256 depositPrice, uint256 redeemPrice) = _getDepositAndRedeemPrice();
+
+        // Conditionally Update max | Always works on zero
+        _after.investorsGlobals[_getActor()].maxDepositPrice = depositPrice > _after.investorsGlobals[_getActor()].maxDepositPrice
+            ? depositPrice
+            : _after.investorsGlobals[_getActor()].maxDepositPrice;
+        _after.investorsGlobals[_getActor()].maxRedeemPrice = redeemPrice > _after.investorsGlobals[_getActor()].maxRedeemPrice
+            ? redeemPrice
+            : _after.investorsGlobals[_getActor()].maxRedeemPrice;
+
+        // Conditionally Update min
+        // On zero we have to update anyway
+        if (_after.investorsGlobals[_getActor()].minDepositPrice == 0) {
+            _after.investorsGlobals[_getActor()].minDepositPrice = depositPrice;
+        }
+        if (_after.investorsGlobals[_getActor()].minRedeemPrice == 0) {
+            _after.investorsGlobals[_getActor()].minRedeemPrice = redeemPrice;
+        }
+
+        // Conditional update after zero
+        _after.investorsGlobals[_getActor()].minDepositPrice = depositPrice < _after.investorsGlobals[_getActor()].minDepositPrice
+            ? depositPrice
+            : _after.investorsGlobals[_getActor()].minDepositPrice;
+        _after.investorsGlobals[_getActor()].minRedeemPrice = redeemPrice < _after.investorsGlobals[_getActor()].minRedeemPrice
+            ? redeemPrice
+            : _after.investorsGlobals[_getActor()].minRedeemPrice;
+    }
+
+    /// === HELPER FUNCTIONS === ///
+    
+    function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
+        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
+
+        return (depositPrice, redeemPrice);
     }
 
     function _updateInvestmentForAllActors(bool before) internal {

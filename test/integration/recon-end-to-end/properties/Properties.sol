@@ -191,8 +191,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // NOTE: Specification | Obv this breaks when you switch pools etc..
             // NOTE: Should reset
             // OR: Separate the check per actor | tranche instead of being so simple
-            lte(depositPrice, _investorsGlobals[_getActor() ].maxDepositPrice, "depositPrice > maxDepositPrice");
-            gte(depositPrice, _investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
+            lte(depositPrice, _before.investorsGlobals[_getActor()].maxDepositPrice, "depositPrice > maxDepositPrice");
+            gte(depositPrice, _before.investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
         }
     }
 
@@ -211,8 +211,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
-            lte(redeemPrice, _investorsGlobals[_getActor()].maxRedeemPrice, "redeemPrice > maxRedeemPrice");
-            gte(redeemPrice, _investorsGlobals[_getActor()].minRedeemPrice, "redeemPrice < minRedeemPrice");
+            lte(redeemPrice, _after.investorsGlobals[_getActor()].maxRedeemPrice, "redeemPrice > maxRedeemPrice");
+            gte(redeemPrice, _after.investorsGlobals[_getActor()].minRedeemPrice, "redeemPrice < minRedeemPrice");
         }
     }
 

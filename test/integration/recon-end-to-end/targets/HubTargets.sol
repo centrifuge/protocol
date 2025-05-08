@@ -55,7 +55,7 @@ abstract contract HubTargets is
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
-    function hub_notifyDeposit(uint32 maxClaims) public updateGhosts asActor {
+    function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -74,8 +74,6 @@ abstract contract HubTargets is
 
         // nowDepositEpoch = depositEpochId + 1
         eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
-
-        __globals();
     }
 
     function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhosts asActor {
@@ -83,7 +81,7 @@ abstract contract HubTargets is
     }
 
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
-    function hub_notifyRedeem(uint32 maxClaims) public updateGhosts asActor {
+    function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
@@ -100,8 +98,6 @@ abstract contract HubTargets is
 
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
-
-        __globals();
     }
 
     function hub_notifyRedeem_clamped(uint32 maxClaims) public updateGhosts asActor {
