@@ -62,10 +62,10 @@ abstract contract AdminTargets is
         approvedDeposits += approvedAssetAmount;
     }
 
-    function hub_approveRedeems(uint128 assetIdAsUint, uint32 nowRedeemEpochId, uint128 maxApproval) public {
+    function hub_approveRedeems(uint32 nowRedeemEpochId, uint128 maxApproval) public {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
+        AssetId payoutAssetId = AssetId.wrap(_getAssetId());
         uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
         
         hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, maxApproval);
@@ -76,9 +76,7 @@ abstract contract AdminTargets is
     }
 
     function hub_approveRedeems_clamped(uint32 nowRedeemEpochId, uint128 maxApproval) public {
-        PoolId poolId = PoolId.wrap(_getPool());
-        AssetId payoutAssetId = hubRegistry.currency(poolId);
-        hub_approveRedeems(payoutAssetId.raw(), nowRedeemEpochId, maxApproval);
+        hub_approveRedeems(nowRedeemEpochId, maxApproval);
     }
 
     function hub_createAccount(uint32 accountAsInt, bool isDebitNormal) public {
@@ -116,34 +114,30 @@ abstract contract AdminTargets is
         hub_createHolding(valuation, assetAccount.raw(), equityAccount.raw(), lossAccount.raw(), gainAccount.raw());
     }
 
-    function hub_createLiability(uint128 assetIdAsUint, IERC7726 valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint) public {
+    function hub_createLiability(IERC7726 valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint) public {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         hub.createLiability(poolId, scId, assetId, valuation, AccountId.wrap(expenseAccountAsUint), AccountId.wrap(liabilityAccountAsUint));
     }
     
     function hub_createLiability_clamped(bool isIdentityValuation, uint8 expenseAccountEntropy, uint8 liabilityAccountEntropy) public {
-        PoolId poolId = PoolId.wrap(_getPool());
-        AssetId assetId = hubRegistry.currency(poolId);
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         AccountId expenseAccount = Helpers.getRandomAccountId(createdAccountIds, expenseAccountEntropy);
         AccountId liabilityAccount = Helpers.getRandomAccountId(createdAccountIds, liabilityAccountEntropy);
         
-        hub_createLiability(assetId.raw(), valuation, expenseAccount.raw(), liabilityAccount.raw());
+        hub_createLiability(valuation, expenseAccount.raw(), liabilityAccount.raw());
     }
     
-    function hub_issueShares(uint128 assetIdAsUint, uint32 nowIssueEpochId, uint128 navPerShare) public {
+    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
     }
 
     function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {
-        PoolId poolId = PoolId.wrap(_getPool());
-        AssetId assetId = hubRegistry.currency(poolId);
-        hub_issueShares(assetId.raw(), nowIssueEpochId, navPerShare);
+        hub_issueShares(nowIssueEpochId, navPerShare);
     }
 
     function hub_notifyPool(uint16 centrifugeId) public {
@@ -205,7 +199,7 @@ abstract contract AdminTargets is
     function hub_triggerSubmitQueuedAssets(uint128 assetIdAsUint) public {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         hub.triggerSubmitQueuedAssets(poolId, scId, assetId);
     }
 

@@ -138,8 +138,8 @@ abstract contract TargetFunctions is
         }
 
         // 5. Deploy new vault and register it
-        _vault = poolManager_deployVault(_assetId, isAsyncVault);
-        poolManager_linkVault(_assetId, _vault);
+        _vault = poolManager_deployVault(isAsyncVault);
+        poolManager_linkVault(_vault);
         asyncRequestManager.rely(address(_vault));
 
         // 6. approve and mint initial amount of underlying asset to all actors
@@ -151,15 +151,10 @@ abstract contract TargetFunctions is
         vault = AsyncVault(_vault);
         token = ShareToken(_shareToken);
         token.file("hook", address(fullRestrictions));
-
-        // NOTE: Add to storage so these can be clamped in other functions
-        // scId = _scId;
-        // poolId = _poolId.raw();
-        assetId = _assetId;
     }
 
     function shortcut_request_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint256 toEntropy) public {
-        transientValuation_setPrice_clamped(assetId, priceValuation);
+        transientValuation_setPrice_clamped(priceValuation);
         
         hub_updatePricePerShare(pricePoolPerShare);
         hub_notifySharePrice_clamped();
@@ -170,7 +165,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
-        transientValuation_setPrice_clamped(assetId, navPerShare);
+        transientValuation_setPrice_clamped(navPerShare);
 
         hub_updatePricePerShare(navPerShare);
         hub_notifyAssetPrice();
@@ -182,7 +177,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
-        transientValuation_setPrice_clamped(assetId, navPerShare);
+        transientValuation_setPrice_clamped(navPerShare);
 
         hub_updatePricePerShare(navPerShare);
         hub_notifyAssetPrice();
@@ -196,10 +191,10 @@ abstract contract TargetFunctions is
     function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
-        uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+        uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_issue_shares(uint128(amount), depositEpoch, navPerShare);
        
-        hub_notifyDeposit(assetId, MAX_CLAIMS);
+        hub_notifyDeposit(MAX_CLAIMS);
 
         vault_deposit(amount);
     }
@@ -221,18 +216,18 @@ abstract contract TargetFunctions is
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
     }
 
     function shortcut_claim_withdrawal(uint256 assets, uint256 toEntropy) public {
-        hub_notifyRedeem(assetId, MAX_CLAIMS);
+        hub_notifyRedeem(MAX_CLAIMS);
 
         vault_withdraw(assets, toEntropy);
     }
 
     function shortcut_claim_redemption(uint256 shares, uint256 toEntropy) public {
-        hub_notifyRedeem(assetId, MAX_CLAIMS);
+        hub_notifyRedeem(MAX_CLAIMS);
 
         vault_redeem(shares, toEntropy);
     }
@@ -281,9 +276,8 @@ abstract contract TargetFunctions is
         uint32 nowDepositEpochId,
         uint128 navPerShare
     ) public  {
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
         hub_approveDeposits(nowDepositEpochId, maxApproval);
-        hub_issueShares(assetId.raw(), nowDepositEpochId, navPerShare);
+        hub_issueShares(nowDepositEpochId, navPerShare);
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -291,8 +285,7 @@ abstract contract TargetFunctions is
         uint32 epochId,
         uint128 navPerShare
     ) public  {        
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
-        hub_approveRedeems(assetId.raw(), epochId, maxApproval);
+        hub_approveRedeems(epochId, maxApproval);
         hub_revokeShares(epochId, navPerShare);
     }
 
@@ -302,9 +295,9 @@ abstract contract TargetFunctions is
     }
 
     // set the price of the asset in the transient valuation for a given pool
-    function transientValuation_setPrice_clamped(uint128 assetIdAsUint, uint128 price) public {
+    function transientValuation_setPrice_clamped(uint128 price) public {
         AssetId poolCurrency = hubRegistry.currency(PoolId.wrap(_getPool()));
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         transientValuation.setPrice(address(assetId.addr()), address(poolCurrency.addr()), D18.wrap(price));
     }

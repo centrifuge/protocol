@@ -69,6 +69,8 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
         assetIdToAssetAddress[assetId] = assetAddress;
+        
+        _addAssetId(assetId);
     }
 
     function poolManager_registerAsset_clamped() public  asAdmin {
@@ -101,12 +103,12 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 4 - deploy the pool
-    function poolManager_deployVault(uint128 assetId, bool isAsync) public asAdmin returns (address) {
+    function poolManager_deployVault(bool isAsync) public asAdmin returns (address) {
         address vault;
         if (isAsync) {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), asyncVaultFactory));
+            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), asyncVaultFactory));
         } else {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), syncVaultFactory));
+            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), syncVaultFactory));
         }
         vaults.push(vault);
 
@@ -114,21 +116,21 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_deployVault_clamped() public asAdmin returns (address) {
-        return poolManager_deployVault(assetId, true);
+        return poolManager_deployVault(true);
     }
 
     // Step 5 - link the vault
-    function poolManager_linkVault(uint128 assetId, address vault) public  asAdmin {
-        poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), IBaseVault(vault));
+    function poolManager_linkVault(address vault) public  asAdmin {
+        poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vault));
     }
 
     function poolManager_linkVault_clamped() public asAdmin {
-        poolManager_linkVault(assetId, address(vault));
+        poolManager_linkVault(address(vault));
     }
 
     // Extra 6 - remove the vault
-    function poolManager_unlinkVault(uint128 assetId) public asAdmin{
-        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), IBaseVault(vaults[0]));
+    function poolManager_unlinkVault() public asAdmin{
+        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vaults[0]));
     }
 
     /**

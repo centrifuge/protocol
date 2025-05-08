@@ -54,10 +54,10 @@ abstract contract HubTargets is
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
-    function hub_notifyDeposit(uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
+    function hub_notifyDeposit(uint32 maxClaims) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore =  token.balanceOf(_getActor());
         
@@ -78,17 +78,14 @@ abstract contract HubTargets is
     }
 
     function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhosts asActor {
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
-        bytes32 investor = CastLib.toBytes32(_getActor());
-
-        hub_notifyDeposit(assetId.raw(), maxClaims);
+        hub_notifyDeposit(maxClaims);
     }
 
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
-    function hub_notifyRedeem(uint128 assetIdAsUint, uint32 maxClaims) public updateGhosts asActor {
+    function hub_notifyRedeem(uint32 maxClaims) public updateGhosts asActor {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore =  token.balanceOf(_getActor());
         hub.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
@@ -107,9 +104,7 @@ abstract contract HubTargets is
     }
 
     function hub_notifyRedeem_clamped(uint32 maxClaims) public updateGhosts asActor {
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
-
-        hub_notifyRedeem(assetId.raw(), maxClaims);
+        hub_notifyRedeem(maxClaims);
     }
 
     /// === EXECUTION FUNCTIONS === ///

@@ -433,11 +433,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
 
-
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
-
+            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
 
             // user order pending
             // user order amount
@@ -452,8 +450,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
 
             // user order pending
             // user order amount
@@ -505,7 +503,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// === HUB === ///
 
-    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset epochInvestAmounts[..].approvedAssetAmount
+    /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset epochInvestAmounts[..].approvedAssetAmount
     function property_total_pending_and_approved() public {
         uint64[] memory _createdPools = _getPools();
         for (uint256 i = 0; i < _createdPools.length; i++) {
@@ -526,7 +524,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
     // TODO: come back to this to check if accounting for case is correct
     function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
@@ -989,7 +987,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
+    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
     // TODO: verify if this should be applied to the vaults side instead
     // function property_holdings_balance_equals_escrow_balance() public statelessTest {
     //     address[] memory _actors = _getActors();

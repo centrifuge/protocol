@@ -63,15 +63,16 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 // Test Utils
-import {SharedStorage} from "./helpers/SharedStorage.sol";
-import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
-import {MockMessageDispatcher} from "./mocks/MockMessageDispatcher.sol";
-import {MockGateway} from "./mocks/MockGateway.sol";
+import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
+import {MockMessageProcessor} from "test/integration/recon-end-to-end/mocks/MockMessageProcessor.sol";
+import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
+import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
-import {ReconPoolManager} from "./helpers/ReconPoolManager.sol";
-import {ReconShareClassManager} from "./helpers/ReconShareClassManager.sol";
+import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/ReconPoolManager.sol";
+import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers/ReconShareClassManager.sol";
+import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";
 
-abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, ReconShareClassManager, Utils {
+abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager, ReconPoolManager, ReconShareClassManager, ReconAssetIdManager, Utils {
 
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
@@ -96,7 +97,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager,
     // Clamping
     // bytes16 scId;
     // uint64 poolId;
-    uint128 assetId;
+    // uint128 assetId;
     uint128 currencyId;
 
     // CROSS CHAIN

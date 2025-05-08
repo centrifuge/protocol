@@ -62,15 +62,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfDepositRequests[address(_getAsset())] += assets;
             requestDepositAssets[to][address(_getAsset())] += assets;
 
-            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), to.toBytes32());
-            (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), to.toBytes32());
+            (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
 
             address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
             uint128 totalPendingUserDeposit = 0;
             for (uint256 k = 0; k < _actors.length; k++) {
                 address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), actor.toBytes32());
+                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actor.toBytes32());
                 totalPendingUserDeposit += pendingUserDeposit;
             }
 
@@ -84,7 +84,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             hasReverted = true;
 
             // precondition: check that it wasn't an overflow because we only care about underflow
-            uint128 pendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            uint128 pendingDeposit = shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
             if(uint256(pendingDeposit) + uint256(assets) < uint256(type(uint128).max)) {
                 bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
                 t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
@@ -151,8 +151,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             requestRedeemShares[to][address(token)] += shares;
             requestRedeeemed[to] += shares;
 
-            (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), to.toBytes32());
-            (, uint32 redeemEpochId,, ) = shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            (, uint32 lastUpdate) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), to.toBytes32());
+            (, uint32 redeemEpochId,, ) = shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
 
             // nowRedeemEpoch = redeemEpochId + 1
             eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch after redeemRequest");
@@ -204,13 +204,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function vault_cancelDepositRequest() public updateGhosts asActor {
         address controller = _getActor();
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), controller.toBytes32());
-        (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
+        (uint32 depositEpochId,,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         uint256 pendingCancelBefore = vault.claimableCancelDepositRequest(0, _getActor());
 
         // REQUEST_ID is always passed as 0 (unused in the function)
         try vault.cancelDepositRequest(REQUEST_ID, controller) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), controller.toBytes32());
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
             uint256 pendingCancelAfter = vault.claimableCancelDepositRequest(0, _getActor());
 
             // update ghosts
@@ -224,14 +224,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
-            (uint32 depositEpochId,,,) = shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            (uint32 depositEpochId,,,) = shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
             uint128 previousDepositApproved;
             if(depositEpochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId
-                (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), depositEpochId - 1);
+                (, previousDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), depositEpochId - 1);
             }
 
-            (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), depositEpochId);
+            (, uint128 currentDepositApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), depositEpochId);
             // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
             if(previousDepositApproved == 0 && currentDepositApproved == 0) {
                 bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
@@ -245,11 +245,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
     function vault_cancelRedeemRequest() public updateGhosts asActor {
         address controller = _getActor();
-        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), controller.toBytes32());
+        (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
         
         try vault.cancelRedeemRequest(REQUEST_ID, controller) {
-            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), controller.toBytes32());
-            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
+            (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), controller.toBytes32());
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
 
             // update ghosts
             cancelledRedemptions[controller] += (pendingBefore - pendingAfter);
@@ -261,12 +261,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(pendingAfter, 0, "pending != 0");
             }
         } catch (bytes memory reason) {
-            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId));
-            (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), redeemEpochId);
+            (, uint32 redeemEpochId,, )= shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+            (, uint128 currentRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), redeemEpochId);
             uint128 previousRedeemApproved;
             if(redeemEpochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId
-                (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(assetId), redeemEpochId - 1);
+                (, previousRedeemApproved,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), redeemEpochId - 1);
             }
 
             // we only care about arithmetic reverts in the case of 0 approvals because if there have been any approvals, it's expected that user won't be able to cancel their request 
