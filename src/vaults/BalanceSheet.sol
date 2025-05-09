@@ -93,13 +93,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBalanceSheet
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address owner, uint128 amount)
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
         authOrManager(poolId)
     {
         AssetId assetId = poolManager.assetToId(asset, tokenId);
-        _noteDeposit(poolId, scId, assetId, asset, tokenId, owner, amount);
-        _executeDeposit(poolId, asset, tokenId, owner, amount);
+        _noteDeposit(poolId, scId, assetId, asset, tokenId, msg.sender, amount);
+        _executeDeposit(poolId, asset, tokenId, msg.sender, amount);
     }
 
     /// @inheritdoc IBalanceSheet
