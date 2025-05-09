@@ -218,7 +218,7 @@ contract TestEndToEnd is Test {
         h.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
         h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
-        h.hub.createHolding(
+        h.hub.initializeHolding(
             poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 

@@ -408,7 +408,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function createHolding(
+    function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -427,17 +427,28 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
+        accounting.unlock(poolId);
+
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
         accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
         accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
 
-        holdings.create(poolId, scId, assetId, valuation, false, accounts);
+        holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
+
+        uint128 holdingValue = holdings.value(poolId, scId, assetId);
+        if (holdingValue > 0) {
+            // If increase/decrease was called before initialize, we add journal entries for this
+            accounting.addDebit(assetAccount, holdingValue);
+            accounting.addCredit(equityAccount, holdingValue);
+        }
+
+        accounting.lock();
     }
 
     /// @inheritdoc IHub
-    function createLiability(
+    function initializeLiability(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -453,11 +464,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
+        accounting.unlock(poolId);
+
         HoldingAccount[] memory accounts = new HoldingAccount[](2);
         accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
         accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
 
-        holdings.create(poolId, scId, assetId, valuation, true, accounts);
+        holdings.initialize(poolId, scId, assetId, valuation, true, accounts);
+
+        uint128 holdingValue = holdings.value(poolId, scId, assetId);
+        if (holdingValue > 0) {
+            // If increase/decrease was called before initialize, we add journal entries for this
+            accounting.addDebit(expenseAccount, holdingValue);
+            accounting.addCredit(liabilityAccount, holdingValue);
+        }
+
+        accounting.lock();
     }
 
     /// @inheritdoc IHub

@@ -32,10 +32,10 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, LOSS_ACCOUNT, false);
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
-        hub.createHolding(
+        hub.initializeHolding(
             poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
-        hub.createHolding(
+        hub.initializeHolding(
             poolId, scId, EUR_STABLE_C2, valuation, ASSET_EUR_STABLE_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
         hub.updateContract{value: GAS}(

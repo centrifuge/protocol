@@ -22,8 +22,8 @@ struct HoldingAccount {
 }
 
 interface IHoldings {
-    /// @notice Emitted when a holding is created
-    event Create(
+    /// @notice Emitted when a holding is initialized
+    event Initialize(
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
@@ -77,8 +77,9 @@ interface IHoldings {
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice Creates a new holding in a pool using a valuation
-    function create(
+    /// @notice Initializes a new holding in a pool using a valuation
+    /// @dev    `increase()` and `decrease()` can be called before initialize, but will have a 0 value
+    function initialize(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,

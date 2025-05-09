@@ -34,7 +34,7 @@ contract Holdings is Auth, IHoldings {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
-    function create(
+    function initialize(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -51,7 +51,7 @@ contract Holdings is Auth, IHoldings {
             accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;
         }
 
-        emit Create(poolId, scId, assetId, valuation_, isLiability_, accounts);
+        emit Initialize(poolId, scId, assetId, valuation_, isLiability_, accounts);
     }
 
     /// @inheritdoc IHoldings
@@ -90,7 +90,6 @@ contract Holdings is Auth, IHoldings {
         returns (uint128 amountValue)
     {
         Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
@@ -109,7 +108,6 @@ contract Holdings is Auth, IHoldings {
         returns (uint128 amountValue)
     {
         Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         amountValue = PricingLib.convertWithPrice(
             amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
