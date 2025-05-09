@@ -78,7 +78,7 @@ interface IHoldings {
     error WrongAssetId();
 
     /// @notice Initializes a new holding in a pool using a valuation
-    /// @dev    `increase()` and `decrease()` can be called before initialize, but will have a 0 value
+    /// @dev    `increase()` and `decrease()` can be called before initialize
     function initialize(
         PoolId poolId,
         ShareClassId scId,
