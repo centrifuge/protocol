@@ -58,13 +58,13 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     // ERC20 balances
     //----------------------------------------------------------------------------------------------
 
-    function _balanceOf(address user) internal view virtual returns (uint256) {
-        return balances[user];
-    }
-
     /// @inheritdoc IERC20
     function balanceOf(address user) public view virtual returns (uint256) {
         return _balanceOf(user);
+    }
+
+    function _balanceOf(address user) internal view virtual returns (uint256) {
+        return balances[user];
     }
 
     function _setBalance(address user, uint256 value) internal virtual {
@@ -176,6 +176,13 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     // Permit
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IERC20Permit
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
+        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
+    }
+
     function permit(address owner, address spender, uint256 value, uint256 deadline, bytes memory signature) public {
         require(block.timestamp <= deadline, PermitExpired());
 
@@ -196,13 +203,6 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
         allowance[owner][spender] = value;
         emit Approval(owner, spender, value);
-    }
-
-    /// @inheritdoc IERC20Permit
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external
-    {
-        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
     }
 
     /// @inheritdoc IERC20Permit
