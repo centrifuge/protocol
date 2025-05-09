@@ -27,10 +27,6 @@ abstract contract ReconPoolManager {
 
     /// @notice Returns the current active asset
     function _getPool() internal view returns (uint64) {
-        if (__pool == uint64(0)) {
-            revert PoolNotSetup();
-        }
-
         return __pool;
     }
 

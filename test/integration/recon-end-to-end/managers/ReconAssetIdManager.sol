@@ -27,10 +27,6 @@ abstract contract ReconAssetIdManager {
 
     /// @notice Returns the current active assetId
     function _getAssetId() internal view returns (uint128) {
-        if (__assetId == uint128(0)) {
-            revert AssetIdNotSetup();
-        }
-
         return __assetId;
     }
 

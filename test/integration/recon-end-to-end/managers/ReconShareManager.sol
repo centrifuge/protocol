@@ -25,10 +25,6 @@ abstract contract ReconShareManager {
 
     /// @notice Returns the current active shareToken
     function _getShareToken() internal view returns (address) {
-        if (__shareToken == address(0)) {
-            revert ShareTokenNotSetup();
-        }
-
         return __shareToken;
     }
 

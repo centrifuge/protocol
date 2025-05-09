@@ -27,10 +27,6 @@ abstract contract ReconShareClassManager {
 
     /// @notice Returns the current active share class
     function _getShareClassId() internal view returns (bytes16) {
-        if (__shareClassId == bytes16(0)) {
-            revert ShareClassNotSetup();
-        }
-
         return __shareClassId;
     }
 

@@ -25,10 +25,6 @@ abstract contract ReconVaultManager {
 
     /// @notice Returns the current active vault
     function _getVault() internal view returns (address) {
-        if (__vault == address(0)) {
-            revert VaultNotSetup();
-        }
-
         return __vault;
     }
 

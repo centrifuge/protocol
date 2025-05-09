@@ -106,7 +106,7 @@ abstract contract TargetFunctions is
         // 2. Deploy new pool and register it
         {
             _poolId = PoolId.wrap(POOL_ID_COUNTER);
-            hub_createPool(_poolId.raw(), _getActor(), _assetId);
+            hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
 
             poolManager_addPool();
 

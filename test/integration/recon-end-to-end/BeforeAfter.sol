@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {MockERC20} from "@recon/MockERC20.sol";
+import {console2} from "forge-std/console2.sol";
 
 import {D18} from "src/misc/types/D18.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -23,7 +24,9 @@ enum OpType {
     DEPOSIT,
     REDEEM,
     BATCH, // batch operations that make multiple calls in one transaction
-    NOTIFY
+    NOTIFY, 
+    ISSUE, 
+    REVOKE
 }
 
 
@@ -53,6 +56,7 @@ abstract contract BeforeAfter is Setup {
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
+        mapping(ShareClassId scId => uint128 totalIssuance) ghostMetrics; // only stores the totalIssuance because we don't need navPerShare
         
         // global ghost variable only updated as needed
         mapping(address investor => PriceVars) investorsGlobals;
@@ -104,8 +108,9 @@ abstract contract BeforeAfter is Setup {
 
                 (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
                 _before.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
-                
+                (_before.ghostMetrics[scId],) = shareClassManager.metrics(scId);
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
+                
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = CastLib.toBytes32(_actors[k]);
@@ -151,8 +156,9 @@ abstract contract BeforeAfter is Setup {
 
                 (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
                 _after.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
-                
+                (_after.ghostMetrics[scId],) = shareClassManager.metrics(scId);
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
+                
                 // loop over all actors
                 for (uint256 k = 0; k < _actors.length; k++) {
                     bytes32 actor = CastLib.toBytes32(_actors[k]);
@@ -264,20 +270,17 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceAsset;
-        try poolManager.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), false) returns (D18 _priceAsset, uint64) {
+        try poolManager.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), true) returns (D18 _priceAsset, uint64) {
             priceAsset = _priceAsset;
         } catch (bytes memory reason) {
-            bool expected = checkError(reason, "ShareTokenDoesNotExist()");
-            if(expected) {
+            bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
+            bool invalidPrice = checkError(reason, "InvalidPrice()");
+            if(shareTokenDoesNotExist || invalidPrice) {
                 _structToUpdate.totalAssets = 0;
                 return;
+            } else {
+                _structToUpdate.totalAssets = IBaseVault(_getVault()).totalAssets();
             }
-        }
-        
-        if (priceAsset.raw() != 0) {
-            _structToUpdate.totalAssets = IBaseVault(_getVault()).totalAssets();
-        } else {
-            _structToUpdate.totalAssets = 0;
         }
     }
 
@@ -288,17 +291,14 @@ abstract contract BeforeAfter is Setup {
         try poolManager.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), false) returns (D18 _priceShare, uint64) {
             priceShare = _priceShare;
         } catch (bytes memory reason) {
-            bool expected = checkError(reason, "ShareTokenDoesNotExist()");
-            if(expected) {
+            bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
+            bool invalidPrice = checkError(reason, "InvalidPrice()");
+            if(shareTokenDoesNotExist || invalidPrice) {
                 _structToUpdate.pricePerShare = 0;
                 return;
+            } else {
+                _structToUpdate.pricePerShare = BaseVault(_getVault()).pricePerShare();
             }
-        }
-        
-        if (priceShare.raw() != 0) {
-            _structToUpdate.pricePerShare = BaseVault(_getVault()).pricePerShare();
-        } else {
-            _structToUpdate.pricePerShare = 0;
         }
     }
 }
