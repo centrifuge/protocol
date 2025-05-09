@@ -11,6 +11,7 @@ import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
 
 struct QueueAmount {
@@ -67,9 +68,12 @@ interface IBalanceSheet {
 
     function file(bytes32 what, address data) external;
 
-    /// @notice Overloaded increase with asset transfer
+    /// @notice Deposit assets into the escrow of the pool.
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
+    /// @notice Note a deposit of assets into the escrow of the pool.
+    /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
+    ///         This function is mostly useful to keep higher level integrations CEI adherent.
     function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
@@ -79,6 +83,7 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    /// @notice Withdraw assets from the escrow of the pool.
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -88,18 +93,29 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    /// @notice Issue new share tokens. Increases the total issuance.
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
+    /// @notice Revoke share tokens. Decreases the total issuance.
     function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
 
-    function noteRevoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
-
+    /// @notice Force-transfers share tokens.
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
 
+    /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
+    /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external;
 
+    /// @notice Override the price pool per share, to be used for any other balance sheet interactions.
+    /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
     function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
 
+    /// @notice Returns the pool escrow.
+    /// @dev    Assets for pending deposit requests are not held by the pool escrow.
+    function escrow(PoolId poolId) external view returns (IPoolEscrow);
+
+    /// @notice Returns the amount of assets that can be withdrawn from the balance sheet.
+    /// @dev    Assets that are locked for redemption requests are reserved and not available for withdrawals.
     function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
         external
         view
