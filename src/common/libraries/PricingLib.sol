@@ -20,7 +20,7 @@ library PricingLib {
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
     ///      Fulfilled* message amounts. Any other codepath must use the variant with pricePoolPerAsset
     ///      and pricePoolPerShare
     function assetToShareAmount(
@@ -67,7 +67,7 @@ library PricingLib {
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
     ///      Fulfilled*  message amounts. Any other codepath must use the variant with pricePoolPerAsset and
     ///      pricePoolPerShare
     function shareToAssetAmount(
@@ -228,7 +228,7 @@ library PricingLib {
 
     /// @dev Returns the asset price per share denominated in ASSET_UNIT/SHARE_UNIT
     ///
-    /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
+    ///      NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
     ///      conversion relying on pricePoolPerShare and pricePoolPerAsset.
     function priceAssetPerShare(D18 pricePoolPerShare, D18 pricePoolPerAsset)
         internal
