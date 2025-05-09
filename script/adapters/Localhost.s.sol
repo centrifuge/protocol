@@ -125,7 +125,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         token.approve(address(balanceSheet), 1_100_000e18);
-        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6);
+        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Make sender a member to submit redeem request
         hub.updateRestriction(

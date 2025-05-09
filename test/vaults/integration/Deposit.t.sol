@@ -770,6 +770,6 @@ contract DepositTest is BaseTest {
     function _topUpEscrow(PoolId poolId, ShareClassId scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(address(this), assetAmount);
         asset.approve(address(balanceSheet), assetAmount);
-        balanceSheet.deposit(poolId, scId, address(asset), 0, address(this), assetAmount.toUint128());
+        balanceSheet.deposit(poolId, scId, address(asset), 0, assetAmount.toUint128());
     }
 }
