@@ -68,8 +68,7 @@ interface IBalanceSheet {
     function file(bytes32 what, address data) external;
 
     /// @notice Overloaded increase with asset transfer
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address provider, uint128 amount)
-        external;
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
     function noteDeposit(
         PoolId poolId,
