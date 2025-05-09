@@ -172,7 +172,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(acc, IShareToken(_getShareToken()).totalSupply(), "sum of user balances > token.totalSupply()");
     }
 
-    function property_IM_1() public {
+    /// @dev Property: The price at which a user deposit is made is bounded by the price when the request was fulfilled
+    function property_price_on_fulfillment() public {
         if (address(asyncRequestManager) == address(0)) {
             return;
         }
@@ -195,7 +196,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    function property_IM_2() public {
+    /// @dev Property: The price at which a user redemption is made is bounded by the price when the request was fulfilled
+    function property_price_on_redeem() public {
         if (address(asyncRequestManager) == address(0)) {
             return;
         }
@@ -215,18 +217,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    // Escrow
-
-    /**
-     * The balance of currencies in Escrow is
-     *     sum of deposit requests
-     *     minus sum of claimed redemptions
-     *     plus transfers in
-     *     minus transfers out
-     *
-     *     NOTE: Ignores donations
-     */
-    function property_E_1() public tokenIsSet {
+    /// @dev Property: The balance of currencies in Escrow is the sum of deposit requests -minus sum of claimed redemptions + transfers in -minus transfers out
+    /// @dev NOTE: Ignores donations
+    function property_escrow_balance() public tokenIsSet {
         if (address(globalEscrow) == address(0)) {
             return;
         }
@@ -256,17 +249,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
     }
 
-    // Escrow
-    /**
-     * The balance of share class tokens in Escrow
-     *     is sum of all fulfilled deposits
-     *     minus sum of all claimed deposits
-     *     plus sum of all redeem requests
-     *     minus sum of claimed
-     *
-     *     NOTE: Ignores donations
-     */
-    function property_E_2() public tokenIsSet {
+    /// @dev Property: The balance of share class tokens in Escrow is the sum of all fulfilled deposits - sum of all claimed deposits + sum of all redeem requests - sum of claimed redeem requests
+    /// @dev NOTE: Ignores donations
+    function property_escrow_share_balance() public tokenIsSet {
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
@@ -828,27 +813,48 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: After FM performs approveDeposits and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
-    /// @dev WIP, this may not be possible to prove because these calls are made via execute which makes determining the before and after state difficult
-    // function property_total_issuance_increased_after_approve_deposits_and_revoke_shares() public {
-        
-    //     bool hasApprovedDeposits = false;
-    //     bool hasRevokedShares = false;
-    //     for(uint256 i = 0; i < queuedOps.length; i++) {
-    //         QueuedOp queuedOp = queuedOps[i];
-    //         if(queuedOp.op == Op.APPROVE_DEPOSITS) {
-    //             hasApprovedDeposits = true;
-    //         }
+    /// @dev Property: After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
+    function property_total_issuance_increased_after_approve_deposits_and_issue_shares() public {
+        if(currentOperation == OpType.ISSUE) {
+            gt(_after.ghostMetrics[ShareClassId.wrap(_getShareClassId())], _before.ghostMetrics[ShareClassId.wrap(_getShareClassId())], "total issuance is not increased after issueShares");
+        }
+    }
 
-    //         // there has to have been an approveDeposits call before a revokeShares call
-    //         if(queuedOp.op == Op.REVOKE_SHARES && hasApprovedDeposits) {
-    //             hasRevokedShares = true;
+    /// @dev After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
+    function property_total_issuance_decreased_after_approve_redeems_and_revoke_shares() public {
+        if(currentOperation == OpType.REVOKE) {
+            lt(_after.ghostMetrics[ShareClassId.wrap(_getShareClassId())], _before.ghostMetrics[ShareClassId.wrap(_getShareClassId())], "total issuance is not decreased after revokeShares");
+        }
+    }
+
+    /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
+    // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first place
+    // TODO: verify if this should be applied to the vaults side instead
+    // function property_assetRegistry_balance_leq_escrow_balance() public {
+    //     address[] memory _actors = _getActors();
+
+    //     for (uint256 i = 0; i < createdPools.length; i++) {
+    //         PoolId poolId = createdPools[i];
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             AssetId assetId = hubRegistry.currency(poolId);
+
+    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
+    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
+    //             uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
+    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
+    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
+
+    //             lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry balance > escrow balance");
     //         }
     //     }
 
-    //     // if(hasApprovedDeposits && hasRevokedShares) {
-    //     //     shareClassManager.metrics(scId);
-    //     // }
+    //     // TODO: check if this is the correct check
+    //     // loop through all created assetIds
+    //     // check if the asset is in the HubRegistry
+    //     // if it is, check if there's any of the asset in the escrow
     // }
 
 
@@ -857,64 +863,45 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: The sum of eligible user payoutShareAmount for an epoch is <= the number of issued epochInvestAmounts[..].pendingShareAmount
     /// @dev Property: The sum of eligible user payoutAssetAmount for an epoch is <= the number of issued asset epochInvestAmounts[..].pendingAssetAmount
     /// @dev Stateless because of the calls to claimDeposit which would make story difficult to read
-    // TODO: fix stack too deep error
-    // TODO: no longer have a pendingShareAmount in EpochInvestAmounts
-    // function property_eligible_user_deposit_amount_leq_deposit_issued_amount() public statelessTest {
-    //     address[] memory _actors = _getActors();
+    function property_eligible_user_deposit_amount_leq_deposit_issued_amount() public statelessTest {
+        address[] memory _actors = _getActors();
 
-    //     // loop over all created pools
-    //     for (uint256 i = 0; i < createdPools.length; i++) {
-    //         PoolId poolId = createdPools[i];
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+        // sum up to the latest issuance epoch where users can claim deposits for 
+        (uint32 latestDepositEpochId,, uint32 latestIssuanceEpochId,) = shareClassManager.epochId(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        
+        uint128 sumDepositShares;
+        uint128 sumDepositAssets;
+        uint128 totalPayoutAssetAmount;
+        uint128 totalPayoutShareAmount;
+        for (uint32 epochId; epochId <= latestIssuanceEpochId; epochId++) {
+            (uint128 pendingAssetAmount,,,,,) = shareClassManager.epochInvestAmounts(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), epochId);
+            sumDepositAssets += pendingAssetAmount;
+            sumDepositShares = uint128(IBaseVault(_getVault()).convertToShares(pendingAssetAmount));
+        
+            // loop over all actors
+            for (uint256 k = 0; k < _actors.length; k++) {
+                address actor = _actors[k];
+                
+                // we claim via shareClassManager directly here because Hub doesn't return the payoutShareAmount
+                (uint128 payoutShareAmount, uint128 payoutAssetAmount,,) = shareClassManager.claimDeposit(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), CastLib.toBytes32(actor), AssetId.wrap(_getAssetId()));
+                totalPayoutShareAmount += payoutShareAmount;
+                totalPayoutAssetAmount += payoutAssetAmount;
+            }
+
+            // check that the totalPayoutAssetAmount is less than or equal to the approvedAssetAmount
+            lte(totalPayoutAssetAmount, sumDepositAssets, "totalPayoutAssetAmount > sumDepositAssets");
+            // check that the totalPayoutShareAmount is less than or equal to the pendingAssetAmount
+            lte(totalPayoutShareAmount, sumDepositShares, "totalPayoutShareAmount > sumDepositShares");
             
-    //         // check that the epoch has ended, if not, skip
-    //         // we know an epoch has ended if the epochId changed after an operation which we cache in the before/after structs
-    //         if (_before.ghostEpochId[poolId] == _after.ghostEpochId[poolId]) {
-    //             continue;
-    //         }
+            uint128 differenceShares = sumDepositShares - totalPayoutShareAmount;
+            uint128 differenceAsset = sumDepositAssets - totalPayoutAssetAmount;
+            // check that the totalPayoutShareAmount is no more than 1 wei less than the sumDepositShares
+            lte(differenceShares, 1, "sumDepositShares - totalPayoutShareAmount difference is greater than 1");
+            // check that the totalPayoutAssetAmount is no more than 1 wei less than the sumDepositAssets
+            lte(differenceAsset, 1, "sumDepositAssets - totalPayoutAssetAmount difference is greater than 1");
+        }
+    }
 
-    //         // loop over all share classes in the pool
-    //         uint128 totalPayoutShareAmount = 0;
-    //         uint128 totalPayoutAssetAmount = 0;
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
-
-    //             (uint32 latestDepositEpochId,, uint32 latestIssuanceEpochId,) = shareClassManager.epochId(scId, assetId);
-    //             // sum up to the latest issuance epoch where users can claim deposits for 
-    //             uint128 sumDepositApprovedShares;
-    //             uint128 sumDepositAssets;
-    //             for (uint32 epochId; epochId <= latestIssuanceEpochId; epochId++) {
-    //                 (uint128 depositSharesIssued,, uint128 depositPoolApproved,,,) = shareClassManager.epochInvestAmounts(scId, assetId, latestDepositEpochId);
-    //                 sumDepositApprovedShares += depositPoolApproved;
-    //                 sumDepositAssets += depositSharesIssued;
-    //             }
-
-    //             // loop over all actors
-    //             for (uint256 k = 0; k < _actors.length; k++) {
-    //                 address actor = _actors[k];
-                    
-    //                 // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutShareAmount
-    //                 (uint128 payoutShareAmount, uint128 payoutAssetAmount,,) = shareClassManager.claimDeposit(poolId, scId, CastLib.toBytes32(actor), assetId);
-    //                 totalPayoutShareAmount += payoutShareAmount;
-    //                 totalPayoutAssetAmount += payoutAssetAmount;
-    //             }
-
-    //             // check that the totalPayoutShareAmount is less than or equal to the depositSharesIssued
-    //             lte(totalPayoutShareAmount, sumDepositAssets, "totalPayoutShareAmount is greater than sumDepositAssets");
-    //             // check that the totalPayoutAssetAmount is less than or equal to the depositPoolApproved
-    //             lte(totalPayoutAssetAmount, sumDepositApprovedShares, "totalPayoutAssetAmount is greater than sumDepositApprovedShares");
-
-    //             uint128 differenceShares = sumDepositAssets - totalPayoutShareAmount;
-    //             uint128 differenceAsset = sumDepositApprovedShares - totalPayoutAssetAmount;
-    //             // check that the totalPayoutShareAmount is no more than 1 wei less than the depositSharesIssued
-    //             lte(differenceShares, 1, "sumDepositAssets - totalPayoutShareAmount difference is greater than 1");
-    //             // check that the totalPayoutAssetAmount is no more than 1 wei less than the depositAssetAmount
-    //             lte(differenceAsset, 1, "sumDepositApprovedShares - totalPayoutAssetAmount difference is greater than 1");
-    //         }
-    //     }
-    // }
 
     /// @dev Property: The sum of eligible user claim payout asset amounts for an epoch is <= the approved asset epochRedeemAmounts[..].approvedAssetAmount
     /// @dev Property: The sum of eligible user claim payment share amounts for an epoch is <= than the revoked share epochRedeemAmounts[..].pendingAssetAmount
@@ -970,54 +957,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
-    // TODO: verify if this should be applied to the vaults side instead
-    // function property_holdings_balance_equals_escrow_balance() public statelessTest {
-    //     address[] memory _actors = _getActors();
+    function property_holdings_balance_equals_escrow_balance() public statelessTest {
+        address[] memory _actors = _getActors();
 
-    //     for (uint256 i = 0; i < createdPools.length; i++) {
-    //         PoolId poolId = createdPools[i];
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
-
-    //             (uint128 holdingAssetAmount,,,) = holdings.holding(poolId, scId, assetId);
-                
-    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
-    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
-    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
-    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
-                
-    //             eq(holdingAssetAmount, pendingShareClassEscrowBalance + shareClassEscrowBalance, "holding != escrow balance");
-    //         }
-    //     }
-    // }
-
-    /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
-    // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first place
-    // TODO: verify if this should be applied to the vaults side instead
-    // function property_assetRegistry_balance_leq_escrow_balance() public stateless {
-    //     address[] memory _actors = _getActors();
-
-    //     for (uint256 i = 0; i < createdPools.length; i++) {
-    //         PoolId poolId = createdPools[i];
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
-
-    //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
-    //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
-    //             uint256 assetRegistryBalance = assetRegistry.balanceOf(address(assetRegistry), assetId.raw());
-    //             uint256 pendingShareClassEscrowBalance = assetRegistry.balanceOf(pendingShareClassEscrow, assetId.raw());
-    //             uint256 shareClassEscrowBalance = assetRegistry.balanceOf(shareClassEscrow, assetId.raw());
-
-    //             lte(assetRegistryBalance, pendingShareClassEscrowBalance + shareClassEscrowBalance, "assetRegistry balance > escrow balance");
-    //         }
-    //     }
-    // }
+        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
+        (uint128 holdingAssetAmount,,,) = holdings.holding(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        
+        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
+        uint256 escrowBalance = MockERC20(_getAsset()).balanceOf(poolEscrow);
+        
+        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
+    }
 
     // === OPTIMIZATION TESTS === // 
 
