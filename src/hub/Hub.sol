@@ -432,8 +432,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
 
         holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
 
