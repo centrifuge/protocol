@@ -596,7 +596,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
         // Unlink old vault
-        address vaultManager = address(oldVault.manager());
         poolManager.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
@@ -703,7 +702,6 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         private
         view
     {
-        address vaultManager = address(IBaseVault(vaultAddress).manager());
         IShareToken token_ = poolManager.shareToken(poolId, scId);
         address vault_ = IShareToken(token_).vault(asset);
 
