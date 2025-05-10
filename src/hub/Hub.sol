@@ -629,6 +629,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         if (isIncrease) {
             uint128 value = holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount);
+            // TODO: only execute the rest if accounts are set
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
         } else {

@@ -198,7 +198,7 @@ contract TestNotifyShareClass is TestCommon {
     }
 }
 
-contract TestCreateHolding is TestCommon {
+contract TestInitializeHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
@@ -219,7 +219,7 @@ contract TestCreateHolding is TestCommon {
     }
 }
 
-contract TestCreateLiability is TestCommon {
+contract TestInitializeLiability is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
