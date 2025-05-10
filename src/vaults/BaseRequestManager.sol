@@ -60,8 +60,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
 
         vault[poolId][scId][assetId] = IBaseVault(address(vault_));
-        IAuth(token).rely(address(vault_));
-        IShareToken(token).updateVault(vault_.asset(), address(vault_));
         rely(address(vault_));
     }
 
@@ -77,9 +75,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
-
-        IAuth(token).deny(address(vault_));
-        IShareToken(token).updateVault(vault_.asset(), address(0));
         deny(address(vault_));
     }
 
