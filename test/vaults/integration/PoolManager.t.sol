@@ -595,14 +595,16 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         asyncRequestManager.rely(address(newVaultFactory));
         poolManager.file("vaultFactory", address(newVaultFactory), true);
 
-        // Remove old vault
+        // Unlink old vault
         address vaultManager = address(oldVault.manager());
-        IBaseRequestManager(vaultManager).removeVault(poolId, scId, oldVault, asset, AssetId.wrap(assetId));
+        poolManager.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
         assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(0));
 
-        // Deploy new vault
+        // Deploy and link new vault
         IBaseVault newVault = poolManager.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
         assert(oldVault_ != address(newVault));
+        poolManager.linkVault(poolId, scId, AssetId.wrap(assetId), newVault);
+        assertEq(poolManager.shareToken(poolId, scId).vault(asset), address(newVault));
     }
 
     function testPoolManagerCannotTransferSharesOnAccountRestrictions(uint128 amount) public {
@@ -731,8 +733,6 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
             assert(!poolManager.isLinked(poolId, scId, asset, IBaseVault(vaultAddress)));
-            // Check Share permissions
-            assertEq(ShareToken(address(token_)).wards(vaultManager), 1);
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
