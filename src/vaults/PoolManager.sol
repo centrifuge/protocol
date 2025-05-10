@@ -419,9 +419,10 @@ contract PoolManager is
             assetIdKey.asset.staticcall(abi.encodeWithSelector(IERC20Wrapper.underlying.selector));
         // On success, the returned 20 byte address is padded to 32 bytes
         bool isWrappedERC20 = success && data.length == 32;
-        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
 
+        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vault.vaultKind());
+
         return vault;
     }
 
