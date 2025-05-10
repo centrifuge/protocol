@@ -54,8 +54,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         virtual
         auth
     {
-        address token = vault_.share();
-
         require(vault_.asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
 
@@ -69,8 +67,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         virtual
         auth
     {
-        address token = vault_.share();
-
         require(vault_.asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
 
