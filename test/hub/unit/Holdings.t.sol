@@ -311,8 +311,8 @@ contract TestExists is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
-        assert(holdings.exists(POOL_A, SC_1, ASSET_A));
-        assert(!holdings.exists(POOL_A, SC_1, POOL_CURRENCY));
+        assert(holdings.initialized(POOL_A, SC_1, ASSET_A));
+        assert(!holdings.initialized(POOL_A, SC_1, POOL_CURRENCY));
     }
 }
 

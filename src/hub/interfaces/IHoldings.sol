@@ -132,6 +132,6 @@ interface IHoldings {
         view
         returns (AccountId);
 
-    /// @notice Tells if the holding exists for an asset in a share class
-    function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
+    /// @notice Tells if the holding was initialized for an asset in a share class
+    function initialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
 }

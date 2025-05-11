@@ -627,7 +627,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
             : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
-        if (holdings.exists(poolId, scId, assetId)) {
+        if (holdings.initialized(poolId, scId, assetId)) {
             bool isLiability = holdings.isLiability(poolId, scId, assetId);
             AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
             AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;

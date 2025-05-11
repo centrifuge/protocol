@@ -147,6 +147,11 @@ contract Holdings is Auth, IHoldings {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
+    function initialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
+        return address(holding[poolId][scId][assetId].valuation) != address(0);
+    }
+
+    /// @inheritdoc IHoldings
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value_) {
         Holding storage holding_ = holding[poolId][scId][assetId];
         return holding_.assetAmountValue;
@@ -172,10 +177,5 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         return holding_.isLiability;
-    }
-
-    /// @inheritdoc IHoldings
-    function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
-        return address(holding[poolId][scId][assetId].valuation) != address(0);
     }
 }
