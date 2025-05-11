@@ -11,7 +11,7 @@ contract TestCases is BaseTest {
     using PricingLib for *;
 
     /// forge-config: default.isolate = true
-    function testPoolCreation() public returns (PoolId poolId, ShareClassId scId) {
+    function testPoolCreation(bool withInitialization) public returns (PoolId poolId, ShareClassId scId) {
         cv.registerAsset(USDC_C2, 6);
         cv.registerAsset(EUR_STABLE_C2, 12);
 
@@ -32,12 +32,21 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, LOSS_ACCOUNT, false);
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
-        hub.initializeHolding(
-            poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
-        );
-        hub.initializeHolding(
-            poolId, scId, EUR_STABLE_C2, valuation, ASSET_EUR_STABLE_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
-        );
+        if (withInitialization) {
+            hub.initializeHolding(
+                poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            );
+            hub.initializeHolding(
+                poolId,
+                scId,
+                EUR_STABLE_C2,
+                valuation,
+                ASSET_EUR_STABLE_ACCOUNT,
+                EQUITY_ACCOUNT,
+                GAIN_ACCOUNT,
+                LOSS_ACCOUNT
+            );
+        }
         hub.updateContract{value: GAS}(
             poolId,
             scId,
@@ -74,7 +83,7 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testDeposit() public returns (PoolId poolId, ShareClassId scId) {
-        (poolId, scId) = testPoolCreation();
+        (poolId, scId) = testPoolCreation(true);
 
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
@@ -161,11 +170,20 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testCalUpdateHolding() public {
-        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
         uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true);
+
+        assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
+        _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 0);
+        _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 0);
+
+        hub.initializeHolding(
+            poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+        );
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
@@ -182,7 +200,7 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testCalUpdateShares() public {
-        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
 
         cv.updateShares(poolId, scId, 100, true);
 
@@ -197,7 +215,7 @@ contract TestCases is BaseTest {
 
     /// forge-config: default.isolate = true
     function testNotifyPricePoolPerShare() public {
-        (PoolId poolId, ShareClassId scId) = testPoolCreation();
+        (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
         D18 sharePrice = d18(100, 1);
         D18 identityPrice = d18(1, 1);
         D18 poolPerEurPrice = d18(4, 1);

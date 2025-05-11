@@ -623,19 +623,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         accounting.unlock(poolId);
 
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
+        uint128 value = isIncrease
+            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
+            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
-        if (isIncrease) {
-            uint128 value = holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount);
-            // TODO: only execute the rest if accounts are set
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-        } else {
-            uint128 value = holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+        if (holdings.exists(poolId, scId, assetId)) {
+            bool isLiability = holdings.isLiability(poolId, scId, assetId);
+            AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+            AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
+
+            if (isIncrease) {
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
+            } else {
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+            }
         }
 
         accounting.lock();

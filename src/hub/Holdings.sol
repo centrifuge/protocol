@@ -45,7 +45,8 @@ contract Holdings is Auth, IHoldings {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
 
-        holding[poolId][scId][assetId] = Holding(0, 0, valuation_, isLiability_);
+        holding[poolId][scId][assetId].valuation = valuation_;
+        holding[poolId][scId][assetId].isLiability = isLiability_;
 
         for (uint256 i; i < accounts.length; i++) {
             accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;
@@ -148,16 +149,12 @@ contract Holdings is Auth, IHoldings {
     /// @inheritdoc IHoldings
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value_) {
         Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-
         return holding_.assetAmountValue;
     }
 
     /// @inheritdoc IHoldings
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount_) {
         Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-
         return holding_.assetAmount;
     }
 
