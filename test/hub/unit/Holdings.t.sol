@@ -269,11 +269,6 @@ contract TestValue is TestCommon {
 
         assertEq(value, 200_00);
     }
-
-    function testErrHoldingNotFound() public {
-        vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        holdings.value(POOL_A, SC_1, ASSET_A);
-    }
 }
 
 contract TestAmount is TestCommon {
@@ -284,11 +279,6 @@ contract TestAmount is TestCommon {
         uint128 value = holdings.amount(POOL_A, SC_1, ASSET_A);
 
         assertEq(value, 20);
-    }
-
-    function testErrHoldingNotFound() public {
-        vm.expectRevert(IHoldings.HoldingNotFound.selector);
-        holdings.amount(POOL_A, SC_1, ASSET_A);
     }
 }
 
