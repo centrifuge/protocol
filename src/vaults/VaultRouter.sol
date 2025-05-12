@@ -230,6 +230,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
+        _pay();
+
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (vaultDetails.isWrapper && controller != msg.sender) {
             // Auto-unwrap if permissionlessly claiming for another controller
