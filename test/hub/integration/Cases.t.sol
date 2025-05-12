@@ -169,7 +169,7 @@ contract TestCases is BaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testCalUpdateHolding() public {
+    function testUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
         uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
@@ -180,15 +180,21 @@ contract TestCases is BaseTest {
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 0);
+        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
+        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
+        MockValuation valuation = new MockValuation(hubRegistry);
+        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(1, 1));
         hub.initializeHolding(
-            poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
         _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 1000 * poolDecimals);
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 1000 * poolDecimals);
+        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
+        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
 
@@ -196,10 +202,28 @@ contract TestCases is BaseTest {
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 400 * poolDecimals);
         _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
+        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
+
+        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(11, 10));
+        hub.updateHoldingValue(poolId, scId, USDC_C2);
+
+        _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 440 * poolDecimals);
+        _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 40 * poolDecimals);
+        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
+
+        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(8, 10));
+        hub.updateHoldingValue(poolId, scId, USDC_C2);
+
+        _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 320 * poolDecimals);
+        _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 400 * poolDecimals);
+        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 40 * poolDecimals);
+        _assertEqAccountValue(poolId, LOSS_ACCOUNT, false, 120 * poolDecimals);
     }
 
     /// forge-config: default.isolate = true
-    function testCalUpdateShares() public {
+    function testUpdateShares() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
 
         cv.updateShares(poolId, scId, 100, true);

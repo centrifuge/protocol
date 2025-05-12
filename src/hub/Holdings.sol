@@ -45,8 +45,11 @@ contract Holdings is Auth, IHoldings {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
 
-        holding[poolId][scId][assetId].valuation = valuation_;
-        holding[poolId][scId][assetId].isLiability = isLiability_;
+        Holding storage holding_ = holding[poolId][scId][assetId];
+        require(address(holding_.valuation) == address(0), AlreadyInitialized());
+
+        holding_.valuation = valuation_;
+        holding_.isLiability = isLiability_;
 
         for (uint256 i; i < accounts.length; i++) {
             accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;

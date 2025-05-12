@@ -65,7 +65,7 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
 
-    /// @notice Item was not found for a required action
+    /// @notice Item was not found for a required action.
     error HoldingNotFound();
 
     /// @notice Valuation is not valid.
@@ -76,6 +76,9 @@ interface IHoldings {
 
     /// @notice AssetId is not valid.
     error WrongAssetId();
+
+    /// @notice Holding was already initialized.
+    error AlreadyInitialized();
 
     /// @notice Initializes a new holding in a pool using a valuation
     /// @dev    `increase()` and `decrease()` can be called before initialize
