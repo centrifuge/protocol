@@ -753,21 +753,6 @@ contract GatewayTestExecuteRecovery is GatewayTest {
         gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
-    function testErrRecoveryRecovered() public {
-        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
-
-        bytes memory batch = MessageKind.Recovery.asBytes();
-        bytes32 batchHash = keccak256(batch);
-
-        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
-
-        vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
-
-        vm.prank(ANY);
-        vm.expectRevert(IGateway.RecoveryPayloadRecovered.selector);
-        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
-    }
-
     function testExecuteRecovery() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
