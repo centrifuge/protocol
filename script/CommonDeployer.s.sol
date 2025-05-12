@@ -100,7 +100,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonFile() private {
-        messageProcessor.file("gateway", address(gateway));
         gateway.file("processor", address(messageProcessor));
     }
 
