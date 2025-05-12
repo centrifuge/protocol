@@ -22,8 +22,8 @@ struct HoldingAccount {
 }
 
 interface IHoldings {
-    /// @notice Emitted when a holding is created
-    event Create(
+    /// @notice Emitted when a holding is initialized
+    event Initialize(
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
@@ -65,7 +65,7 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
 
-    /// @notice Item was not found for a required action
+    /// @notice Item was not found for a required action.
     error HoldingNotFound();
 
     /// @notice Valuation is not valid.
@@ -77,8 +77,12 @@ interface IHoldings {
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice Creates a new holding in a pool using a valuation
-    function create(
+    /// @notice Holding was already initialized.
+    error AlreadyInitialized();
+
+    /// @notice Initializes a new holding in a pool using a valuation
+    /// @dev    `increase()` and `decrease()` can be called before initialize
+    function initialize(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -131,6 +135,6 @@ interface IHoldings {
         view
         returns (AccountId);
 
-    /// @notice Tells if the holding exists for an asset in a share class
-    function exists(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
+    /// @notice Tells if the holding was initialized for an asset in a share class
+    function initialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
 }
