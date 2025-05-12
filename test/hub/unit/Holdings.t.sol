@@ -91,6 +91,13 @@ contract TestInitialize is TestCommon {
         vm.expectRevert(IHoldings.WrongShareClassId.selector);
         holdings.initialize(POOL_A, NON_SC, ASSET_A, itemValuation, false, new HoldingAccount[](0));
     }
+
+    function testErrAlreadyInitialized() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        vm.expectRevert(IHoldings.AlreadyInitialized.selector);
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+    }
 }
 
 contract TestIncrease is TestCommon {
