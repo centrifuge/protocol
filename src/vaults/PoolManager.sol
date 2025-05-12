@@ -369,28 +369,32 @@ contract PoolManager is
 
     /// @inheritdoc IPoolManager
     function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
-        _shareClass(poolId, scId);
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseRequestManager manager = vault.manager();
         manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
-
         _vaultDetails[vault].isLinked = true;
+
+        IAuth(address(shareClass.shareToken)).rely(address(vault));
+        shareClass.shareToken.updateVault(vault.asset(), address(vault));
 
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
     /// @inheritdoc IPoolManager
     function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
-        _shareClass(poolId, scId);
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
         IBaseRequestManager manager = vault.manager();
         manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
-
         _vaultDetails[vault].isLinked = false;
+
+        IAuth(address(shareClass.shareToken)).deny(address(vault));
+        shareClass.shareToken.updateVault(vault.asset(), address(0));
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
@@ -404,13 +408,10 @@ contract PoolManager is
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(vaultFactory[factory], InvalidFactory());
 
-        // Rely investment manager on vault so it can mint tokens
-        address[] memory vaultWards = new address[](0);
-
         // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         IBaseVault vault = IVaultFactory(factory).newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, vaultWards
+            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
 
         // Check whether asset is an ERC20 token wrapper
@@ -418,12 +419,10 @@ contract PoolManager is
             assetIdKey.asset.staticcall(abi.encodeWithSelector(IERC20Wrapper.underlying.selector));
         // On success, the returned 20 byte address is padded to 32 bytes
         bool isWrappedERC20 = success && data.length == 32;
+
         _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
+        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vault.vaultKind());
 
-        // NOTE - Reverting the manager approvals is not easy. We SHOULD do that if we phase-out a manager
-        VaultKind vaultKind = _relyShareToken(vault, shareClass.shareToken);
-
-        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vaultKind);
         return vault;
     }
 
@@ -561,21 +560,6 @@ contract PoolManager is
             require(poolPerAsset.isValid(), InvalidPrice());
             require(poolPerShare.isValid(), InvalidPrice());
         }
-    }
-
-    /// @dev Sets up approval permissions for pool, i.e. the pool escrow, the base vault manager and potentially a
-    ///      secondary manager (in case of partially sync vault)
-    function _relyShareToken(IBaseVault vault, IShareToken shareToken_) internal returns (VaultKind) {
-        IBaseRequestManager manager = vault.manager();
-        IAuth(address(shareToken_)).rely(address(manager));
-
-        // For sync deposit & async redeem vault, also repeat above for async manager
-        VaultKind vaultKind = vault.vaultKind();
-        if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            IAuth(address(shareToken_)).rely(address(asyncRequestManager));
-        }
-
-        return vaultKind;
     }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
