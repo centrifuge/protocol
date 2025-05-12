@@ -427,8 +427,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
-        accounting.unlock(poolId);
-
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
@@ -437,14 +435,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
 
-        uint128 holdingValue = holdings.value(poolId, scId, assetId);
-        if (holdingValue > 0) {
-            // If increase/decrease was called before initialize, we add journal entries for this
-            accounting.addDebit(assetAccount, holdingValue);
-            accounting.addCredit(equityAccount, holdingValue);
-        }
-
-        accounting.lock();
+        // If increase/decrease was called before initialize, we add journal entries for this
+        _updateAccountingValue(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -464,52 +456,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
-        accounting.unlock(poolId);
-
         HoldingAccount[] memory accounts = new HoldingAccount[](2);
         accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
         accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
 
         holdings.initialize(poolId, scId, assetId, valuation, true, accounts);
 
-        uint128 holdingValue = holdings.value(poolId, scId, assetId);
-        if (holdingValue > 0) {
-            // If increase/decrease was called before initialize, we add journal entries for this
-            accounting.addDebit(expenseAccount, holdingValue);
-            accounting.addCredit(liabilityAccount, holdingValue);
-        }
-
-        accounting.lock();
+        // If increase/decrease was called before initialize, we add journal entries for this
+        _updateAccountingValue(poolId, scId, assetId, true, );
     }
 
     /// @inheritdoc IHub
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
         _isManager(poolId);
 
-        accounting.unlock(poolId);
-
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
-
-        // Save a diff=0 update gas cost
-        if (isPositive && diff > 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
-            }
-        } else if (diff > 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
-            }
-        }
-
-        accounting.lock();
+        _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
     }
 
     /// @inheritdoc IHub
@@ -681,6 +643,34 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (!gateway.isBatching()) {
             gateway.payTransaction{value: msg.value}(msg.sender);
         }
+    }
+
+    /// @notice Create credit & debit entries for the increase or decrease in the holding value
+    function _updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        accounting.unlock(poolId);
+
+        // Save a diff=0 update gas cost
+        if (isPositive && diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+            }
+        } else if (diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
+            }
+        }
+
+        accounting.lock();
     }
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
