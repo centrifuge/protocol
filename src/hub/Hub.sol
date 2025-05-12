@@ -616,7 +616,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _auth();
 
         require(hubRegistry.chain(poolId, assetId.centrifugeId()), DisabledChain());
-        
+
         uint128 value = isIncrease
             ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
             : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
