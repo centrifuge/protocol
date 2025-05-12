@@ -408,7 +408,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function createHolding(
+    function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -430,14 +430,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
 
-        holdings.create(poolId, scId, assetId, valuation, false, accounts);
+        holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
+
+        // If increase/decrease was called before initialize, we add journal entries for this
+        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
-    function createLiability(
+    function initializeLiability(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -457,7 +460,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
         accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
 
-        holdings.create(poolId, scId, assetId, valuation, true, accounts);
+        holdings.initialize(poolId, scId, assetId, valuation, true, accounts);
+
+        // If increase/decrease was called before initialize, we add journal entries for this
+        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -599,23 +605,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        accounting.unlock(poolId);
+        uint128 value = isIncrease
+            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
+            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
-
-        if (isIncrease) {
-            uint128 value = holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-        } else {
-            uint128 value = holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+        if (holdings.initialized(poolId, scId, assetId)) {
+            _updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
-
-        accounting.lock();
     }
 
     /// @inheritdoc IHubGatewayHandler
@@ -655,6 +651,29 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (!gateway.isBatching()) {
             gateway.payTransaction{value: msg.value}(msg.sender);
         }
+    }
+
+    /// @notice Create credit & debit entries for the increase or decrease in the holding amount
+    function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        internal
+    {
+        if (diff == 0) return;
+
+        accounting.unlock(poolId);
+
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
+
+        if (isPositive) {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+        } else {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+        }
+
+        accounting.lock();
     }
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
