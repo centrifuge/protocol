@@ -72,7 +72,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        hub.createHolding(
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
@@ -166,7 +166,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        hub.createHolding(
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
