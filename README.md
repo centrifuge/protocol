@@ -63,9 +63,8 @@ forge test
 ```
 
 ## Audit reports
-
 | Auditor                                              | Date            | Engagement                 | Report                                                                                                                                                                      |
-| ---------------------------------------------------- | --------------- | :------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|------------------------------------------------------|-----------------|-:--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [xmxanuel](https://x.com/xmxanuel)                   | July 2023       | Security review            | Internal                                                                                                                                                                    |
 | [Code4rena](https://code4rena.com/)                  | Sep 2023        | Competitive audit          | [`Report`](https://code4rena.com/reports/2023-09-centrifuge)                                                                                                                |
 | [SRLabs](https://www.srlabs.de/)                     | Sep 2023        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2023-09-SRLabs.pdf)                                                                              |
@@ -73,11 +72,12 @@ forge test
 | [Alex the Entreprenerd](https://x.com/gallodasballo) | Mar - Apr 2024  | Invariant test development | [`Part 1`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge) [`Part 2`](https://getrecon.substack.com/p/lessons-learned-from-fuzzing-centrifuge-059) |
 | [xmxanuel](https://x.com/xmxanuel)                   | May - June 2024 | Security review            | Internal                                                                                                                                                                    |
 | [Spearbit](https://spearbit.com/)                    | July 2024       | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2024-08-Spearbit.pdf)                                                                            |
-| [Recon](https://getrecon.xyz/) | Jan 2025  | Invariant test development | [`Report`](https://getrecon.substack.com/p/never-stop-improving-your-invariant) |
+| [Recon](https://getrecon.xyz/)                       | Jan 2025        | Invariant test development | [`Report`](https://getrecon.substack.com/p/never-stop-improving-your-invariant)                                                                                             |
 | [Cantina](https://cantina.xyz/)                      | Feb 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-02-Cantina.pdf)                                                                             |
-| [burraSec](https://www.burrasec.com/)                      | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec-1.pdf)                                                                             |
-| [Alex the Entreprenerd](https://x.com/gallodasballo)                     | Apr 2025        | Security review            | [`Report`](https://github.com/Recon-Fuzz/audits/blob/main/Centrifuge_Protocol_V3.MD)                                                                             |
-| [burraSec](https://www.burrasec.com/)                      | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec-2.pdf)                                                                             |
+| [xmxanuel](https://x.com/xmxanuel)                   | Mar 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-03-xmxanuel.pdf)                                                                            |
+| [burraSec](https://www.burrasec.com/)                | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec-1.pdf)                                                                          |
+| [Alex the Entreprenerd](https://x.com/gallodasballo) | Apr 2025        | Security review            | [`Report`](https://github.com/Recon-Fuzz/audits/blob/main/Centrifuge_Protocol_V3.MD)                                                                                        |
+| [burraSec](https://www.burrasec.com/)                | Apr 2025        | Security review            | [`Report`](https://github.com/centrifuge/protocol-v3/blob/main/docs/audits/2025-04-burraSec-2.pdf)                                                                          |
 
 ## License
 This codebase is licensed under [Business Source License 1.1](https://github.com/centrifuge/protocol-v3/blob/main/LICENSE).
