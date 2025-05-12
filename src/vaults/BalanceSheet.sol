@@ -171,8 +171,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external authOrManager(poolId) {
-        emit Revoke(poolId, scId, from, _pricePoolPerShare(poolId, scId), shares);
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external authOrManager(poolId) {
+        emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
             queuedShares[poolId][scId].decrease += shares;
@@ -181,7 +181,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
 
         IShareToken token = poolManager.shareToken(poolId, scId);
-        token.authTransferFrom(from, from, address(this), shares);
+        token.authTransferFrom(msg.sender, msg.sender, address(this), shares);
         token.burn(address(this), shares);
     }
 

@@ -97,7 +97,7 @@ interface IBalanceSheet {
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
     /// @notice Revoke share tokens. Decreases the total issuance.
-    function revoke(PoolId poolId, ShareClassId scId, address from, uint128 shares) external;
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external;
 
     /// @notice Force-transfers share tokens.
     function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;

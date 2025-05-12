@@ -269,7 +269,7 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
 
         balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
 
@@ -277,13 +277,13 @@ contract BalanceSheetTest is BaseTest {
         emit IBalanceSheet.Revoke(
             POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
         );
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
 
         (, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
         assertEq(decrease, defaultAmount);
 
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 2);
 
         (, uint128 decrease2) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), 0);
@@ -499,7 +499,7 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), pricePerShare, defaultAmount);
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
     }
 }
 
