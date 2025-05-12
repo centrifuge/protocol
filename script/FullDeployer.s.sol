@@ -8,9 +8,21 @@ import {HubDeployer} from "script/HubDeployer.s.sol";
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 contract FullDeployer is HubDeployer, VaultsDeployer {
-    function deployFull(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployHub(centrifugeId, adminSafe_, deployer, isTests);
-        deployVaults(centrifugeId, adminSafe_, deployer, isTests);
+    function run() public {
+        localCentrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
+        vm.startBroadcast();
+
+        deployFull(ISafe(vm.envAddress("ADMIN")), msg.sender, false);
+        removeFullDeployerAccess(msg.sender);
+        saveDeploymentOutput();
+
+        vm.stopBroadcast();
+    }
+
+
+    function deployFull(ISafe adminSafe_, address deployer, bool isTests) public {
+        deployHub(adminSafe_, deployer, isTests);
+        deployVaults(adminSafe_, deployer, isTests);
     }
 
     function removeFullDeployerAccess(address deployer) public {

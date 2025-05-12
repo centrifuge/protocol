@@ -1,62 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {ISafe} from "src/common/Guardian.sol";
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
-
+import "forge-std/Script.sol";
 import {FullDeployer} from "script/FullDeployer.s.sol";
 
-// Script to deploy Hub and Vaults with a Localhost Adapter.
-contract LocalhostDeployer is FullDeployer {
-    using CastLib for address;
-    using MessageLib for *;
-
-    function run() public {
-        uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
+contract TestDeployer is FullDeployer {
+    function run() public override {
+        super.run();
 
         vm.startBroadcast();
-
-        deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
-
-        // Since `wire()` is not called, separately adding the safe here
-        guardian.file("safe", address(adminSafe));
-
-        saveDeploymentOutput();
-
-        _configureTestData(centrifugeId);
-
+        _configureTestData();
         vm.stopBroadcast();
     }
 
-    function _configureTestData(uint16 centrifugeId) internal {
+    function _configureTestData() internal {
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        poolManager.registerAsset(centrifugeId, address(token), 0);
+        poolManager.registerAsset(localCentrifugeId, address(token), 0);
 
-        AssetId assetId = newAssetId(centrifugeId, 1);
+        AssetId assetId = newAssetId(localCentrifugeId, 1);
 
-        _deployAsyncVault(centrifugeId, token, assetId);
-        _deploySyncDepositVault(centrifugeId, token, assetId);
+        _deployAsyncVault(token, assetId);
+        _deploySyncDepositVault(token, assetId);
     }
 
-    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
+    function _deployAsyncVault(ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hubRegistry.poolId(localCentrifugeId, 1);
         hub.createPool(poolId, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
@@ -65,8 +39,8 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
-        hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyPool(poolId, localCentrifugeId);
+        hub.notifyShareClass(poolId, scId, localCentrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -86,7 +60,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateContract(
             poolId,
             scId,
-            centrifugeId,
+            localCentrifugeId,
             bytes32(bytes20(address(poolManager))),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
@@ -96,7 +70,7 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         hub.updatePricePerShare(poolId, scId, navPerShare);
-        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifySharePrice(poolId, scId, localCentrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
@@ -121,7 +95,7 @@ contract LocalhostDeployer is FullDeployer {
 
         // Update price, deposit principal + yield
         hub.updatePricePerShare(poolId, scId, d18(11, 10));
-        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifySharePrice(poolId, scId, localCentrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         token.approve(address(balanceSheet), 1_100_000e18);
@@ -131,9 +105,9 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateRestriction(
             poolId,
             scId,
-            centrifugeId,
+            localCentrifugeId,
             MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
-                .serialize()
+            .serialize()
         );
 
         // Submit redeem request
@@ -149,8 +123,8 @@ contract LocalhostDeployer is FullDeployer {
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
-    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
-        PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
+    function _deploySyncDepositVault(ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hubRegistry.poolId(localCentrifugeId, 2);
         hub.createPool(poolId, msg.sender, USD);
         hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
@@ -159,8 +133,8 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
-        hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyPool(poolId, localCentrifugeId);
+        hub.notifyShareClass(poolId, scId, localCentrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -180,7 +154,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateContract(
             poolId,
             scId,
-            centrifugeId,
+            localCentrifugeId,
             bytes32(bytes20(address(poolManager))),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(address(syncDepositVaultFactory))),
@@ -190,7 +164,7 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         hub.updatePricePerShare(poolId, scId, navPerShare);
-        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifySharePrice(poolId, scId, localCentrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit

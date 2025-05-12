@@ -31,8 +31,8 @@ contract HubDeployer is CommonDeployer {
     // Data
     AssetId public immutable USD = newAssetId(840);
 
-    function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
+    function deployHub(ISafe adminSafe_, address deployer, bool isTests) public {
+        deployCommon(adminSafe_, deployer, isTests);
 
         hubRegistry = new HubRegistry(deployer);
         identityValuation = new IdentityValuation(hubRegistry, deployer);

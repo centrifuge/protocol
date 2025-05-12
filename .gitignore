@@ -1,7 +1,7 @@
 cache/
 out/
 broadcast/
-.env
+deployments/.env
 .idea/
 .DS_Store
 .env.*

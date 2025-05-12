@@ -35,6 +35,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     Gateway public gateway;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
+    uint16 public localCentrifugeId;
 
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
@@ -44,7 +45,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         );
     }
 
-    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
+    function deployCommon(ISafe adminSafe_, address deployer, bool isTests) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -60,9 +61,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(centrifugeId, root, gasService, deployer);
+        gateway = new Gateway(localCentrifugeId, root, gasService, deployer);
 
-        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
+        messageDispatcher = new MessageDispatcher(localCentrifugeId, root, gateway, tokenRecoverer, deployer);
 
         adminSafe = adminSafe_;
 
