@@ -14,7 +14,6 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
-    IGatewayHandler,
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
@@ -34,7 +33,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
-    IGatewayHandler public gateway;
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IRequestManagerGatewayHandler public investmentManager;
@@ -51,8 +49,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGatewayHandler(data);
-        else if (what == "hub") hub = IHubGatewayHandler(data);
+        if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);

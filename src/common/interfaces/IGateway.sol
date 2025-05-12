@@ -3,7 +3,6 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -12,7 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
+interface IGateway is IMessageHandler, IMessageSender {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -181,6 +180,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
 
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatching() external;
+
+    /// @notice Initiate recovery of a payload.
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
+
+    /// @notice Dispute recovery of a payload.
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,

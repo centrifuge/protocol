@@ -17,7 +17,6 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 /// @title  Gateway
@@ -224,14 +223,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit ExecuteMessage(centrifugeId, message);
     }
 
-    /// @inheritdoc IGatewayHandler
+    /// @inheritdoc IGateway
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
         recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
-    /// @inheritdoc IGatewayHandler
+    /// @inheritdoc IGateway
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         delete recoveries[centrifugeId][adapter][payloadHash];
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);

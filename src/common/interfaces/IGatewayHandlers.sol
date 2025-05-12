@@ -9,24 +9,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 /// -----------------------------------------------------
-///  Common Handlers
-/// -----------------------------------------------------
-/// @notice Interface for Gateway methods called by messages
-interface IGatewayHandler {
-    /// @notice Initialize the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-
-    /// @notice Cancel the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-}
-
-/// -----------------------------------------------------
 ///  CP Handlers
 /// -----------------------------------------------------
 
