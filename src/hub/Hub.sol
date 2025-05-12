@@ -653,7 +653,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         }
     }
 
-    /// @notice Create credit & debit entries for the increase or decrease in the holding value
+    /// @notice Create credit & debit entries for the increase or decrease in the holding amount
     function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         internal
     {
