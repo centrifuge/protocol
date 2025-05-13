@@ -467,29 +467,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IPoolMessageSender
-    function sendExecuteTransferShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes32 receiver,
-        uint128 amount
-    ) external auth {
-        if (centrifugeId == localCentrifugeId) {
-            poolManager.executeTransferShares(poolId, scId, receiver, amount);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.ExecuteTransferShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount
-                }).serialize()
-            );
-        }
-    }
-
     /// @inheritdoc IRootMessageSender
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external auth {
         if (centrifugeId == localCentrifugeId) {
@@ -548,6 +525,29 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 amount: amount
             }).serialize()
         );
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendExecuteTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.executeTransferShares(poolId, scId, receiver, amount);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.ExecuteTransferShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IVaultMessageSender
