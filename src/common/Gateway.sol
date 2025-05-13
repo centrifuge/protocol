@@ -482,24 +482,6 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IGateway
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total) {
-        bytes memory proof = keccak256(payload).serializeMessageProof();
-
-        uint256 gasLimit = 0;
-        for (uint256 pos; pos < payload.length;) {
-            bytes calldata inner = payload[pos:payload.length];
-            gasLimit += gasService.gasLimit(centrifugeId, inner);
-            pos += processor.messageLength(inner);
-        }
-
-        uint256 adaptersCount = adapters[centrifugeId].length;
-        for (uint256 i; i < adaptersCount; i++) {
-            bytes memory message = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
-            total += IAdapter(adapters[centrifugeId][i]).estimate(centrifugeId, message, gasLimit);
-        }
-    }
-
-    /// @inheritdoc IGateway
     function quorum(uint16 centrifugeId) external view returns (uint8) {
         Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
         return adapter.quorum;

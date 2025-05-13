@@ -73,7 +73,7 @@ contract PoolManagerTestHelper is BaseTest {
 
     function registerAssetErc20() public {
         assetErc20 = address(_newErc20(tokenName, tokenSymbol, decimals));
-        assetIdErc20 = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, assetErc20, 0);
+        assetIdErc20 = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, assetErc20, 0);
     }
 }
 
@@ -282,12 +282,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, centChainAddress, amount
         );
 
         // send the transfer from EVM -> Cent Chain
-        poolManager.transferShares{value: defaultGas}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
+        poolManager.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
@@ -357,12 +357,12 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(IPoolManager.UnknownToken.selector);
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount
         );
 
         // Transfer amount from this address to destinationAddress
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount
         );
         assertEq(shareToken.balanceOf(address(this)), 0);
@@ -539,7 +539,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         vm.assume(poolId.raw() > 0);
         vm.assume(scId.raw() > 0);
         poolManager.addPool(poolId);
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc20), 0);
+        AssetId assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc20), 0);
 
         address hook = address(new MockHook());
 
@@ -644,7 +644,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(IPoolManager.CrossChainTransferNotAllowed.selector);
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
         );
 
@@ -656,7 +656,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         );
 
         vm.expectRevert(IPoolManager.CrossChainTransferNotAllowed.selector);
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
         );
         assertEq(shareToken.balanceOf(address(this)), amount);
@@ -664,7 +664,7 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
-        poolManager.transferShares{value: defaultGas}(
+        poolManager.transferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount
         );
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
@@ -778,7 +778,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         address asset = address(erc20);
 
         // Check event except for vault address which cannot be known
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        AssetId assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
         vm.expectEmit(true, true, true, false);
         emit IPoolManager.DeployVault(
             poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)), VaultKind.Async
@@ -799,7 +799,7 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
 
         address asset = address(erc20);
 
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        AssetId assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
         IBaseVault vault = poolManager.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
@@ -872,7 +872,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, 0);
+        AssetId assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, 0);
 
         assertEq(assetId.raw(), defaultAssetId);
 
@@ -887,10 +887,10 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         ERC20 assetA = erc20;
         ERC20 assetB = _newErc20(name, symbol, decimals);
 
-        AssetId assetIdA = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(assetA), 0);
+        AssetId assetIdA = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(assetA), 0);
         _assertAssetRegistered(address(assetA), assetIdA, 0, 1);
 
-        AssetId assetIdB = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(assetB), 0);
+        AssetId assetIdB = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(assetB), 0);
         _assertAssetRegistered(address(assetB), assetIdB, 0, 2);
 
         assert(assetIdA.raw() != assetIdB.raw());
@@ -898,7 +898,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
 
     function testRegisterSingleAssetERC20_emptyNameSymbol() public {
         ERC20 asset = _newErc20("", "", 10);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(asset), 0);
         _assertAssetRegistered(address(asset), AssetId.wrap(defaultAssetId), 0, 1);
     }
 
@@ -921,7 +921,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
-        AssetId assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, tokenId);
+        AssetId assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, tokenId);
 
         assertEq(assetId.raw(), defaultAssetId);
 
@@ -935,10 +935,10 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         uint256 tokenIdA = uint256(bound(decimals, 3, 18));
         uint256 tokenIdB = uint256(bound(decimals, 2, tokenIdA - 1));
 
-        AssetId assetIdA = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc6909), tokenIdA);
+        AssetId assetIdA = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc6909), tokenIdA);
         _assertAssetRegistered(address(erc6909), assetIdA, tokenIdA, 1);
 
-        AssetId assetIdB = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc6909), tokenIdB);
+        AssetId assetIdB = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc6909), tokenIdB);
         _assertAssetRegistered(address(erc6909), assetIdB, tokenIdB, 2);
 
         assert(assetIdA.raw() != assetIdB.raw());
@@ -952,43 +952,43 @@ contract PoolManagerRegisterAssetTest is BaseTest {
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc20), 0);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(erc20), 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc20), 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc20), 0);
     }
 
     function testRegisterAsset_decimalsMissing() public {
         address asset = address(new MockERC6909());
         vm.expectRevert(IPoolManager.AssetMissingDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, 0);
     }
 
     function testRegisterAsset_invalidContract(uint256 tokenId) public {
         vm.expectRevert(IPoolManager.AssetMissingDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(0), tokenId);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(0), tokenId);
     }
 
     function testRegisterAssetERC20_decimalDeficit() public {
         ERC20 asset = _newErc20("", "", 1);
         vm.expectRevert(IPoolManager.TooFewDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(asset), 0);
     }
 
     function testRegisterAssetERC20_decimalExcess() public {
         ERC20 asset = _newErc20("", "", 19);
         vm.expectRevert(IPoolManager.TooManyDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 0);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(asset), 0);
     }
 
     function testRegisterAssetERC6909_decimalDeficit() public {
         MockERC6909 asset = new MockERC6909();
         vm.expectRevert(IPoolManager.TooFewDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 1);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(asset), 1);
     }
 
     function testRegisterAssetERC6909_decimalExcess() public {
         MockERC6909 asset = new MockERC6909();
         vm.expectRevert(IPoolManager.TooManyDecimals.selector);
-        poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, address(asset), 19);
+        poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(asset), 19);
     }
 }
 
