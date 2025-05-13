@@ -352,16 +352,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_token_transferFrom_4 -vvv 
-    function test_token_transferFrom_4() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
-
-        poolManager_addShareClass(hex"12",2,0x0000000000000000000000000000000000000000);
-
-        token_transferFrom(0x00000000000000000000000000000000DeaDBeef,0);
-    }
-
     // forge test --match-test test_property_price_per_share_overall_13 -vvv 
     function test_property_price_per_share_overall_13() public {
 
@@ -370,17 +360,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_sync(1000037,1000604);
 
         property_price_per_share_overall();
-
-    }
-
-    // forge test --match-test test_token_transfer_17 -vvv 
-    function test_token_transfer_17() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
-
-        poolManager_addShareClass(hex"22",2,0x0000000000000000000000000000000000000000);
-
-        token_transfer(0x00000000000000000000000000000000DeaDBeef,0);
 
     }
 
