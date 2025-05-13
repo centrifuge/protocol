@@ -14,15 +14,15 @@ library PricingLib {
     /// @dev Prices are fixed-point integers with 18 decimals
     uint8 internal constant PRICE_DECIMALS = 18;
 
-    /// -----------------------------------------------------
-    ///  View Methods
-    /// -----------------------------------------------------
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
-    /// Fulfilled*
-    /// message amounts. Any other codepath must use the variant with pricePoolPerAsset and pricePoolPerShare
+    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      Fulfilled* message amounts. Any other codepath must use the variant with pricePoolPerAsset
+    ///      and pricePoolPerShare
     function assetToShareAmount(
         address shareToken,
         address asset,
@@ -35,7 +35,7 @@ library PricingLib {
             return 0;
         }
 
-        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.convertWithReciprocalPrice(
@@ -57,7 +57,7 @@ library PricingLib {
             return 0;
         }
 
-        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.assetToShareAmount(
@@ -67,9 +67,9 @@ library PricingLib {
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
     ///
-    /// @dev NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
-    /// Fulfilled*
-    /// message amounts. Any other codepath must use the variant with pricePoolPerAsset and pricePoolPerShare
+    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      Fulfilled*  message amounts. Any other codepath must use the variant with pricePoolPerAsset and
+    ///      pricePoolPerShare
     function shareToAssetAmount(
         address shareToken,
         uint128 shareAmount,
@@ -82,7 +82,7 @@ library PricingLib {
             return 0;
         }
 
-        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.convertWithPrice(shareAmount, shareDecimals, assetDecimals, priceAssetPerShare_, rounding)
@@ -103,7 +103,7 @@ library PricingLib {
             return 0;
         }
 
-        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         return PricingLib.shareToAssetAmount(
@@ -112,7 +112,7 @@ library PricingLib {
     }
 
     /// @dev Calculates the asset price per share returns the value in price decimals
-    /// Denominated in ASSET_UNIT/SHARE_UNIT
+    ///      Denominated in ASSET_UNIT/SHARE_UNIT
     function calculatePriceAssetPerShare(
         address shareToken,
         uint128 shares,
@@ -125,18 +125,18 @@ library PricingLib {
             return 0;
         }
 
-        uint8 assetDecimals = getAssetDecimals(asset, tokenId);
+        uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         // NOTE: More precise than d18(assets * 10 ** assetDecimals, shares * 10 ** shareDecimals)
-        return toPriceDecimals(assets, assetDecimals).mulDiv(
-            10 ** PRICE_DECIMALS, toPriceDecimals(shares, shareDecimals), rounding
+        return _toPriceDecimals(assets, assetDecimals).mulDiv(
+            10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding
         );
     }
 
-    /// -----------------------------------------------------
-    ///  Pure Methods
-    /// -----------------------------------------------------
+    //----------------------------------------------------------------------------------------------
+    // Pure methods
+    //----------------------------------------------------------------------------------------------
 
     /// @dev Converts an amount using decimals and price with implicit rounding down
     function convertWithPrice(uint256 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, D18 priceQuotePerBase)
@@ -165,7 +165,7 @@ library PricingLib {
 
     /// @dev Converts an amount using decimals and reciprocal price.
     ///
-    /// NOTE: More precise than convertWithPrice(,,,price.reciprocal,)
+    ///      NOTE: More precise than convertWithPrice(,,,price.reciprocal,)
     function convertWithReciprocalPrice(
         uint256 baseAmount,
         uint8 baseDecimals,
@@ -228,8 +228,8 @@ library PricingLib {
 
     /// @dev Returns the asset price per share denominated in ASSET_UNIT/SHARE_UNIT
     ///
-    /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
-    /// conversion relying on pricePoolPerShare and pricePoolPerAsset.
+    ///      NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
+    ///      conversion relying on pricePoolPerShare and pricePoolPerAsset.
     function priceAssetPerShare(D18 pricePoolPerShare, D18 pricePoolPerAsset)
         internal
         pure
@@ -238,26 +238,19 @@ library PricingLib {
         return pricePoolPerShare / pricePoolPerAsset;
     }
 
-    /// -----------------------------------------------------
-    ///  Private Methods
-    /// -----------------------------------------------------
+    //----------------------------------------------------------------------------------------------
+    // Private methods
+    //----------------------------------------------------------------------------------------------
 
     /// @dev Returns the asset decimals
-    function getAssetDecimals(address asset, uint256 tokenId) private view returns (uint8 assetDecimals) {
+    function _getAssetDecimals(address asset, uint256 tokenId) private view returns (uint8 assetDecimals) {
         return tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
     }
 
     /// @dev When converting assets to shares using the price, all values are normalized to PRICE_DECIMALS
-    /// @dev NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
-    function toPriceDecimals(uint128 _value, uint8 decimals) private pure returns (uint256) {
+    ///      NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
+    function _toPriceDecimals(uint128 _value, uint8 decimals) private pure returns (uint256) {
         if (PRICE_DECIMALS == decimals) return uint256(_value);
         return uint256(_value) * 10 ** (PRICE_DECIMALS - decimals);
-    }
-
-    /// @dev Converts decimals of the value from the price decimals back to the intended decimals
-    /// @dev NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
-    function fromPriceDecimals(uint256 _value, uint8 decimals) private pure returns (uint128) {
-        if (PRICE_DECIMALS == decimals) return _value.toUint128();
-        return (_value / 10 ** (PRICE_DECIMALS - decimals)).toUint128();
     }
 }

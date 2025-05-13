@@ -17,7 +17,6 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 /// @title  Gateway
@@ -70,7 +69,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         root = root_;
         gasService = gasService_;
 
-        setRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
+        subsidy[GLOBAL_POT].refund = IRecoverable(address(this));
+        emit SetRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
     }
 
     modifier pauseable() {
@@ -134,23 +134,16 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @dev Handle an inbound payload
     function handle(uint16 centrifugeId, bytes calldata payload) external pauseable {
-        _handle(centrifugeId, payload, IAdapter(msg.sender), false);
+        _handle(centrifugeId, payload, IAdapter(msg.sender));
     }
 
-    function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_, bool isRecovery) internal {
+    function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
         Adapter memory adapter = _activeAdapters[centrifugeId][adapter_];
         require(adapter.id != 0, InvalidAdapter());
 
-        IMessageProcessor processor_ = processor;
-        if (processor_.isMessageRecovery(payload)) {
-            require(!isRecovery, RecoveryPayloadRecovered());
-            return processor_.handle(centrifugeId, payload);
-        }
-
-        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
-
         // Verify adapter and parse message hash
         bytes32 batchHash;
+        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
 
@@ -231,14 +224,14 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit ExecuteMessage(centrifugeId, message);
     }
 
-    /// @inheritdoc IGatewayHandler
+    /// @inheritdoc IGateway
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
         recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
-    /// @inheritdoc IGatewayHandler
+    /// @inheritdoc IGateway
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         delete recoveries[centrifugeId][adapter][payloadHash];
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);
@@ -253,7 +246,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
 
         delete recoveries[centrifugeId][adapter][payloadHash];
-        _handle(centrifugeId, payload, adapter, true);
+        _handle(centrifugeId, payload, adapter);
         emit ExecuteRecovery(centrifugeId, payload, adapter);
     }
 

@@ -260,22 +260,18 @@ contract AdminTest is BaseTest {
         _send(adapter1, message);
         _send(adapter2, proof);
 
-        // Initiate recovery
-        _send(
-            adapter1,
-            MessageLib.InitiateRecovery(keccak256(proof), address(adapter3).toBytes32(), OTHER_CHAIN_ID).serialize()
-        );
+        gateway.initiateRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
         gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Dispute recovery
         vm.prank(address(adminSafe));
-        guardian.disputeRecovery(THIS_CHAIN_ID, OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        guardian.disputeRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
         vm.expectRevert(IGateway.RecoveryNotInitiated.selector);

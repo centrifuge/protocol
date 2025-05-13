@@ -9,28 +9,10 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 /// -----------------------------------------------------
-///  Common Handlers
-/// -----------------------------------------------------
-/// @notice Interface for Gateway methods called by messages
-interface IGatewayHandler {
-    /// @notice Initialize the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-
-    /// @notice Cancel the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-}
-
-/// -----------------------------------------------------
-///  CP Handlers
+///  Hub Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CP methods called by messages
+/// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
     /// @notice Tells that an asset was already registered in vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
@@ -77,10 +59,10 @@ interface IHubGatewayHandler {
 }
 
 /// -----------------------------------------------------
-///  CV Handlers
+///  Vaults Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CV methods related to pools called by messages
+/// @notice Interface for Vaults methods related to pools called by messages
 interface IPoolManagerGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
@@ -143,7 +125,7 @@ interface IPoolManagerGatewayHandler {
     /// @dev    The function can only be executed internally or by the gateway contract.
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
-    /// @notice Updates the target address. Generic update function from CP to CV
+    /// @notice Updates the target address. Generic update function from Hub to Vaults
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
@@ -151,7 +133,7 @@ interface IPoolManagerGatewayHandler {
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to async investments called by messages
+/// @notice Interface for Vaults methods related to async investments called by messages
 interface IRequestManagerGatewayHandler {
     /// @notice Signal from the Hub that an asynchronous investment order has been approved
     ///
@@ -182,7 +164,7 @@ interface IRequestManagerGatewayHandler {
     ) external;
 
     // --- Deposits ---
-    /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
+    /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
     ///         The MaxMint bookkeeping value is updated.
     ///         The request fulfillment can be partial.
@@ -197,7 +179,7 @@ interface IRequestManagerGatewayHandler {
         uint128 shares
     ) external;
 
-    /// @notice Fulfills deposit request cancellation after successful epoch execution on CP.
+    /// @notice Fulfills deposit request cancellation after successful epoch execution on Hub.
     ///         The amount of assets that can be claimed by the user is locked in the escrow contract.
     ///         Updates claimableCancelDepositRequest bookkeeping value. The cancellation order execution can be
     ///         partial.
@@ -257,7 +239,7 @@ interface IRequestManagerGatewayHandler {
     ) external;
 
     // --- Redeems ---
-    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
+    /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
     ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
     ///         The request fulfillment can be partial.
@@ -272,7 +254,7 @@ interface IRequestManagerGatewayHandler {
         uint128 shares
     ) external;
 
-    /// @notice Fulfills redeem request cancellation after successful epoch execution on CP.
+    /// @notice Fulfills redeem request cancellation after successful epoch execution on Hub.
     ///         The amount of shares that can be claimed by the user is locked in the escrow contract.
     ///         Updates claimableCancelRedeemRequest bookkeeping value. The cancellation order execution can also be
     ///         partial.
@@ -282,14 +264,8 @@ interface IRequestManagerGatewayHandler {
         external;
 }
 
-/// @notice Interface for CV methods related to epoch called by messages
+/// @notice Interface for Vaults methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
-    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
-        external;
-
-    function triggerWithdraw(PoolId poolId, ShareClassId scId, AssetId assetId, address receiver, uint128 amount)
-        external;
-
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external;

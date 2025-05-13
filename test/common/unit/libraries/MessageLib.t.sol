@@ -19,32 +19,6 @@ contract TestMessageProofCompatibility is Test {
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
-    function testInitiateRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.InitiateRecovery memory a =
-            MessageLib.InitiateRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.InitiateRecovery memory b = MessageLib.deserializeInitiateRecovery(a.serialize());
-
-        assertEq(a.hash, b.hash);
-        assertEq(a.adapter, b.adapter);
-        assertEq(a.centrifugeId, b.centrifugeId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
-    }
-
-    function testDisputeRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.DisputeRecovery memory a =
-            MessageLib.DisputeRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.DisputeRecovery memory b = MessageLib.deserializeDisputeRecovery(a.serialize());
-
-        assertEq(a.hash, b.hash);
-        assertEq(a.adapter, b.adapter);
-        assertEq(a.centrifugeId, b.centrifugeId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertTrue(a.serialize().messageDirection() == MessageDirection.AnyToAny);
-    }
-
     function testScheduleUpgrade(bytes32 target) public pure {
         MessageLib.ScheduleUpgrade memory a = MessageLib.ScheduleUpgrade({target: target});
         MessageLib.ScheduleUpgrade memory b = MessageLib.deserializeScheduleUpgrade(a.serialize());
@@ -570,7 +544,6 @@ contract TestMessageLibIdentities is Test {
         uint64 poolId,
         bytes16 scId,
         uint128 assetId,
-        bytes32 who,
         uint128 amount,
         uint128 pricePerUnit,
         uint64 timestamp,
@@ -580,7 +553,6 @@ contract TestMessageLibIdentities is Test {
             poolId: poolId,
             scId: scId,
             assetId: assetId,
-            who: who,
             amount: amount,
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
@@ -592,7 +564,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
         assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.timestamp, b.timestamp);

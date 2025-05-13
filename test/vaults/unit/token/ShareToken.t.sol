@@ -59,7 +59,7 @@ contract ShareTokenTest is Test {
         token.deny(self);
 
         // auth fail
-        vm.expectRevert(IShareToken.NotAuthorizedOrHook.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         token.file("hook", hook);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
