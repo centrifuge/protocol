@@ -180,9 +180,6 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.file("vaultFactory", address(asyncVaultFactory), true);
         poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
 
-        poolManager.file("vaultFactory", address(asyncVaultFactory), true);
-        poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
-
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("poolManager", address(poolManager));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
