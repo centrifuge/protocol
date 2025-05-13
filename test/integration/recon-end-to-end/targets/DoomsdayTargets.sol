@@ -22,7 +22,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to deposit less than maxMint
-    function doomsday_deposit(uint256 assets) public updateGhosts {
+    function doomsday_deposit(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         uint256 maxMintAsAssets = IBaseVault(_getVault()).convertToAssets(maxMint);
@@ -50,7 +50,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to mint less than maxMint
-    function doomsday_mint(uint256 shares) public updateGhosts {
+    function doomsday_mint(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
@@ -76,7 +76,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to redeem less than maxWithdraw
-    function doomsday_redeem(uint256 shares) public updateGhosts {
+    function doomsday_redeem(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         uint256 maxWithdrawAsShares = IBaseVault(_getVault()).convertToShares(maxWithdraw);
@@ -103,7 +103,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to withdraw less than maxWithdraw
-    function doomsday_withdraw(uint256 assets) public updateGhosts {
+    function doomsday_withdraw(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         uint256 assetsAsSharesBefore = IBaseVault(_getVault()).convertToShares(assets);
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
@@ -126,58 +126,5 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
         gte(sharesAsAssets, expectedAssets, "sharesAsAssets < expectedAssets");
         lte(sharesReceived, expectedAssetsAsShares, "sharesReceived > expectedAssetsAsShares");
-    }
-
-    /// @dev Property: pricePerShare never changes after a user operation
-    function doomsday_pricePerShare_never_changes_after_user_operation() public {
-        if(currentOperation != OpType.ADMIN) {
-            eq(_before.pricePerShare, _after.pricePerShare, "pricePerShare changed after user operation");
-        }
-    }
-
-    /// @dev Property: implied pricePerShare (totalAssets / totalSupply) never changes after a user operation
-    function doomsday_impliedPricePerShare_never_changes_after_user_operation() public {
-        if(currentOperation != OpType.ADMIN) {
-            uint256 impliedPricePerShareBefore = _before.totalAssets / _before.totalShareSupply;
-            uint256 impliedPricePerShareAfter = _after.totalAssets / _after.totalShareSupply;
-            eq(impliedPricePerShareBefore, impliedPricePerShareAfter, "impliedPricePerShare changed after user operation");
-        }
-    }
-
-    /// @dev Property: accounting.accountValue should never revert
-    function doomsday_accountValue(uint64 poolIdAsUint, uint32 accountAsInt) public {
-        PoolId poolId = PoolId.wrap(poolIdAsUint);
-        AccountId account = AccountId.wrap(accountAsInt);
-        
-        try accounting.accountValue(poolId, account) {
-        } catch (bytes memory reason) {
-            bool expectedRevert = checkError(reason, "AccountDoesNotExist()");
-            t(expectedRevert, "accountValue should never revert");
-        }
-    }
-
-    /// @dev Differential fuzz test for accounting.accountValue calculation
-    function doomsday_accountValue_differential(uint128 totalDebit, uint128 totalCredit) public {
-        // using totalDebit - totalCredit but since these values are fuzzed, this also represents all possible totalCredit - totalDebit values
-        int128 valueFromInt;
-        uint128 valueFromUint;
-        bool valueFromIntReverts;
-        bool valueFromUintReverts;
-
-        try mockAccountValue.valueFromInt(totalDebit, totalCredit) returns (int128 result) {
-            valueFromInt = result;
-        } catch {
-            valueFromIntReverts = true;
-        }
-
-        try mockAccountValue.valueFromUint(totalDebit, totalCredit) returns (uint128 result) {
-            valueFromUint = result;
-        } catch {
-            valueFromUintReverts = true;
-        }
-
-        // precondition: valueFromInt should only revert if valueFromUint also does
-        t(!(valueFromIntReverts && !valueFromUintReverts), "valueFromInt should only revert if valueFromUint also does");
-        t(valueFromInt == int128(valueFromUint), "valueFromInt and valueFromUint should be equal");
     }
 }

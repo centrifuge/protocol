@@ -15,7 +15,7 @@ import {Properties} from "../properties/Properties.sol";
 // Only for Share
 abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     
-    function token_transfer(address to, uint256 value) public {
+    function token_transfer(address to, uint256 value) public updateGhosts {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
@@ -47,12 +47,12 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     }
 
     // NOTE: We need this for transferFrom to work
-    function token_approve(address spender, uint256 value) public asActor {
+    function token_approve(address spender, uint256 value) public updateGhosts asActor {
         IShareToken(_getShareToken()).approve(spender, value);
     }
 
     // Check
-    function token_transferFrom(address to, uint256 value) public {
+    function token_transferFrom(address to, uint256 value) public updateGhosts {
         require(_canDonate(to), "never donate to escrow");
 
         value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));

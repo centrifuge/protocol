@@ -48,7 +48,7 @@ abstract contract HubTargets is
         return _poolId;
     }
 
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public updateGhosts asActor returns (PoolId poolId) {
+    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor returns (PoolId poolId) {
         AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy); 
 
         hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
@@ -84,10 +84,6 @@ abstract contract HubTargets is
         }
     }
 
-    function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhosts asActor {
-        hub_notifyDeposit(maxClaims);
-    }
-
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         PoolId poolId = PoolId.wrap(_getPool());
@@ -115,10 +111,6 @@ abstract contract HubTargets is
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
-    }
-
-    function hub_notifyRedeem_clamped(uint32 maxClaims) public updateGhosts asActor {
-        hub_notifyRedeem(maxClaims);
     }
 
     /// === EXECUTION FUNCTIONS === ///
