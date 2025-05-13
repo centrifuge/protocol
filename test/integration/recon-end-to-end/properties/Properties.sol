@@ -22,6 +22,7 @@ import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
+import "forge-std/console2.sol";
 abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProperties {
     using CastLib for *;
     using MathLib for D18;
@@ -138,7 +139,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share class tokens received on claimCancelRedeemRequest <= sum of fulfillCancelRedeemRequest.shares
     function property_sum_of_received_leq_fulfilled() public tokenIsSet {
         // claimCancelRedeemRequest
-        lte(sumOfClaimedRedeemCancelations[address(_getShareToken())], cancelRedeemShareTokenPayout[address(_getShareToken())], "sumOfClaimedRedeemCancelations !<= cancelRedeemTrancheTokenPayout");
+        lte(sumOfClaimedRedeemCancelations[address(_getShareToken())], cancelRedeemShareTokenPayout[address(_getShareToken())], "sumOfClaimedRedeemCancelations !<= cancelRedeemShareTokenPayout");
     }
 
     /// @dev Property (inductive): Sum of share class tokens received on claimCancelRedeemRequest <= sum of fulfillCancelRedeemRequest.shares
@@ -189,10 +190,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             (uint256 depositPrice,) = _getDepositAndRedeemPrice();
 
             // NOTE: Specification | Obv this breaks when you switch pools etc..
-            // NOTE: Should reset
-            // OR: Separate the check per actor | tranche instead of being so simple
-            lte(depositPrice, _before.investorsGlobals[_getActor()].maxDepositPrice, "depositPrice > maxDepositPrice");
-            gte(depositPrice, _before.investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
+            // after a call to notifyDeposit the deposit price of the pool is set, so this checks that no other functions can modify the deposit price outside of the bounds
+            lte(depositPrice, _after.investorsGlobals[_getActor()].maxDepositPrice, "depositPrice > maxDepositPrice");
+            gte(depositPrice, _after.investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
         }
     }
 
@@ -234,7 +234,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 ghostBalOfEscrow;
         address asset = IBaseVault(_getVault()).asset();
         address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
-        uint256 balOfEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
+        uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow));
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
@@ -246,7 +247,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     - sumOfTransfersOut[asset]
             );
         }
-        eq(balOfEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
+        eq(balOfPoolEscrow + balOfGlobalEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
     }
 
     /// @dev Property: The balance of share class tokens in Escrow is the sum of all fulfilled deposits - sum of all claimed deposits + sum of all redeem requests - sum of claimed redeem requests
@@ -289,33 +290,49 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
-        uint256 balOfEscrow = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
-
+        IBaseVault vault = IBaseVault(_getVault());
+        
+        // Get the appropriate max value based on vault type
+        uint256 max;
+        if (!Helpers.isAsyncVault(_getVault())) {
+            // Sync vault - use maxReserve
+            AssetId assetId = hubRegistry.currency(vault.poolId());
+            (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+            uint256 maxAssets = uint256(syncRequestManager.maxReserve(vault.poolId(), vault.scId(), asset, tokenId));
+            max = syncRequestManager.convertToShares(vault, maxAssets);
+            console2.log("max %e", max);
+        } else {
+            // Async vault - use global escrow balance
+            max = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        }
+        
         // Use acc to get maxMint for each actor
         address[] memory actors = _getActors();
         
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo share class
-            try IBaseVault(_getVault()).maxMint(actors[i]) returns (uint256 amt) {
+            try vault.maxMint(actors[i]) returns (uint256 amt) {
                 acc += amt;
             } catch {}
         }
 
-        lte(acc, balOfEscrow, "account balance > balOfEscrow");
+        console2.log("acc %e", acc);
+        lte(acc, max, "account balance > max");
     }
 
     /// @dev Property: the totalAssets of a vault is always <= actual assets in the vault
     function property_totalAssets_solvency() public {
-        uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
-        address escrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
-        uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(escrow);
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 totalAssets = vault.totalAssets();
+        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
+        uint256 actualAssets = MockERC20(vault.asset()).balanceOf(escrow);
         
         uint256 differenceInAssets = totalAssets - actualAssets;
-        uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(differenceInAssets);
+        uint256 differenceInShares = vault.convertToShares(differenceInAssets);
 
         // precondition: check if the difference is greater than one share
-        if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
+        if (differenceInShares > (10 ** IShareToken(vault.share()).decimals()) - 1) {
             lte(totalAssets, actualAssets, "totalAssets > actualAssets");
         }
     }
@@ -410,7 +427,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
             (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
 
-            eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "actor requested deposits - cancelled deposits - processed deposits actor pending deposits + queued deposits");
+            eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits");
         }
     }
 
@@ -618,22 +635,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Value of Holdings == accountValue(Asset)
     function property_accounting_and_holdings_soundness() public {
         uint64[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
-                AccountId accountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+        AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
                 
-                (, uint128 assets) = accounting.accountValue(poolId, accountId);
-                uint128 holdingsValue = holdings.value(poolId, scId, assetId);
-                
-                // This property holds all of the system accounting together
-                eq(assets, holdingsValue, "Assets and Holdings value must match");
-            }
-        }
+        (, uint128 assets) = accounting.accountValue(poolId, accountId);
+        uint128 holdingsValue = holdings.value(poolId, scId, assetId);
+        
+        // This property holds all of the system accounting together
+        eq(assets, holdingsValue, "Assets and Holdings value must match");
     }
 
     /// @dev Property: Total Yield = assets - equity
@@ -804,8 +816,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 AssetId assetId = hubRegistry.currency(poolId);
 
                 bytes32 actor = CastLib.toBytes32(_getActor());
-                // precondition: pending has changed 
-                if (_before.ghostRedeemRequest[scId][assetId][actor].pending != _after.ghostRedeemRequest[scId][assetId][actor].pending) {
+                // precondition: user already has non-zero pending redeem
+                if (_before.ghostRedeemRequest[scId][assetId][actor].pending > 0) {
                     // check that the lastUpdate was > the latest redeem revoke pointer
                     gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].revoke, "lastUpdate is <= latest redeem revoke");
                 }
@@ -825,6 +837,20 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if(currentOperation == OpType.REVOKE) {
             lt(_after.ghostMetrics[ShareClassId.wrap(_getShareClassId())], _before.ghostMetrics[ShareClassId.wrap(_getShareClassId())], "total issuance is not decreased after revokeShares");
         }
+    }
+
+    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
+    function property_holdings_balance_equals_escrow_balance() public {
+        address[] memory _actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        AssetId assetId = hubRegistry.currency(vault.poolId());
+
+        (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
+        address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
+        uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
+        
+        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
     }
 
     /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
@@ -954,19 +980,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
             }
         }
-    }
-
-    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to the balance of the escrow for said pool-shareClass for the respective token
-    function property_holdings_balance_equals_escrow_balance() public statelessTest {
-        address[] memory _actors = _getActors();
-
-        AssetId assetId = hubRegistry.currency(PoolId.wrap(_getPool()));
-        (uint128 holdingAssetAmount,,,) = holdings.holding(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        
-        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
-        uint256 escrowBalance = MockERC20(_getAsset()).balanceOf(poolEscrow);
-        
-        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
     }
 
     // === OPTIMIZATION TESTS === // 

@@ -53,14 +53,13 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
     // Check
     function token_transferFrom(address to, uint256 value) public {
-        address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 
-        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(from));
+        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
 
         bool hasReverted;
-        vm.prank(from);
-        try IShareToken(_getShareToken()).transferFrom(from, to, value) {
+        vm.prank(_getActor());
+        try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
             // NOTE: May revert for a myriad of reasons!
@@ -70,7 +69,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
         // TT-1 Always revert if one of them is frozen
         if (
             fullRestrictions.isFrozen(_getShareToken(), to) == true
-                || fullRestrictions.isFrozen(_getShareToken(), from) == true
+                || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
         ) {
             t(hasReverted, "TT-1 Must Revert");
         }

@@ -75,6 +75,7 @@ abstract contract BeforeAfter is Setup {
 
     modifier updateGhostsWithType(OpType op) {
         currentOperation = op;
+
         __before();
         _;
         __after();

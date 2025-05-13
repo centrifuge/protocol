@@ -15,6 +15,7 @@ import {Hub} from "src/hub/Hub.sol";
 // Interfaces
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 // Types
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -61,19 +62,26 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
-        
+        (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(scId, assetId, investor);
+        (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+
         hub.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
-        (, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+        (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
-        uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
 
-        uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
-        sumOfFullfilledDeposits[_getShareToken()] += investorShareDelta;
-        executedInvestments[_getShareToken()] += investorShareDelta;
+        // fulfillments are handled in the AsyncRequestManager
+        sumOfFullfilledDeposits[_getShareToken()] += (pendingBeforeARM - pendingAfterARM);
+        // claims are handled in the ShareClassManager
+        sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM);
+        depositProcessed[_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
 
-        // nowDepositEpoch = depositEpochId + 1
-        eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+        // precondition: lastUpdate doesn't change if there's no claim actually made
+        if(maxClaims > 0) {
+            // nowDepositEpoch = depositEpochId + 1
+            eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+        }
     }
 
     function hub_notifyDeposit_clamped(uint32 maxClaims) public updateGhosts asActor {
@@ -88,11 +96,14 @@ abstract contract HubTargets is
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
         uint256 investorBalanceBefore = MockERC20(_getAsset()).balanceOf(_getActor());
+        (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
 
         hub.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
+        (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
+
         uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
         uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
         uint256 investorBalanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
@@ -100,7 +111,8 @@ abstract contract HubTargets is
         
         executedRedemptions[_getShareToken()] += investorShareDelta;
         currencyPayout[_getAsset()] += investorBalanceDelta;
-
+        console2.log("cancelledAmount delta", cancelledAmountBefore - cancelledAmountAfter);
+        cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
     }

@@ -73,7 +73,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         _addAssetId(assetId);
     }
 
-    function poolManager_registerAsset_clamped() public  asAdmin {
+    function poolManager_registerAsset_clamped() public {
         poolManager_registerAsset(_getAsset(), 0);
     }
 
@@ -116,7 +116,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         return vault;
     }
 
-    function poolManager_deployVault_clamped() public asAdmin returns (address) {
+    function poolManager_deployVault_clamped() public returns (address) {
         return poolManager_deployVault(true);
     }
 
@@ -125,7 +125,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vault));
     }
 
-    function poolManager_linkVault_clamped() public asAdmin {
+    function poolManager_linkVault_clamped() public {
         poolManager_linkVault(_getVault());
     }
 

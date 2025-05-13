@@ -15,6 +15,7 @@ import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 // Interfaces
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 // Types
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -133,7 +134,14 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
+        uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        
         hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
+
+        uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+
+        uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
+        executedInvestments[_getShareToken()] += escrowShareDelta;
     }
 
     function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {

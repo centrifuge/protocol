@@ -321,4 +321,141 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_totalAssets_solvency();
 
     }
+
+    // forge test --match-test test_property_loss_soundness_1 -vvv 
+    function test_property_loss_soundness_1() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,2,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        hub_addShareClass(1);
+
+        hub_createHolding_clamped(false,0,2,0,0);
+
+        property_loss_soundness();
+
+    }
+
+    // forge test --match-test test_property_equity_soundness_3 -vvv 
+    function test_property_equity_soundness_3() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        hub_addShareClass(2);
+
+        hub_createHolding_clamped(false,0,0,0,2);
+
+        property_equity_soundness();
+
+    }
+
+    // forge test --match-test test_token_transferFrom_4 -vvv 
+    function test_token_transferFrom_4() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        poolManager_addShareClass(hex"12",2,0x0000000000000000000000000000000000000000);
+
+        token_transferFrom(0x00000000000000000000000000000000DeaDBeef,0);
+    }
+
+    // forge test --match-test test_property_price_per_share_overall_13 -vvv 
+    function test_property_price_per_share_overall_13() public {
+
+        shortcut_deployNewTokenPoolAndShare(12,1,false,false,false);
+
+        shortcut_deposit_sync(1000037,1000604);
+
+        property_price_per_share_overall();
+
+    }
+
+    // forge test --match-test test_token_transfer_17 -vvv 
+    function test_token_transfer_17() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        poolManager_addShareClass(hex"22",2,0x0000000000000000000000000000000000000000);
+
+        token_transfer(0x00000000000000000000000000000000DeaDBeef,0);
+
+    }
+
+    // forge test --match-test test_property_total_yield_20 -vvv 
+    function test_property_total_yield_20() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,2,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        hub_addShareClass(1);
+
+        hub_createHolding_clamped(false,0,2,0,2);
+
+        property_total_yield();
+
+    }
+
+    // forge test --match-test test_property_accounting_and_holdings_soundness_23 -vvv 
+    function test_property_accounting_and_holdings_soundness_23() public {
+
+        shortcut_deployNewTokenPoolAndShare(9,2,false,false,false);
+
+        shortcut_deposit_sync(1000190147,1001915877);
+
+        hub_addShareClass(1);
+
+        hub_createLiability_clamped(false,0,0);
+
+        property_accounting_and_holdings_soundness();
+
+    }
+
+    // forge test --match-test test_property_asset_soundness_24 -vvv 
+    function test_property_asset_soundness_24() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        hub_createHolding_clamped(false,0,0,0,0);
+
+        hub_addShareClass(2);
+
+        property_asset_soundness();
+
+    }
+
+    // forge test --match-test test_property_sum_of_possible_account_balances_leq_escrow_25 -vvv 
+    function test_property_sum_of_possible_account_balances_leq_escrow_25() public {
+
+        shortcut_deployNewTokenPoolAndShare(3,1,true,false,false);
+
+        shortcut_mint_sync(0,1000051331928575182604192358708530);
+
+        property_sum_of_possible_account_balances_leq_escrow();
+    }
+
+    // forge test --match-test test_property_gain_soundness_28 -vvv 
+    function test_property_gain_soundness_28() public {
+
+        shortcut_deployNewTokenPoolAndShare(9,2,false,false,false);
+
+        shortcut_deposit_sync(1000091037,1000792738);
+
+        hub_addShareClass(1);
+
+        hub_createHolding_clamped(false,0,0,2,0);
+
+        property_gain_soundness();
+
+    }
+
+
+
+
+    
 }
