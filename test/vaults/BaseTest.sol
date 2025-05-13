@@ -16,6 +16,7 @@ import {newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 // core contracts
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
@@ -35,7 +36,6 @@ import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/vaults/mocks/MockCentrifugeChain.sol";
-import {MockGasService} from "test/common/mocks/MockGasService.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockSafe} from "test/vaults/mocks/MockSafe.sol";
 
@@ -46,7 +46,6 @@ contract BaseTest is VaultsDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
-    MockGasService mockedGasService;
     MockAdapter adapter1;
     MockAdapter adapter2;
     MockAdapter adapter3;
@@ -67,8 +66,14 @@ contract BaseTest is VaultsDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
-    uint256 public defaultGas;
-    uint256 public defaultSubsidy;
+    uint256 public constant ESTIMATE_ADAPTER_1 = 1 gwei;
+    uint256 public constant ESTIMATE_ADAPTER_2 = 1.25 gwei;
+    uint256 public constant ESTIMATE_ADAPTER_3 = 1.75 gwei;
+    uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
+    uint256 public constant GAS_COST_LIMIT = 0.5 gwei;
+    uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
+    uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
+
     uint256 public erc20TokenId = 0;
     uint256 public defaultErc6909TokenId = 16;
     uint128 public defaultAssetId = newAssetId(THIS_CHAIN_ID, 1).raw();
@@ -86,6 +91,7 @@ contract BaseTest is VaultsDeployer, Test {
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
+        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
         deployVaults(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
 
@@ -94,9 +100,9 @@ contract BaseTest is VaultsDeployer, Test {
         adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
         adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
 
-        adapter1.setReturn("estimate", uint256(1 gwei));
-        adapter2.setReturn("estimate", uint256(1.25 gwei));
-        adapter3.setReturn("estimate", uint256(1.75 gwei));
+        adapter1.setReturn("estimate", ESTIMATE_ADAPTER_1);
+        adapter2.setReturn("estimate", ESTIMATE_ADAPTER_2);
+        adapter3.setReturn("estimate", ESTIMATE_ADAPTER_3);
 
         testAdapters.push(adapter1);
         testAdapters.push(adapter2);
@@ -108,17 +114,10 @@ contract BaseTest is VaultsDeployer, Test {
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequestManager);
-        mockedGasService = new MockGasService();
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
         gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
-        gateway.file("gasService", address(mockedGasService));
-
-        mockedGasService.setReturn("estimate", uint256(0.5 gwei));
-
-        defaultGas = gateway.estimate(OTHER_CHAIN_ID, MessageLib.NotifyPool(1).serialize());
-        defaultSubsidy = defaultGas * 100;
 
         // Label contracts
         vm.label(address(root), "Root");
@@ -137,7 +136,6 @@ contract BaseTest is VaultsDeployer, Test {
         vm.label(address(centrifugeChain), "CentrifugeChain");
         vm.label(address(vaultRouter), "VaultRouter");
         vm.label(address(gasService), "GasService");
-        vm.label(address(mockedGasService), "MockGasService");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
         vm.label(address(poolManager.tokenFactory()), "TokenFactory");
@@ -189,7 +187,7 @@ contract BaseTest is VaultsDeployer, Test {
         try poolManager.assetToId(asset, assetTokenId) {
             assetId = poolManager.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId = poolManager.registerAsset{value: defaultGas}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
+            assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
@@ -211,7 +209,7 @@ contract BaseTest is VaultsDeployer, Test {
         poolId = POOL_A.raw();
 
         gateway.setRefundAddress(POOL_A, gateway);
-        gateway.subsidizePool{value: defaultSubsidy}(POOL_A);
+        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)

@@ -223,14 +223,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     /// @param  batchHash The hash value of the incoming batch message.
     function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
-    /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
-    ///         on the destination chain and bridging its payload proofs on n-1 adapter
-    ///         and settling on the destination chain.
-    /// @param  payload Used in gas cost calculations.
-    /// @dev    Currenly the payload is not taken into consideration.
-    /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total);
-
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
     function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
