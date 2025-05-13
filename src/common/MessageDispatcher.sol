@@ -506,38 +506,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IRootMessageSender
-    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            gateway.initiateRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.InitiateRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
-                )
-            );
-        }
-    }
-
-    /// @inheritdoc IRootMessageSender
-    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            gateway.disputeRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.DisputeRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
-                )
-            );
-        }
-    }
-
     /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external

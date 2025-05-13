@@ -19,30 +19,6 @@ contract TestMessageProofCompatibility is Test {
 contract TestMessageLibIdentities is Test {
     using MessageLib for *;
 
-    function testInitiateRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.InitiateRecovery memory a =
-            MessageLib.InitiateRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.InitiateRecovery memory b = MessageLib.deserializeInitiateRecovery(a.serialize());
-
-        assertEq(a.hash, b.hash);
-        assertEq(a.adapter, b.adapter);
-        assertEq(a.centrifugeId, b.centrifugeId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
-    function testDisputeRecovery(bytes32 hash_, bytes32 adapter, uint16 centrifugeId) public pure {
-        MessageLib.DisputeRecovery memory a =
-            MessageLib.DisputeRecovery({hash: hash_, adapter: adapter, centrifugeId: centrifugeId});
-        MessageLib.DisputeRecovery memory b = MessageLib.deserializeDisputeRecovery(a.serialize());
-
-        assertEq(a.hash, b.hash);
-        assertEq(a.adapter, b.adapter);
-        assertEq(a.centrifugeId, b.centrifugeId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-    }
-
     function testScheduleUpgrade(bytes32 target) public pure {
         MessageLib.ScheduleUpgrade memory a = MessageLib.ScheduleUpgrade({target: target});
         MessageLib.ScheduleUpgrade memory b = MessageLib.deserializeScheduleUpgrade(a.serialize());
