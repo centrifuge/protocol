@@ -609,7 +609,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
             : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
-        if (holdings.initialized(poolId, scId, assetId)) {
+        if (holdings.isInitialized(poolId, scId, assetId)) {
             _updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
     }

@@ -136,5 +136,5 @@ interface IHoldings {
         returns (AccountId);
 
     /// @notice Tells if the holding was initialized for an asset in a share class
-    function initialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
+    function isInitialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
 }

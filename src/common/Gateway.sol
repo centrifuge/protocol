@@ -70,7 +70,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         root = root_;
         gasService = gasService_;
 
-        setRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
+        subsidy[GLOBAL_POT].refund = IRecoverable(address(this));
+        emit SetRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
     }
 
     modifier pauseable() {
