@@ -39,18 +39,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev This Property demonstrates that the current actor can reach a non-zero balance
     // This helps get coverage in other areas
-    function property_sentinel_token_balance() public {
+    function property_sentinel_token_balance() public tokenIsSet {
         if (!RECON_USE_SENTINEL_TESTS) {
             return; // Skip if setting is off
-        }
-
-        if (_getShareToken() == address(0)) {
-            return; // Skip
         }
         
         // Dig until we get non-zero share class balance
         // Afaict this will never work
-        eq(IShareToken(_getShareToken()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
+        IBaseVault vault = IBaseVault(_getVault());
+        eq(IShareToken(vault.share()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
     }
 
     // == VAULT == //
@@ -58,15 +55,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_sum_of_shares_received() public tokenIsSet {
         // only valid for async vaults because sync vaults don't have to fulfill deposit requests
-        if(Helpers.isAsyncVault(address(IBaseVault(_getVault())))) {
-            lte(sumOfClaimedDeposits[address(_getShareToken())], sumOfFullfilledDeposits[address(_getShareToken())], "sumOfClaimedDeposits[address(token)] > sumOfFullfilledDeposits[address(token)]");
+        IBaseVault vault = IBaseVault(_getVault());
+        if(Helpers.isAsyncVault(address(vault))) {
+            address shareToken = vault.share();
+            lte(sumOfClaimedDeposits[address(shareToken)], sumOfFullfilledDeposits[address(shareToken)], "sumOfClaimedDeposits[address(shareToken)] > sumOfFullfilledDeposits[address(shareToken)]");
         }
     }
 
     /// @dev Property: the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest
     function property_sum_of_assets_received() public assetIsSet {
         // Redeem and Withdraw
-        lte(sumOfClaimedRedemptions[address(_getAsset())], currencyPayout[address(_getAsset())], "sumOfClaimedRedemptions[address(_getAsset())] > currencyPayout[address(_getAsset())]");
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        lte(sumOfClaimedRedemptions[address(asset)], currencyPayout[address(asset)], "sumOfClaimedRedemptions[address(_getAsset())] > currencyPayout[address(_getAsset())]");
     }
 
     /// @dev Property: the sum of pendingRedeemRequest == payout of the escrow
@@ -90,28 +91,32 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
+        IBaseVault vault = IBaseVault(_getVault());
         uint256 ghostTotalSupply;
-        uint256 totalSupply = IShareToken(_getShareToken()).totalSupply();
+        address shareToken = vault.share();
+        uint256 totalSupply = IShareToken(shareToken).totalSupply();
         unchecked {
             
             // NOTE: Includes `shareMints` which are arbitrary mints
-            ghostTotalSupply = shareMints[address(_getShareToken())] + executedInvestments[address(_getShareToken())] + incomingTransfers[address(_getShareToken())]
-                - outGoingTransfers[address(_getShareToken())] - executedRedemptions[address(_getShareToken())];
+            ghostTotalSupply = shareMints[address(shareToken)] + executedInvestments[address(shareToken)] + incomingTransfers[address(shareToken)]
+                - outGoingTransfers[address(shareToken)] - executedRedemptions[address(shareToken)];
         }
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
 
     /// @dev Property: System addresses should never receive share tokens
     function property_system_addresses_never_receive_share_tokens() public assetIsSet {
-
         address[] memory systemAddresses = _getSystemAddresses();
         uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        address shareToken = vault.share();
 
         // NOTE: Skipping root and gateway since we mocked them
         for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
-            if (MockERC20(_getAsset()).balanceOf(systemAddresses[i]) > 0) {
+            if (MockERC20(asset).balanceOf(systemAddresses[i]) > 0) {
                 emit DebugNumber(i); // Number to index
-                eq(IShareToken(_getShareToken()).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
+                eq(IShareToken(shareToken).balanceOf(systemAddresses[i]), 0, "token.balanceOf(systemAddresses[i]) != 0");
             }
         }
     }
@@ -120,7 +125,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_sum_of_assets_received_on_claim_cancel_deposit_request() public assetIsSet {
         // claimCancelDepositRequest
         // investmentManager_fulfillCancelDepositRequest
-        lte(sumOfClaimedDepositCancelations[address(IBaseVault(_getVault()).asset())], cancelDepositCurrencyPayout[address(IBaseVault(_getVault()).asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        lte(sumOfClaimedDepositCancelations[address(asset)], cancelDepositCurrencyPayout[address(asset)], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
     /// @dev Property (inductive): Sum of assets received on claimCancelDepositRequest <= sum of fulfillCancelDepositRequest.assets
@@ -139,7 +146,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of share class tokens received on claimCancelRedeemRequest <= sum of fulfillCancelRedeemRequest.shares
     function property_sum_of_received_leq_fulfilled() public tokenIsSet {
         // claimCancelRedeemRequest
-        lte(sumOfClaimedRedeemCancelations[address(_getShareToken())], cancelRedeemShareTokenPayout[address(_getShareToken())], "sumOfClaimedRedeemCancelations !<= cancelRedeemShareTokenPayout");
+        IBaseVault vault = IBaseVault(_getVault());
+        lte(sumOfClaimedRedeemCancelations[address(vault.share())], cancelRedeemShareTokenPayout[address(vault.share())], "sumOfClaimedRedeemCancelations !<= cancelRedeemShareTokenPayout");
     }
 
     /// @dev Property (inductive): Sum of share class tokens received on claimCancelRedeemRequest <= sum of fulfillCancelRedeemRequest.shares
@@ -160,17 +168,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of balances equals total supply
     function property_sum_of_balances() public tokenIsSet {
         address[] memory actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        address shareToken = vault.share();
 
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try IShareToken(_getShareToken()).balanceOf(actors[i]) returns (uint256 bal) {
+            try IShareToken(shareToken).balanceOf(actors[i]) returns (uint256 bal) {
                 acc += bal;
             } catch {}
         }
 
         // NOTE: This ensures that supply doesn't overflow
-        lte(acc, IShareToken(_getShareToken()).totalSupply(), "sum of user balances > token.totalSupply()");
+        lte(acc, IShareToken(shareToken).totalSupply(), "sum of user balances > token.totalSupply()");
     }
 
     /// @dev Property: The price at which a user deposit is made is bounded by the price when the request was fulfilled
@@ -223,7 +233,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (address(globalEscrow) == address(0)) {
             return;
         }
-        if (_getAsset() == address(0)) {
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        if (asset == address(0)) {
             return;
         }
 
@@ -232,8 +244,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // functions permanently reverting
         
         uint256 ghostBalOfEscrow;
-        address asset = IBaseVault(_getVault()).asset();
-        address poolEscrow = address(poolEscrowFactory.escrow(PoolId.wrap(_getPool())));
+        PoolId poolId = vault.poolId();
+        address poolEscrow = address(poolEscrowFactory.escrow(poolId));
         uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow));
         unchecked {
@@ -256,13 +268,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
+        IBaseVault vault = IBaseVault(_getVault());
+        address shareToken = vault.share();
         uint256 ghostBalanceOfEscrow;
-        uint256 balanceOfEscrow = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
         unchecked {        
             ghostBalanceOfEscrow = (
-                sumOfFullfilledDeposits[address(_getShareToken())] + sumOfRedeemRequests[address(_getShareToken())]
-                        - sumOfClaimedDeposits[address(_getShareToken())] - sumOfClaimedRedeemCancelations[address(_getShareToken())]
-                        - sumOfClaimedRequests[address(_getShareToken())]
+                sumOfFullfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)]
+                        - sumOfClaimedDeposits[address(shareToken)] - sumOfClaimedRedeemCancelations[address(shareToken)]
+                        - sumOfClaimedRequests[address(shareToken)]
             );
         }
         eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");
@@ -272,14 +286,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The sum of account balances is always <= the balance of the escrow
     function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
-        uint256 balOfEscrow = MockERC20(_getAsset()).balanceOf(address(globalEscrow));
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
 
         // Use acc to track max amount withdrawable for each actor
         address[] memory actors = _getActors();
         uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try IBaseVault(_getVault()).maxWithdraw(actors[i]) returns (uint256 amt) {
+            try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
                 emit DebugWithString("maxWithdraw", amt);
                 acc += amt;
             } catch {}
@@ -303,7 +318,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             console2.log("max %e", max);
         } else {
             // Async vault - use global escrow balance
-            max = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+            max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
         }
         
         // Use acc to get maxMint for each actor
@@ -422,10 +437,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_deposits() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(vault.poolId());
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.depositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedDepositRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.depositRequest(scId, assetId, actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedDepositRequest(scId, assetId, actors[i].toBytes32());
 
             eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits");
         }
@@ -435,10 +453,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_actor_pending_and_queued_redemptions() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(vault.poolId());
 
         for(uint256 i; i < actors.length; i++) {
-            (uint128 pending, ) = shareClassManager.redeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
-            (, uint128 queued) = shareClassManager.queuedRedeemRequest(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), actors[i].toBytes32());
+            (uint128 pending, ) = shareClassManager.redeemRequest(scId, assetId, actors[i].toBytes32());
+            (, uint128 queued) = shareClassManager.queuedRedeemRequest(scId, assetId, actors[i].toBytes32());
 
             eq(requestRedeeemed[actors[i]] - cancelledRedemptions[actors[i]] - redemptionsProcessed[actors[i]], pending + queued, "property_actor_pending_and_queued_redemptions");
         }
@@ -479,7 +500,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             }
 
             // if the share amount changed, check if it used the correct price per share set by the admin
-            (, D18 navPerShare) = shareClassManager.metrics(ShareClassId.wrap(_getShareClassId()));
+            IBaseVault vault = IBaseVault(_getVault());
+            (, D18 navPerShare) = shareClassManager.metrics(vault.scId());
             uint256 expectedShareDelta = navPerShare.mulUint256(assetDelta, MathLib.Rounding.Down);
             eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
         }
