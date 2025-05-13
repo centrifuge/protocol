@@ -130,9 +130,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             }
         }
 
-        sender.sendFulfilledDepositRequest(
-            poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount
-        );
+        // Protect against potential griefing attack vector
+        if (totalPaymentAssetAmount > 0) {
+            sender.sendFulfilledDepositRequest(
+                poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount
+            );
+        }
 
         // If cancellation was queued, notify about delayed cancellation
         if (cancelledAssetAmount > 0) {
@@ -170,9 +173,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             }
         }
 
-        sender.sendFulfilledRedeemRequest(
-            poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount
-        );
+        // Protect against potential griefing attack vector
+        if (totalPaymentShareAmount > 0) {
+            sender.sendFulfilledRedeemRequest(
+                poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount
+            );
+        }
 
         // If cancellation was queued, notify about delayed cancellation
         if (cancelledShareAmount > 0) {
