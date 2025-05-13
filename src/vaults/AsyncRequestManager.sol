@@ -191,8 +191,9 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
         poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
 
+        globalEscrow.authTransferTo(address(poolManager.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
-        balanceSheet.revoke(poolId, scId, address(globalEscrow), shareAmount);
+        balanceSheet.revoke(poolId, scId, shareAmount);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler

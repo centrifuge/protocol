@@ -114,7 +114,7 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
         (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
@@ -943,7 +943,6 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        bytes32 who;
         uint128 amount;
         uint128 pricePerUnit;
         uint64 timestamp;
@@ -957,11 +956,10 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            who: data.toBytes32(41),
-            amount: data.toUint128(73),
-            pricePerUnit: data.toUint128(89),
-            timestamp: data.toUint64(105),
-            isIncrease: data.toBool(113)
+            amount: data.toUint128(41),
+            pricePerUnit: data.toUint128(57),
+            timestamp: data.toUint64(73),
+            isIncrease: data.toBool(81)
         });
     }
 
@@ -971,7 +969,6 @@ library MessageLib {
             t.poolId,
             t.scId,
             t.assetId,
-            t.who,
             t.amount,
             t.pricePerUnit,
             t.timestamp,

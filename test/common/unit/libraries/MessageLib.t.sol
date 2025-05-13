@@ -496,7 +496,6 @@ contract TestMessageLibIdentities is Test {
         uint64 poolId,
         bytes16 scId,
         uint128 assetId,
-        bytes32 who,
         uint128 amount,
         uint128 pricePerUnit,
         uint64 timestamp,
@@ -506,7 +505,6 @@ contract TestMessageLibIdentities is Test {
             poolId: poolId,
             scId: scId,
             assetId: assetId,
-            who: who,
             amount: amount,
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
@@ -518,7 +516,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.who, b.who);
         assertEq(a.amount, b.amount);
         assertEq(a.pricePerUnit, b.pricePerUnit);
         assertEq(a.timestamp, b.timestamp);
