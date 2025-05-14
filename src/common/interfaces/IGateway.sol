@@ -73,8 +73,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
-    event RecoverMessage(IAdapter adapter, bytes message);
-    event RecoverProof(IAdapter adapter, bytes32 batchHash);
     event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
