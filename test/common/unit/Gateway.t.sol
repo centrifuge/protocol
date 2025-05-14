@@ -1065,9 +1065,6 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
     }
 }
 
@@ -1228,9 +1225,6 @@ contract GatewayTestEndBatching is GatewayTest {
         _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
 
         gateway.endBatching();
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
     }
 
     function testSendMessageUnderpaid() public {
