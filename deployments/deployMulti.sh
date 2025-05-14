@@ -120,7 +120,7 @@ for NET in "${NETWORKS[@]}"; do
 
   echo "🚀 Deploying adapters [${ADAPTERS[*]}] to [$NET]  (test=$TEST broadcast=$BROADCAST)"
 
-  forge script "script/adapters/${DEPLOYER}.s.sol:${DEPLOYER}" \
+  forge script "script/${DEPLOYER}.s.sol:${DEPLOYER}" \
         --optimize \
         --rpc-url "$RPCURL" \
         --private-key "$PRIVATE_KEY" \
