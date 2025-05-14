@@ -129,15 +129,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             }
         }
 
-        if (totalPaymentAssetAmount > 0) {
+        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
             sender.sendFulfilledDepositRequest(
-                poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount
+                poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
             );
-        }
-
-        // If cancellation was queued, notify about delayed cancellation
-        if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, cancelledAssetAmount);
         }
     }
 
@@ -171,15 +166,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             }
         }
 
-        if (totalPaymentShareAmount > 0) {
+        if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
             sender.sendFulfilledRedeemRequest(
-                poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount
+                poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
             );
-        }
-
-        // If cancellation was queued, notify about delayed cancellation
-        if (cancelledShareAmount > 0) {
-            sender.sendFulfilledCancelRedeemRequest(poolId, scId, assetId, investor, cancelledShareAmount);
         }
     }
 
@@ -579,7 +569,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
+            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
         }
     }
 
@@ -591,7 +581,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
         }
     }
 

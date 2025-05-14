@@ -93,7 +93,7 @@ contract VaultRouterTest is BaseTest {
         }
 
         // trigger - deposit order fulfillment
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
@@ -164,7 +164,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault, address(this));
         vm.stopPrank();
 
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
@@ -211,7 +211,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = DEFAULT_GAS;
         vaultRouter.requestDeposit{value: fuel}(vault, amount, self, self);
 
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
         IShareToken shareToken = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault, self, self);
         shareToken.approve(address(vaultRouter), sharePayout);
@@ -258,8 +258,8 @@ contract VaultRouterTest is BaseTest {
         // trigger - deposit order fulfillment
         AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
         AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
         assertEq(vault1.maxMint(self), sharePayout1);
         assertEq(vault2.maxMint(self), sharePayout2);
@@ -299,8 +299,8 @@ contract VaultRouterTest is BaseTest {
 
         AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
         AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
         vaultRouter.claimDeposit(vault1, self, self);
         vaultRouter.claimDeposit(vault2, self, self);
 
@@ -369,7 +369,7 @@ contract VaultRouterTest is BaseTest {
         calls[0] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, self, fuel);
         vaultRouter.multicall{value: fuel}(calls);
 
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
 
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
@@ -393,7 +393,7 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = DEFAULT_GAS;
         vaultRouter.requestDeposit{value: fuel}(vault, amount, self, self);
 
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, self);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, self);
         IShareToken shareToken = IShareToken(address(vault.share()));
         shareToken.approve(address(vaultRouter), sharePayout);
 
@@ -430,8 +430,8 @@ contract VaultRouterTest is BaseTest {
         // trigger - deposit order fulfillment
         AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
         AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
-        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, self);
-        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, self);
+        (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
+        (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
         assertEq(vault1.maxMint(self), sharePayout1);
         assertEq(vault2.maxMint(self), sharePayout2);
@@ -472,7 +472,7 @@ contract VaultRouterTest is BaseTest {
         calls[2] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, investor, fuel);
         vaultRouter.multicall{value: fuel}(calls);
 
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, investor);
 
         assertEq(vault.maxMint(investor), sharePayout);
         assertEq(vault.maxDeposit(investor), amount);
@@ -563,7 +563,7 @@ contract VaultRouterTest is BaseTest {
         // Anyone else can execute the request and claim the deposit
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
         vaultRouter.executeLockedDepositRequest{value: fuel}(vault, investor);
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, investor);
+        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, investor);
 
         IShareToken shareToken = IShareToken(address(vault.share()));
         vaultRouter.claimDeposit(vault, investor, investor);
@@ -701,16 +701,25 @@ contract VaultRouterTest is BaseTest {
     }
 
     // --- helpers ---
-    function fulfillDepositRequest(AsyncVault vault, uint128 assetId, uint256 amount, address user)
-        public
-        returns (uint128 sharePayout)
-    {
+    function fulfillDepositRequest(
+        AsyncVault vault,
+        uint128 assetId,
+        uint256 fulfilledAssetAmount,
+        uint128 cancelledAssetAmount,
+        address user
+    ) public returns (uint128 sharePayout) {
         uint128 price = 2 * 10 ** 18;
-        sharePayout = uint128(amount * 10 ** 18 / price);
-        assertApproxEqAbs(sharePayout, amount / 2, 2);
+        sharePayout = uint128(fulfilledAssetAmount * 10 ** 18 / price);
+        assertApproxEqAbs(sharePayout, fulfilledAssetAmount / 2, 2);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(user)), assetId, uint128(amount), sharePayout
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(user)),
+            assetId,
+            uint128(fulfilledAssetAmount),
+            sharePayout,
+            cancelledAssetAmount
         );
     }
 
@@ -723,7 +732,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(assetPayout, amount * 2, 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(user)), assetId, assetPayout, uint128(amount), 0
         );
     }
 

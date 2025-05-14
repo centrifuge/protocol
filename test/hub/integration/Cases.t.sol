@@ -95,6 +95,9 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE
         );
 
+        // Queue cancellation request which is fulfilled when claiming
+        cv.cancelDepositRequest(poolId, scId, USDC_C2, INVESTOR);
+
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
         hub.notifyDeposit{value: GAS}(
@@ -117,9 +120,9 @@ contract TestCases is BaseTest {
         assertEq(m2.scId, scId.raw());
         assertEq(m2.investor, INVESTOR);
         assertEq(m2.assetId, USDC_C2.raw());
-        assertEq(m2.assetAmount, APPROVED_INVESTOR_AMOUNT);
+        assertEq(m2.fulfilledAssetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(
-            m2.shareAmount,
+            m2.fulfilledShareAmount,
             PricingLib.convertWithPrice(
                 APPROVED_INVESTOR_AMOUNT,
                 hubRegistry.decimals(USDC_C2),
@@ -127,6 +130,7 @@ contract TestCases is BaseTest {
                 NAV_PER_SHARE.reciprocal()
             ).toUint128()
         );
+        assertEq(m2.cancelledAssetAmount, INVESTOR_AMOUNT - APPROVED_INVESTOR_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
@@ -147,6 +151,9 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
         );
 
+        // Queue cancellation request which is fulfilled when claiming
+        cv.cancelRedeemRequest(poolId, scId, USDC_C2, INVESTOR);
+
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
         hub.notifyRedeem{value: GAS}(
@@ -164,8 +171,9 @@ contract TestCases is BaseTest {
         assertEq(m1.scId, scId.raw());
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.assetAmount, revokedAssetAmount);
-        assertEq(m1.shareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.fulfilledAssetAmount, revokedAssetAmount);
+        assertEq(m1.fulfilledShareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.cancelledShareAmount, SHARE_AMOUNT - APPROVED_SHARE_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
