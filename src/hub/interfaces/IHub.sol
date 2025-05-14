@@ -98,9 +98,6 @@ interface IHub {
     /// @param centrifugeId Chain where CV instance lives
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable;
 
-    /// @notice Enable/disable a chain for a pool
-    function updateChain(PoolId poolId, uint16 centrifugeId, bool enabled) external payable;
-
     /// @notice Notify to a CV instance that a new share class is available
     /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
