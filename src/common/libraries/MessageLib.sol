@@ -5,6 +5,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
@@ -36,10 +37,10 @@ enum MessageType {
     // -- Investment manager messages
     DepositRequest,
     RedeemRequest,
-    FulfilledDepositRequest,
-    FulfilledRedeemRequest,
     CancelDepositRequest,
     CancelRedeemRequest,
+    FulfilledDepositRequest,
+    FulfilledRedeemRequest,
     FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
     // -- BalanceSheet messages
@@ -77,12 +78,6 @@ enum VaultUpdateKind {
     Unlink
 }
 
-enum MessageDirection {
-    AnyToAny,
-    HubToVaults,
-    VaultsToHub
-}
-
 library MessageLib {
     using MessageLib for bytes;
     using BytesLib for bytes;
@@ -116,10 +111,10 @@ library MessageLib {
         (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
-        (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
-        (105 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
         (73  << uint8(MessageType.CancelDepositRequest) * 8) +
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
+        (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
+        (105 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
@@ -167,21 +162,21 @@ library MessageLib {
         }
     }
 
-    function messageDirection(bytes memory message) internal pure returns (MessageDirection) {
+    function messageSourceCentrifugeId(bytes memory message) internal pure returns (uint16) {
         uint8 kind = message.toUint8(0);
 
         if (kind <= uint8(MessageType.RecoverTokens)) {
-            // All messages from InitiateRecovery to RecoverTokens are bidirectional.
-            return MessageDirection.AnyToAny;
-        } else if (
-            kind == uint8(MessageType.RegisterAsset) || kind == uint8(MessageType.DepositRequest)
-                || kind == uint8(MessageType.RedeemRequest) || kind == uint8(MessageType.CancelDepositRequest)
-                || kind == uint8(MessageType.CancelRedeemRequest) || kind == uint8(MessageType.UpdateHoldingAmount)
-                || kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)
-        ) {
-            return MessageDirection.VaultsToHub;
+            return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
+            return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.RegisterAsset)) {
+            return AssetId.wrap(message.toUint128(1)).centrifugeId();
+        } else if (kind >= uint8(MessageType.DepositRequest) && kind <= uint8(MessageType.CancelRedeemRequest)) {
+            return AssetId.wrap(message.toUint128(57)).centrifugeId();
+        } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
+            return AssetId.wrap(message.toUint128(25)).centrifugeId();
         } else {
-            return MessageDirection.HubToVaults;
+            return message.messagePoolId().centrifugeId();
         }
     }
 
