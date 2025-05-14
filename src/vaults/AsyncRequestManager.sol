@@ -245,7 +245,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
 
         if (cancelledShares > 0) {
-            require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
+            require(state.pendingCancelRedeemRequest, NoPendingRequest());
             state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + cancelledShares;
         }
 
