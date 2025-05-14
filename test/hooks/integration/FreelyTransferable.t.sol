@@ -39,7 +39,8 @@ contract RedemptionRestrictionsTest is BaseTest {
             bytes32(bytes20(investor)),
             assetId,
             uint128(amount),
-            uint128(amount)
+            uint128(amount),
+            0
         );
 
         vm.prank(investor);

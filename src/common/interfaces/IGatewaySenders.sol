@@ -73,8 +73,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -85,15 +86,6 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 investor,
         uint128 assetAmount,
         uint128 shareAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledAmount
     ) external;
 
     /// @notice Creates and send the message

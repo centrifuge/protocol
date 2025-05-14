@@ -117,9 +117,9 @@ contract TestCases is BaseTest {
         assertEq(m2.scId, scId.raw());
         assertEq(m2.investor, INVESTOR);
         assertEq(m2.assetId, USDC_C2.raw());
-        assertEq(m2.assetAmount, APPROVED_INVESTOR_AMOUNT);
+        assertEq(m2.fulfilledAssetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(
-            m2.shareAmount,
+            m2.fulfilledShareAmount,
             PricingLib.convertWithPrice(
                 APPROVED_INVESTOR_AMOUNT,
                 hubRegistry.decimals(USDC_C2),
@@ -127,6 +127,7 @@ contract TestCases is BaseTest {
                 NAV_PER_SHARE.reciprocal()
             ).toUint128()
         );
+        assertEq(m2.cancelledAssetAmount, 0);
     }
 
     /// forge-config: default.isolate = true

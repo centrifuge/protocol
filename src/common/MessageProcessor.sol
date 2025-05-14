@@ -149,8 +149,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.investor.toAddress(),
                 AssetId.wrap(m.assetId),
-                m.assetAmount,
-                m.shareAmount
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledAssetAmount
             );
         } else if (kind == MessageType.FulfilledRedeemRequest) {
             MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
@@ -161,16 +162,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.assetAmount,
                 m.shareAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelDepositRequest) {
-            MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
-            investmentManager.fulfillCancelDepositRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.cancelledAmount,
-                m.cancelledAmount
             );
         } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
             MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();

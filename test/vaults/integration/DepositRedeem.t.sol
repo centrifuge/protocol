@@ -40,7 +40,7 @@ contract DepositRedeem is BaseTest {
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout, 0
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
@@ -49,7 +49,7 @@ contract DepositRedeem is BaseTest {
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout, 0
         );
 
         (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);

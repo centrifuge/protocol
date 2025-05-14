@@ -193,12 +193,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             investmentManager.fulfillDepositRequest(
-                poolId, scId, investor.toAddress(), assetId, assetAmount, shareAmount
+                poolId, scId, investor.toAddress(), assetId, fulfilledAssetAmount, fulfilledShareAmount, cancelledAssetAmount
             );
         } else {
             gateway.send(
@@ -208,8 +209,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     scId: scId.raw(),
                     investor: investor,
                     assetId: assetId.raw(),
-                    assetAmount: assetAmount,
-                    shareAmount: shareAmount
+                    fulfilledAssetAmount: fulfilledAssetAmount,
+                    fulfilledShareAmount: fulfilledShareAmount,
+                    cancelledAssetAmount: cancelledAssetAmount
                 }).serialize()
             );
         }
@@ -238,32 +240,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     assetAmount: assetAmount,
                     shareAmount: shareAmount
-                }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IPoolMessageSender
-    function sendFulfilledCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledAmount
-    ) external auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            investmentManager.fulfillCancelDepositRequest(
-                poolId, scId, investor.toAddress(), assetId, cancelledAmount, cancelledAmount
-            );
-        } else {
-            gateway.send(
-                assetId.centrifugeId(),
-                MessageLib.FulfilledCancelDepositRequest({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    investor: investor,
-                    assetId: assetId.raw(),
-                    cancelledAmount: cancelledAmount
                 }).serialize()
             );
         }

@@ -39,7 +39,6 @@ enum MessageType {
     FulfilledRedeemRequest,
     CancelDepositRequest,
     CancelRedeemRequest,
-    FulfilledCancelDepositRequest,
     FulfilledCancelRedeemRequest,
     // -- BalanceSheet messages
     UpdateHoldingAmount,
@@ -108,20 +107,19 @@ library MessageLib {
         (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
-        (105 << uint8(MessageType.FulfilledDepositRequest) * 8) +
+        (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
         (105 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
         (73  << uint8(MessageType.CancelDepositRequest) * 8) +
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
-        (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
         (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
+        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
+        (41 << uint8(MessageType.TriggerSubmitQueuedAssets) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
-        (41 << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (26 << (uint8(MessageType.SetQueue) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -808,8 +806,9 @@ library MessageLib {
         bytes16 scId;
         bytes32 investor;
         uint128 assetId;
-        uint128 assetAmount;
-        uint128 shareAmount;
+        uint128 fulfilledAssetAmount;
+        uint128 fulfilledShareAmount;
+        uint128 cancelledAssetAmount;
     }
 
     function deserializeFulfilledDepositRequest(bytes memory data)
@@ -823,14 +822,22 @@ library MessageLib {
             scId: data.toBytes16(9),
             investor: data.toBytes32(25),
             assetId: data.toUint128(57),
-            assetAmount: data.toUint128(73),
-            shareAmount: data.toUint128(89)
+            fulfilledAssetAmount: data.toUint128(73),
+            fulfilledShareAmount: data.toUint128(89),
+            cancelledAssetAmount: data.toUint128(105)
         });
     }
 
     function serialize(FulfilledDepositRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.FulfilledDepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.assetAmount, t.shareAmount
+            MessageType.FulfilledDepositRequest,
+            t.poolId,
+            t.scId,
+            t.investor,
+            t.assetId,
+            t.fulfilledAssetAmount,
+            t.fulfilledShareAmount,
+            t.cancelledAssetAmount
         );
     }
 
@@ -866,39 +873,6 @@ library MessageLib {
     function serialize(FulfilledRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
             MessageType.FulfilledRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.assetAmount, t.shareAmount
-        );
-    }
-
-    //---------------------------------------
-    //    FulfilledCancelDepositRequest
-    //---------------------------------------
-
-    struct FulfilledCancelDepositRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 cancelledAmount;
-    }
-
-    function deserializeFulfilledCancelDepositRequest(bytes memory data)
-        internal
-        pure
-        returns (FulfilledCancelDepositRequest memory)
-    {
-        require(messageType(data) == MessageType.FulfilledCancelDepositRequest, UnknownMessageType());
-        return FulfilledCancelDepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            cancelledAmount: data.toUint128(73)
-        });
-    }
-
-    function serialize(FulfilledCancelDepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.FulfilledCancelDepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.cancelledAmount
         );
     }
 

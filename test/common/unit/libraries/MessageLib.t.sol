@@ -357,16 +357,18 @@ contract TestMessageLibIdentities is Test {
         bytes16 scId,
         bytes32 investor,
         uint128 assetId,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) public pure {
         MessageLib.FulfilledDepositRequest memory a = MessageLib.FulfilledDepositRequest({
             poolId: poolId,
             scId: scId,
             investor: investor,
             assetId: assetId,
-            assetAmount: assetAmount,
-            shareAmount: shareAmount
+            fulfilledAssetAmount: fulfilledAssetAmount,
+            fulfilledShareAmount: fulfilledShareAmount,
+            cancelledAssetAmount: cancelledAssetAmount
         });
         MessageLib.FulfilledDepositRequest memory b = MessageLib.deserializeFulfilledDepositRequest(a.serialize());
 
@@ -374,8 +376,9 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
-        assertEq(a.assetAmount, b.assetAmount);
-        assertEq(a.shareAmount, b.shareAmount);
+        assertEq(a.fulfilledAssetAmount, b.fulfilledAssetAmount);
+        assertEq(a.fulfilledShareAmount, b.fulfilledShareAmount);
+        assertEq(a.cancelledAssetAmount, b.cancelledAssetAmount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -433,33 +436,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(a.investor, b.investor);
         assertEq(a.assetId, b.assetId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-    }
-
-    function testFulfilledCancelDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 investor,
-        uint128 assetId,
-        uint128 cancelledAmount
-    ) public pure {
-        MessageLib.FulfilledCancelDepositRequest memory a = MessageLib.FulfilledCancelDepositRequest({
-            poolId: poolId,
-            scId: scId,
-            investor: investor,
-            assetId: assetId,
-            cancelledAmount: cancelledAmount
-        });
-        MessageLib.FulfilledCancelDepositRequest memory b =
-            MessageLib.deserializeFulfilledCancelDepositRequest(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.cancelledAmount, b.cancelledAmount);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);

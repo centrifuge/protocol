@@ -33,7 +33,7 @@ contract AssetShareConversionTest is BaseTest {
         // trigger executed collectInvest at a price of 1.0
         uint128 shares = 100000000000000000000; // 100 * 10**18
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
+            poolId, scId, bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares, 0
         );
         vault.mint(shares, self);
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
@@ -90,7 +90,7 @@ contract AssetShareConversionTest is BaseTest {
         // trigger executed collectInvest at a price of 1.0
         uint128 shares = 100000000; // 100 * 10**6
         centrifugeChain.isFulfilledDepositRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
+            poolId, scId, bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares, 0
         );
         vault.mint(shares, self);
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000, uint64(block.timestamp));

@@ -238,7 +238,7 @@ contract RedeemTest is BaseTest {
 
         uint128 shares = 100000000;
         centrifugeChain.isFulfilledDepositRequest(
-            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares
+            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares, 0
         );
 
         (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
