@@ -1,0 +1,226 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/IMultiAdapter.sol";
+
+/// @title  Axelar Adapter
+/// @notice Routing contract that integrates with an Axelar Gateway
+contract MultiAdapter is Auth, IMultiAdapter {
+    using CastLib for *;
+    using MessageProofLib for *;
+    using BytesLib for bytes;
+    using ArrayLib for uint16[8];
+    using MathLib for uint256;
+
+    uint8 public constant PRIMARY_ADAPTER_ID = 1;
+    uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
+
+    uint16 public immutable localCentrifugeId;
+    IMessageHandler public immutable gateway;
+
+    mapping(uint16 centrifugeId => IAdapter[]) public adapters;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
+    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Inbound)) public inbound;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 painbound => uint256 timestamp))) public
+        recoveries;
+
+    constructor(IMessageHandler gateway_, uint16 localCentrifugeId_, address deployer) Auth(deployer) {
+        gateway = gateway_;
+        localCentrifugeId = localCentrifugeId_;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata addresses) external auth {
+        if (what == "adapters") {
+            uint8 quorum_ = addresses.length.toUint8();
+            require(quorum_ != 0, EmptyAdapterSet());
+            require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
+
+            // Increment session id to reset pending votes
+            uint256 numAdapters = adapters[centrifugeId].length;
+            uint64 sessionId =
+                numAdapters > 0 ? _activeAdapters[centrifugeId][adapters[centrifugeId][0]].activeSessionId + 1 : 0;
+
+            // Disable old adapters
+            for (uint8 i; i < numAdapters; i++) {
+                delete _activeAdapters[centrifugeId][adapters[centrifugeId][i]];
+            }
+
+            // Enable new adapters, setting quorum to number of adapters
+            for (uint8 j; j < quorum_; j++) {
+                require(_activeAdapters[centrifugeId][addresses[j]].id == 0, NoDuplicatesAllowed());
+
+                // Ids are assigned sequentially starting at 1
+                _activeAdapters[centrifugeId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+            }
+
+            adapters[centrifugeId] = addresses;
+        } else {
+            revert FileUnrecognizedParam();
+        }
+
+        emit File(what, centrifugeId, addresses);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Incoming
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IMessageHandler
+    function handle(uint16 centrifugeId, bytes calldata payload) external {
+        _handle(centrifugeId, payload, IAdapter(msg.sender));
+    }
+
+    function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
+        Adapter memory adapter = _activeAdapters[centrifugeId][adapter_];
+        require(adapter.id != 0, InvalidAdapter());
+
+        // Verify adapter and parse message hash
+        bytes32 batchHash;
+        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
+        if (isMessageProof) {
+            require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
+
+            batchHash = payload.deserializeMessageProof();
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
+            emit HandleProof(centrifugeId, payloadId, batchHash, adapter_);
+        } else {
+            require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
+
+            batchHash = keccak256(payload);
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
+            emit HandleBatch(centrifugeId, payloadId, payload, adapter_);
+        }
+
+        // Special case for gas efficiency
+        if (adapter.quorum == 1 && !isMessageProof) {
+            gateway.handle(centrifugeId, payload);
+            return;
+        }
+
+        Inbound storage state = inbound[centrifugeId][batchHash];
+
+        if (adapter.activeSessionId != state.sessionId) {
+            // Clear votes from previous session
+            delete state.votes;
+            state.sessionId = adapter.activeSessionId;
+        }
+
+        // Increase vote
+        state.votes[adapter.id - 1]++;
+
+        if (state.votes.countNonZeroValues() >= adapter.quorum) {
+            // Reduce votes by quorum
+            state.votes.decreaseFirstNValues(adapter.quorum);
+
+            if (isMessageProof) {
+                gateway.handle(centrifugeId, state.pendingBatch);
+            } else {
+                gateway.handle(centrifugeId, payload);
+            }
+
+            // Only if there are no more pending messages, remove the pending message
+            if (state.votes.isEmpty()) {
+                delete state.pendingBatch;
+            }
+        } else if (!isMessageProof) {
+            state.pendingBatch = payload;
+        }
+    }
+
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+        require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
+        recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+        emit InitiateRecovery(centrifugeId, payloadHash, adapter);
+    }
+
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+        delete recoveries[centrifugeId][adapter][payloadHash];
+        emit DisputeRecovery(centrifugeId, payloadHash, adapter);
+    }
+
+    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
+        bytes32 payloadHash = keccak256(payload);
+        uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
+
+        require(recovery != 0, RecoveryNotInitiated());
+        require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
+
+        delete recoveries[centrifugeId][adapter][payloadHash];
+        _handle(centrifugeId, payload, adapter);
+        emit ExecuteRecovery(centrifugeId, payload, adapter);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Outgoing
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAdapter
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+        external
+        payable
+        returns (bytes32)
+    {
+        require(msg.sender == address(gateway), NotGateway());
+
+        IAdapter[] memory adapters_ = adapters[centrifugeId];
+        bytes32 hash = keccak256(payload);
+        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, hash));
+        bytes memory proof = hash.serializeMessageProof();
+
+        for (uint256 i; i < adapters_.length; i++) {
+            bytes memory adapterPayload = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
+
+            uint256 cost = adapters_[i].estimate(centrifugeId, adapterPayload, gasLimit);
+            bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, adapterPayload, gasLimit, refund);
+
+            if (i == PRIMARY_ADAPTER_ID - 1) {
+                emit SendBatch(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund);
+            } else {
+                emit SendProof(centrifugeId, payloadId, hash, adapters_[i], adapterData);
+            }
+        }
+
+        return bytes32(0);
+    }
+
+    /// @inheritdoc IAdapter
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit)
+        public
+        view
+        returns (uint256 total)
+    {
+        IAdapter[] memory adapters_ = adapters[centrifugeId];
+        bytes memory proof = keccak256(payload).serializeMessageProof();
+
+        for (uint256 i; i < adapters_.length; i++) {
+            total += adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit);
+        }
+    }
+
+    function quorum(uint16 centrifugeId) external view returns (uint8) {
+        Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
+        return adapter.quorum;
+    }
+
+    function activeSessionId(uint16 centrifugeId) external view returns (uint64) {
+        Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
+        return adapter.activeSessionId;
+    }
+
+    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+        return inbound[centrifugeId][batchHash].votes;
+    }
+}
