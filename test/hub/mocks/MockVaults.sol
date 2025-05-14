@@ -69,6 +69,34 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        public
+    {
+        handler.handle(
+            sourceChainId,
+            MessageLib.CancelDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw()
+            }).serialize()
+        );
+    }
+
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        public
+    {
+        handler.handle(
+            sourceChainId,
+            MessageLib.CancelRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw()
+            }).serialize()
+        );
+    }
+
     function send(uint16, bytes memory data, uint256, address) external payable returns (bytes32 adapterData) {
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();
