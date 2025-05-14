@@ -125,8 +125,6 @@ contract PoolManager is
 
         gateway.payTransaction{value: msg.value}(msg.sender);
 
-        // TODO: also subsidize for cost from hub => target vault chain
-
         share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
