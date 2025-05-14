@@ -17,30 +17,39 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
 
-contract HubHelpers is Auth {
+contract HubHelpers is Auth, IHubHelpers {
     using MathLib for uint256;
 
-    IHub public immutable hub;
     IHoldings public immutable holdings;
     IHubRegistry public immutable hubRegistry;
 
-    constructor(IHub hub_, IHoldings holdings_, IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
-        hub = hub_;
+    IHub public hub;
+
+    constructor(IHoldings holdings_, IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         holdings = holdings_;
         hubRegistry = hubRegistry_;
+    }
+
+    /// @inheritdoc IHubHelpers
+    function file(bytes32 what, address data) external auth {
+        if (what == "hub") hub = IHub(data);
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
     }
 
     //----------------------------------------------------------------------------------------------
     //  Auth methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHub
+    /// @inheritdoc IHubHelpers
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         auth
@@ -66,7 +75,7 @@ contract HubHelpers is Auth {
         }
     }
 
-    /// @inheritdoc IHub
+    /// @inheritdoc IHubHelpers
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         auth
@@ -103,14 +112,14 @@ contract HubHelpers is Auth {
         AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
         AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
-        JournalEntry[] memory debits;
-        JournalEntry[] memory credits;
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        JournalEntry[] memory credits = new JournalEntry[](1);
         if (isPositive) {
-            debits.push(JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType))));
-            credits.push(JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType))));
+            debits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)));
+            credits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)));
         } else {
-            debits.push(JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType))));
-            credits.push(JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType))));
+            debits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)));
+            credits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)));
         }
 
         hub.updateJournal(poolId, debits, credits);

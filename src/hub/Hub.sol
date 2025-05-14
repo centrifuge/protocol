@@ -22,6 +22,7 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
@@ -126,13 +127,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         }
     }
 
+    /// @inheritdoc IHub
     function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
         public
         auth
         returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain)
     {
         (payoutShareAmount, paymentAssetAmount, cancelled, canClaimAgain) =
-            hub.claimDeposit(poolId, scId, investor, assetId);
+            shareClassManager.claimDeposit(poolId, scId, investor, assetId);
     }
 
     /// @inheritdoc IHub
@@ -151,13 +153,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         }
     }
 
+    /// @inheritdoc IHub
     function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
         public
         auth
         returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain)
     {
         (payoutAssetAmount, paymentShareAmount, cancelled, canClaimAgain) =
-            hub.claimRedeem(poolId, scId, investor, assetId);
+            shareClassManager.claimRedeem(poolId, scId, investor, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -224,7 +227,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable payTransaction {
         _isManager(poolId);
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
+        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
         sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
     }
@@ -317,7 +320,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         uint128 approvedAssetAmount
     ) external payable payTransaction returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
         _isManager(poolId);
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, depositAssetId);
+        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, depositAssetId);
         (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
             poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
@@ -335,7 +338,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external payable returns (uint128 pendingShareAmount) {
         _isManager(poolId);
 
-        D18 price = _pricePoolPerAsset(poolId, scId, payoutAssetId);
+        D18 price = hubHelpers.pricePoolPerAsset(poolId, scId, payoutAssetId);
         (pendingShareAmount) =
             shareClassManager.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price);
     }
@@ -439,16 +442,18 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
-        HoldingAccount[] memory accounts = new HoldingAccount[](4);
-        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
-        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        {
+            HoldingAccount[] memory accounts = new HoldingAccount[](4);
+            accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+            accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+            accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+            accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
 
-        holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
+            holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
+        }
 
         // If increase/decrease was called before initialize, we add journal entries for this
-        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
+        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -475,7 +480,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         holdings.initialize(poolId, scId, assetId, valuation, true, accounts);
 
         // If increase/decrease was called before initialize, we add journal entries for this
-        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
+        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
@@ -622,7 +627,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
         if (holdings.isInitialized(poolId, scId, assetId)) {
-            _updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
+            hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
     }
 
@@ -647,9 +652,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @dev Ensure the sender is authorized
     function _auth() internal auth {}
 
-    /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
+    /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin or a ward
     function _isManager(PoolId poolId) internal protected {
-        require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
+        require(hubRegistry.manager(poolId, msg.sender) || wards[msg.sender] == 1, IHub.NotManager());
     }
 
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
@@ -663,43 +668,5 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (!gateway.isBatching()) {
             gateway.endTransactionPayment();
         }
-    }
-
-    /// @notice Create credit & debit entries for the increase or decrease in the holding amount
-    function _updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
-        internal
-    {
-        if (diff == 0) return;
-
-        accounting.unlock(poolId);
-
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
-
-        if (isPositive) {
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
-        } else {
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
-        }
-
-        accounting.lock();
-    }
-
-    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
-        AssetId poolCurrency = hubRegistry.currency(poolId);
-        // NOTE: We assume symmetric prices are provided by holdings valuation
-        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
-
-        // Retrieve amount of 1 asset unit in pool currency
-        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
-        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset =
-            valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
-
-        // Retrieve price by normalizing by pool denomination
-        return d18(poolAmountPerAsset, poolUnitAmount);
     }
 }

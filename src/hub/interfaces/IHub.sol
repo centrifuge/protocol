@@ -84,10 +84,18 @@ interface IHub {
         external
         payable;
 
+    function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
+        external
+        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain);
+
     /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
         external
         payable;
+
+    function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
+        external
+        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain);
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
