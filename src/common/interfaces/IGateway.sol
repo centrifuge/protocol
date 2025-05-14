@@ -175,6 +175,10 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///         Called is assumed to have called IGateway.estimate before calling this.
     function payTransaction(address payer) external payable;
 
+    /// @notice Add a message to the underpaid storage to be repay and send later.
+    /// @dev It only supports one message, not a batch
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
+
     /// @notice Initialize batching message
     function startBatching() external;
 

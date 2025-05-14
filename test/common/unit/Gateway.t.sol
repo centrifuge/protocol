@@ -1344,3 +1344,36 @@ contract GatewayTestRepay is GatewayTest {
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
     }
 }
+
+contract GatewayTestAddUnpaidMessage is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, bytes(""));
+    }
+
+    function testCorrectAddUnpaidMessage() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+
+        vm.expectEmit();
+        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+
+        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        assertEq(counter, 1);
+        assertEq(gasLimit, MESSAGE_GAS_LIMIT);
+    }
+
+    function testCorrectAddUnpaidMessageTwice() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+
+        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        assertEq(counter, 2);
+        assertEq(gasLimit, MESSAGE_GAS_LIMIT);
+    }
+}

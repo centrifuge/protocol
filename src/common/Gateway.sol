@@ -361,6 +361,15 @@ contract Gateway is Auth, Recoverable, IGateway {
         return true;
     }
 
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
+        bytes32 batchHash = keccak256(message);
+
+        underpaid[centrifugeId][batchHash].counter++;
+        underpaid[centrifugeId][batchHash].gasLimit = gasService.gasLimit(centrifugeId, message);
+
+        emit UnderpaidBatch(centrifugeId, message);
+    }
+
     /// @inheritdoc IGateway
     function repay(uint16 centrifugeId, bytes memory batch) external payable pauseable {
         bytes32 batchHash = keccak256(batch);
