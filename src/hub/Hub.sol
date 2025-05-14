@@ -35,6 +35,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     IGateway public gateway;
     IHoldings public holdings;
+    IHubHelpers public hubHelpers;
     IAccounting public accounting;
     IPoolMessageSender public sender;
     IShareClassManager public shareClassManager;
@@ -43,6 +44,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         IShareClassManager shareClassManager_,
         IHubRegistry hubRegistry_,
         IAccounting accounting_,
+        IHubHelpers hubHelpers_,
         IHoldings holdings_,
         IGateway gateway_,
         address deployer
@@ -50,6 +52,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         shareClassManager = shareClassManager_;
         hubRegistry = hubRegistry_;
         accounting = accounting_;
+        hubHelpers = hubHelpers_;
         holdings = holdings_;
         gateway = gateway_;
     }
@@ -113,28 +116,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         payable
         payTransaction
     {
-        uint128 totalPayoutShareAmount;
-        uint128 totalPaymentAssetAmount;
-        uint128 cancelledAssetAmount;
-
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
-
-            totalPayoutShareAmount += payoutShareAmount;
-            totalPaymentAssetAmount += paymentAssetAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
-            if (cancelled > 0) {
-                cancelledAssetAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
+        (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
+            hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
             sender.sendFulfilledDepositRequest(
@@ -143,40 +126,38 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         }
     }
 
+    function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
+        public
+        auth
+        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain)
+    {
+        (payoutShareAmount, paymentAssetAmount, cancelled, canClaimAgain) =
+            hub.claimDeposit(poolId, scId, investor, assetId);
+    }
+
     /// @inheritdoc IHub
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
         payTransaction
     {
-        uint128 totalPayoutAssetAmount;
-        uint128 totalPaymentShareAmount;
-        uint128 cancelledShareAmount;
-
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
-
-            totalPayoutAssetAmount += payoutAssetAmount;
-            totalPaymentShareAmount += paymentShareAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
-            if (cancelled > 0) {
-                cancelledShareAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
+        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
+            hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
             sender.sendFulfilledRedeemRequest(
                 poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
             );
         }
+    }
+
+    function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
+        public
+        auth
+        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain)
+    {
+        (payoutAssetAmount, paymentShareAmount, cancelled, canClaimAgain) =
+            hub.claimRedeem(poolId, scId, investor, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
