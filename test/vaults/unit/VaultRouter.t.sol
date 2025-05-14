@@ -211,8 +211,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.cancelDepositRequest{value: gas}(vault);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
         assertEq(erc20.balanceOf(address(globalEscrow)), amount);
-        centrifugeChain.isFulfilledCancelDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
+        centrifugeChain.isFulfilledDepositRequest(
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
 
@@ -243,7 +243,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -272,7 +278,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -305,7 +317,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount)
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -319,8 +337,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.cancelRedeemRequest{value: gas}(vault);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
-        centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
+        centrifugeChain.isFulfilledRedeemRequest(
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
 
         address sender = makeAddr("maliciousUser");

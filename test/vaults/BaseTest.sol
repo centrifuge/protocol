@@ -248,7 +248,8 @@ contract BaseTest is VaultsDeployer, Test {
             bytes32(bytes20(_investor)),
             assetId,
             uint128(amount),
-            uint128(amount)
+            uint128(amount),
+            0
         );
 
         if (claimDeposit) {
