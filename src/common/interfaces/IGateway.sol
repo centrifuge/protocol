@@ -73,8 +73,6 @@ interface IGateway is IMessageHandler, IMessageSender {
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
-    event RecoverMessage(IAdapter adapter, bytes message);
-    event RecoverProof(IAdapter adapter, bytes32 batchHash);
     event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
     event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
@@ -174,6 +172,10 @@ interface IGateway is IMessageHandler, IMessageSender {
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
     function payTransaction(address payer) external payable;
+
+    /// @notice Add a message to the underpaid storage to be repay and send later.
+    /// @dev It only supports one message, not a batch
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
 
     /// @notice Initialize batching message
     function startBatching() external;
