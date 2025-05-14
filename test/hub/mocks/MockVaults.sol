@@ -69,9 +69,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
-        public
-    {
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
         handler.handle(
             sourceChainId,
             MessageLib.CancelDepositRequest({
@@ -83,9 +81,7 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
-        public
-    {
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
         handler.handle(
             sourceChainId,
             MessageLib.CancelRedeemRequest({

@@ -243,7 +243,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount), 0
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -272,7 +278,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount), 0
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);
@@ -305,7 +317,13 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         IERC20 share = IERC20(address(vault.share()));
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, uint128(amount), uint128(amount), 0
+            vault.poolId().raw(),
+            vault.scId().raw(),
+            bytes32(bytes20(self)),
+            assetId,
+            uint128(amount),
+            uint128(amount),
+            0
         );
         vault.deposit(amount, self, self);
         assertEq(share.balanceOf(address(self)), amount);

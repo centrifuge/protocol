@@ -199,7 +199,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             investmentManager.fulfillDepositRequest(
-                poolId, scId, investor.toAddress(), assetId, fulfilledAssetAmount, fulfilledShareAmount, cancelledAssetAmount
+                poolId,
+                scId,
+                investor.toAddress(),
+                assetId,
+                fulfilledAssetAmount,
+                fulfilledShareAmount,
+                cancelledAssetAmount
             );
         } else {
             gateway.send(
@@ -229,7 +235,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             investmentManager.fulfillRedeemRequest(
-                poolId, scId, investor.toAddress(), assetId, fulfilledAssetAmount, fulfilledShareAmount, cancelledShareAmount
+                poolId,
+                scId,
+                investor.toAddress(),
+                assetId,
+                fulfilledAssetAmount,
+                fulfilledShareAmount,
+                cancelledShareAmount
             );
         } else {
             gateway.send(

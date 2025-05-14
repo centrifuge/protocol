@@ -867,7 +867,14 @@ library MessageLib {
 
     function serialize(FulfilledRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.FulfilledRedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.fulfilledAssetAmount, t.fulfilledShareAmount, t.cancelledShareAmount
+            MessageType.FulfilledRedeemRequest,
+            t.poolId,
+            t.scId,
+            t.investor,
+            t.assetId,
+            t.fulfilledAssetAmount,
+            t.fulfilledShareAmount,
+            t.cancelledShareAmount
         );
     }
 

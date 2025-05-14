@@ -659,9 +659,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncRequestManager.fulfillRedeemRequest(
-            poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount)
-        );
+        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount));
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);

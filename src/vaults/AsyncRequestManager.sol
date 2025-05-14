@@ -216,10 +216,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         }
 
         state.depositPrice = _calculatePriceAssetPerShare(
-            vault_,
-            state.maxMint + fulfilledShares,
-            _maxDeposit(vault_, user) + fulfilledAssets,
-            MathLib.Rounding.Down
+            vault_, state.maxMint + fulfilledShares, _maxDeposit(vault_, user) + fulfilledAssets, MathLib.Rounding.Down
         );
         state.maxMint = state.maxMint + fulfilledShares;
         state.pendingDepositRequest = state.pendingDepositRequest > fulfilledAssets + cancelledAssets
@@ -260,8 +257,9 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
             MathLib.Rounding.Down
         );
         state.maxWithdraw = state.maxWithdraw + fulfilledAssets;
-        state.pendingRedeemRequest =
-            state.pendingRedeemRequest > fulfilledShares + cancelledShares ? state.pendingRedeemRequest - fulfilledShares - cancelledShares : 0;
+        state.pendingRedeemRequest = state.pendingRedeemRequest > fulfilledShares + cancelledShares
+            ? state.pendingRedeemRequest - fulfilledShares - cancelledShares
+            : 0;
 
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
