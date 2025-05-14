@@ -162,7 +162,8 @@ interface IRequestManagerGatewayHandler {
     ///         The request fulfillment can be partial.
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
     ///         and mint calls.
-    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued. Otherwise, either of the two must always be zero.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -176,27 +177,22 @@ interface IRequestManagerGatewayHandler {
     // --- Redeems ---
     /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
-    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
+    ///         return is locked in the escrow contract.
+    ///         The maxWithdraw and claimableCancelRedeemRequest bookkeeping values are updated.
     ///         The request fulfillment can be partial.
     /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
     ///         and withdraw calls.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         address user,
         AssetId assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) external;
-
-    /// @notice Fulfills redeem request cancellation after successful epoch execution on Hub.
-    ///         The amount of shares that can be claimed by the user is locked in the escrow contract.
-    ///         Updates claimableCancelRedeemRequest bookkeeping value. The cancellation order execution can also be
-    ///         partial.
-    /// @dev    The shares in the escrow are reserved for the user and are transferred to the user during
-    ///         claimCancelRedeemRequest calls.
-    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        external;
 }
 
 /// @notice Interface for Vaults methods related to epoch called by messages

@@ -43,7 +43,7 @@ contract RedeemTest is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), assets, uint128(amount));
+        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), assets, uint128(amount), 0);
 
         // success
         centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
@@ -58,7 +58,7 @@ contract RedeemTest is BaseTest {
 
         // trigger executed collectRedeem
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, uint128(amount), 0
         );
 
         // assert withdraw & redeem values adjusted
@@ -112,7 +112,7 @@ contract RedeemTest is BaseTest {
         // trigger executed collectRedeem
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, uint128(amount), 0
         );
 
         // assert withdraw & redeem values adjusted
@@ -205,8 +205,8 @@ contract RedeemTest is BaseTest {
         vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
-        centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
+        centrifugeChain.isFulfilledRedeemRequest(
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
 
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
@@ -263,7 +263,7 @@ contract RedeemTest is BaseTest {
         asset.mint(address(poolEscrowFactory.escrow(vault.poolId())), assets * 2 - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
+            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2, 0
         );
 
         (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
@@ -274,7 +274,7 @@ contract RedeemTest is BaseTest {
         assets = 50000000; // 50*10**6
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2
+            poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2, 0
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
@@ -302,7 +302,8 @@ contract RedeemTest is BaseTest {
             bytes32(bytes20(self)),
             assetId.raw(),
             firstCurrencyPayout,
-            firstShareRedeem
+            firstShareRedeem,
+            0
         );
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
@@ -318,7 +319,8 @@ contract RedeemTest is BaseTest {
             bytes32(bytes20(self)),
             assetId.raw(),
             secondCurrencyPayout,
-            secondShareRedeem
+            secondShareRedeem,
+            0
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);

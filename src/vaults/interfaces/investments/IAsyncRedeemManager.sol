@@ -30,11 +30,10 @@ interface IAsyncRedeemManager is IRedeemManager {
     function cancelRedeemRequest(IBaseVault vault, address owner, address source) external;
 
     /// @notice Processes owner's redeem request cancellation after the epoch has been executed on the corresponding CP
-    /// instance and the
-    ///         redeem order cancellation has been successfully processed (partial fulfillment possible).
+    ///         instance and the redeem order cancellation has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver.
     /// @dev    The shares required to fulfill the claim have already been reserved for the owner in escrow on
-    ///         fulfillCancelRedeemRequest.
+    ///         fulfillRedeemRequest with non-zero cancelled share amount value.
     ///         Receiver has to pass all the share token restrictions in order to receive the shares.
     function claimCancelRedeemRequest(IBaseVault vault, address receiver, address owner)
         external

@@ -319,8 +319,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.cancelRedeemRequest{value: gas}(vault);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
-        centrifugeChain.isFulfilledCancelRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, uint128(amount)
+        centrifugeChain.isFulfilledRedeemRequest(
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
 
         address sender = makeAddr("maliciousUser");

@@ -81,7 +81,7 @@ contract DepositRedeem is BaseTest {
         assertEq(firstShareRedeem + secondShareRedeem, redeemAmount);
         uint128 firstCurrencyPayout = 27500000; // (25000000000000000000/10**18) * 10**6 * 1.1
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId.raw(), firstCurrencyPayout, firstShareRedeem
+            poolId, scId, bytes32(bytes20(self)), assetId.raw(), firstCurrencyPayout, firstShareRedeem, 0
         );
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
@@ -92,7 +92,7 @@ contract DepositRedeem is BaseTest {
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId.raw(), secondCurrencyPayout, secondShareRedeem
+            poolId, scId, bytes32(bytes20(self)), assetId.raw(), secondCurrencyPayout, secondShareRedeem, 0
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);

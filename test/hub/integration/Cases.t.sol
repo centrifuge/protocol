@@ -165,8 +165,9 @@ contract TestCases is BaseTest {
         assertEq(m1.scId, scId.raw());
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.assetAmount, revokedAssetAmount);
-        assertEq(m1.shareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.fulfilledAssetAmount, revokedAssetAmount);
+        assertEq(m1.fulfilledShareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.cancelledShareAmount, 0);
     }
 
     /// forge-config: default.isolate = true

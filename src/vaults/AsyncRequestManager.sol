@@ -239,12 +239,18 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         address user,
         AssetId assetId,
         uint128 fulfilledAssets,
-        uint128 fulfilledShares
+        uint128 fulfilledShares,
+        uint128 cancelledShares
     ) public auth {
         IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
+
+        if (cancelledShares > 0) {
+            require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
+            state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + cancelledShares;
+        }
 
         // Calculate new weighted average redeem price and update order book values
         state.redeemPrice = _calculatePriceAssetPerShare(
@@ -255,51 +261,12 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         );
         state.maxWithdraw = state.maxWithdraw + fulfilledAssets;
         state.pendingRedeemRequest =
-            state.pendingRedeemRequest > fulfilledShares ? state.pendingRedeemRequest - fulfilledShares : 0;
+            state.pendingRedeemRequest > fulfilledShares + cancelledShares ? state.pendingRedeemRequest - fulfilledShares - cancelledShares : 0;
 
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
-        vault_.onRedeemClaimable(user, fulfilledAssets, fulfilledShares);
-    }
-
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function fulfillCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        address user,
-        AssetId assetId,
-        uint128 assets,
-        uint128 fulfillment
-    ) public auth {
-        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
-
-        AsyncInvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelDepositRequest == true, NoPendingRequest());
-
-        state.claimableCancelDepositRequest = state.claimableCancelDepositRequest + assets;
-        state.pendingDepositRequest =
-            state.pendingDepositRequest > fulfillment ? state.pendingDepositRequest - fulfillment : 0;
-
-        if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
-
-        vault_.onCancelDepositClaimable(user, assets);
-    }
-
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        public
-        auth
-    {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
-        AsyncInvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
-
-        state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + shares;
-        state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
-
-        if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
-
-        vault_.onCancelRedeemClaimable(user, shares);
+        if (fulfilledShares > 0) vault_.onRedeemClaimable(user, fulfilledAssets, fulfilledShares);
+        if (cancelledShares > 0) vault_.onCancelRedeemClaimable(user, cancelledShares);
     }
 
     //----------------------------------------------------------------------------------------------

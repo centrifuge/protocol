@@ -485,7 +485,7 @@ contract DepositTest is BaseTest {
         asset.mint(address(poolEscrowFactory.escrow(vault.poolId())), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout
+            poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout, 0
         );
 
         // redeem price should now be ~1.5*10**18.
@@ -549,7 +549,7 @@ contract DepositTest is BaseTest {
         _topUpEscrow(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout
+            poolId, scId, bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout, 0
         );
 
         // redeem price should now be ~1.5*10**18.
@@ -659,8 +659,8 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncRequestManager.fulfillCancelDepositRequest(
-            poolId, scId, self, AssetId.wrap(assetId), uint128(amount), uint128(amount)
+        asyncRequestManager.fulfillRedeemRequest(
+            poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount)
         );
 
         // check message was send out to centchain

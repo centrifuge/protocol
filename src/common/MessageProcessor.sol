@@ -160,17 +160,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.investor.toAddress(),
                 AssetId.wrap(m.assetId),
-                m.assetAmount,
-                m.shareAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
-            MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
-            investmentManager.fulfillCancelRedeemRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.cancelledShares
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledShareAmount
             );
         } else if (kind == MessageType.TriggerIssueShares) {
             MessageLib.TriggerIssueShares memory m = message.deserializeTriggerIssueShares();
