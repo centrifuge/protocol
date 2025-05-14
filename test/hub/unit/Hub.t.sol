@@ -73,10 +73,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.increaseShareIssuance(0, PoolId.wrap(0), ShareClassId.wrap(0), 0);
+        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.decreaseShareIssuance(0, PoolId.wrap(0), ShareClassId.wrap(0), 0);
+        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
 
         vm.stopPrank();
     }

@@ -206,9 +206,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
 
             if (m.isIssuance) {
-                hub.increaseShareIssuance(centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {
-                hub.decreaseShareIssuance(centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
+                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
