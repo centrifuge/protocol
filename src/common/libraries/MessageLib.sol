@@ -12,8 +12,8 @@ enum MessageType {
     /// @dev Placeholder for proof message type
     _MessageProof,
     // -- Gateway messages
-    InitiateRecovery,
-    DisputeRecovery,
+    _InitiateRecovery, // TODO To be removed
+    _DisputeRecovery, // TODO To be removed
     // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,
@@ -66,7 +66,8 @@ enum UpdateContractType {
     MaxAssetPriceAge,
     MaxSharePriceAge,
     Valuation,
-    SyncDepositMaxReserve
+    SyncDepositMaxReserve,
+    UpdateAddress
 }
 
 /// @dev Used internally in the VaultUpdateMessage (not represent a submessage)
@@ -88,8 +89,8 @@ library MessageLib {
     /// If the message has some dynamic part, will be added later in `messageLength()`.
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_1 =
-        (67  << uint8(MessageType.InitiateRecovery) * 8) +
-        (67  << uint8(MessageType.DisputeRecovery) * 8) +
+        (67  << uint8(MessageType._InitiateRecovery) * 8) +
+        (67  << uint8(MessageType._DisputeRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
@@ -114,7 +115,7 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelDepositRequest) * 8) +
         (89  << uint8(MessageType.FulfilledCancelRedeemRequest) * 8) +
-        (114 << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
         (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
@@ -165,44 +166,6 @@ library MessageLib {
 
     function updateContractType(bytes memory message) internal pure returns (UpdateContractType) {
         return UpdateContractType(message.toUint8(0));
-    }
-
-    //---------------------------------------
-    //    InitiateRecovery
-    //---------------------------------------
-
-    struct InitiateRecovery {
-        bytes32 hash;
-        bytes32 adapter;
-        uint16 centrifugeId;
-    }
-
-    function deserializeInitiateRecovery(bytes memory data) internal pure returns (InitiateRecovery memory) {
-        require(messageType(data) == MessageType.InitiateRecovery, UnknownMessageType());
-        return InitiateRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), centrifugeId: data.toUint16(65)});
-    }
-
-    function serialize(InitiateRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.InitiateRecovery, t.hash, t.adapter, t.centrifugeId);
-    }
-
-    //---------------------------------------
-    //    DisputeRecovery
-    //---------------------------------------
-
-    struct DisputeRecovery {
-        bytes32 hash;
-        bytes32 adapter;
-        uint16 centrifugeId;
-    }
-
-    function deserializeDisputeRecovery(bytes memory data) internal pure returns (DisputeRecovery memory) {
-        require(messageType(data) == MessageType.DisputeRecovery, UnknownMessageType());
-        return DisputeRecovery({hash: data.toBytes32(1), adapter: data.toBytes32(33), centrifugeId: data.toUint16(65)});
-    }
-
-    function serialize(DisputeRecovery memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DisputeRecovery, t.hash, t.adapter, t.centrifugeId);
     }
 
     //---------------------------------------
@@ -734,6 +697,32 @@ library MessageLib {
     }
 
     //---------------------------------------
+    //   UpdateContract.UpdateAddress (submsg)
+    //---------------------------------------
+
+    struct UpdateContractUpdateAddress {
+        bytes32 what;
+        bytes32 who;
+        bytes32 who;
+        bool isEnabled;
+    }
+
+    function deserializeUpdateContractUpdateAddress(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractUpdateAddress memory)
+    {
+        require(updateContractType(data) == UpdateContractType.UpdateAddress, UnknownMessageType());
+
+        return
+            UpdateContractUpdateAddress({what: data.toBytes32(1), who: data.toBytes32(33), isEnabled: data.toBool(65)});
+    }
+
+    function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.UpdateAddress, t.what, t.who, t.isEnabled);
+    }
+
+    //---------------------------------------
     //    DepositRequest
     //---------------------------------------
 
@@ -981,7 +970,6 @@ library MessageLib {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
-        bytes32 who;
         uint128 amount;
         uint128 pricePerUnit;
         uint64 timestamp;
@@ -995,11 +983,10 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
-            who: data.toBytes32(41),
-            amount: data.toUint128(73),
-            pricePerUnit: data.toUint128(89),
-            timestamp: data.toUint64(105),
-            isIncrease: data.toBool(113)
+            amount: data.toUint128(41),
+            pricePerUnit: data.toUint128(57),
+            timestamp: data.toUint64(73),
+            isIncrease: data.toBool(81)
         });
     }
 
@@ -1009,7 +996,6 @@ library MessageLib {
             t.poolId,
             t.scId,
             t.assetId,
-            t.who,
             t.amount,
             t.pricePerUnit,
             t.timestamp,

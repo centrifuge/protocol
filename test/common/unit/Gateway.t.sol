@@ -76,10 +76,6 @@ contract MockProcessor is IMessageProperties {
         return processed[centrifugeId].length;
     }
 
-    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        return message.toUint8(0) == uint8(MessageKind.Recovery);
-    }
-
     function messageLength(bytes calldata message) external pure returns (uint16) {
         return MessageKind(message.toUint8(0)).length();
     }
@@ -754,21 +750,6 @@ contract GatewayTestExecuteRecovery is GatewayTest {
 
         vm.prank(ANY);
         vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
-        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
-    }
-
-    function testErrRecoveryRecovered() public {
-        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
-
-        bytes memory batch = MessageKind.Recovery.asBytes();
-        bytes32 batchHash = keccak256(batch);
-
-        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
-
-        vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
-
-        vm.prank(ANY);
-        vm.expectRevert(IGateway.RecoveryPayloadRecovered.selector);
         gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 

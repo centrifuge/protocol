@@ -22,12 +22,8 @@ import {IShareToken, IERC1404} from "src/vaults/interfaces/token/IShareToken.sol
 contract ShareToken is ERC20, IShareToken {
     using MathLib for uint256;
 
-    mapping(address => Balance) private balances;
-
-    /// @inheritdoc IShareToken
     address public hook;
-
-    /// @inheritdoc IERC7575Share
+    mapping(address => Balance) private balances;
     mapping(address asset => address) public vault;
 
     constructor(uint8 decimals_) ERC20(decimals_) {}
@@ -42,7 +38,7 @@ contract ShareToken is ERC20, IShareToken {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IShareToken
-    function file(bytes32 what, address data) external authOrHook {
+    function file(bytes32 what, address data) external auth {
         if (what == "hook") hook = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);

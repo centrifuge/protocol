@@ -72,16 +72,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Helpers
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IMessageDispatcher
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
-        if (centrifugeId == localCentrifugeId) return 0;
-        return gateway.estimate(centrifugeId, payload);
-    }
-
-    //----------------------------------------------------------------------------------------------
     // Outgoing
     //----------------------------------------------------------------------------------------------
 
@@ -506,38 +496,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IRootMessageSender
-    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            gateway.initiateRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.InitiateRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
-                )
-            );
-        }
-    }
-
-    /// @inheritdoc IRootMessageSender
-    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            gateway.disputeRecovery(adapterCentrifugeId, IAdapter(adapter.toAddress()), hash);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.DisputeRecovery({hash: hash, adapter: adapter, centrifugeId: adapterCentrifugeId}).serialize(
-                )
-            );
-        }
-    }
-
     /// @inheritdoc IVaultMessageSender
     function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
@@ -641,7 +599,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease
@@ -655,7 +612,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    who: provider.toBytes32(),
                     amount: amount,
                     pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),

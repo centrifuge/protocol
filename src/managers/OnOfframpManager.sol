@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
@@ -14,61 +15,88 @@ import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.so
 
 import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
 import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
 
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
-contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManager {
+contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManager, IUpdateContract {
     using MathLib for uint256;
 
-    error NotAllowedOnrampAsset();
-    error NoOfframpDestinationSet();
+    event UpdateManager(PoolId indexed poolId, address who, bool canManage);
 
-    PoolId public immutable poolId;
-    ShareClassId public immutable scId;
+    error NotAllowedOnrampAsset();
+    error ZeroAssetsDeposited();
+    error InvalidOfframpDestination();
 
     IBalanceSheet public immutable balanceSheet;
 
-    mapping(address asset => bool) public allowedOnrampAsset;
-    mapping(address asset => address) public offrampDestination;
-    // mapping(AssetId => address) public cctpDestination;
+    mapping(address asset => bool) public onramp;
+    mapping(PoolId => mapping(address => bool)) public manager;
+    mapping(address asset => mapping(address receiver => bool)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
-        poolId = poolId_;
-        scId = scId_;
+    constructor(IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
         balanceSheet = balanceSheet_;
+    }
+
+    modifier authOrManager(PoolId poolId) {
+        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
+        _;
     }
 
     //----------------------------------------------------------------------------------------------
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    // TODO: add UpdateCOntract for storage mappings
+    /// @inheritdoc IUpdateContract
+    function update(PoolId poolId, ShareClassId, /* scId */ bytes calldata payload) external auth {
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
+
+        if (kind == uint8(UpdateContractType.UpdateManager)) {
+            MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
+            address who = m.who.toAddress();
+
+            manager[poolId][who] = m.canManage;
+            emit UpdateManager(poolId, who, m.canManage);
+        } else if (kind == uint8(UpdateContractType.UpdateAddress)) {
+            MessageLib.UpdateContractUpdateAddress memory m = MessageLib.deserializeUpdateContractUpdateAddress(payload);
+            address who = m.who.toAddress();
+
+            manager[poolId][who] = m.canManage;
+            emit UpdateAddress(poolId, who, m.canManage);
+        } else {
+            revert UnknownUpdateContractType();
+        }
+    }
 
     //----------------------------------------------------------------------------------------------
     // Permissionless actions
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(address asset, uint256, /* tokenId */ uint128 /* amount */ ) external {
-        require(allowedOnrampAsset[asset], NotAllowedOnrampAsset());
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256, /* tokenId */ uint128 /* amount */ )
+        external
+    {
+        require(onramp[asset], NotAllowedOnrampAsset());
 
-        uint128 amount = IERC20(asset).balanceOf(address(this)).toUint128();
-        if (IERC20(asset).allowance(address(this), address(balanceSheet)) == 0) {
-            SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
-        }
+        IPoolEscrow escrow = balanceSheet.escrow(poolId);
+        (uint128 holding,) = escrow.holding(scId, asset, 0);
+        uint128 amount = IERC20(asset).balanceOf(address(escrow)) - holding;
+        require(amount > 0, ZeroAssetsDeposited());
 
-        balanceSheet.deposit(poolId, scId, asset, 0, address(this), amount);
+        balanceSheet.noteDeposit(poolId, scId, asset, 0, amount);
     }
 
     /// @inheritdoc IWithdrawManager
-    function withdraw(address asset, uint256, /* tokenId */ uint128 /* amount */ ) external {
-        address offrampDestination_ = offrampDestination[asset];
-        require(offrampDestination_ != address(0), NoOfframpDestinationSet());
-
-        IPoolEscrow escrow = balanceSheet.poolEscrowProvider().escrow(poolId);
-        uint128 amount = escrow.availableBalanceOf(scId, asset, 0);
-
-        balanceSheet.withdraw(poolId, scId, asset, 0, offrampDestination_, amount);
+    function withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256, /* tokenId */
+        uint128 amount,
+        address receiver
+    ) external authOrManager {
+        require(offramp[asset][receiver], InvalidOfframpDestination());
+        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }
 
     //----------------------------------------------------------------------------------------------

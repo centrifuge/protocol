@@ -175,5 +175,15 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(asyncVault.pendingRedeemRequest(0, self), 0);
         asyncVault.requestRedeem(amount / 2, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
+
+        poolManager.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        assertEq(syncVault.maxDeposit(address(this)), 0);
+        assertEq(syncVault.maxMint(address(this)), 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        syncVault.deposit(1, self);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        syncVault.mint(1, self);
     }
 }

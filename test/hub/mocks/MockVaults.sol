@@ -96,7 +96,6 @@ contract MockVaults is Test, Auth, IAdapter {
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 assetId: assetId.raw(),
-                who: bytes32(0),
                 amount: amount,
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,

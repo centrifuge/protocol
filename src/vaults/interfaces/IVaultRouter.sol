@@ -195,11 +195,6 @@ interface IVaultRouter is IMulticall {
     /// @notice Check IPoolManager.getVault
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 
-    /// @notice Check IGateway.estimate
-    ///         If the destination and source chain ID are the same, this will always return 0.
-    /// @param centrifugeId destination chain
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount);
-
     /// @notice Called to check if `user` has permissions on `vault` to execute requests
     ///
     /// @param vault Address of the `vault` the `user` wants to operate on

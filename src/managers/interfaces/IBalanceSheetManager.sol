@@ -8,5 +8,5 @@ interface IDepositManager is IERC165 {
 }
 
 interface IWithdrawManager is IERC165 {
-    function withdraw(address asset, uint256 tokenId, uint128 amount) external;
+    function withdraw(address asset, uint256 tokenId, uint128 amount, address receiver) external;
 }
