@@ -379,18 +379,12 @@ contract Gateway is Auth, Recoverable, IGateway {
     function _refundTransaction() internal {
         if (transactionRefund == address(0)) return;
 
-        // Reset before external call
-        uint256 fuel_ = fuel;
-        address transactionRefund_ = transactionRefund;
-        fuel = 0;
-        transactionRefund = address(0);
-
-        if (fuel_ > 0) {
-            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
+        if (fuel > 0) {
+            (bool success,) = payable(transactionRefund).call{value: fuel}(new bytes(0));
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
+                _subsidizePool(GLOBAL_POT, transactionRefund, fuel);
             }
         }
     }
@@ -428,9 +422,15 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function payTransaction(address payer) external payable auth {
+    function startTransactionPayment(address payer) external payable auth {
         transactionRefund = payer;
         fuel += msg.value;
+    }
+
+    /// @inheritdoc IGateway
+    function endTransactionPayment() external auth {
+        transactionRefund = address(0);
+        fuel = 0;
     }
 
     /// @inheritdoc IGateway
