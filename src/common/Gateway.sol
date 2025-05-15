@@ -278,7 +278,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.append(batchSlot, message);
         } else {
             _send(centrifugeId, poolId, message, gasService.gasLimit(centrifugeId, message));
-            _refundTransaction();
         }
     }
 
@@ -376,25 +375,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit RepayBatch(centrifugeId, batch);
     }
 
-    function _refundTransaction() internal {
-        if (transactionRefund == address(0)) return;
-
-        // Reset before external call
-        uint256 fuel_ = fuel;
-        address transactionRefund_ = transactionRefund;
-        fuel = 0;
-        transactionRefund = address(0);
-
-        if (fuel_ > 0) {
-            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
-
-            if (!success) {
-                // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
-            }
-        }
-    }
-
     function _requestPoolFunding(PoolId poolId) internal {
         IRecoverable refund = subsidy[poolId].refund;
         if (!poolId.isNull() && address(refund) != address(0)) {
@@ -428,9 +408,29 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function payTransaction(address payer) external payable auth {
+    function startTransactionPayment(address payer) external payable auth {
         transactionRefund = payer;
         fuel += msg.value;
+    }
+
+    /// @inheritdoc IGateway
+    function endTransactionPayment() external auth {
+        if (transactionRefund == address(0)) return;
+
+        // Reset before external call
+        uint256 fuel_ = fuel;
+        address transactionRefund_ = transactionRefund;
+        fuel = 0;
+        transactionRefund = address(0);
+
+        if (fuel_ > 0) {
+            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
+
+            if (!success) {
+                // If refund fails, move remaining fuel to global pot
+                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
+            }
+        }
     }
 
     /// @inheritdoc IGateway
@@ -456,8 +456,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
-
-        _refundTransaction();
     }
 
     function _encodeLocator(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
