@@ -174,7 +174,7 @@ contract HubHelpers is Auth, IHubHelpers {
         AccountId equityAccount,
         AccountId gainAccount,
         AccountId lossAccount
-    ) external view returns (HoldingAccount[] memory) {
+    ) external pure returns (HoldingAccount[] memory) {
         HoldingAccount[] memory accounts = new HoldingAccount[](4);
         accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
         accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
@@ -186,7 +186,7 @@ contract HubHelpers is Auth, IHubHelpers {
     /// @inheritdoc IHubHelpers
     function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
         external
-        view
+        pure
         returns (HoldingAccount[] memory)
     {
         HoldingAccount[] memory accounts = new HoldingAccount[](2);

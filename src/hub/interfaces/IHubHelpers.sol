@@ -43,11 +43,11 @@ interface IHubHelpers {
         AccountId equityAccount,
         AccountId gainAccount,
         AccountId lossAccount
-    ) external view returns (HoldingAccount[] memory accounts);
+    ) external pure returns (HoldingAccount[] memory accounts);
 
     function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
         external
-        view
+        pure
         returns (HoldingAccount[] memory accounts);
 
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);
