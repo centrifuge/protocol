@@ -30,6 +30,7 @@ import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
 import {HubTargets} from "./targets/HubTargets.sol";
 import {ToggleTargets} from "./targets/ToggleTargets.sol";
+import {DoomsdayTargets} from "./targets/DoomsdayTargets.sol";
 
 abstract contract TargetFunctions is
     BaseTargetFunctions,
@@ -41,7 +42,8 @@ abstract contract TargetFunctions is
     ManagerTargets,
     HubTargets,
     AdminTargets,
-    ToggleTargets 
+    ToggleTargets,
+    DoomsdayTargets
 {
     bool hasDoneADeploy;
 
