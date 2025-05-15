@@ -139,7 +139,6 @@ library MessageLib {
             ? uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]))
             : uint16(uint8(bytes32(MESSAGE_LENGTHS_2)[63 - kind]));
 
-
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
