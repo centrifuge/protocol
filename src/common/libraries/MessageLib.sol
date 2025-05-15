@@ -11,9 +11,6 @@ enum MessageType {
     _Invalid,
     /// @dev Placeholder for proof message type
     _MessageProof,
-    // -- Gateway messages
-    _InitiateRecovery, // TODO To be removed
-    _DisputeRecovery, // TODO To be removed
     // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,
@@ -86,8 +83,6 @@ library MessageLib {
     /// If the message has some dynamic part, will be added later in `messageLength()`.
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS =
-        (67  << uint8(MessageType._InitiateRecovery) * 8) +
-        (67  << uint8(MessageType._DisputeRecovery) * 8) +
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
