@@ -2,20 +2,10 @@
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 
 interface IHubHelpers {
     /// @notice Emitted when a call to `file()` was performed.
@@ -40,6 +30,9 @@ interface IHubHelpers {
         returns (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount);
 
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external;
+
+    function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
 
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);

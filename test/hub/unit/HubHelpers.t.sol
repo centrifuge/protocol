@@ -37,6 +37,9 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHelpers.updateAccountingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), true, 0);
 
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubHelpers.updateAccountingValue(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), true, 0);
+
         vm.stopPrank();
     }
 }

@@ -105,7 +105,8 @@ contract HubHelpers is Auth, IHubHelpers {
         }
     }
 
-    /// @notice Create credit & debit entries for the increase or decrease in the holding amount
+    /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
+    ///         This updates the asset/expense as well as the equity/liability accounts.
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
         auth
@@ -124,6 +125,38 @@ contract HubHelpers is Auth, IHubHelpers {
         } else {
             accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
             accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+        }
+
+        accounting.lock();
+    }
+
+    /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
+    ///         This updates the asset/expense as well as the gain/loss accounts.
+    function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external
+        auth
+    {
+        if (diff == 0) return;
+
+        accounting.unlock(poolId);
+
+        // Save a diff=0 update gas cost
+        if (isPositive && diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+            }
+        } else if (diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
+            }
         }
 
         accounting.lock();
