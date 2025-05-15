@@ -494,7 +494,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (centrifugeId == localCentrifugeId) {
             poolManager.executeTransferShares(poolId, scId, receiver, amount);
         } else {
-            gateway.send(
+            gateway.addUnpaidMessage(
                 centrifugeId,
                 MessageLib.ExecuteTransferShares({
                     poolId: poolId.raw(),
