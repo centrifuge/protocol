@@ -8,7 +8,6 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -37,7 +36,7 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    Hub hub = new Hub(scm, hubRegistry, accounting, hubHelpers, holdings, gateway, address(this));
+    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, scm, address(this));
 
     function setUp() public {
         vm.mockCall(

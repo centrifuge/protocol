@@ -42,20 +42,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     IShareClassManager public shareClassManager;
 
     constructor(
-        IShareClassManager shareClassManager_,
-        IHubRegistry hubRegistry_,
-        IAccounting accounting_,
-        IHubHelpers hubHelpers_,
-        IHoldings holdings_,
         IGateway gateway_,
+        IHoldings holdings_,
+        IHubHelpers hubHelpers_,
+        IAccounting accounting_,
+        IHubRegistry hubRegistry_,
+        IShareClassManager shareClassManager_,
         address deployer
     ) Auth(deployer) {
-        shareClassManager = shareClassManager_;
-        hubRegistry = hubRegistry_;
-        accounting = accounting_;
-        hubHelpers = hubHelpers_;
-        holdings = holdings_;
         gateway = gateway_;
+        holdings = holdings_;
+        hubHelpers = hubHelpers_;
+        accounting = accounting_;
+        hubRegistry = hubRegistry_;
+        shareClassManager = shareClassManager_;
     }
 
     modifier payTransaction() {
@@ -422,15 +422,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
-        {
-            HoldingAccount[] memory accounts = new HoldingAccount[](4);
-            accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
-            accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-            accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-            accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
-
-            holdings.initialize(poolId, scId, assetId, valuation, false, accounts);
-        }
+        holdings.initialize(
+            poolId,
+            scId,
+            assetId,
+            valuation,
+            false,
+            hubHelpers.holdingAccounts(assetAccount, equityAccount, gainAccount, lossAccount)
+        );
 
         // If increase/decrease was called before initialize, we add journal entries for this
         hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
@@ -453,11 +452,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             IAccounting.AccountDoesNotExist()
         );
 
-        HoldingAccount[] memory accounts = new HoldingAccount[](2);
-        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
-        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
-
-        holdings.initialize(poolId, scId, assetId, valuation, true, accounts);
+        holdings.initialize(
+            poolId, scId, assetId, valuation, true, hubHelpers.liabilityAccounts(expenseAccount, liabilityAccount)
+        );
 
         // If increase/decrease was called before initialize, we add journal entries for this
         hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));

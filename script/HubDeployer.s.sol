@@ -42,7 +42,7 @@ contract HubDeployer is CommonDeployer {
         holdings = new Holdings(hubRegistry, deployer);
         shareClassManager = new ShareClassManager(hubRegistry, deployer);
         hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
-        hub = new Hub(shareClassManager, hubRegistry, accounting, hubHelpers, holdings, gateway, deployer);
+        hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
 
         _poolsRegister();
         _poolsRely();

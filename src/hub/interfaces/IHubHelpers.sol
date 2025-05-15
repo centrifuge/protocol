@@ -6,6 +6,9 @@ import {D18} from "src/misc/types/D18.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+
+import {HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 interface IHubHelpers {
     /// @notice Emitted when a call to `file()` was performed.
@@ -34,6 +37,18 @@ interface IHubHelpers {
 
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
+
+    function holdingAccounts(
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId gainAccount,
+        AccountId lossAccount
+    ) external view returns (HoldingAccount[] memory accounts);
+
+    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
+        external
+        view
+        returns (HoldingAccount[] memory accounts);
 
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18);
 }

@@ -15,8 +15,8 @@ import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
 contract HubHelpers is Auth, IHubHelpers {
     using MathLib for uint256;
@@ -105,6 +105,7 @@ contract HubHelpers is Auth, IHubHelpers {
         }
     }
 
+    /// @inheritdoc IHubHelpers
     /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
     ///         This updates the asset/expense as well as the equity/liability accounts.
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
@@ -130,6 +131,7 @@ contract HubHelpers is Auth, IHubHelpers {
         accounting.lock();
     }
 
+    /// @inheritdoc IHubHelpers
     /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
     ///         This updates the asset/expense as well as the gain/loss accounts.
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
@@ -166,6 +168,34 @@ contract HubHelpers is Auth, IHubHelpers {
     //  View methods
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IHubHelpers
+    function holdingAccounts(
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId gainAccount,
+        AccountId lossAccount
+    ) external view returns (HoldingAccount[] memory) {
+        HoldingAccount[] memory accounts = new HoldingAccount[](4);
+        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        return accounts;
+    }
+
+    /// @inheritdoc IHubHelpers
+    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
+        external
+        view
+        returns (HoldingAccount[] memory)
+    {
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
+        return accounts;
+    }
+
+    /// @inheritdoc IHubHelpers
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18) {
         AssetId poolCurrency = hubRegistry.currency(poolId);
         // NOTE: We assume symmetric prices are provided by holdings valuation
