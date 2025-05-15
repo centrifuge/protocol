@@ -39,10 +39,10 @@ import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedee
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
-    using BytesLib for bytes;
     using MathLib for *;
     using CastLib for *;
     using MessageLib for *;
+    using BytesLib for bytes;
 
     IBalanceSheet public balanceSheet;
 

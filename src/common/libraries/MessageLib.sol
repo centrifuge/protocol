@@ -5,6 +5,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 enum MessageType {
     /// @dev Placeholder for null message type
@@ -23,7 +24,8 @@ enum MessageType {
     NotifyPricePoolPerAsset,
     NotifyShareMetadata,
     UpdateShareHook,
-    TransferShares,
+    InitiateTransferShares,
+    ExecuteTransferShares,
     UpdateRestriction,
     UpdateContract,
     ApprovedDeposits,
@@ -32,10 +34,10 @@ enum MessageType {
     // -- Investment manager messages
     DepositRequest,
     RedeemRequest,
-    FulfilledDepositRequest,
-    FulfilledRedeemRequest,
     CancelDepositRequest,
     CancelRedeemRequest,
+    FulfilledDepositRequest,
+    FulfilledRedeemRequest,
     // -- BalanceSheet messages
     UpdateHoldingAmount,
     UpdateShares,
@@ -93,7 +95,8 @@ library MessageLib {
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
-        (73  << uint8(MessageType.TransferShares) * 8) +
+        (75  << uint8(MessageType.InitiateTransferShares) * 8) +
+        (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
@@ -101,14 +104,14 @@ library MessageLib {
         (89  << uint8(MessageType.RevokedShares) * 8) +
         (89  << uint8(MessageType.DepositRequest) * 8) +
         (89  << uint8(MessageType.RedeemRequest) * 8) +
-        (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
-        (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
         (73  << uint8(MessageType.CancelDepositRequest) * 8) +
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
+        (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
+        (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
         (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (50  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
+        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
         (41 << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
         (26 << uint8(MessageType.SetQueue) * 8);
 
@@ -126,7 +129,7 @@ library MessageLib {
 
         length = uint16(uint8(bytes32(MESSAGE_LENGTHS)[31 - kind]));
 
-        // Spetial treatment for messages with dynamic size:
+        // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
@@ -142,6 +145,24 @@ library MessageLib {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
+        }
+    }
+
+    function messageSourceCentrifugeId(bytes memory message) internal pure returns (uint16) {
+        uint8 kind = message.toUint8(0);
+
+        if (kind <= uint8(MessageType.RecoverTokens)) {
+            return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
+            return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.RegisterAsset)) {
+            return AssetId.wrap(message.toUint128(1)).centrifugeId();
+        } else if (kind >= uint8(MessageType.DepositRequest) && kind <= uint8(MessageType.CancelRedeemRequest)) {
+            return AssetId.wrap(message.toUint128(57)).centrifugeId();
+        } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
+            return AssetId.wrap(message.toUint128(25)).centrifugeId();
+        } else {
+            return message.messagePoolId().centrifugeId();
         }
     }
 
@@ -396,19 +417,51 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TransferShares
+    //    InitiateTransferShares
     //---------------------------------------
 
-    struct TransferShares {
+    struct InitiateTransferShares {
+        uint64 poolId;
+        bytes16 scId;
+        uint16 centrifugeId;
+        bytes32 receiver;
+        uint128 amount;
+    }
+
+    function deserializeInitiateTransferShares(bytes memory data)
+        internal
+        pure
+        returns (InitiateTransferShares memory)
+    {
+        require(messageType(data) == MessageType.InitiateTransferShares, UnknownMessageType());
+        return InitiateTransferShares({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            centrifugeId: data.toUint16(25),
+            receiver: data.toBytes32(27),
+            amount: data.toUint128(59)
+        });
+    }
+
+    function serialize(InitiateTransferShares memory t) internal pure returns (bytes memory) {
+        return
+            abi.encodePacked(MessageType.InitiateTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
+    }
+
+    //---------------------------------------
+    //    ExecuteTransferShares
+    //---------------------------------------
+
+    struct ExecuteTransferShares {
         uint64 poolId;
         bytes16 scId;
         bytes32 receiver;
         uint128 amount;
     }
 
-    function deserializeTransferShares(bytes memory data) internal pure returns (TransferShares memory) {
-        require(messageType(data) == MessageType.TransferShares, UnknownMessageType());
-        return TransferShares({
+    function deserializeExecuteTransferShares(bytes memory data) internal pure returns (ExecuteTransferShares memory) {
+        require(messageType(data) == MessageType.ExecuteTransferShares, UnknownMessageType());
+        return ExecuteTransferShares({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             receiver: data.toBytes32(25),
@@ -416,8 +469,8 @@ library MessageLib {
         });
     }
 
-    function serialize(TransferShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TransferShares, t.poolId, t.scId, t.receiver, t.amount);
+    function serialize(ExecuteTransferShares memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.ExecuteTransferShares, t.poolId, t.scId, t.receiver, t.amount);
     }
 
     //---------------------------------------

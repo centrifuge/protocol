@@ -49,6 +49,9 @@ interface IHub {
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
     );
+    event ForwardTransferShares(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
+    );
 
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);

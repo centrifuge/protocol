@@ -78,7 +78,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
-
         emit File(what, data);
     }
 
@@ -584,6 +583,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
+    }
+
+    /// @inheritdoc IHubGatewayHandler
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
+        _auth();
+
+        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(poolId, scId, centrifugeId, receiver, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler

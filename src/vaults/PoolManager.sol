@@ -101,11 +101,8 @@ contract PoolManager is
 
     /// @inheritdoc IPoolManager
     function file(bytes32 what, address factory, bool status) external auth {
-        if (what == "vaultFactory") {
-            vaultFactory[IVaultFactory(factory)] = status;
-        } else {
-            revert FileUnrecognizedParam();
-        }
+        if (what == "vaultFactory") vaultFactory[IVaultFactory(factory)] = status;
+        else revert FileUnrecognizedParam();
         emit File(what, factory, status);
     }
 
@@ -132,7 +129,7 @@ contract PoolManager is
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendInitiateTransferShares(poolId, scId, centrifugeId, receiver, amount);
 
         gateway.endTransactionPayment();
     }
@@ -310,13 +307,9 @@ contract PoolManager is
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
-    function handleTransferShares(PoolId poolId, ShareClassId scId, address destinationAddress, uint128 amount)
-        public
-        auth
-    {
+    function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
-
-        shareToken_.mint(destinationAddress, amount);
+        shareToken_.mint(receiver.toAddress(), amount);
     }
 
     /// @inheritdoc IUpdateContract

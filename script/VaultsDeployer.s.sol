@@ -57,10 +57,6 @@ contract VaultsDeployer is CommonDeployer {
         syncDepositVaultFactory =
             new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, deployer);
 
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
-        vaultFactories[0] = asyncVaultFactory;
-        vaultFactories[1] = syncDepositVaultFactory;
-
         poolManager = new PoolManager(tokenFactory, deployer);
         balanceSheet = new BalanceSheet(root, deployer);
         vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
