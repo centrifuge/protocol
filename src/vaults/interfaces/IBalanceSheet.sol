@@ -104,11 +104,19 @@ interface IBalanceSheet {
 
     /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
+    ///         resetPricePoolPerAsset MUST be called after the balance sheet interactions using this price.
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value) external;
+
+    /// @notice Reset the price pool per asset.
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Override the price pool per share, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
+    ///         resetPricePoolPerShare MUST be called after the balance sheet interactions using this price.
     function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external;
+
+    /// @notice Reset the price pool per share.
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external;
 
     /// @notice Returns the pool escrow.
     /// @dev    Assets for pending deposit requests are not held by the pool escrow.

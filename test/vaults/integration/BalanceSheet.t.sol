@@ -500,6 +500,39 @@ contract BalanceSheetTest is BaseTest {
         vm.expectEmit();
         emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), pricePerShare, defaultAmount);
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.resetPricePoolPerShare(POOL_A, defaultTypedShareClassId);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.resetPricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId);
+
+        balanceSheet.resetPricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.resetPricePoolPerShare(POOL_A, defaultTypedShareClassId);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Deposit(
+            POOL_A,
+            defaultTypedShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            defaultPricePoolPerAsset
+        );
+        balanceSheet.noteDeposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
+        );
+
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Revoke(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
     }
 }
 
