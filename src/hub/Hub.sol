@@ -128,16 +128,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function claimDeposit(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
-        public
-        auth
-        returns (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain)
-    {
-        (payoutShareAmount, paymentAssetAmount, cancelled, canClaimAgain) =
-            shareClassManager.claimDeposit(poolId, scId, investor, assetId);
-    }
-
-    /// @inheritdoc IHub
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
@@ -151,16 +141,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
             );
         }
-    }
-
-    /// @inheritdoc IHub
-    function claimRedeem(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
-        public
-        auth
-        returns (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain)
-    {
-        (payoutAssetAmount, paymentShareAmount, cancelled, canClaimAgain) =
-            shareClassManager.claimRedeem(poolId, scId, investor, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -652,9 +632,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @dev Ensure the sender is authorized
     function _auth() internal auth {}
 
-    /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin or a ward
+    /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
     function _isManager(PoolId poolId) internal protected {
-        require(hubRegistry.manager(poolId, msg.sender) || wards[msg.sender] == 1, IHub.NotManager());
+        require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
     }
 
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.

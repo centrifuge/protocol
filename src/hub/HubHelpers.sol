@@ -28,13 +28,23 @@ contract HubHelpers is Auth, IHubHelpers {
     using MathLib for uint256;
 
     IHoldings public immutable holdings;
+    IAccounting public immutable accounting;
     IHubRegistry public immutable hubRegistry;
+    IShareClassManager public immutable shareClassManager;
 
     IHub public hub;
 
-    constructor(IHoldings holdings_, IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
+    constructor(
+        IHoldings holdings_,
+        IAccounting accounting_,
+        IHubRegistry hubRegistry_,
+        IShareClassManager shareClassManager_,
+        address deployer
+    ) Auth(deployer) {
         holdings = holdings_;
+        accounting = accounting_;
         hubRegistry = hubRegistry_;
+        shareClassManager = shareClassManager_;
     }
 
     /// @inheritdoc IHubHelpers
@@ -57,7 +67,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                hub.claimDeposit(poolId, scId, investor, assetId);
+                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
@@ -83,7 +93,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                hub.claimRedeem(poolId, scId, investor, assetId);
+                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
@@ -108,21 +118,21 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         if (diff == 0) return;
 
+        accounting.unlock(poolId);
+
         bool isLiability = holdings.isLiability(poolId, scId, assetId);
         AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
         AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
 
-        JournalEntry[] memory debits = new JournalEntry[](1);
-        JournalEntry[] memory credits = new JournalEntry[](1);
         if (isPositive) {
-            debits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)));
-            credits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)));
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
         } else {
-            debits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)));
-            credits[0] = JournalEntry(diff, holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)));
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
         }
 
-        hub.updateJournal(poolId, debits, credits);
+        accounting.lock();
     }
 
     //----------------------------------------------------------------------------------------------
