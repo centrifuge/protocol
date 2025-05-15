@@ -97,6 +97,7 @@ contract VaultsDeployer is CommonDeployer {
         root.endorse(address(vaultRouter));
         root.endorse(address(globalEscrow));
         root.endorse(address(balanceSheet));
+        root.endorse(address(asyncRequestManager));
     }
 
     function _vaultsRely() private {

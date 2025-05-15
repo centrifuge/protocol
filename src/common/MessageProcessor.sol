@@ -14,7 +14,6 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
-    IGatewayHandler,
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
@@ -34,7 +33,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
-    IGatewayHandler public gateway;
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
     IRequestManagerGatewayHandler public investmentManager;
@@ -51,8 +49,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = IGatewayHandler(data);
-        else if (what == "hub") hub = IHubGatewayHandler(data);
+        if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
@@ -69,13 +66,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.InitiateRecovery) {
-            MessageLib.InitiateRecovery memory m = message.deserializeInitiateRecovery();
-            gateway.initiateRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
-        } else if (kind == MessageType.DisputeRecovery) {
-            MessageLib.DisputeRecovery memory m = message.deserializeDisputeRecovery();
-            gateway.disputeRecovery(m.centrifugeId, IAdapter(m.adapter.toAddress()), m.hash);
-        } else if (kind == MessageType.ScheduleUpgrade) {
+        if (kind == MessageType.ScheduleUpgrade) {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
@@ -158,8 +149,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.investor.toAddress(),
                 AssetId.wrap(m.assetId),
-                m.assetAmount,
-                m.shareAmount
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledAssetAmount
             );
         } else if (kind == MessageType.FulfilledRedeemRequest) {
             MessageLib.FulfilledRedeemRequest memory m = message.deserializeFulfilledRedeemRequest();
@@ -168,27 +160,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 m.investor.toAddress(),
                 AssetId.wrap(m.assetId),
-                m.assetAmount,
-                m.shareAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelDepositRequest) {
-            MessageLib.FulfilledCancelDepositRequest memory m = message.deserializeFulfilledCancelDepositRequest();
-            investmentManager.fulfillCancelDepositRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.cancelledAmount,
-                m.cancelledAmount
-            );
-        } else if (kind == MessageType.FulfilledCancelRedeemRequest) {
-            MessageLib.FulfilledCancelRedeemRequest memory m = message.deserializeFulfilledCancelRedeemRequest();
-            investmentManager.fulfillCancelRedeemRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.cancelledShares
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledShareAmount
             );
         } else if (kind == MessageType.TriggerIssueShares) {
             MessageLib.TriggerIssueShares memory m = message.deserializeTriggerIssueShares();
@@ -248,12 +222,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else {
             revert InvalidMessage(uint8(kind));
         }
-    }
-
-    /// @inheritdoc IMessageProperties
-    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        uint8 code = message.messageCode();
-        return code == uint8(MessageType.InitiateRecovery) || code == uint8(MessageType.DisputeRecovery);
     }
 
     /// @inheritdoc IMessageProperties

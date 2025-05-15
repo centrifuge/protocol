@@ -11,34 +11,28 @@ import {IERC20, IERC20Metadata, IERC20Permit} from "src/misc/interfaces/IERC20.s
 /// @notice Standard ERC-20 implementation, with mint/burn functionality and permit logic.
 /// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/src/Dai.sol
 contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
+    event File(bytes32 indexed what, string data);
+
     error FileUnrecognizedParam();
 
-    /// @inheritdoc IERC20Metadata
+    // Metadata
     string public name;
-    /// @inheritdoc IERC20Metadata
     string public symbol;
-    /// @inheritdoc IERC20Metadata
     uint8 public immutable decimals;
-    /// @inheritdoc IERC20
+
+    // Balances
     uint256 public totalSupply;
-
     mapping(address => uint256) private balances;
-
-    /// @inheritdoc IERC20
     mapping(address => mapping(address => uint256)) public allowance;
-    /// @inheritdoc IERC20Permit
-    mapping(address => uint256) public nonces;
 
-    // --- EIP712 ---
+    // EIP-712
     bytes32 private immutable nameHash;
     bytes32 private immutable versionHash;
+    mapping(address => uint256) public nonces;
     uint256 public immutable deploymentChainId;
     bytes32 private immutable _DOMAIN_SEPARATOR;
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-
-    // --- Events ---
-    event File(bytes32 indexed what, string data);
 
     constructor(uint8 decimals_) Auth(msg.sender) {
         decimals = decimals_;
@@ -49,27 +43,10 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         _DOMAIN_SEPARATOR = EIP712Lib.calculateDomainSeparator(nameHash, versionHash);
     }
 
-    function _balanceOf(address user) internal view virtual returns (uint256) {
-        return balances[user];
-    }
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IERC20
-    function balanceOf(address user) public view virtual returns (uint256) {
-        return _balanceOf(user);
-    }
-
-    function _setBalance(address user, uint256 value) internal virtual {
-        balances[user] = value;
-    }
-
-    /// @inheritdoc IERC20Permit
-    function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        return block.chainid == deploymentChainId
-            ? _DOMAIN_SEPARATOR
-            : EIP712Lib.calculateDomainSeparator(nameHash, versionHash);
-    }
-
-    // --- Administration ---
     function file(bytes32 what, string memory data) public virtual auth {
         if (what == "name") name = data;
         else if (what == "symbol") symbol = data;
@@ -77,7 +54,27 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         emit File(what, data);
     }
 
-    // --- ERC20 Mutations ---
+    //----------------------------------------------------------------------------------------------
+    // ERC20 balances
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IERC20
+    function balanceOf(address user) public view virtual returns (uint256) {
+        return _balanceOf(user);
+    }
+
+    function _balanceOf(address user) internal view virtual returns (uint256) {
+        return balances[user];
+    }
+
+    function _setBalance(address user, uint256 value) internal virtual {
+        balances[user] = value;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // ERC20 mutations
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IERC20
     function transfer(address to, uint256 value) public virtual returns (bool) {
         require(to != address(0) && to != address(this), InvalidAddress());
@@ -86,7 +83,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
         unchecked {
             _setBalance(msg.sender, balance - value);
-            // note: we don't need an overflow check here b/c sum of all balances == totalSupply
+            // We don't need an overflow check here b/c sum of all balances == totalSupply
             _setBalance(to, _balanceOf(to) + value);
         }
 
@@ -117,7 +114,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
 
         unchecked {
             _setBalance(from, balance - value);
-            // note: we don't need an overflow check here b/c sum of all balances == totalSupply
+            // We don't need an overflow check here b/c sum of all balances == totalSupply
             _setBalance(to, _balanceOf(to) + value);
         }
 
@@ -135,7 +132,10 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         return true;
     }
 
-    // --- Mint/Burn ---
+    //----------------------------------------------------------------------------------------------
+    // Mint/burn
+    //----------------------------------------------------------------------------------------------
+
     function mint(address to, uint256 value) public virtual auth {
         require(to != address(0) && to != address(this), InvalidAddress());
         unchecked {
@@ -172,7 +172,17 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
         emit Transfer(from, address(0), value);
     }
 
-    // --- Approve by signature ---
+    //----------------------------------------------------------------------------------------------
+    // Permit
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IERC20Permit
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
+        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
+    }
+
     function permit(address owner, address spender, uint256 value, uint256 deadline, bytes memory signature) public {
         require(block.timestamp <= deadline, PermitExpired());
 
@@ -196,9 +206,9 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     }
 
     /// @inheritdoc IERC20Permit
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external
-    {
-        permit(owner, spender, value, deadline, abi.encodePacked(r, s, v));
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        return block.chainid == deploymentChainId
+            ? _DOMAIN_SEPARATOR
+            : EIP712Lib.calculateDomainSeparator(nameHash, versionHash);
     }
 }

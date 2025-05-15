@@ -150,7 +150,7 @@ contract Holdings is Auth, IHoldings {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
-    function initialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
+    function isInitialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
         return address(holding[poolId][scId][assetId].valuation) != address(0);
     }
 

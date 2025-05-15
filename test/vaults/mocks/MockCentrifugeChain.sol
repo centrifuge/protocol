@@ -247,54 +247,19 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    function isFulfilledCancelDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 investor,
-        uint128 assetId,
-        uint128 assets
-    ) public {
-        execute(
-            MessageLib.FulfilledCancelDepositRequest({
-                poolId: poolId,
-                scId: scId,
-                investor: investor,
-                assetId: assetId,
-                cancelledAmount: assets
-            }).serialize()
-        );
-    }
-
-    function isFulfilledCancelRedeemRequest(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 investor,
-        uint128 assetId,
-        uint128 shares
-    ) public {
-        execute(
-            MessageLib.FulfilledCancelRedeemRequest({
-                poolId: poolId,
-                scId: scId,
-                investor: investor,
-                assetId: assetId,
-                cancelledShares: shares
-            }).serialize()
-        );
-    }
-
     /// @dev Simulates incoming FulfilledDepositRequest with prepended ApprovedDeposits message
     function isFulfilledDepositRequest(
         uint64 poolId,
         bytes16 scId,
         bytes32 investor,
         uint128 assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) public {
         // NOTE: Currently, hardcoding pricePoolPerAsset to 1
-        isApprovedDeposits(poolId, scId, assetId, assets, d18(1, 1));
-        isIssuedShares(poolId, scId, shares, d18(1, 1));
+        isApprovedDeposits(poolId, scId, assetId, fulfilledAssetAmount, d18(1, 1));
+        isIssuedShares(poolId, scId, fulfilledShareAmount, d18(1, 1));
 
         execute(
             MessageLib.FulfilledDepositRequest({
@@ -302,8 +267,9 @@ contract MockCentrifugeChain is Test {
                 scId: scId,
                 investor: investor,
                 assetId: assetId,
-                assetAmount: assets,
-                shareAmount: shares
+                fulfilledAssetAmount: fulfilledAssetAmount,
+                fulfilledShareAmount: fulfilledShareAmount,
+                cancelledAssetAmount: cancelledAssetAmount
             }).serialize()
         );
     }
@@ -314,19 +280,21 @@ contract MockCentrifugeChain is Test {
         bytes16 scId,
         bytes32 investor,
         uint128 assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) public {
         // NOTE: Currently hard coding pricePoolPerShare to 1
-        isRevokedShares(poolId, scId, assetId, assets, shares, d18(1, 1));
+        isRevokedShares(poolId, scId, assetId, fulfilledAssetAmount, fulfilledShareAmount, d18(1, 1));
         execute(
             MessageLib.FulfilledRedeemRequest({
                 poolId: poolId,
                 scId: scId,
                 investor: investor,
                 assetId: assetId,
-                assetAmount: assets,
-                shareAmount: shares
+                fulfilledAssetAmount: fulfilledAssetAmount,
+                fulfilledShareAmount: fulfilledShareAmount,
+                cancelledShareAmount: cancelledShareAmount
             }).serialize()
         );
     }

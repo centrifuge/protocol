@@ -3,7 +3,6 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -12,7 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for dispatch-only gateway
-interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
+interface IGateway is IMessageHandler, IMessageSender {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -171,16 +170,25 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     function subsidizePool(PoolId poolId) external payable;
 
     /// @notice Prepays for the TX cost for sending the messages through the adapters
-    ///         Currently being called from Vault Router only.
+    ///         Currently being called from Vault Router and Hub.
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
-    function payTransaction(address payer) external payable;
+    function startTransactionPayment(address payer) external payable;
+
+    /// @notice Finalize the transaction payment mode, next payments will be subsidized (as default).
+    function endTransactionPayment() external;
 
     /// @notice Initialize batching message
     function startBatching() external;
 
     /// @notice Finalize batching messages and send the resulting batch message
     function endBatching() external;
+
+    /// @notice Initiate recovery of a payload.
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
+
+    /// @notice Dispute recovery of a payload.
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
@@ -217,14 +225,6 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  batchHash The hash value of the incoming batch message.
     function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
-
-    /// @notice Used to calculate overall cost for bridging a payload on the first adapter and settling
-    ///         on the destination chain and bridging its payload proofs on n-1 adapter
-    ///         and settling on the destination chain.
-    /// @param  payload Used in gas cost calculations.
-    /// @dev    Currenly the payload is not taken into consideration.
-    /// @return total Total cost for sending one message and corresponding proofs on through all adapters
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 total);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for

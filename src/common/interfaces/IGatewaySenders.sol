@@ -28,14 +28,6 @@ interface IRootMessageSender {
         bytes32 to,
         uint256 amount
     ) external;
-
-    /// @notice Creates and send the message
-    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external;
-
-    /// @notice Creates and send the message
-    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -81,8 +73,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -91,26 +84,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledCancelRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledShares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -196,7 +172,6 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease

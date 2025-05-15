@@ -76,10 +76,6 @@ contract MockProcessor is IMessageProperties {
         return processed[centrifugeId].length;
     }
 
-    function isMessageRecovery(bytes calldata message) external pure returns (bool) {
-        return message.toUint8(0) == uint8(MessageKind.Recovery);
-    }
-
     function messageLength(bytes calldata message) external pure returns (uint16) {
         return MessageKind(message.toUint8(0)).length();
     }
@@ -757,21 +753,6 @@ contract GatewayTestExecuteRecovery is GatewayTest {
         gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
     }
 
-    function testErrRecoveryRecovered() public {
-        gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
-
-        bytes memory batch = MessageKind.Recovery.asBytes();
-        bytes32 batchHash = keccak256(batch);
-
-        gateway.initiateRecovery(REMOTE_CENT_ID, batchAdapter, batchHash);
-
-        vm.warp(gateway.RECOVERY_CHALLENGE_PERIOD() + 1);
-
-        vm.prank(ANY);
-        vm.expectRevert(IGateway.RecoveryPayloadRecovered.selector);
-        gateway.executeRecovery(REMOTE_CENT_ID, batchAdapter, batch);
-    }
-
     function testExecuteRecovery() public {
         gateway.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
@@ -834,11 +815,11 @@ contract GatewayTestPayTransaction is GatewayTest {
         vm.deal(ANY, 100);
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
     }
 
     function testPayTransaction() public {
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
 
         assertEq(gateway.transactionRefund(), TRANSIENT_REFUND);
         assertEq(gateway.fuel(), 100);
@@ -846,7 +827,7 @@ contract GatewayTestPayTransaction is GatewayTest {
 
     /// forge-config: default.isolate = true
     function testPayTransactionIsTransactional() public {
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
 
         assertEq(gateway.transactionRefund(), address(0));
         assertEq(gateway.fuel(), 0);
@@ -909,7 +890,7 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
         uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 - 1;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
 
@@ -1071,7 +1052,7 @@ contract GatewayTestSend is GatewayTest {
         bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
 
         uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
 
@@ -1084,10 +1065,6 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
-        assertEq(gateway.transactionRefund(), address(0));
     }
 }
 
@@ -1243,15 +1220,11 @@ contract GatewayTestEndBatching is GatewayTest {
 
         uint256 payment =
             MESSAGE_GAS_LIMIT * 2 * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
 
         gateway.endBatching();
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
-        assertEq(gateway.transactionRefund(), address(0));
     }
 
     function testSendMessageUnderpaid() public {
