@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
