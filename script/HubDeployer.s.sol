@@ -13,6 +13,7 @@ import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {Holdings} from "src/hub/Holdings.sol";
 import {Accounting} from "src/hub/Accounting.sol";
 import {Hub} from "src/hub/Hub.sol";
+import {HubHelpers} from "src/hub/HubHelpers.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
@@ -23,6 +24,7 @@ contract HubDeployer is CommonDeployer {
     Accounting public accounting;
     Holdings public holdings;
     ShareClassManager public shareClassManager;
+    HubHelpers public hubHelpers;
     Hub public hub;
 
     // Utilities
@@ -39,7 +41,8 @@ contract HubDeployer is CommonDeployer {
         accounting = new Accounting(deployer);
         holdings = new Holdings(hubRegistry, deployer);
         shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hub = new Hub(shareClassManager, hubRegistry, accounting, holdings, gateway, deployer);
+        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
+        hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
 
         _poolsRegister();
         _poolsRely();
@@ -64,6 +67,11 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(hub));
         gateway.rely(address(hub));
         messageDispatcher.rely(address(hub));
+        hubHelpers.rely(address(hub));
+
+        // Rely hub helpers
+        accounting.rely(address(hubHelpers));
+        shareClassManager.rely(address(hubHelpers));
 
         // Rely others on hub
         hub.rely(address(messageProcessor));
@@ -86,6 +94,8 @@ contract HubDeployer is CommonDeployer {
         hub.file("sender", address(messageDispatcher));
 
         guardian.file("hub", address(hub));
+
+        hubHelpers.file("hub", address(hub));
     }
 
     function _poolsInitialConfig() private {

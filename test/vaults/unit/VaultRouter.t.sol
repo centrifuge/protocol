@@ -99,7 +99,7 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
-        uint256 gas = DEFAULT_GAS;
+        uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
 
         erc20.approve(address(vault_), amount);
         vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);

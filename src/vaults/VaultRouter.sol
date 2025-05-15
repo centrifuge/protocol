@@ -56,6 +56,16 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         messageDispatcher = messageDispatcher_;
     }
 
+    modifier payTransaction() {
+        if (!gateway.isBatching()) {
+            gateway.startTransactionPayment{value: msg.value}(msg.sender);
+        }
+        _;
+        if (!gateway.isBatching()) {
+            gateway.endTransactionPayment();
+        }
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -66,13 +76,14 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
-            gateway.payTransaction{value: msg.value}(msg.sender);
+            gateway.startTransactionPayment{value: msg.value}(msg.sender);
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
             gateway.endBatching();
+            gateway.endTransactionPayment();
         }
     }
 
@@ -96,6 +107,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
         payable
+        payTransaction
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
@@ -105,7 +117,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
             _approveMax(vaultDetails.asset, address(vault));
         }
 
-        _pay();
         vault.requestDeposit(amount, controller, owner);
     }
 
@@ -113,6 +124,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner)
         external
         payable
+        payTransaction
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
@@ -122,7 +134,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
-        _pay();
         vault.deposit(assets, receiver);
     }
 
@@ -173,7 +184,12 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function executeLockedDepositRequest(IAsyncVault vault, address controller) external payable protected {
+    function executeLockedDepositRequest(IAsyncVault vault, address controller)
+        external
+        payable
+        payTransaction
+        protected
+    {
         uint256 lockedRequest = lockedRequests[controller][vault];
         require(lockedRequest != 0, NoLockedRequest());
         lockedRequests[controller][vault] = 0;
@@ -181,7 +197,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         escrow.authTransferTo(vaultDetails.asset, address(this), lockedRequest);
 
-        _pay();
         _approveMax(vaultDetails.asset, address(vault));
         vault.requestDeposit(lockedRequest, controller, address(this));
         emit ExecuteLockedDepositRequest(vault, controller, msg.sender);
@@ -195,8 +210,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function cancelDepositRequest(IAsyncVault vault) external payable protected {
-        _pay();
+    function cancelDepositRequest(IAsyncVault vault) external payable payTransaction protected {
         vault.cancelDepositRequest(REQUEST_ID, msg.sender);
     }
 
@@ -218,15 +232,20 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner)
         external
         payable
+        payTransaction
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
-        _pay();
         vault.requestRedeem(amount, controller, owner);
     }
 
     /// @inheritdoc IVaultRouter
-    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
+    function claimRedeem(IBaseVault vault, address receiver, address controller)
+        external
+        payable
+        payTransaction
+        protected
+    {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
@@ -241,8 +260,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function cancelRedeemRequest(IAsyncVault vault) external payable protected {
-        _pay();
+    function cancelRedeemRequest(IAsyncVault vault) external payable payTransaction protected {
         vault.cancelRedeemRequest(REQUEST_ID, msg.sender);
     }
 
@@ -312,13 +330,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function _approveMax(address asset, address spender) internal {
         if (IERC20(asset).allowance(address(this), spender) == 0) {
             SafeTransferLib.safeApprove(asset, spender, type(uint256).max);
-        }
-    }
-
-    /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
-    function _pay() internal {
-        if (!gateway.isBatching()) {
-            gateway.payTransaction{value: msg.value}(msg.sender);
         }
     }
 

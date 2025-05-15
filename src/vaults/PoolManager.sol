@@ -123,13 +123,15 @@ contract PoolManager is
             CrossChainTransferNotAllowed()
         );
 
-        gateway.payTransaction{value: msg.value}(msg.sender);
+        gateway.startTransactionPayment{value: msg.value}(msg.sender);
 
         share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
         sender.sendInitiateTransferShares(poolId, scId, centrifugeId, receiver, amount);
+
+        gateway.endTransactionPayment();
     }
 
     // @inheritdoc IPoolManager
@@ -147,7 +149,7 @@ contract PoolManager is
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
 
-        gateway.payTransaction{value: msg.value}(msg.sender);
+        gateway.startTransactionPayment{value: msg.value}(msg.sender);
 
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);
@@ -171,6 +173,8 @@ contract PoolManager is
         }
 
         sender.sendRegisterAsset(centrifugeId, assetId, decimals);
+
+        gateway.endTransactionPayment();
     }
 
     //----------------------------------------------------------------------------------------------

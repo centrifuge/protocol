@@ -168,10 +168,13 @@ interface IGateway is IMessageHandler, IMessageSender {
     function subsidizePool(PoolId poolId) external payable;
 
     /// @notice Prepays for the TX cost for sending the messages through the adapters
-    ///         Currently being called from Vault Router only.
+    ///         Currently being called from Vault Router and Hub.
     ///         In order to prepay, the method MUST be called with `msg.value`.
     ///         Called is assumed to have called IGateway.estimate before calling this.
-    function payTransaction(address payer) external payable;
+    function startTransactionPayment(address payer) external payable;
+
+    /// @notice Finalize the transaction payment mode, next payments will be subsidized (as default).
+    function endTransactionPayment() external;
 
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch

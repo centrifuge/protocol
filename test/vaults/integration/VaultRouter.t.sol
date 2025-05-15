@@ -235,7 +235,7 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(shareToken.balanceOf(address(globalEscrow)), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
-        vaultRouter.claimRedeem(vault, self, self);
+        vaultRouter.claimRedeem{value: fuel}(vault, self, self);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(self), assetPayout, 1);
     }
@@ -286,9 +286,7 @@ contract VaultRouterTest is BaseTest {
         amount2 = uint128(bound(amount2, 4, MAX_UINT128));
         vm.assume(amount2 % 2 == 0);
 
-        // NOTE: Multiply by 2 due to coupling Fulfilled* with either ApprovedDeposit or RevokedShares which send a
-        //       message back to Hub
-        uint256 fuel = 2 * DEFAULT_GAS;
+        uint256 fuel = DEFAULT_GAS;
         // deposit
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
 
@@ -325,8 +323,8 @@ contract VaultRouterTest is BaseTest {
         assertApproxEqAbs(erc20Y.balanceOf(self), 0, 1);
 
         // claim redeem
-        vaultRouter.claimRedeem(vault1, self, self);
-        vaultRouter.claimRedeem(vault2, self, self);
+        vaultRouter.claimRedeem{value: DEFAULT_GAS}(vault1, self, self);
+        vaultRouter.claimRedeem{value: DEFAULT_GAS}(vault2, self, self);
         assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), 0, 1);
         assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(self), assetPayout1, 1);
@@ -556,9 +554,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.enableLockDepositRequest(vault, amount);
         vm.stopPrank();
 
-        // NOTE: Multiply by 2 due to coupling Fulfilled* with either ApprovedDeposit or RevokedShares which send a
-        //       message back to Hub
-        uint256 fuel = 2 * DEFAULT_GAS;
+        uint256 fuel = DEFAULT_GAS;
 
         // Anyone else can execute the request and claim the deposit
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
@@ -579,7 +575,7 @@ contract VaultRouterTest is BaseTest {
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, investor);
         assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout);
         assertEq(erc20.balanceOf(address(investor)), 0);
-        vaultRouter.claimRedeem(vault, investor, investor);
+        vaultRouter.claimRedeem{value: fuel}(vault, investor, investor);
 
         // Token was immediately unwrapped
         assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
