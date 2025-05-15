@@ -240,11 +240,14 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
+    function claimRedeem(IBaseVault vault, address receiver, address controller)
+        external
+        payable
+        payTransaction
+        protected
+    {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
-
-        _pay();
 
         VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         if (vaultDetails.isWrapper && controller != msg.sender) {
