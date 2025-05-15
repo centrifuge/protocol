@@ -5,7 +5,7 @@ import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandl
 
 import {IAsyncDepositManager} from "src/launchpad/interfaces/investments/IAsyncDepositManager.sol";
 import {IAsyncRedeemManager} from "src/launchpad/interfaces/investments/IAsyncRedeemManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
 struct AsyncInvestmentState {

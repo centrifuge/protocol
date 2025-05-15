@@ -13,9 +13,9 @@ import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 import {PoolManager} from "src/launchpad/PoolManager.sol";
-import {SyncRequestManager} from "src/launchpad/SyncRequestManager.sol";
+import {SyncRequestManager} from "src/launchpad/vaults/SyncRequestManager.sol";
 import {VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;

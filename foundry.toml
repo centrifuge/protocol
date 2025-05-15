@@ -67,9 +67,9 @@ max_test_rejects = 65_536 # default value
   ]
 
 [profile.smt.model_checker.contracts]
-  "src/launchpad/AsyncVault.sol" = ["AsyncVault"]
-  "src/launchpad/AsyncRequestManager.sol" = ["AsyncRequestManager"]
-  "src/launchpad/SyncRequestManager.sol" = ["SyncRequestManager"]
+  "src/launchpad/vaults/AsyncVault.sol" = ["AsyncVault"]
+  "src/launchpad/vaults/AsyncRequestManager.sol" = ["AsyncRequestManager"]
+  "src/launchpad/vaults/SyncRequestManager.sol" = ["SyncRequestManager"]
   "src/launchpad/PoolManager.sol" = ["PoolManager"]
   "src/launchpad/Escrow.sol" = ["Escrow"]
   "src/launchpad/Root.sol" = ["Root"]

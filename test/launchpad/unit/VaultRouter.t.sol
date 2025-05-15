@@ -14,13 +14,13 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {VaultRouter} from "src/launchpad/VaultRouter.sol";
-import {IVaultRouter} from "src/launchpad/interfaces/IVaultRouter.sol";
+import {VaultRouter} from "src/launchpad/vaults/VaultRouter.sol";
+import {IVaultRouter} from "src/launchpad/interfaces/vaults/IVaultRouter.sol";
 import {IPoolManager} from "src/launchpad/interfaces/IPoolManager.sol";
 
 import {IAsyncRequestManager} from "src/launchpad/interfaces/investments/IAsyncRequestManager.sol";
-import {IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
-import {SyncDepositVault} from "src/launchpad/SyncDepositVault.sol";
+import {IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
+import {SyncDepositVault} from "src/launchpad/vaults/SyncDepositVault.sol";
 
 interface Authlike {
     function rely(address) external;

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/launchpad/BaseTest.sol";
 
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {

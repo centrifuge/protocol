@@ -8,7 +8,7 @@ import "src/misc/interfaces/IERC7540.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/launchpad/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
 

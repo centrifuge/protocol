@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IDepositManager} from "src/launchpad/interfaces/investments/IDepositManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface IAsyncDepositManager is IDepositManager {
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before

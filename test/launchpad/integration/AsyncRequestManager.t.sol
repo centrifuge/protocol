@@ -9,10 +9,10 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IEscrow} from "src/launchpad/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
-import {IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/launchpad/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 import "test/launchpad/BaseTest.sol";
 

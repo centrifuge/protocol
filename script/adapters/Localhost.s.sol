@@ -14,8 +14,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
-import {SyncDepositVault} from "src/launchpad/SyncDepositVault.sol";
-import {IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {SyncDepositVault} from "src/launchpad/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 

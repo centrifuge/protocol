@@ -17,9 +17,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {BaseRequestManager} from "src/launchpad/BaseRequestManager.sol";
+import {BaseRequestManager} from "src/launchpad/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
-import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IPoolManager, VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
 import {IBalanceSheet} from "src/launchpad/interfaces/IBalanceSheet.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";

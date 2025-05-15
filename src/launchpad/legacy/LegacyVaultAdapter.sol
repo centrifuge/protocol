@@ -8,9 +8,9 @@ import {ILegacyVault} from "src/launchpad/legacy/interfaces/ILegacyVault.sol";
 import {IInvestmentManager} from "src/launchpad/legacy/interfaces/IInvestmentManager.sol";
 import {ILegacyVaultAdapter} from "src/launchpad/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
-import {AsyncVault} from "src/launchpad/AsyncVault.sol";
+import {AsyncVault} from "src/launchpad/vaults/AsyncVault.sol";
 import {IAsyncRequestManager} from "src/launchpad/interfaces/investments/IAsyncRequestManager.sol";
-import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/launchpad/BaseVaults.sol";
+import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/launchpad/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.

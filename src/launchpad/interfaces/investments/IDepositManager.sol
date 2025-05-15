@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface IDepositManager is IBaseRequestManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and

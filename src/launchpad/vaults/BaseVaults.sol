@@ -14,7 +14,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault, IAsyncRedeemVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/launchpad/interfaces/investments/IAsyncRedeemManager.sol";

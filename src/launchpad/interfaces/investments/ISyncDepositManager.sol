@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IDepositManager} from "src/launchpad/interfaces/investments/IDepositManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface ISyncDepositManager is IDepositManager {
     function previewDeposit(IBaseVault vault, address sender, uint256 assets) external view returns (uint256);

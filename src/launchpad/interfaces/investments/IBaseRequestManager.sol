@@ -6,7 +6,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IPoolManager} from "src/launchpad/interfaces/IPoolManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/launchpad/interfaces/IEscrow.sol";
 
 interface IBaseRequestManager {

@@ -19,17 +19,17 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 // core contracts
-import {AsyncRequestManager} from "src/launchpad/AsyncRequestManager.sol";
+import {AsyncRequestManager} from "src/launchpad/vaults/AsyncRequestManager.sol";
 import {PoolManager} from "src/launchpad/PoolManager.sol";
 import {Escrow} from "src/launchpad/Escrow.sol";
 import {AsyncVaultFactory} from "src/launchpad/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/launchpad/factories/TokenFactory.sol";
-import {AsyncVault} from "src/launchpad/AsyncVault.sol";
+import {AsyncVault} from "src/launchpad/vaults/AsyncVault.sol";
 import {ShareToken} from "src/launchpad/ShareToken.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IVaultFactory} from "src/launchpad/interfaces/factories/IVaultFactory.sol";
-import {VaultKind} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {VaultKind} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 // scripts
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";

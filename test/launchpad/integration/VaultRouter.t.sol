@@ -14,9 +14,9 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
-import {VaultRouter} from "src/launchpad/VaultRouter.sol";
-import {IVaultRouter} from "src/launchpad/interfaces/IVaultRouter.sol";
+import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
+import {VaultRouter} from "src/launchpad/vaults/VaultRouter.sol";
+import {IVaultRouter} from "src/launchpad/interfaces/vaults/IVaultRouter.sol";
 import {IPoolManager} from "src/launchpad/interfaces/IPoolManager.sol";
 import {MockERC20Wrapper} from "test/launchpad/mocks/MockERC20Wrapper.sol";
 import {

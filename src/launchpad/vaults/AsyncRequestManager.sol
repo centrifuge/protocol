@@ -26,8 +26,8 @@ import {IDepositManager} from "src/launchpad/interfaces/investments/IDepositMana
 import {IRedeemManager} from "src/launchpad/interfaces/investments/IRedeemManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
-import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/launchpad/interfaces/IBaseVaults.sol";
-import {BaseRequestManager} from "src/launchpad/BaseRequestManager.sol";
+import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
+import {BaseRequestManager} from "src/launchpad/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/launchpad/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/launchpad/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";

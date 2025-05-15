@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IRedeemManager} from "src/launchpad/interfaces/investments/IRedeemManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface IAsyncRedeemManager is IRedeemManager {
     /// @notice Requests share redemption. Vaults have to request redemptions

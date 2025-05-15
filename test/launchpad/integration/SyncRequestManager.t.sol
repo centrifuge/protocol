@@ -13,11 +13,11 @@ import {
     Prices,
     ISyncDepositValuation
 } from "src/launchpad/interfaces/investments/ISyncRequestManager.sol";
-import {SyncRequestManager} from "src/launchpad/SyncRequestManager.sol";
-import {SyncDepositVault} from "src/launchpad/SyncDepositVault.sol";
+import {SyncRequestManager} from "src/launchpad/vaults/SyncRequestManager.sol";
+import {SyncDepositVault} from "src/launchpad/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 import "test/launchpad/BaseTest.sol";
 

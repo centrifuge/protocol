@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
-import {AsyncRequestManager} from "src/launchpad/AsyncRequestManager.sol";
+import {AsyncRequestManager} from "src/launchpad/vaults/AsyncRequestManager.sol";
 import {BalanceSheet} from "src/launchpad/BalanceSheet.sol";
 import {TokenFactory} from "src/launchpad/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/launchpad/factories/AsyncVaultFactory.sol";
@@ -14,9 +14,9 @@ import {SyncDepositVaultFactory} from "src/launchpad/factories/SyncDepositVaultF
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {SyncRequestManager} from "src/launchpad/SyncRequestManager.sol";
+import {SyncRequestManager} from "src/launchpad/vaults/SyncRequestManager.sol";
 import {PoolManager} from "src/launchpad/PoolManager.sol";
-import {VaultRouter} from "src/launchpad/VaultRouter.sol";
+import {VaultRouter} from "src/launchpad/vaults/VaultRouter.sol";
 import {Escrow} from "src/launchpad/Escrow.sol";
 import {IEscrow} from "src/launchpad/interfaces/IEscrow.sol";
 import {PoolEscrowFactory} from "src/launchpad/factories/PoolEscrowFactory.sol";

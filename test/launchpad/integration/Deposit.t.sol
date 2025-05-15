@@ -15,7 +15,7 @@ import "test/launchpad/BaseTest.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IAsyncRequestManager} from "src/launchpad/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
-import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault, IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

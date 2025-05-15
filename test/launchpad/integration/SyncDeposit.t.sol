@@ -17,10 +17,10 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IBalanceSheet} from "src/launchpad/interfaces/IBalanceSheet.sol";
-import {SyncDepositVault} from "src/launchpad/SyncDepositVault.sol";
+import {SyncDepositVault} from "src/launchpad/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
 import {ISyncRequestManager} from "src/launchpad/interfaces/investments/ISyncRequestManager.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {

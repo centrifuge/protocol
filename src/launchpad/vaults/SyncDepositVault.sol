@@ -6,12 +6,12 @@ import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/launchpad/BaseVaults.sol";
+import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/launchpad/vaults/BaseVaults.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/launchpad/interfaces/investments/IAsyncRedeemManager.sol";
 import {ISyncDepositManager} from "src/launchpad/interfaces/investments/ISyncDepositManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
-import {VaultKind} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {VaultKind} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits

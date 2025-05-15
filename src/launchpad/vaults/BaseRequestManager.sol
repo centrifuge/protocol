@@ -16,7 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IPoolManager, VaultDetails} from "src/launchpad/interfaces/IPoolManager.sol";
 import {IBaseRequestManager} from "src/launchpad/interfaces/investments/IBaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/launchpad/interfaces/factories/IPoolEscrowFactory.sol";
-import {IBaseVault, VaultKind} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault, VaultKind} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/launchpad/interfaces/IEscrow.sol";
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
 

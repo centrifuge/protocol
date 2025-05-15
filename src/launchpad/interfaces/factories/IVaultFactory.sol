@@ -6,7 +6,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
 import {IPoolEscrow} from "src/launchpad/interfaces/IEscrow.sol";
-import {IBaseVault} from "src/launchpad/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
 
 interface IVaultFactory {
     error UnsupportedTokenId();
