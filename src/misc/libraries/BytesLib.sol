@@ -76,8 +76,9 @@ library BytesLib {
         bool needsPad = _bytes.length < _start + _length;
         if (!needsPad) return slice(_bytes, _start, _length);
 
-        bytes memory temp = slice(_bytes, _start, _bytes.length - _start);
-        return abi.encodePacked(temp, new bytes(_length + _start - _bytes.length));
+        bytes memory slice_ = slice(_bytes, _start, _bytes.length - _start);
+        bytes memory padding = new bytes(_length + _start - _bytes.length);
+        return bytes.concat(slice_, padding);
     }
 
     function toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {
