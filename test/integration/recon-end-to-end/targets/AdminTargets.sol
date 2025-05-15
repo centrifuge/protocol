@@ -16,6 +16,7 @@ import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 // Interfaces
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 // Types
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -93,6 +94,7 @@ abstract contract AdminTargets is
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = hubRegistry.currency(poolId);
 
+        console2.log("assetAccountAsUint", assetAccountAsUint);
         hub.createHolding(
             poolId, 
             scId, 
@@ -185,9 +187,14 @@ abstract contract AdminTargets is
     }
 
     function hub_triggerIssueShares(uint16 centrifugeId, uint128 shares) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        address shareToken = vault.share();
+
         hub.triggerIssueShares(centrifugeId, poolId, scId, _getActor(), shares);
+
+        shareMints[address(shareToken)] += shares;
     }
     
     function hub_triggerIssueShares_clamped(uint128 shares) public {

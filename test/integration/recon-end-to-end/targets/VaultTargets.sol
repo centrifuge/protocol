@@ -99,10 +99,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             t(hasReverted, "LP-1 Must Revert");
         }
 
-        if (
-            fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), _getActor()) == true
-                || fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), to) == true
-        ) {
+        bool isActorFrozen = fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), _getActor());
+        bool isToFrozen = fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), to);
+        console2.log("isFrozen check - actor:", _getActor(), "frozen:", isActorFrozen);
+        console2.log("isFrozen check - to:", to, "frozen:", isToFrozen);
+        if (isActorFrozen || isToFrozen) {
             t(hasReverted, "LP-2 Must Revert");
         }
 
@@ -135,7 +136,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch
     function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
-    
+        
         // B4 Balances
         uint256 balanceB4 = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = IShareToken(IBaseVault(_getVault()).share()).balanceOf(address(globalEscrow));
@@ -152,11 +153,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             requestRedeemShares[to][IBaseVault(_getVault()).share()] += shares;
             requestRedeeemed[to] += shares;
 
-            (, uint32 lastUpdate) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), _getActor().toBytes32());
+            (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
 
             // nowRedeemEpoch = redeemEpochId + 1
-            eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch after redeemRequest");
+            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
+            if(Helpers.canMutate(lastUpdate, pending, redeemEpochId)) {
+                eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch after redeemRequest");
+            }
         } catch {
             hasReverted = true;
         }
@@ -313,6 +317,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 shares = IBaseVault(_getVault()).deposit(assets, _getActor());
 
+        // NOTE: sync vaults don't request deposits but we need to track this value for the escrow balance property
+        if(!isAsyncVault) {
+            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
+        }
+
         (uint128 pendingAfter,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), _getActor().toBytes32());
 
         // Processed Deposit | E-2 | Global-1
@@ -370,7 +379,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        IBaseVault(_getVault()).mint(shares, to);
+        uint256 assets = IBaseVault(_getVault()).mint(shares, to);
+
+        // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
+        if(!isAsyncVault) {
+            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
+        }
 
         (uint128 pendingAfter,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32());
 

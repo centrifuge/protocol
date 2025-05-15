@@ -8,6 +8,8 @@ import {MockERC20} from "@recon/MockERC20.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
@@ -433,8 +435,75 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
+    // forge test --match-test test_doomsday_accountValue_differential_3 -vvv 
+    function test_doomsday_accountValue_differential_3() public {
 
+        doomsday_accountValue_differential(0,1);
 
+    }
 
+    // forge test --match-test test_property_totalAssets_solvency_9 -vvv 
+    function test_property_totalAssets_solvency_9() public {
+
+        shortcut_deployNewTokenPoolAndShare(15,1,true,false,true);
+
+        shortcut_deposit_and_claim(1,0,45,1,0);
+
+        shortcut_request_deposit(1045,0,0,0);
+
+        property_totalAssets_solvency();
+
+    }
+
+    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_15 -vvv 
+    function test_property_holdings_balance_equals_escrow_balance_15() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        hub_createLiability_clamped(true,0,0);
+
+        shortcut_mint_sync(1,10000478396350502620584353829305928);
+
+        IBaseVault vault = IBaseVault(_getVault());
+        address asset = vault.asset();
+        AssetId assetId = hubRegistry.currency(vault.poolId());
+        (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
+        console2.log("holdingAssetAmount in previous holding %e", holdingAssetAmount);
+
+        hub_createHolding_clamped(false,0,0,0,0);
+
+        property_holdings_balance_equals_escrow_balance();
+
+    }
+
+    // forge test --match-test test_property_accounting_and_holdings_soundness_16 -vvv 
+    function test_property_accounting_and_holdings_soundness_16() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        hub_createHolding_clamped(false,0,0,0,0);
+
+        shortcut_deposit_sync(1,1000184571638551883);
+
+        property_accounting_and_holdings_soundness();
+
+    }
+
+    // forge test --match-test test_vault_requestDeposit_17 -vvv 
+    function test_vault_requestDeposit_17() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
+
+        shortcut_deposit_and_cancel(0,1,0,0,0);
+
+        switch_actor(1);
+
+        restrictedTransfers_freeze();
+
+        vault_requestDeposit(1,0);
+
+    }
+
+    
     
 }

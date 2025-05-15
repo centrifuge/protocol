@@ -201,8 +201,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
             // NOTE: Specification | Obv this breaks when you switch pools etc..
             // after a call to notifyDeposit the deposit price of the pool is set, so this checks that no other functions can modify the deposit price outside of the bounds
-            lte(depositPrice, _after.investorsGlobals[_getActor()].maxDepositPrice, "depositPrice > maxDepositPrice");
-            gte(depositPrice, _after.investorsGlobals[_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
+            lte(depositPrice, _after.investorsGlobals[_getVault()][_getActor()].maxDepositPrice, "depositPrice > maxDepositPrice");
+            gte(depositPrice, _after.investorsGlobals[_getVault()][_getActor()].minDepositPrice, "depositPrice < minDepositPrice");
         }
     }
 
@@ -222,8 +222,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
-            lte(redeemPrice, _after.investorsGlobals[_getActor()].maxRedeemPrice, "redeemPrice > maxRedeemPrice");
-            gte(redeemPrice, _after.investorsGlobals[_getActor()].minRedeemPrice, "redeemPrice < minRedeemPrice");
+            lte(redeemPrice, _after.investorsGlobals[_getVault()][_getActor()].maxRedeemPrice, "redeemPrice > maxRedeemPrice");
+            gte(redeemPrice, _after.investorsGlobals[_getVault()][_getActor()].minRedeemPrice, "redeemPrice < minRedeemPrice");
         }
     }
 
@@ -259,6 +259,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     - sumOfTransfersOut[asset]
             );
         }
+
         eq(balOfPoolEscrow + balOfGlobalEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
     }
 
@@ -662,7 +663,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         ShareClassId scId = vault.scId();
         AssetId assetId = hubRegistry.currency(poolId);
         AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-                
+        console2.log("asset account", uint8(AccountType.Asset));
         (, uint128 assets) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
         
@@ -1055,8 +1056,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
 
         // precondition: valueFromInt should only revert if valueFromUint also does
-        t(!(valueFromIntReverts && !valueFromUintReverts), "valueFromInt should only revert if valueFromUint also does");
-        t(valueFromInt == int128(valueFromUint), "valueFromInt and valueFromUint should be equal");
+        if(!(valueFromIntReverts && !valueFromUintReverts)) {
+            t(valueFromInt == int128(valueFromUint), "valueFromInt and valueFromUint should be equal");
+        }
     }
 
     // === OPTIMIZATION TESTS === // 

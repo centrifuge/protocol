@@ -28,11 +28,11 @@ abstract contract RestrictedTransfersTargets is BaseTargetFunctions, Properties 
         fullRestrictions.updateMember(_getShareToken(), user, validUntil);
     }
 
-    function restrictedTransfers_freeze(address /*user*/ ) public asAdmin {
+    function restrictedTransfers_freeze() public asAdmin {
         fullRestrictions.freeze(_getShareToken(), _getActor());
     }
 
-    function restrictedTransfers_unfreeze(address /*user*/ ) public asAdmin {
+    function restrictedTransfers_unfreeze() public asAdmin {
         fullRestrictions.unfreeze(_getShareToken(), _getActor());
     }
 

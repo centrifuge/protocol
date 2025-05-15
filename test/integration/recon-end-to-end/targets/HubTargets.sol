@@ -107,7 +107,6 @@ abstract contract HubTargets is
         
         executedRedemptions[_getShareToken()] += investorShareDelta;
         currencyPayout[_getAsset()] += investorBalanceDelta;
-        console2.log("cancelledAmount delta", cancelledAmountBefore - cancelledAmountAfter);
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
         // nowRedeemEpoch = redeemEpochId + 1
         eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");

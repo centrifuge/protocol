@@ -59,7 +59,7 @@ abstract contract BeforeAfter is Setup {
         mapping(ShareClassId scId => uint128 totalIssuance) ghostMetrics; // only stores the totalIssuance because we don't need navPerShare
         
         // global ghost variable only updated as needed
-        mapping(address investor => PriceVars) investorsGlobals;
+        mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals;
     }
 
     BeforeAfterVars internal _before;
@@ -185,31 +185,33 @@ abstract contract BeforeAfter is Setup {
     /// @dev This is used for additional checks that don't need to be updated for every operation
     function __globals() internal {
         (uint256 depositPrice, uint256 redeemPrice) = _getDepositAndRedeemPrice();
+        address vault = _getVault();
+        address actor = _getActor();
 
         // Conditionally Update max | Always works on zero
-        _after.investorsGlobals[_getActor()].maxDepositPrice = depositPrice > _after.investorsGlobals[_getActor()].maxDepositPrice
+        _after.investorsGlobals[vault][actor].maxDepositPrice = depositPrice > _after.investorsGlobals[vault][actor].maxDepositPrice
             ? depositPrice
-            : _after.investorsGlobals[_getActor()].maxDepositPrice;
-        _after.investorsGlobals[_getActor()].maxRedeemPrice = redeemPrice > _after.investorsGlobals[_getActor()].maxRedeemPrice
+            : _after.investorsGlobals[vault][actor].maxDepositPrice;
+        _after.investorsGlobals[vault][actor].maxRedeemPrice = redeemPrice > _after.investorsGlobals[vault][actor].maxRedeemPrice
             ? redeemPrice
-            : _after.investorsGlobals[_getActor()].maxRedeemPrice;
+            : _after.investorsGlobals[vault][actor].maxRedeemPrice;
 
         // Conditionally Update min
         // On zero we have to update anyway
-        if (_after.investorsGlobals[_getActor()].minDepositPrice == 0) {
-            _after.investorsGlobals[_getActor()].minDepositPrice = depositPrice;
+        if (_after.investorsGlobals[vault][actor].minDepositPrice == 0) {
+            _after.investorsGlobals[vault][actor].minDepositPrice = depositPrice;
         }
-        if (_after.investorsGlobals[_getActor()].minRedeemPrice == 0) {
-            _after.investorsGlobals[_getActor()].minRedeemPrice = redeemPrice;
+        if (_after.investorsGlobals[vault][actor].minRedeemPrice == 0) {
+            _after.investorsGlobals[vault][actor].minRedeemPrice = redeemPrice;
         }
 
         // Conditional update after zero
-        _after.investorsGlobals[_getActor()].minDepositPrice = depositPrice < _after.investorsGlobals[_getActor()].minDepositPrice
+        _after.investorsGlobals[vault][actor].minDepositPrice = depositPrice < _after.investorsGlobals[vault][actor].minDepositPrice
             ? depositPrice
-            : _after.investorsGlobals[_getActor()].minDepositPrice;
-        _after.investorsGlobals[_getActor()].minRedeemPrice = redeemPrice < _after.investorsGlobals[_getActor()].minRedeemPrice
+            : _after.investorsGlobals[vault][actor].minDepositPrice;
+        _after.investorsGlobals[vault][actor].minRedeemPrice = redeemPrice < _after.investorsGlobals[vault][actor].minRedeemPrice
             ? redeemPrice
-            : _after.investorsGlobals[_getActor()].minRedeemPrice;
+            : _after.investorsGlobals[vault][actor].minRedeemPrice;
     }
 
     /// === HELPER FUNCTIONS === ///
