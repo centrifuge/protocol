@@ -11,11 +11,9 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
 
 import {IBalanceSheet} from "src/spokes/interfaces/IBalanceSheet.sol";
 import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
-import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 
 contract BalanceSheetTest is BaseTest {
     using MessageLib for *;
@@ -499,6 +497,39 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Revoke(POOL_A, defaultTypedShareClassId, address(this), pricePerShare, defaultAmount);
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.resetPricePoolPerShare(POOL_A, defaultTypedShareClassId);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.resetPricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId);
+
+        balanceSheet.resetPricePoolPerAsset(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.resetPricePoolPerShare(POOL_A, defaultTypedShareClassId);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Deposit(
+            POOL_A,
+            defaultTypedShareClassId,
+            address(erc20),
+            erc20TokenId,
+            address(this),
+            defaultAmount,
+            defaultPricePoolPerAsset
+        );
+        balanceSheet.noteDeposit(
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
+        );
+
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Revoke(
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+        );
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
     }
 }

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ERC20} from "src/misc/ERC20.sol";
-import {IERC20, IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7575Share, IERC165} from "src/misc/interfaces/IERC7575.sol";
 
