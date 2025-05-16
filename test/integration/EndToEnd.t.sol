@@ -27,16 +27,16 @@ import {Holdings} from "src/hub/Holdings.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
-import {VaultRouter} from "src/launchpad/vaults/VaultRouter.sol";
-import {PoolManager} from "src/launchpad/PoolManager.sol";
-import {BalanceSheet} from "src/launchpad/BalanceSheet.sol";
-import {AsyncRequestManager} from "src/launchpad/vaults/AsyncRequestManager.sol";
-import {SyncRequestManager} from "src/launchpad/vaults/SyncRequestManager.sol";
-import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
-import {IAsyncVault} from "src/launchpad/interfaces/vaults/IBaseVaults.sol";
-import {SyncDepositVault} from "src/launchpad/vaults/SyncDepositVault.sol";
-import {AsyncVaultFactory} from "src/launchpad/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/launchpad/factories/SyncDepositVaultFactory.sol";
+import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
+import {PoolManager} from "src/spokes/PoolManager.sol";
+import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
+import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {SyncDepositVault} from "src/spokes/vaults/SyncDepositVault.sol";
+import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/spokes/factories/SyncDepositVaultFactory.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";

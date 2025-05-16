@@ -11,7 +11,7 @@ import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 import {IHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
-import {IShareToken} from "src/launchpad/interfaces/IShareToken.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
