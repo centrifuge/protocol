@@ -214,6 +214,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
     /// @inheritdoc IBalanceSheet
+
     function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
     }

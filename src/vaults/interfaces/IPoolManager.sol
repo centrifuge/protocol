@@ -151,6 +151,7 @@ interface IPoolManager {
     error MalformedVaultUpdateMessage();
     error UnknownToken();
     error InvalidFactory();
+    error InvalidShareTokenWards();
     error InvalidPrice();
     error AssetMissingDecimals();
     error ShareTokenDoesNotExist();

@@ -224,9 +224,8 @@ contract PoolManager is
             shareToken_.file("hook", hook);
         }
 
-        pool.shareClasses[scId].shareToken = shareToken_;
-
-        emit AddShareClass(poolId, scId, shareToken_);
+        // Allows to migrate v2 tokens to v3 by making it a separate step
+        linkShareToken(shareToken_);
     }
 
     /// @inheritdoc IPoolManagerGatewayHandler
@@ -362,6 +361,17 @@ contract PoolManager is
         } else {
             revert UnknownUpdateContractType();
         }
+    }
+
+    /// @inheritdoc IPoolManager
+    function linkShareToken(IShareToken, shareToken_) public auth {
+        // Prevent misconfigured tokens to be linked
+        require(IAuth(shareToken_).wards(address(this)), InvalidShareTokenWards());
+        require(IAuth(shareToken_).wards(balanceSheet), InvalidShareTokenWards());
+
+        pool.shareClasses[scId].shareToken = shareToken_;
+
+        emit AddShareClass(poolId, scId, shareToken_);
     }
 
     /// @inheritdoc IPoolManager
