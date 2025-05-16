@@ -7,7 +7,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
@@ -18,13 +18,13 @@ contract Guardian is IGuardian {
     IRoot public immutable root;
 
     ISafe public safe;
-    IGateway public gateway;
+    IMultiAdapter public multiAdapter;
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IGateway gateway_, IRoot root_, IRootMessageSender messageDispatcher_) {
+    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
-        gateway = gateway_;
+        multiAdapter = multiAdapter_;
         safe = safe_;
         sender = messageDispatcher_;
     }
@@ -48,6 +48,7 @@ contract Guardian is IGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -106,12 +107,12 @@ contract Guardian is IGuardian {
 
     /// @inheritdoc IGuardian
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        gateway.initiateRecovery(centrifugeId, adapter, hash);
+        multiAdapter.initiateRecovery(centrifugeId, adapter, hash);
     }
 
     /// @inheritdoc IGuardian
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        gateway.disputeRecovery(centrifugeId, adapter, hash);
+        multiAdapter.disputeRecovery(centrifugeId, adapter, hash);
     }
 
     //----------------------------------------------------------------------------------------------

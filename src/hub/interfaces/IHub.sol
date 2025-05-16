@@ -46,6 +46,9 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateVault(
+        PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
+    );
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
     );
@@ -127,8 +130,13 @@ interface IHub {
         external
         payable;
 
-    /// @notice Allow/disallow an account to interact as pool manager
-    function updateManager(PoolId poolId, address who, bool canManage) external payable;
+    /// @notice Allow/disallow an account to interact as hub manager this pool
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
+
+    /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        payable;
 
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
@@ -210,6 +218,20 @@ interface IHub {
     function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable;
+
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.

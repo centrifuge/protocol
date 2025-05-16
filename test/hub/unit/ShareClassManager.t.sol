@@ -1651,7 +1651,7 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
     /// @dev Investors cannot claim anything despite non-zero pending amounts
     function testClaimRedeemSingleAssetAtom() public {
         uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE; // 1e6
-        uint128 assetPayout = MAX_OTHER_STABLE_PRECISION; // 100
+        uint128 assetPayout = 1;
         uint128 redeemAmountA = 1;
         uint128 redeemAmountB = approvedShares - redeemAmountA;
         uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout); // 1
@@ -1678,10 +1678,10 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
     /// system
     function testClaimRedeemEvenInvestorsUnevenClaimable() public {
         uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE;
-        uint128 assetPayout = 11 * MAX_OTHER_STABLE_PRECISION; // 1100
+        uint128 assetPayout = 11;
         uint128 redeemAmountA = 49 * approvedShares / 100;
         uint128 redeemAmountB = 51 * approvedShares / 100;
-        uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout); // 11
+        uint128 poolPayout = _intoPoolAmount(OTHER_STABLE, assetPayout);
         D18 navPerShare = d18(poolPayout, approvedShares);
 
         shareClass.requestRedeem(poolId, scId, redeemAmountA, INVESTOR_A, OTHER_STABLE);
@@ -1694,11 +1694,7 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
             shareClass.claimRedeem(poolId, scId, INVESTOR_B, OTHER_STABLE);
 
         assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
-        assertEq(
-            claimedA + claimedB + 1 * MAX_OTHER_STABLE_PRECISION,
-            assetPayout,
-            "System should have 1 max asset precision amount surplus"
-        );
+        assertEq(claimedA + claimedB + 1, assetPayout, "System should have 1 amount surplus");
         assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
         assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
         assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should not have reset");
@@ -1712,7 +1708,7 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
     /// system
     function testClaimRedeemUnevenInvestorsEvenClaimable() public {
         uint128 approvedShares = DENO_POOL / DENO_OTHER_STABLE;
-        uint128 assetPayout = 10 * MAX_OTHER_STABLE_PRECISION; // 1000
+        uint128 assetPayout = 10;
         uint128 redeemAmountA = 30 * approvedShares / 100;
         uint128 redeemAmountB = 31 * approvedShares / 100;
         uint128 redeemAmountC = 39 * approvedShares / 100;
@@ -1730,11 +1726,7 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
 
         assertEq(claimedA, claimedB, "Claimed asset amount should be equal");
         assertEq(claimedB, claimedC, "Claimed asset amount should be equal");
-        assertEq(
-            claimedA + claimedB + claimedC + 1 * MAX_OTHER_STABLE_PRECISION,
-            assetPayout,
-            "System should have 1 max asset precision amount surplus"
-        );
+        assertEq(claimedA + claimedB + claimedC + 1, assetPayout, "System should have 1 amount surplus");
         assertEq(paymentA, redeemAmountA, "Payment A should never be zero");
         assertEq(paymentB, redeemAmountB, "Payment B should never be zero");
         assertEq(paymentC, redeemAmountC, "Payment C should never be zero");

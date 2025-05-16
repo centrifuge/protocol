@@ -61,7 +61,7 @@ contract BaseTest is HubDeployer, Test {
     MockValuation valuation;
 
     function _mockStuff() private {
-        cv = new MockVaults(CHAIN_CV, gateway);
+        cv = new MockVaults(CHAIN_CV, multiAdapter);
         wire(CHAIN_CV, cv, address(this));
 
         valuation = new MockValuation(hubRegistry);
