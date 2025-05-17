@@ -10,7 +10,9 @@ library BytesLib {
     error SliceOutOfBounds();
 
     function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
-        require(_length + 31 >= _length, SliceOverflow());
+        unchecked {
+            require(_length + 31 >= _length, SliceOverflow());
+        }
         require(_bytes.length >= _start + _length, SliceOutOfBounds());
 
         bytes memory tempBytes;
