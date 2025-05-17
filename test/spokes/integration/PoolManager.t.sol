@@ -147,18 +147,6 @@ contract PoolManagerTest is BaseTest, PoolManagerTestHelper {
         poolManager.file("vaultFactory", address(newVaultFactory), false);
         assertEq(poolManager.vaultFactory(newVaultFactory), false);
 
-        IAsyncRequestManager newAsyncRequestManager = IAsyncRequestManager(makeAddr("newAsyncRequestManager"));
-        vm.expectEmit();
-        emit IPoolManager.File("asyncRequestManager", address(newAsyncRequestManager));
-        poolManager.file("asyncRequestManager", address(newAsyncRequestManager));
-        assertEq(address(poolManager.asyncRequestManager()), address(newAsyncRequestManager));
-
-        IAsyncRequestManager newSyncRequestManager = IAsyncRequestManager(makeAddr("newSyncRequestManager"));
-        vm.expectEmit();
-        emit IPoolManager.File("syncRequestManager", address(newSyncRequestManager));
-        poolManager.file("syncRequestManager", address(newSyncRequestManager));
-        assertEq(address(poolManager.syncRequestManager()), address(newSyncRequestManager));
-
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert(IPoolManager.FileUnrecognizedParam.selector);
         poolManager.file("escrow", newEscrow);
@@ -841,7 +829,7 @@ contract PoolManagerRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 7;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 5;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

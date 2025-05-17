@@ -23,7 +23,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, VaultKind} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IBaseRequestManager} from "src/spokes/interfaces/investments/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/spokes/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
@@ -38,8 +38,6 @@ import {
     VaultDetails,
     IPoolManager
 } from "src/spokes/interfaces/IPoolManager.sol";
-import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
-import {ISyncRequestManager} from "src/spokes/interfaces/investments/ISyncRequestManager.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 
 /// @title  Pool Manager
@@ -66,8 +64,6 @@ contract PoolManager is
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
-    IAsyncRequestManager public asyncRequestManager;
-    ISyncRequestManager public syncRequestManager;
 
     uint64 internal _assetCounter;
 
@@ -93,8 +89,6 @@ contract PoolManager is
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
-        else if (what == "asyncRequestManager") asyncRequestManager = IAsyncRequestManager(data);
-        else if (what == "syncRequestManager") syncRequestManager = ISyncRequestManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
