@@ -10,8 +10,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 enum MessageType {
     /// @dev Placeholder for null message type
     _Invalid,
-    /// @dev Placeholder for proof message type
-    _MessageProof,
     // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,

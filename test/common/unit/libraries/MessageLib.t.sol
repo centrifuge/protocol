@@ -11,7 +11,7 @@ import "forge-std/Test.sol";
 
 contract TestMessageProofCompatibility is Test {
     function testMessageProofCompatibility() public pure {
-        assertEq(uint8(MessageType._MessageProof), MessageProofLib.MESSAGE_PROOF_ID);
+        assertNotEq(uint8(type(MessageType).max), MessageProofLib.MESSAGE_PROOF_ID);
     }
 }
 
