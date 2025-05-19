@@ -28,7 +28,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
 
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
         public recoveries;
@@ -59,19 +59,19 @@ contract MultiAdapter is Auth, IMultiAdapter {
             // Increment session id to reset pending votes
             uint256 numAdapters = adapters[centrifugeId].length;
             uint64 sessionId =
-                numAdapters > 0 ? _activeAdapters[centrifugeId][adapters[centrifugeId][0]].activeSessionId + 1 : 0;
+                numAdapters > 0 ? _adapterDetails[centrifugeId][adapters[centrifugeId][0]].activeSessionId + 1 : 0;
 
             // Disable old adapters
             for (uint8 i; i < numAdapters; i++) {
-                delete _activeAdapters[centrifugeId][adapters[centrifugeId][i]];
+                delete _adapterDetails[centrifugeId][adapters[centrifugeId][i]];
             }
 
             // Enable new adapters, setting quorum to number of adapters
             for (uint8 j; j < quorum_; j++) {
-                require(_activeAdapters[centrifugeId][addresses[j]].id == 0, NoDuplicatesAllowed());
+                require(_adapterDetails[centrifugeId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
                 // Ids are assigned sequentially starting at 1
-                _activeAdapters[centrifugeId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+                _adapterDetails[centrifugeId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
             }
 
             adapters[centrifugeId] = addresses;
@@ -92,7 +92,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
-        Adapter memory adapter = _activeAdapters[centrifugeId][adapter_];
+        Adapter memory adapter = _adapterDetails[centrifugeId][adapter_];
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
@@ -149,7 +149,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
-        require(_activeAdapters[centrifugeId][adapter].id != 0, InvalidAdapter());
+        require(_adapterDetails[centrifugeId][adapter].id != 0, InvalidAdapter());
         recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
@@ -217,12 +217,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function quorum(uint16 centrifugeId) external view returns (uint8) {
-        Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
+        Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
         return adapter.quorum;
     }
 
     function activeSessionId(uint16 centrifugeId) external view returns (uint64) {
-        Adapter memory adapter = _activeAdapters[centrifugeId][adapters[centrifugeId][0]];
+        Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
         return adapter.activeSessionId;
     }
 

@@ -39,8 +39,8 @@ contract MultiAdapterExt is MultiAdapter {
         MultiAdapter(localCentrifugeId_, gateway, deployer)
     {}
 
-    function activeAdapters(uint16 centrifugeId, IAdapter adapter) public view returns (IMultiAdapter.Adapter memory) {
-        return _activeAdapters[centrifugeId][adapter];
+    function adapterDetails(uint16 centrifugeId, IAdapter adapter) public view returns (IMultiAdapter.Adapter memory) {
+        return _adapterDetails[centrifugeId][adapter];
     }
 }
 
@@ -174,7 +174,7 @@ contract MultiAdapterTestFileAdapters is MultiAdapterTest {
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID), threeAdapters.length);
 
         for (uint256 i; i < threeAdapters.length; i++) {
-            IMultiAdapter.Adapter memory adapter = multiAdapter.activeAdapters(REMOTE_CENT_ID, threeAdapters[i]);
+            IMultiAdapter.Adapter memory adapter = multiAdapter.adapterDetails(REMOTE_CENT_ID, threeAdapters[i]);
 
             assertEq(adapter.id, i + 1);
             assertEq(adapter.quorum, threeAdapters.length);
