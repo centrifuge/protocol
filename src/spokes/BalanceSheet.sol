@@ -126,7 +126,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].increase += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, true);
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, true, false);
         }
     }
 
@@ -149,7 +149,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             queuedAssets[poolId][scId][assetId].decrease += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, false);
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, false, false);
         }
 
         escrow_.authTransferTo(asset, tokenId, receiver, amount);
@@ -162,7 +162,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             queuedShares[poolId][scId].increase += shares;
         } else {
-            sender.sendUpdateShares(poolId, scId, shares, true);
+            sender.sendUpdateShares(poolId, scId, shares, true, false);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -176,7 +176,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             queuedShares[poolId][scId].decrease += shares;
         } else {
-            sender.sendUpdateShares(poolId, scId, shares, false);
+            sender.sendUpdateShares(poolId, scId, shares, false, false);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -269,9 +269,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         QueueAmount storage queue = queuedShares[poolId][scId];
 
         if (queue.increase > queue.decrease) {
-            sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true);
+            sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true, false);
         } else if (queue.decrease > queue.increase) {
-            sender.sendUpdateShares(poolId, scId, queue.decrease - queue.increase, false);
+            sender.sendUpdateShares(poolId, scId, queue.decrease - queue.increase, false, false);
         }
 
         queue.increase = 0;
@@ -284,11 +284,11 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         if (queue.increase > queue.decrease) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.increase - queue.decrease, pricePoolPerAsset, true
+                poolId, scId, assetId, queue.increase - queue.decrease, pricePoolPerAsset, true, false
             );
         } else if (queue.decrease > queue.increase) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.decrease - queue.increase, pricePoolPerAsset, false
+                poolId, scId, assetId, queue.decrease - queue.increase, pricePoolPerAsset, false, false
             );
         }
 

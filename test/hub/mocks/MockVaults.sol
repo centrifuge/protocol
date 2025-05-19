@@ -112,7 +112,8 @@ contract MockVaults is Test, Auth, IAdapter {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot
     ) public {
         handler.handle(
             sourceChainId,
@@ -123,12 +124,13 @@ contract MockVaults is Test, Auth, IAdapter {
                 amount: amount,
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,
-                isIncrease: isIncrease
+                isIncrease: isIncrease,
+                isSnapshot: isSnapshot
             }).serialize()
         );
     }
 
-    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
+    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance, bool isSnapshot) public {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateShares({
@@ -136,7 +138,8 @@ contract MockVaults is Test, Auth, IAdapter {
                 scId: scId.raw(),
                 shares: amount,
                 timestamp: 0,
-                isIssuance: isIssuance
+                isIssuance: isIssuance,
+                isSnapshot: isSnapshot
             }).serialize()
         );
     }
