@@ -9,12 +9,11 @@ library BytesLib {
     error SliceOverflow();
     error SliceOutOfBounds();
 
-    function sliceZeroPadded(bytes memory _bytes, uint256 _start, uint256 _length)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        require(_length + 31 >= _length, SliceOverflow());
+    function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
+        unchecked {
+            require(_length + 31 >= _length, SliceOverflow());
+        }
+        require(_bytes.length >= _start + _length, SliceOutOfBounds());
 
         bytes memory tempBytes;
 
@@ -71,9 +70,17 @@ library BytesLib {
         return tempBytes;
     }
 
-    function slice(bytes memory _bytes, uint256 _start, uint256 _length) internal pure returns (bytes memory) {
-        require(_bytes.length >= _start + _length, SliceOutOfBounds());
-        return sliceZeroPadded(_bytes, _start, _length);
+    function sliceZeroPadded(bytes memory _bytes, uint256 _start, uint256 _length)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        bool needsPad = _bytes.length < _start + _length;
+        if (!needsPad) return slice(_bytes, _start, _length);
+
+        bytes memory slice_ = slice(_bytes, _start, _bytes.length - _start);
+        bytes memory padding = new bytes(_length + _start - _bytes.length);
+        return bytes.concat(slice_, padding);
     }
 
     function toAddress(bytes memory _bytes, uint256 _start) internal pure returns (address) {
