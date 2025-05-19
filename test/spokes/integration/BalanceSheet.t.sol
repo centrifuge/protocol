@@ -249,15 +249,17 @@ contract BalanceSheetTest is BaseTest {
         );
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount);
-        assertEq(increase, defaultAmount);
+        assertEq(delta, defaultAmount);
+        assertEq(isPositive, true);
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
 
-        (uint128 increase2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 increase2, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
         assertEq(increase2, defaultAmount * 3);
+        assertEq(isPositive2, true);
     }
 
     function testRevoke() public {
@@ -277,15 +279,17 @@ contract BalanceSheetTest is BaseTest {
         );
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
 
-        (, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
-        assertEq(decrease, defaultAmount);
+        assertEq(delta, defaultAmount);
+        assertEq(isPositive, false);
 
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 2);
 
-        (, uint128 decrease2) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta2, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), 0);
-        assertEq(decrease2, defaultAmount * 3);
+        assertEq(delta2, defaultAmount * 3);
+        assertEq(isPositive2, false);
     }
 
     function testQueuedShares() public {
@@ -408,7 +412,7 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, 0);
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
         assertEq(shares, defaultAmount);
@@ -432,7 +436,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, defaultAmount);
 
         // Submit with queue disabled
@@ -440,7 +444,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
         // Shares should be submitted even if disabled
-        (increase,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, 0);
 
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
@@ -553,7 +557,9 @@ contract DispatcherSpy {
         }
     }
 
-    function sendUpdateHoldingAmount(PoolId, ShareClassId, AssetId, uint128 amount, D18, bool isIncrease, bool) external {
+    function sendUpdateHoldingAmount(PoolId, ShareClassId, AssetId, uint128 amount, D18, bool isIncrease, bool)
+        external
+    {
         bytes32 slot = keccak256("dispatchedHoldingAmount");
         bytes32 slot2 = keccak256("dispatchedHoldingAmountIsIncrease");
         assembly {

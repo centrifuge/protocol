@@ -20,7 +20,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
-import {IBalanceSheet, QueueAmount} from "src/spokes/interfaces/IBalanceSheet.sol";
+import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "src/spokes/interfaces/IBalanceSheet.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/spokes/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
@@ -47,8 +47,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => bool)) public queueEnabled;
-    mapping(PoolId poolId => mapping(ShareClassId scId => QueueAmount)) public queuedShares;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => QueueAmount))) public queuedAssets;
+    mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
+        queuedAssets;
 
     constructor(IRoot root_, address deployer) Auth(deployer) {
         root = root_;
@@ -124,9 +125,19 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Deposit(poolId, scId, asset, tokenId, owner, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
-            queuedAssets[poolId][scId][assetId].increase += amount;
+            // TODO optimize
+            if (
+                queuedAssets[poolId][scId][assetId].deposits == 0
+                    && queuedAssets[poolId][scId][assetId].withdrawals == 0
+            ) {
+                queuedShares[poolId][scId].queuedAssetCounter++;
+            }
+
+            queuedAssets[poolId][scId][assetId].deposits += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, true, false);
+            bool isSnapshot =
+                queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, true, isSnapshot);
         }
     }
 
@@ -147,9 +158,19 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
 
         if (queueEnabled[poolId][scId]) {
-            queuedAssets[poolId][scId][assetId].decrease += amount;
+            // TODO optimize
+            if (
+                queuedAssets[poolId][scId][assetId].deposits == 0
+                    && queuedAssets[poolId][scId][assetId].withdrawals == 0
+            ) {
+                queuedShares[poolId][scId].queuedAssetCounter++;
+            }
+
+            queuedAssets[poolId][scId][assetId].withdrawals += amount;
         } else {
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, false, false);
+            bool isSnapshot =
+                queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
+            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, false, isSnapshot);
         }
 
         escrow_.authTransferTo(asset, tokenId, receiver, amount);
@@ -160,9 +181,17 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
-            queuedShares[poolId][scId].increase += shares;
+            if (queuedShares[poolId][scId].isPositive) {
+                queuedShares[poolId][scId].delta += shares;
+            } else if (queuedShares[poolId][scId].delta <= shares) {
+                queuedShares[poolId][scId].delta += shares - queuedShares[poolId][scId].delta;
+                queuedShares[poolId][scId].isPositive = true;
+            } else {
+                queuedShares[poolId][scId].delta += shares;
+            }
         } else {
-            sender.sendUpdateShares(poolId, scId, shares, true, false);
+            bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
+            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -174,9 +203,17 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
-            queuedShares[poolId][scId].decrease += shares;
+            if (!queuedShares[poolId][scId].isPositive) {
+                queuedShares[poolId][scId].delta += shares;
+            } else if (queuedShares[poolId][scId].delta <= shares) {
+                queuedShares[poolId][scId].delta -= shares - queuedShares[poolId][scId].delta;
+                queuedShares[poolId][scId].isPositive = false;
+            } else {
+                queuedShares[poolId][scId].delta -= shares;
+            }
         } else {
-            sender.sendUpdateShares(poolId, scId, shares, false, false);
+            bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
+            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -266,34 +303,36 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
 
     function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {
-        QueueAmount storage queue = queuedShares[poolId][scId];
+        ShareQueueAmount storage queue = queuedShares[poolId][scId];
 
-        if (queue.increase > queue.decrease) {
-            sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true, false);
-        } else if (queue.decrease > queue.increase) {
-            sender.sendUpdateShares(poolId, scId, queue.decrease - queue.increase, false, false);
-        }
+        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
+        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot);
 
-        queue.increase = 0;
-        queue.decrease = 0;
+        queue.delta = 0;
+        queue.isPositive = true;
     }
 
     function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
-        QueueAmount storage queue = queuedAssets[poolId][scId][assetId];
+        AssetQueueAmount storage queue = queuedAssets[poolId][scId][assetId];
+
+        if (queue.deposits > 0 || queue.withdrawals > 0) {
+            queuedShares[poolId][scId].queuedAssetCounter--;
+        }
 
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
-        if (queue.increase > queue.decrease) {
+        bool isSnapshot = queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
+        if (queue.deposits > queue.withdrawals) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.increase - queue.decrease, pricePoolPerAsset, true, false
+                poolId, scId, assetId, queue.deposits - queue.withdrawals, pricePoolPerAsset, true, isSnapshot
             );
-        } else if (queue.decrease > queue.increase) {
+        } else if (queue.withdrawals > queue.deposits) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.decrease - queue.increase, pricePoolPerAsset, false, false
+                poolId, scId, assetId, queue.withdrawals - queue.deposits, pricePoolPerAsset, false, isSnapshot
             );
         }
 
-        queue.increase = 0;
-        queue.decrease = 0;
+        queue.deposits = 0;
+        queue.withdrawals = 0;
     }
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {

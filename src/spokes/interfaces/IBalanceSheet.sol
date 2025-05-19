@@ -13,11 +13,18 @@ import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spokes/interfaces/factories/IPoolEscrowFactory.sol";
 
-struct QueueAmount {
-    // Issuances of shares / deposits of assets
-    uint128 increase;
-    // Revocations of shares / withdraws of assets
-    uint128 decrease;
+struct ShareQueueAmount {
+    // Net queued shares
+    uint128 delta;
+    // Whether the net queued shares lead to an issuance or revocation
+    bool isPositive;
+    // Number of queued asset IDs for this share class
+    uint32 queuedAssetCounter;
+}
+
+struct AssetQueueAmount {
+    uint128 deposits;
+    uint128 withdrawals;
 }
 
 interface IBalanceSheet {
@@ -59,7 +66,7 @@ interface IBalanceSheet {
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint128 increase, uint128 decrease);
+        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter);
     function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
