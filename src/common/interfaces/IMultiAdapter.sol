@@ -29,6 +29,27 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         bytes pendingBatch;
     }
 
+    event File(bytes32 indexed what, address addr);
+    event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
+
+    event HandleBatch(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter);
+    event SendBatch(
+        uint16 indexed centrifugeId,
+        bytes32 indexed payloadId,
+        bytes batch,
+        IAdapter adapter,
+        bytes32 adapterData,
+        address refund
+    );
+    event SendProof(
+        uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
+    );
+
+    event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
@@ -59,26 +80,11 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
     error RecoveryChallengePeriodNotEnded();
 
-    event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
-    event File(bytes32 indexed what, address addr);
-
-    event HandleBatch(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes batch, IAdapter adapter);
-    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter);
-    event SendBatch(
-        uint16 indexed centrifugeId,
-        bytes32 indexed payloadId,
-        bytes batch,
-        IAdapter adapter,
-        bytes32 adapterData,
-        address refund
-    );
-    event SendProof(
-        uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
-    );
-
-    event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+    /// @notice Used to update an address ( state variable ) on very rare occasions.
+    /// @dev    Currently used to update addresses of contract instances.
+    /// @param  what The name of the variable to be updated.
+    /// @param  data New address.
+    function file(bytes32 what, address data) external;
 
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.

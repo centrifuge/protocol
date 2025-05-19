@@ -17,19 +17,11 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
         IRecoverable refund;
     }
 
-    // Used to bypass stack too deep issue
-    struct SendData {
-        bytes32 batchHash;
-        bytes32 payloadId;
-        uint256[] gasCost;
-    }
-
     struct Underpaid {
         uint128 counter;
         uint128 gasLimit;
     }
 
-    // --- Events ---
     event File(bytes32 indexed what, address addr);
 
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);

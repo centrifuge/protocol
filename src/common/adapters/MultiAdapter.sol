@@ -25,13 +25,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
     uint16 public immutable localCentrifugeId;
-    IMessageHandler public immutable gateway;
+    IMessageHandler public gateway;
 
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Inbound)) public inbound;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 painbound => uint256 timestamp))) public
-        recoveries;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
+        public recoveries;
 
     constructor(IMessageHandler gateway_, uint16 localCentrifugeId_, address deployer) Auth(deployer) {
         gateway = gateway_;
@@ -41,6 +41,14 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IMultiAdapter
+    function file(bytes32 what, address instance) external auth {
+        if (what == "gateway") gateway = IMessageHandler(instance);
+        else revert FileUnrecognizedParam();
+
+        emit File(what, instance);
+    }
 
     function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata addresses) external auth {
         if (what == "adapters") {

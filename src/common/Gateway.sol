@@ -69,6 +69,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
         else if (what == "processor") processor = IMessageProcessor(instance);
+        else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
@@ -165,8 +166,10 @@ contract Gateway is Auth, Recoverable, IGateway {
             if (cost <= subsidy[poolId].value) {
                 subsidy[poolId].value -= uint96(cost);
             } else {
-                underpaid[centrifugeId][batchHash].counter++;
-                underpaid[centrifugeId][batchHash].gasLimit = batchGasLimit;
+                Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
+                underpaid_.counter++;
+                underpaid_.gasLimit = batchGasLimit;
+
                 emit UnderpaidBatch(centrifugeId, batch);
                 return false;
             }
@@ -185,8 +188,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
         bytes32 batchHash = keccak256(message);
 
-        underpaid[centrifugeId][batchHash].counter++;
-        underpaid[centrifugeId][batchHash].gasLimit = gasService.gasLimit(centrifugeId, message);
+        Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
+        underpaid_.counter++;
+        underpaid_.gasLimit = gasService.gasLimit(centrifugeId, message);
 
         emit UnderpaidBatch(centrifugeId, message);
     }
@@ -200,7 +204,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId poolId = processor.messagePoolId(batch);
         if (msg.value > 0) subsidizePool(poolId);
 
-        underpaid[centrifugeId][batchHash].counter--;
+        underpaid_.counter--;
         require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
         emit RepayBatch(centrifugeId, batch);
