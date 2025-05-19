@@ -12,6 +12,7 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
@@ -206,6 +207,31 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_sum_of_shares_received();
     }
 
+    function _logVals() internal {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        // get the account ids for each account
+        AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
+        AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
+        AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
+        AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+
+        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+
+        // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
+        console2.log("assets:", assets);
+        console2.log("equity:", equity);
+        console2.log("gain:", gain);
+        console2.log("loss:", loss);
+        console2.log("equity + gain - loss:", equity + gain - loss);
+    }
+
     // forge test --match-test test_property_asset_soundness_7 -vvv 
     function test_property_asset_soundness_7() public {
 
@@ -213,9 +239,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_sync(1,1000597925025159896);
 
+        console2.log("========= before create holding =========");
+        _logVals();
+
         hub_createHolding_clamped(false,0,0,0,2);
+        // the existing accounts have ids 1-4
+        hub_createHolding(transientValuation, 1, 1, 1, 3);
+
+        console2.log("========= after create holding =========");
+        _logVals();
 
         hub_addShareClass(1);
+
+        console2.log("========= after add share class =========");
+        _logVals();
 
         property_asset_soundness();
 
