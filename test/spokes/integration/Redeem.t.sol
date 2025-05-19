@@ -284,7 +284,7 @@ contract RedeemTest is BaseTest {
     function partialRedeem(ShareClassId scId, AsyncVault vault, ERC20 asset) public {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId);
+        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId);
         uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);

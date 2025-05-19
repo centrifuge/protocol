@@ -12,7 +12,7 @@ import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 import {BaseTest} from "test/spokes/BaseTest.sol";
 import "forge-std/Test.sol";
 
-interface PoolManagerLike {
+interface SpokeLike {
     function getShare(uint64 poolId, bytes16 scId) external view returns (address);
 }
 
@@ -45,8 +45,7 @@ contract FactoryTest is Test {
                 0,
                 0
             );
-            address token1 =
-                PoolManagerLike(address(testSetup1.poolManager())).getShare(testSetup1.POOL_A().raw(), scId);
+            address token1 = SpokeLike(address(testSetup1.spoke())).getShare(testSetup1.POOL_A().raw(), scId);
             address root1 = address(testSetup1.root());
 
             vm.selectFork(polygonFork);
@@ -61,8 +60,7 @@ contract FactoryTest is Test {
                 0,
                 0
             );
-            address token2 =
-                PoolManagerLike(address(testSetup2.poolManager())).getShare(testSetup2.POOL_A().raw(), scId);
+            address token2 = SpokeLike(address(testSetup2.spoke())).getShare(testSetup2.POOL_A().raw(), scId);
             address root2 = address(testSetup2.root());
 
             assertEq(address(root1), address(root2));
@@ -95,7 +93,7 @@ contract FactoryTest is Test {
 
     function testShareShouldBeDeterministic(
         address asyncRequestManager,
-        address poolManager,
+        address spoke,
         string memory name,
         string memory symbol,
         bytes32 factorySalt,
@@ -122,7 +120,7 @@ contract FactoryTest is Test {
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(asyncRequestManager);
-        tokenWards[1] = address(poolManager);
+        tokenWards[1] = address(spoke);
 
         IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
 
@@ -133,7 +131,7 @@ contract FactoryTest is Test {
     function testDeployingDeterministicAddressTwiceReverts(
         bytes32 salt,
         address asyncRequestManager,
-        address poolManager,
+        address spoke,
         string memory name,
         string memory symbol,
         uint8 decimals
@@ -160,7 +158,7 @@ contract FactoryTest is Test {
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(asyncRequestManager);
-        tokenWards[1] = address(poolManager);
+        tokenWards[1] = address(spoke);
 
         TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));
         assertEq(address(tokenFactory), predictedAddress);

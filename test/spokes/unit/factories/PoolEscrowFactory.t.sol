@@ -17,7 +17,7 @@ contract PoolEscrowFactoryTest is Test {
 
     address deployer = address(this);
     address root = makeAddr("root");
-    address poolManager = makeAddr("poolManager");
+    address spoke = makeAddr("spoke");
     address gateway = makeAddr("gateway");
     address balanceSheet = makeAddr("balanceSheet");
     address asyncRequestManager = makeAddr("asyncRequestManager");
@@ -25,7 +25,7 @@ contract PoolEscrowFactoryTest is Test {
 
     function setUp() public {
         factory = new PoolEscrowFactory(root, deployer);
-        factory.file("poolManager", poolManager);
+        factory.file("spoke", spoke);
         factory.file("gateway", gateway);
         factory.file("balanceSheet", balanceSheet);
         factory.file("asyncRequestManager", asyncRequestManager);
@@ -46,7 +46,7 @@ contract PoolEscrowFactoryTest is Test {
 
     function testEscrowHasCorrectPermissions(PoolId poolId, address nonWard) public {
         vm.assume(
-            nonWard != root && nonWard != gateway && nonWard != poolManager && nonWard != balanceSheet
+            nonWard != root && nonWard != gateway && nonWard != spoke && nonWard != balanceSheet
                 && nonWard != asyncRequestManager
         );
         address escrowAddr = address(factory.newEscrow(poolId));
@@ -55,7 +55,7 @@ contract PoolEscrowFactoryTest is Test {
 
         assertEq(escrow.wards(root), 1, "root not authorized");
         assertEq(escrow.wards(gateway), 1, "gateway not authorized");
-        assertEq(escrow.wards(poolManager), 1, "poolManager not authorized");
+        assertEq(escrow.wards(spoke), 1, "spoke not authorized");
         assertEq(escrow.wards(balanceSheet), 1, "balanceSheet not authorized");
         assertEq(escrow.wards(asyncRequestManager), 1, "asyncRequestManager not authorized");
 
@@ -63,9 +63,9 @@ contract PoolEscrowFactoryTest is Test {
         assertEq(escrow.wards(nonWard), 0, "unexpected authorization");
     }
 
-    function testFileSetsPoolManager() public {
-        factory.file("poolManager", randomUser);
-        assertEq(factory.poolManager(), randomUser);
+    function testFileSetsSpoke() public {
+        factory.file("spoke", randomUser);
+        assertEq(factory.spoke(), randomUser);
     }
 
     function testFileSetsBalanceSheet() public {
@@ -86,6 +86,6 @@ contract PoolEscrowFactoryTest is Test {
     function testFileUnauthorizedReverts() public {
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        factory.file("poolManager", randomUser);
+        factory.file("spoke", randomUser);
     }
 }

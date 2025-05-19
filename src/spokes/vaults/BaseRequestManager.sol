@@ -13,7 +13,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IPoolManager, VaultDetails} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke, VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
 import {IBaseRequestManager} from "src/spokes/interfaces/investments/IBaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/spokes/interfaces/factories/IPoolEscrowFactory.sol";
 import {IBaseVault, VaultKind} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
@@ -26,7 +26,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     address public immutable root;
     IEscrow public immutable globalEscrow;
 
-    IPoolManager public poolManager;
+    ISpoke public spoke;
     IPoolEscrowProvider public poolEscrowProvider;
 
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
@@ -42,7 +42,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function file(bytes32 what, address data) external virtual auth {
-        if (what == "poolManager") poolManager = IPoolManager(data);
+        if (what == "spoke") spoke = ISpoke(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -80,9 +80,9 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            poolManager.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _assetToShareAmount(
             vault_, vaultDetails, assets, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
@@ -91,9 +91,9 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            poolManager.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
         return _shareToAssetAmount(
             vault_, vaultDetails, shares, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
@@ -102,11 +102,11 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
-        (uint64 shareLastUpdated,,) = poolManager.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
+        (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
         (uint64 assetLastUpdated,,) =
-            poolManager.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+            spoke.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
         // Choose the latest update to be the marker
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();

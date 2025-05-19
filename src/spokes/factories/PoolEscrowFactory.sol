@@ -13,7 +13,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;
 
     address public gateway;
-    address public poolManager;
+    address public spoke;
     address public balanceSheet;
     address public asyncRequestManager;
 
@@ -23,7 +23,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
     /// @inheritdoc IPoolEscrowFactory
     function file(bytes32 what, address data) external auth {
-        if (what == "poolManager") poolManager = data;
+        if (what == "spoke") spoke = data;
         else if (what == "gateway") gateway = data;
         else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "asyncRequestManager") asyncRequestManager = data;
@@ -37,7 +37,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
         escrow_.rely(root);
         escrow_.rely(gateway);
-        escrow_.rely(poolManager);
+        escrow_.rely(spoke);
         escrow_.rely(balanceSheet);
         escrow_.rely(asyncRequestManager);
 

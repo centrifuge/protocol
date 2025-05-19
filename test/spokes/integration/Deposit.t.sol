@@ -705,7 +705,7 @@ contract DepositTest is BaseTest {
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6

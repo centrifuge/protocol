@@ -19,7 +19,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IBalanceSheet, QueueAmount} from "src/spokes/interfaces/IBalanceSheet.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/spokes/interfaces/IUpdateContract.sol";
@@ -41,7 +41,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     IRoot public immutable root;
 
-    IPoolManager public poolManager;
+    ISpoke public spoke;
     IVaultMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
 
@@ -66,7 +66,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheet
     function file(bytes32 what, address data) external auth {
-        if (what == "poolManager") poolManager = IPoolManager(data);
+        if (what == "spoke") spoke = ISpoke(data);
         else if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
@@ -117,7 +117,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address owner,
         uint128 amount
     ) public authOrManager(poolId) {
-        AssetId assetId = poolManager.assetToId(asset, tokenId);
+        AssetId assetId = spoke.assetToId(asset, tokenId);
         escrow(poolId).deposit(scId, asset, tokenId, amount);
 
         D18 pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
@@ -139,7 +139,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         address receiver,
         uint128 amount
     ) external authOrManager(poolId) {
-        AssetId assetId = poolManager.assetToId(asset, tokenId);
+        AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.withdraw(scId, asset, tokenId, amount);
 
@@ -165,7 +165,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             sender.sendUpdateShares(poolId, scId, shares, true);
         }
 
-        IShareToken token = poolManager.shareToken(poolId, scId);
+        IShareToken token = spoke.shareToken(poolId, scId);
         token.mint(to, shares);
     }
 
@@ -179,7 +179,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             sender.sendUpdateShares(poolId, scId, shares, false);
         }
 
-        IShareToken token = poolManager.shareToken(poolId, scId);
+        IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(msg.sender, msg.sender, address(this), shares);
         token.burn(address(this), shares);
     }
@@ -190,7 +190,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         authOrManager(poolId)
     {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
-        IShareToken token = IShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken token = IShareToken(spoke.shareToken(poolId, scId));
         token.authTransferFrom(from, from, to, amount);
     }
 
@@ -302,7 +302,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
                 d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId))));
         }
 
-        D18 pricePoolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        D18 pricePoolPerAsset = spoke.pricePoolPerAsset(poolId, scId, assetId, true);
         return pricePoolPerAsset;
     }
 
@@ -311,7 +311,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
         }
 
-        D18 pricePoolPerShare = poolManager.pricePoolPerShare(poolId, scId, true);
+        D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
         return pricePoolPerShare;
     }
 }
