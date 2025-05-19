@@ -1,8 +1,8 @@
 | # | Function Name | Property Description | Passing |
 |----|--------------|---------------------|----------|
-| 1 | _getTokenAndBalanceForVault | after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch | |
-| 2 | _getTokenAndBalanceForVault | _updateDepositRequest should never revert due to underflow | |
-| 3 | _getTokenAndBalanceForVault | The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..] | |
+| 1 | hub_depositRequest | after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch | |
+| 2 | hub_depositRequest | _updateDepositRequest should never revert due to underflow | |
+| 3 | hub_depositRequest | The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..] | |
 | 4 | vault_requestDeposit_clamped | After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch | |
 | 5 | vault_requestRedeem_clamped | after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch | |
 | 6 | vault_requestRedeem_clamped | after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero | |
