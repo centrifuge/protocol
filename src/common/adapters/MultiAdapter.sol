@@ -33,9 +33,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
         public recoveries;
 
-    constructor(IMessageHandler gateway_, uint16 localCentrifugeId_, address deployer) Auth(deployer) {
-        gateway = gateway_;
+    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
+        gateway = gateway_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -182,6 +182,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         require(msg.sender == address(gateway), NotGateway());
+        require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
 
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         bytes32 hash = keccak256(payload);
