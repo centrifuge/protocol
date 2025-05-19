@@ -256,15 +256,15 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
 
-        (uint128 increase2, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 deltaAfter, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
-        assertEq(increase2, defaultAmount * 3);
+        assertEq(deltaAfter, defaultAmount * 3);
         assertEq(isPositive2, true);
     }
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(spoke.shareToken(POOL_A, defaultTypedShareClassId));
+        IShareToken token = IShareToken(spoke.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 
         vm.prank(randomUser);
@@ -275,20 +275,24 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Revoke(
-            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount
+            POOL_A, defaultTypedShareClassId, address(this), defaultPricePoolPerShare, defaultAmount * 2
         );
-        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount);
-
-        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(token.balanceOf(address(this)), defaultAmount * 2);
-        assertEq(delta, defaultAmount);
-        assertEq(isPositive, false);
-
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 2);
 
+        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(token.balanceOf(address(this)), defaultAmount);
+        assertEq(delta, defaultAmount);
+        assertEq(isPositive, true);
+
+        // Mint directly to avoid issuance call
+        vm.prank(address(root));
+        token.mint(address(this), defaultAmount * 3);
+
+        balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 3);
+
         (uint128 delta2, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(token.balanceOf(address(this)), 0);
-        assertEq(delta2, defaultAmount * 3);
+        assertEq(token.balanceOf(address(this)), defaultAmount);
+        assertEq(delta2, defaultAmount * 2);
         assertEq(isPositive2, false);
     }
 
@@ -307,12 +311,10 @@ contract BalanceSheetTest is BaseTest {
             abi.encodeWithSelector(DispatcherSpy.sendUpdateShares_result.selector)
         );
 
-        // Add extra issuance to have an unequal number
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
-        (uint128 increase, uint128 decrease) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-
-        assertEq(increase, defaultAmount * 4);
-        assertEq(decrease, defaultAmount * 3);
+        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 3);
+        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(delta, defaultAmount);
+        assertEq(isPositive, true);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -320,9 +322,9 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
-        (uint128 increaseAfter, uint128 decreaseAfter) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(increaseAfter, 0);
-        assertEq(decreaseAfter, 0);
+        (uint128 deltaAfter, bool isPositiveAfter,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        assertEq(deltaAfter, 0);
+        assertEq(isPositiveAfter, true);
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
         assertEq(shares, defaultAmount);
         assertEq(isIssuance, true);

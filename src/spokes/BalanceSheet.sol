@@ -181,13 +181,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         if (queueEnabled[poolId][scId]) {
-            if (queuedShares[poolId][scId].isPositive) {
+            if (queuedShares[poolId][scId].isPositive || queuedShares[poolId][scId].delta == 0) {
                 queuedShares[poolId][scId].delta += shares;
-            } else if (queuedShares[poolId][scId].delta <= shares) {
-                queuedShares[poolId][scId].delta += shares - queuedShares[poolId][scId].delta;
                 queuedShares[poolId][scId].isPositive = true;
+            } else if (queuedShares[poolId][scId].delta > shares) {
+                queuedShares[poolId][scId].delta -= shares;
+                queuedShares[poolId][scId].isPositive = false;
             } else {
-                queuedShares[poolId][scId].delta += shares;
+                queuedShares[poolId][scId].delta = shares - queuedShares[poolId][scId].delta;
+                queuedShares[poolId][scId].isPositive = true;
             }
         } else {
             bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
@@ -205,11 +207,13 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             if (!queuedShares[poolId][scId].isPositive) {
                 queuedShares[poolId][scId].delta += shares;
-            } else if (queuedShares[poolId][scId].delta <= shares) {
-                queuedShares[poolId][scId].delta -= shares - queuedShares[poolId][scId].delta;
                 queuedShares[poolId][scId].isPositive = false;
-            } else {
+            } else if (queuedShares[poolId][scId].delta > shares) {
                 queuedShares[poolId][scId].delta -= shares;
+                queuedShares[poolId][scId].isPositive = true;
+            } else {
+                queuedShares[poolId][scId].delta = shares - queuedShares[poolId][scId].delta;
+                queuedShares[poolId][scId].isPositive = false;
             }
         } else {
             bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
