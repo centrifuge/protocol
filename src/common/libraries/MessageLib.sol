@@ -7,11 +7,10 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
+// NOTE: Should never exceed 254 messages because id == 255 corresponds to message proofs
 enum MessageType {
     /// @dev Placeholder for null message type
     _Invalid,
-    /// @dev Placeholder for proof message type
-    _MessageProof,
     // -- Root messages
     ScheduleUpgrade,
     CancelUpgrade,
