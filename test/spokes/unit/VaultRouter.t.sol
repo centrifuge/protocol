@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockERC20Wrapper} from "test/spokes/mocks/MockERC20Wrapper.sol";
 import "test/spokes/BaseTest.sol";
 
 import "src/misc/interfaces/IERC20.sol";
@@ -392,58 +391,6 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.disable(vault);
         assertFalse(AsyncVault(vault_).isOperator(self, address(vaultRouter)));
         assertEq(vaultRouter.isEnabled(vault, self), false);
-    }
-
-    function testWrap() public {
-        uint256 amount = 150 * 10 ** 18;
-        uint256 balance = 100 * 10 ** 18;
-        address receiver = makeAddr("receiver");
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-
-        vm.expectRevert(IVaultRouter.InvalidOwner.selector);
-        vaultRouter.wrap(address(wrapper), amount, receiver, makeAddr("ownerIsNeitherCallerNorRouter"));
-
-        vm.expectRevert(IVaultRouter.ZeroBalance.selector);
-        vaultRouter.wrap(address(wrapper), amount, receiver, self);
-
-        erc20.mint(self, balance);
-        erc20.approve(address(vaultRouter), amount);
-        wrapper.setFail("depositFor", true);
-        vm.expectRevert(IVaultRouter.WrapFailed.selector);
-        vaultRouter.wrap(address(wrapper), amount, receiver, self);
-
-        wrapper.setFail("depositFor", false);
-        vaultRouter.wrap(address(wrapper), amount, receiver, self);
-        assertEq(wrapper.balanceOf(receiver), balance);
-        assertEq(erc20.balanceOf(self), 0);
-
-        erc20.mint(address(vaultRouter), balance);
-        vaultRouter.wrap(address(wrapper), amount, receiver, address(vaultRouter));
-        assertEq(wrapper.balanceOf(receiver), 200 * 10 ** 18);
-        assertEq(erc20.balanceOf(address(vaultRouter)), 0);
-    }
-
-    function testUnwrap() public {
-        uint256 amount = 150 * 10 ** 18;
-        uint256 balance = 100 * 10 ** 18;
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        erc20.mint(self, balance);
-        erc20.approve(address(vaultRouter), amount);
-
-        vm.expectRevert(IVaultRouter.ZeroBalance.selector);
-        vaultRouter.unwrap(address(wrapper), amount, self);
-
-        vaultRouter.wrap(address(wrapper), amount, address(vaultRouter), self);
-        wrapper.setFail("withdrawTo", true);
-        vm.expectRevert(IVaultRouter.UnwrapFailed.selector);
-        vaultRouter.unwrap(address(wrapper), amount, self);
-        wrapper.setFail("withdrawTo", false);
-
-        assertEq(wrapper.balanceOf(address(vaultRouter)), balance);
-        assertEq(erc20.balanceOf(self), 0);
-        vaultRouter.unwrap(address(wrapper), amount, self);
-        assertEq(wrapper.balanceOf(address(vaultRouter)), 0);
-        assertEq(erc20.balanceOf(self), balance);
     }
 
     function testIfUserIsPermittedToExecuteRequests() public {

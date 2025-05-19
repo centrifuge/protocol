@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IERC20Metadata, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
@@ -405,13 +405,7 @@ contract PoolManager is
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
 
-        // Check whether asset is an ERC20 token wrapper
-        (bool success, bytes memory data) =
-            assetIdKey.asset.staticcall(abi.encodeWithSelector(IERC20Wrapper.underlying.selector));
-        // On success, the returned 20 byte address is padded to 32 bytes
-        bool isWrappedERC20 = success && data.length == 32;
-
-        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, isWrappedERC20, false);
+        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, false);
         emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vault.vaultKind());
 
         return vault;

@@ -68,11 +68,13 @@ interface IBalanceSheet {
     function file(bytes32 what, address data) external;
 
     /// @notice Deposit assets into the escrow of the pool.
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
     /// @notice Note a deposit of assets into the escrow of the pool.
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
     ///         This function is mostly useful to keep higher level integrations CEI adherent.
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
     function noteDeposit(
         PoolId poolId,
         ShareClassId scId,
@@ -83,6 +85,7 @@ interface IBalanceSheet {
     ) external;
 
     /// @notice Withdraw assets from the escrow of the pool.
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -123,6 +126,7 @@ interface IBalanceSheet {
 
     /// @notice Returns the amount of assets that can be withdrawn from the balance sheet.
     /// @dev    Assets that are locked for redemption requests are reserved and not available for withdrawals.
+    /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
     function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
         external
         view

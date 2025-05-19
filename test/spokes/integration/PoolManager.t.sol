@@ -701,7 +701,6 @@ contract PoolManagerDeployVaultTest is BaseTest, PoolManagerTestHelper {
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(asset, vaultDetails.asset, "vault asset mismatch");
         assertEq(tokenId, vaultDetails.tokenId, "vault asset mismatch");
-        assertEq(false, vaultDetails.isWrapper, "vault isWrapper mismatch");
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {

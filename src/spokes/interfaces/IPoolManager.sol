@@ -72,8 +72,6 @@ struct VaultDetails {
     address asset;
     /// @dev TokenId of the asset - zero if asset is ERC20, non-zero if asset is ERC6909
     uint256 tokenId;
-    /// @dev Whether this wrapper conforms to the IERC20Wrapper interface
-    bool isWrapper;
     /// @dev Whether the vault is linked to a share class atm
     bool isLinked;
 }
