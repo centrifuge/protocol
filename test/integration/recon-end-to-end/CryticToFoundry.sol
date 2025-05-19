@@ -472,7 +472,20 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
         console2.log("holdingAssetAmount in previous holding %e", holdingAssetAmount);
 
-        hub_createHolding_clamped(false,0,0,0,0);
+        // creating new holding overrides the existing holding for the given poolId, scId, and assetId
+        // hub_createHolding_clamped(false,0,0,0,0);
+        hub_createAccount(10, false);
+        hub_createAccount(11, false);
+        hub_createAccount(12, false);
+        hub_createAccount(13, false);
+        hub_createHolding(transientValuation, 10, 11, 12, 13);
+
+        // NOTE: issue seems to be that the 
+        vault = IBaseVault(_getVault());
+        asset = vault.asset();
+        assetId = hubRegistry.currency(vault.poolId());
+        (holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
+        console2.log("holdingAssetAmount in new holding %e", holdingAssetAmount);
 
         property_holdings_balance_equals_escrow_balance();
 
