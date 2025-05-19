@@ -6,21 +6,21 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
-import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
+import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
+import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/spokes/factories/SyncDepositVaultFactory.sol";
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {Escrow} from "src/vaults/Escrow.sol";
-import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
-import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
+import {PoolManager} from "src/spokes/PoolManager.sol";
+import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
+import {Escrow} from "src/spokes/Escrow.sol";
+import {IEscrow} from "src/spokes/interfaces/IEscrow.sol";
+import {PoolEscrowFactory} from "src/spokes/factories/PoolEscrowFactory.sol";
+import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
@@ -175,8 +175,6 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.file("balanceSheet", address(balanceSheet));
         poolManager.file("sender", address(messageDispatcher));
         poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
-        poolManager.file("asyncRequestManager", address(asyncRequestManager));
-        poolManager.file("syncRequestManager", address(syncRequestManager));
         poolManager.file("vaultFactory", address(asyncVaultFactory), true);
         poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
 
