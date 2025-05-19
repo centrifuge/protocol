@@ -15,7 +15,7 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -30,27 +30,13 @@ import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/spokes/interfaces/factories/IPoolEscrowFactory.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IUpdateContract} from "src/spokes/interfaces/IUpdateContract.sol";
-import {
-    AssetIdKey,
-    Pool,
-    ShareClassDetails,
-    Price,
-    VaultDetails,
-    IPoolManager
-} from "src/spokes/interfaces/IPoolManager.sol";
+import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 
-/// @title  Pool Manager
+/// @title  Spoke
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract PoolManager is
-    Auth,
-    Recoverable,
-    ReentrancyProtection,
-    IPoolManager,
-    IUpdateContract,
-    IPoolManagerGatewayHandler
-{
+contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContract, ISpokeGatewayHandler {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -82,7 +68,7 @@ contract PoolManager is
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
@@ -93,7 +79,7 @@ contract PoolManager is
         emit File(what, data);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function file(bytes32 what, address factory, bool status) external auth {
         if (what == "vaultFactory") vaultFactory[IVaultFactory(factory)] = status;
         else revert FileUnrecognizedParam();
@@ -104,7 +90,7 @@ contract PoolManager is
     // Outgoing methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
         payable
@@ -128,7 +114,7 @@ contract PoolManager is
         gateway.endTransactionPayment();
     }
 
-    // @inheritdoc IPoolManager
+    // @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
@@ -175,7 +161,7 @@ contract PoolManager is
     // Incoming
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function addPool(PoolId poolId) public auth {
         Pool storage pool = pools[poolId];
         require(pool.createdAt == 0, PoolAlreadyAdded());
@@ -187,7 +173,7 @@ contract PoolManager is
         emit AddPool(poolId);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function addShareClass(
         PoolId poolId,
         ShareClassId scId,
@@ -223,7 +209,7 @@ contract PoolManager is
         emit AddShareClass(poolId, scId, shareToken_);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory name, string memory symbol)
         public
         auth
@@ -240,7 +226,7 @@ contract PoolManager is
         shareToken_.file("symbol", symbol);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
@@ -250,7 +236,7 @@ contract PoolManager is
         emit PriceUpdate(poolId, scId, price, computedAt);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updatePricePoolPerAsset(
         PoolId poolId,
         ShareClassId scId,
@@ -274,7 +260,7 @@ contract PoolManager is
         emit PriceUpdate(poolId, scId, asset, tokenId, poolPerAsset_, computedAt);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update_) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
         address hook = shareToken_.hook();
@@ -282,7 +268,7 @@ contract PoolManager is
         IHook(hook).updateRestriction(address(shareToken_), update_);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update_) public auth {
         if (target == address(this)) {
             update(poolId, scId, update_);
@@ -293,14 +279,14 @@ contract PoolManager is
         emit UpdateContract(poolId, scId, target, update_);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function updateShareHook(PoolId poolId, ShareClassId scId, address hook) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
         require(hook != shareToken_.hook(), OldHook());
         shareToken_.file("hook", hook);
     }
 
-    /// @inheritdoc IPoolManagerGatewayHandler
+    /// @inheritdoc ISpokeGatewayHandler
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
         shareToken_.mint(receiver.toAddress(), amount);
@@ -358,7 +344,7 @@ contract PoolManager is
         }
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
@@ -374,7 +360,7 @@ contract PoolManager is
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
@@ -390,7 +376,7 @@ contract PoolManager is
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         public
         auth
@@ -415,25 +401,25 @@ contract PoolManager is
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function isPoolActive(PoolId poolId) public view returns (bool) {
         return pools[poolId].createdAt > 0;
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function shareToken(PoolId poolId, ShareClassId scId) public view returns (IShareToken) {
         ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
         require(address(shareClass.shareToken) != address(0), UnknownToken());
         return shareClass.shareToken;
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function vaultDetails(IBaseVault vault) public view returns (VaultDetails memory details) {
         details = _vaultDetails[vault];
         require(details.asset != address(0), UnknownVault());
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ IBaseVault vault)
         public
         view
@@ -442,20 +428,20 @@ contract PoolManager is
         return _vaultDetails[vault].isLinked;
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function idToAsset(AssetId assetId) public view returns (address asset, uint256 tokenId) {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(assetIdKey.asset != address(0), UnknownAsset());
         return (assetIdKey.asset, assetIdKey.tokenId);
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function assetToId(address asset, uint256 tokenId) public view returns (AssetId assetId) {
         assetId = _assetToId[asset][tokenId];
         require(assetId.raw() != 0, UnknownAsset());
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
@@ -466,7 +452,7 @@ contract PoolManager is
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
@@ -477,7 +463,7 @@ contract PoolManager is
         price = shareClass.pricePoolPerShare.asPrice();
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
@@ -492,7 +478,7 @@ contract PoolManager is
         price = poolPerAsset.asPrice();
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
         public
         view
@@ -502,7 +488,7 @@ contract PoolManager is
         return (poolPerAsset.asPrice(), poolPerShare.asPrice());
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
         external
         view
@@ -514,7 +500,7 @@ contract PoolManager is
         validUntil = shareClass.pricePoolPerShare.validUntil();
     }
 
-    /// @inheritdoc IPoolManager
+    /// @inheritdoc ISpoke
     function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view

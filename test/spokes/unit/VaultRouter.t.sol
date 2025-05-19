@@ -15,7 +15,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spokes/interfaces/vaults/IVaultRouter.sol";
-import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 
 import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
@@ -55,11 +55,11 @@ contract VaultRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, address(this));
+        new VaultRouter(address(routerEscrow), gateway, spoke, messageDispatcher, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
-        assertEq(address(vaultRouter.poolManager()), address(poolManager));
+        assertEq(address(vaultRouter.spoke()), address(spoke));
     }
 
     function testGetVault() public {
@@ -125,7 +125,7 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(address(vaultRouter), amount);
 
         IAsyncVault maliciousVault = IAsyncVault(address(new MaliciousVault()));
-        vm.expectRevert(IPoolManager.UnknownVault.selector);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
         vaultRouter.lockDepositRequest(maliciousVault, amount, self, self);
 
         IAsyncVault nonAsyncVault = IAsyncVault(address(new NonAsyncVault()));

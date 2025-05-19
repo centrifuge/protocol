@@ -47,7 +47,7 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        poolManager.registerAsset(centrifugeId, address(token), 0);
+        spoke.registerAsset(centrifugeId, address(token), 0);
 
         AssetId assetId = newAssetId(centrifugeId, 1);
 
@@ -87,7 +87,7 @@ contract LocalhostDeployer is FullDeployer {
             poolId,
             scId,
             centrifugeId,
-            bytes32(bytes20(address(poolManager))),
+            bytes32(bytes20(address(spoke))),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
                 assetId: assetId.raw(),
@@ -100,7 +100,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         token.approve(address(vault), 1_000_000e6);
@@ -181,7 +181,7 @@ contract LocalhostDeployer is FullDeployer {
             poolId,
             scId,
             centrifugeId,
-            bytes32(bytes20(address(poolManager))),
+            bytes32(bytes20(address(spoke))),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: bytes32(bytes20(address(syncDepositVaultFactory))),
                 assetId: assetId.raw(),
@@ -194,7 +194,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;

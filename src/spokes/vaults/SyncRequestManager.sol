@@ -20,7 +20,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {BaseRequestManager} from "src/spokes/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IPoolManager, VaultDetails} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke, VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spokes/interfaces/IBalanceSheet.sol";
 import {IBaseRequestManager} from "src/spokes/interfaces/investments/IBaseRequestManager.sol";
 import {
@@ -60,7 +60,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "poolManager") poolManager = IPoolManager(data);
+        if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
@@ -74,15 +74,15 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         if (kind == uint8(UpdateContractType.Valuation)) {
             MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
 
-            require(address(poolManager.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
             setValuation(poolId, scId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
             MessageLib.UpdateContractSyncDepositMaxReserve memory m =
                 MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
-            require(address(poolManager.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-            (address asset, uint256 tokenId) = poolManager.idToAsset(AssetId.wrap(m.assetId));
+            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(m.assetId));
 
             setMaxReserve(poolId, scId, asset, tokenId, m.maxReserve);
         } else {
@@ -98,7 +98,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     {
         super.addVault(poolId, scId, vault_, asset_, assetId);
 
-        (, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (, uint256 tokenId) = spoke.idToAsset(assetId);
         setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
 
         VaultKind vaultKind_ = vault_.vaultKind();
@@ -117,7 +117,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     {
         super.removeVault(poolId, scId, vault_, asset_, assetId);
 
-        (, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (, uint256 tokenId) = spoke.idToAsset(assetId);
         delete maxReserve[poolId][scId][asset_][tokenId];
 
         VaultKind vaultKind_ = vault_.vaultKind();
@@ -197,7 +197,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         uint128 maxAssets =
             _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
         return convertToShares(vault_, maxAssets);
@@ -205,7 +205,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address /* owner */ ) public view returns (uint256) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
     }
 
@@ -216,7 +216,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         override(IBaseRequestManager, BaseRequestManager)
         returns (uint256 shares)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
         return super._assetToShareAmount(
@@ -239,7 +239,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         ISyncDepositValuation valuation_ = valuation[poolId][scId];
 
         if (address(valuation_) == address(0)) {
-            price = poolManager.pricePoolPerShare(poolId, scId, true);
+            price = spoke.pricePoolPerShare(poolId, scId, true);
         } else {
             price = valuation_.pricePoolPerShare(poolId, scId);
         }
@@ -248,7 +248,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     /// @inheritdoc ISyncRequestManager
     function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
         priceData.poolPerShare = pricePoolPerShare(poolId, scId);
-        priceData.poolPerAsset = poolManager.pricePoolPerAsset(poolId, scId, assetId, true);
+        priceData.poolPerAsset = spoke.pricePoolPerAsset(poolId, scId, assetId, true);
         priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
     }
 
@@ -263,10 +263,11 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
         balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
 
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
@@ -278,7 +279,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         view
         returns (uint128 maxDeposit_)
     {
-        if (!poolManager.isLinked(poolId, scId, asset, vault_)) return 0;
+        if (!spoke.isLinked(poolId, scId, asset, vault_)) return 0;
 
         uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
@@ -295,7 +296,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         view
         returns (uint256 shares)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
         return super._shareToAssetAmount(
             vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, rounding

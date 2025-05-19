@@ -9,7 +9,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spokes/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spokes/interfaces/factories/IPoolEscrowFactory.sol";
 
@@ -50,7 +50,7 @@ interface IBalanceSheet {
     error CannotTransferFromEndorsedContract();
 
     function root() external view returns (IRoot);
-    function poolManager() external view returns (IPoolManager);
+    function spoke() external view returns (ISpoke);
     function sender() external view returns (IVaultMessageSender);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 

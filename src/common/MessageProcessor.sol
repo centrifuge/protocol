@@ -14,7 +14,7 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
-    IPoolManagerGatewayHandler,
+    ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IRequestManagerGatewayHandler
@@ -34,7 +34,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     ITokenRecoverer public immutable tokenRecoverer;
 
     IHubGatewayHandler public hub;
-    IPoolManagerGatewayHandler public poolManager;
+    ISpokeGatewayHandler public spoke;
     IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
@@ -50,7 +50,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
-        else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
+        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -84,10 +84,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.NotifyPool) {
-            poolManager.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
+            spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {
             MessageLib.NotifyShareClass memory m = MessageLib.deserializeNotifyShareClass(message);
-            poolManager.addShareClass(
+            spoke.addShareClass(
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 m.name,
@@ -98,20 +98,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
-            poolManager.updatePricePoolPerShare(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.price, m.timestamp);
+            spoke.updatePricePoolPerShare(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.price, m.timestamp);
         } else if (kind == MessageType.NotifyPricePoolPerAsset) {
             MessageLib.NotifyPricePoolPerAsset memory m = MessageLib.deserializeNotifyPricePoolPerAsset(message);
-            poolManager.updatePricePoolPerAsset(
+            spoke.updatePricePoolPerAsset(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.price, m.timestamp
             );
         } else if (kind == MessageType.NotifyShareMetadata) {
             MessageLib.NotifyShareMetadata memory m = MessageLib.deserializeNotifyShareMetadata(message);
-            poolManager.updateShareMetadata(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
-            );
+            spoke.updateShareMetadata(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString());
         } else if (kind == MessageType.UpdateShareHook) {
             MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
-            poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
+            spoke.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hub.initiateTransferShares(
@@ -119,15 +117,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
-            poolManager.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
+            spoke.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
-            poolManager.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
+            spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            poolManager.updateContract(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
-            );
+            spoke.updateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
             hub.depositRequest(

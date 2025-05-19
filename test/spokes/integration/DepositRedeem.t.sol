@@ -36,7 +36,7 @@ contract DepositRedeem is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
-        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
@@ -69,7 +69,7 @@ contract DepositRedeem is BaseTest {
 
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        AssetId assetId = poolManager.assetToId(address(asset), erc20TokenId);
+        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId);
         uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);

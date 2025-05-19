@@ -5,7 +5,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/spokes/interfaces/IEscrow.sol";
 
@@ -22,7 +22,7 @@ interface IBaseRequestManager {
     error VaultDoesNotExist();
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'poolManager'.
+    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -35,8 +35,8 @@ interface IBaseRequestManager {
     /// @notice Returns the timestamp of the last share price update for a vaultAddr.
     function priceLastUpdated(IBaseVault vault) external view returns (uint64 lastUpdated);
 
-    /// @notice Returns the PoolManager contract address.
-    function poolManager() external view returns (IPoolManager poolManager);
+    /// @notice Returns the Spoke contract address.
+    function spoke() external view returns (ISpoke spoke);
 
     /// @notice The global escrow used for funds that are not yet free to be used for a specific pool
     function globalEscrow() external view returns (IEscrow escrow);
