@@ -3,10 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IERC20, IERC20Permit, IERC20Wrapper} from "src/misc/interfaces/IERC20.sol";
+import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
@@ -157,18 +156,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable protected {
         enable(vault);
-
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-
-        uint256 assetBalance;
-        assetBalance = IERC20(vaultDetails.asset).balanceOf(msg.sender);
-
-        if (vaultDetails.isWrapper && assetBalance < amount) {
-            wrap(vaultDetails.asset, amount, address(this), msg.sender);
-            lockDepositRequest(vault, amount, msg.sender, address(this));
-        } else {
-            lockDepositRequest(vault, amount, msg.sender, msg.sender);
-        }
+        lockDepositRequest(vault, amount, msg.sender, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
@@ -249,14 +237,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
-        if (vaultDetails.isWrapper && controller != msg.sender) {
-            // Auto-unwrap if permissionlessly claiming for another controller
-            vault.withdraw(maxWithdraw, address(this), controller);
-            unwrap(vaultDetails.asset, maxWithdraw, receiver);
-        } else {
-            vault.withdraw(maxWithdraw, receiver, controller);
-        }
+        poolManager.vaultDetails(vault);
+        vault.withdraw(maxWithdraw, receiver, controller);
     }
 
     /// @inheritdoc IVaultRouter
@@ -275,7 +257,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // ERC-20 permits & wrapping
+    // ERC-20 permits
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IVaultRouter
@@ -285,25 +267,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         protected
     {
         try IERC20Permit(asset).permit(msg.sender, spender, assets, deadline, v, r, s) {} catch {}
-    }
-
-    function wrap(address wrapper, uint256 amount, address receiver, address owner) public payable protected {
-        require(owner == msg.sender || owner == address(this), InvalidOwner());
-        address underlying = IERC20Wrapper(wrapper).underlying();
-
-        amount = MathLib.min(amount, IERC20(underlying).balanceOf(owner));
-        require(amount != 0, ZeroBalance());
-        SafeTransferLib.safeTransferFrom(underlying, owner, address(this), amount);
-
-        _approveMax(underlying, wrapper);
-        require(IERC20Wrapper(wrapper).depositFor(receiver, amount), WrapFailed());
-    }
-
-    function unwrap(address wrapper, uint256 amount, address receiver) public payable protected {
-        amount = MathLib.min(amount, IERC20(wrapper).balanceOf(address(this)));
-        require(amount != 0, ZeroBalance());
-
-        require(IERC20Wrapper(wrapper).withdrawTo(receiver, amount), UnwrapFailed());
     }
 
     //----------------------------------------------------------------------------------------------

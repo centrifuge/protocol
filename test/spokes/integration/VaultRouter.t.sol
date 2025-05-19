@@ -18,8 +18,6 @@ import {IBaseVault, IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.
 import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spokes/interfaces/vaults/IVaultRouter.sol";
 import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
-import {MockERC20Wrapper} from "test/spokes/mocks/MockERC20Wrapper.sol";
-import {MockReentrantERC20Wrapper1, MockReentrantERC20Wrapper2} from "test/spokes/mocks/MockReentrantERC20Wrapper.sol";
 import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 
 contract VaultRouterTest is BaseTest {
@@ -445,9 +443,8 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
         (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
+            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(erc20), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -462,12 +459,9 @@ contract VaultRouterTest is BaseTest {
         uint256 fuel = DEFAULT_GAS + GAS_BUFFER;
 
         // multicall
-        bytes[] memory calls = new bytes[](3);
-        calls[0] = abi.encodeWithSelector(vaultRouter.wrap.selector, wrapper, amount, address(vaultRouter), investor);
-        calls[1] = abi.encodeWithSelector(
-            vaultRouter.lockDepositRequest.selector, vault_, amount, investor, address(vaultRouter)
-        );
-        calls[2] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, investor, fuel);
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.lockDepositRequest.selector, vault_, amount, investor, investor);
+        calls[1] = abi.encodeWithSelector(vaultRouter.executeLockedDepositRequest.selector, vault_, investor, fuel);
         vaultRouter.multicall{value: fuel}(calls);
 
         (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, investor);
@@ -476,194 +470,6 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxDeposit(investor), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
         assertEq(shareToken.balanceOf(address(globalEscrow)), sharePayout);
-    }
-
-    function testWrapAndUnwrap(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
-        AsyncVault vault = AsyncVault(vault_);
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
-        vaultRouter.enable(vault);
-
-        erc20.mint(investor, amount);
-        vm.startPrank(investor);
-        erc20.approve(address(vaultRouter), amount);
-
-        assertEq(erc20.balanceOf(investor), amount);
-
-        // multicall
-        bytes[] memory calls = new bytes[](2);
-        calls[0] =
-            abi.encodeWithSelector(vaultRouter.wrap.selector, address(wrapper), amount, address(vaultRouter), investor);
-        calls[1] = abi.encodeWithSelector(vaultRouter.unwrap.selector, address(wrapper), amount, investor);
-        vaultRouter.multicall(calls);
-
-        assertEq(erc20.balanceOf(investor), amount);
-    }
-
-    function testWrapAndDeposit(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
-        AsyncVault vault = AsyncVault(vault_);
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
-        vaultRouter.enable(vault);
-
-        erc20.mint(investor, amount);
-        vm.startPrank(investor);
-        erc20.approve(address(vaultRouter), amount);
-
-        assertEq(erc20.balanceOf(investor), amount);
-
-        vm.deal(investor, 10 ether);
-        uint256 fuel = DEFAULT_GAS;
-        vaultRouter.wrap(address(wrapper), amount, address(vaultRouter), investor);
-        vaultRouter.requestDeposit{value: fuel}(vault, amount, investor, address(vaultRouter));
-    }
-
-    function testWrapAndAutoUnwrapOnRedeem(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
-        AsyncVault vault = AsyncVault(vault_);
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-
-        erc20.mint(investor, amount);
-
-        // Investor locks deposit request and enables permissionless lcaiming
-        vm.startPrank(investor);
-        erc20.approve(address(vaultRouter), amount);
-        vaultRouter.enableLockDepositRequest(vault, amount);
-        vm.stopPrank();
-
-        uint256 fuel = DEFAULT_GAS;
-
-        // Anyone else can execute the request and claim the deposit
-        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
-        vaultRouter.executeLockedDepositRequest{value: fuel}(vault, investor);
-        (uint128 sharePayout) = fulfillDepositRequest(vault, assetId, amount, 0, investor);
-
-        IShareToken shareToken = IShareToken(address(vault.share()));
-        vaultRouter.claimDeposit(vault, investor, investor);
-
-        // Investors submits redemption request
-        vm.deal(investor, 10 ether);
-        vm.startPrank(investor);
-        shareToken.approve(address(vaultRouter), sharePayout);
-        vaultRouter.requestRedeem{value: fuel}(vault, sharePayout, investor, investor);
-        vm.stopPrank();
-
-        // Anyone else claims the redeem
-        (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, investor);
-        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout);
-        assertEq(erc20.balanceOf(address(investor)), 0);
-        vaultRouter.claimRedeem{value: fuel}(vault, investor, investor);
-
-        // Token was immediately unwrapped
-        assertEq(wrapper.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
-        assertEq(erc20.balanceOf(investor), assetPayout);
-    }
-
-    function testEnableLockDepositRequest(uint256 wrappedAmount, uint256 underlyingAmount) public {
-        wrappedAmount = uint128(bound(wrappedAmount, 4, MAX_UINT128));
-        vm.assume(wrappedAmount % 2 == 0);
-
-        underlyingAmount = uint128(bound(underlyingAmount, 4, MAX_UINT128));
-        vm.assume(underlyingAmount % 2 == 0);
-
-        vm.assume(wrappedAmount != underlyingAmount);
-        vm.assume(wrappedAmount < underlyingAmount);
-
-        address routerEscrowAddress = address(routerEscrow);
-
-        MockERC20Wrapper wrapper = new MockERC20Wrapper(address(erc20));
-        (, address vault_,) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
-        AsyncVault vault = AsyncVault(vault_);
-        vm.label(vault_, "vault");
-
-        erc20.mint(self, underlyingAmount);
-        erc20.approve(address(vaultRouter), underlyingAmount);
-        wrapper.mint(self, wrappedAmount);
-        wrapper.approve(address(vaultRouter), wrappedAmount);
-
-        // Testing partial of wrapped asset balance
-        uint256 wrappedBalance = wrapper.balanceOf(self);
-        uint256 deposit = wrappedBalance / 2;
-        uint256 remainingWrapped = wrappedBalance / 2;
-        uint256 remainingUnderlying = erc20.balanceOf(self);
-        uint256 escrowBalance = deposit;
-        vaultRouter.enableLockDepositRequest(vault, deposit);
-        assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
-        assertEq(wrapper.balanceOf(self), remainingWrapped);
-        assertEq(erc20.balanceOf(routerEscrowAddress), 0);
-        assertEq(erc20.balanceOf(self), remainingUnderlying);
-
-        // Testing more than the wrapped asset balance
-        wrappedBalance = wrapper.balanceOf(self);
-        deposit = wrappedBalance + 1;
-        remainingWrapped = wrappedBalance;
-        remainingUnderlying = erc20.balanceOf(self) - deposit;
-        escrowBalance = escrowBalance + deposit;
-        vaultRouter.enableLockDepositRequest(vault, deposit);
-        assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance); // amount was used from the underlying asset
-            // and wrapped
-        assertEq(wrapper.balanceOf(self), remainingWrapped);
-        assertEq(erc20.balanceOf(routerEscrowAddress), 0);
-        assertEq(erc20.balanceOf(self), remainingUnderlying);
-
-        // Testing whole wrapped amount
-        wrappedBalance = wrapper.balanceOf(self);
-        deposit = wrappedBalance;
-        remainingUnderlying = erc20.balanceOf(self);
-        escrowBalance = escrowBalance + deposit;
-        vaultRouter.enableLockDepositRequest(vault, deposit);
-        assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
-        assertEq(wrapper.balanceOf(self), 0);
-        assertEq(erc20.balanceOf(routerEscrowAddress), 0);
-        assertEq(erc20.balanceOf(self), remainingUnderlying);
-
-        // Testing more than the underlying
-        uint256 underlyingBalance = erc20.balanceOf(self);
-        deposit = underlyingBalance + 1;
-        remainingUnderlying = underlyingBalance;
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
-        vaultRouter.enableLockDepositRequest(vault, deposit);
-        assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
-        assertEq(wrapper.balanceOf(self), 0);
-        assertEq(erc20.balanceOf(routerEscrowAddress), 0);
-        assertEq(erc20.balanceOf(self), remainingUnderlying);
-
-        // Testing all the underlying
-        deposit = erc20.balanceOf(self);
-        escrowBalance = escrowBalance + deposit;
-        vaultRouter.enableLockDepositRequest(vault, deposit);
-        assertEq(wrapper.balanceOf(routerEscrowAddress), escrowBalance);
-        assertEq(wrapper.balanceOf(self), 0);
-        assertEq(erc20.balanceOf(routerEscrowAddress), 0);
-        assertEq(erc20.balanceOf(self), 0);
-
-        // Testing with empty balance for both wrapped and underlying
-        vm.expectRevert(IVaultRouter.ZeroBalance.selector);
-        vaultRouter.enableLockDepositRequest(vault, wrappedAmount);
     }
 
     function testMultipleTopUpScenarios(uint256 amount) public {
@@ -757,27 +563,5 @@ contract VaultRouterTest is BaseTest {
 
         centrifugeChain.updateMember(vault1.poolId().raw(), vault1.scId().raw(), self, type(uint64).max);
         centrifugeChain.updateMember(vault2.poolId().raw(), vault2.scId().raw(), self, type(uint64).max);
-    }
-
-    function testReentrancyCheck(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
-        vm.assume(amount % 2 == 0);
-
-        MockReentrantERC20Wrapper1 wrapper = new MockReentrantERC20Wrapper1(address(erc20), address(vaultRouter));
-        (, address vault_,) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, bytes16(bytes("1")), address(wrapper), 0, 0);
-        AsyncVault vault = AsyncVault(vault_);
-        vm.label(vault_, "vault");
-
-        address investor = makeAddr("investor");
-
-        erc20.mint(investor, amount);
-
-        // Investor locks deposit request and enables permissionless lcaiming
-        vm.startPrank(investor);
-        erc20.approve(address(vaultRouter), amount);
-        vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
-        vaultRouter.enableLockDepositRequest(vault, amount);
-        vm.stopPrank();
     }
 }

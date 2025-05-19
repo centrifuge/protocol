@@ -20,8 +20,6 @@ interface IVaultRouter is IMulticall {
     error NoLockedBalance();
     error NoLockedRequest();
     error ZeroBalance();
-    error WrapFailed();
-    error UnwrapFailed();
     error InvalidSender();
     error NonSyncDepositVault();
     error NonAsyncVault();
@@ -174,22 +172,6 @@ interface IVaultRouter is IMulticall {
     function permit(address asset, address spender, uint256 assets, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external
         payable;
-
-    // --- ERC20 wrapping ---
-    /// @notice There are vault which underlying asset is actuall a wrapped one.
-    ///
-    /// @param  wrapper The address of the wrapper
-    /// @param  amount  Amount to be wrapped
-    /// @param  receiver Receiver of the wrapped tokens
-    /// @param  owner The address from which `amount` is taken from
-    function wrap(address wrapper, uint256 amount, address receiver, address owner) external payable;
-
-    /// @notice There are vault which underlying asset is actuall a wrapped one.
-    /// @dev    Wrapped tokens need to be held by the VaultRouter to be unwrapped.
-    /// @param  wrapper The address of the wrapper
-    /// @param  amount  Amount to be wrapped
-    /// @param  receiver Receiver of the unwrapped tokens
-    function unwrap(address wrapper, uint256 amount, address receiver) external payable;
 
     // --- View Methods ---
     /// @notice Check IPoolManager.getVault
