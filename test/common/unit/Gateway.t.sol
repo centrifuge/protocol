@@ -815,11 +815,11 @@ contract GatewayTestPayTransaction is GatewayTest {
         vm.deal(ANY, 100);
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
     }
 
     function testPayTransaction() public {
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
 
         assertEq(gateway.transactionRefund(), TRANSIENT_REFUND);
         assertEq(gateway.fuel(), 100);
@@ -827,7 +827,7 @@ contract GatewayTestPayTransaction is GatewayTest {
 
     /// forge-config: default.isolate = true
     function testPayTransactionIsTransactional() public {
-        gateway.payTransaction{value: 100}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: 100}(TRANSIENT_REFUND);
 
         assertEq(gateway.transactionRefund(), address(0));
         assertEq(gateway.fuel(), 0);
@@ -890,7 +890,7 @@ contract GatewayTestSend is GatewayTest {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
         uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 - 1;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
 
@@ -1052,7 +1052,7 @@ contract GatewayTestSend is GatewayTest {
         bytes32 batchId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
 
         uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
 
@@ -1065,10 +1065,6 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.SendProof(REMOTE_CENT_ID, batchId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         gateway.send(REMOTE_CENT_ID, message);
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
-        assertEq(gateway.transactionRefund(), address(0));
     }
 }
 
@@ -1224,15 +1220,11 @@ contract GatewayTestEndBatching is GatewayTest {
 
         uint256 payment =
             MESSAGE_GAS_LIMIT * 2 * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3 + 1234;
-        gateway.payTransaction{value: payment}(TRANSIENT_REFUND);
+        gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapters(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, TRANSIENT_REFUND);
 
         gateway.endBatching();
-
-        assertEq(TRANSIENT_REFUND.balance, 1234);
-        assertEq(gateway.fuel(), 0);
-        assertEq(gateway.transactionRefund(), address(0));
     }
 
     function testSendMessageUnderpaid() public {
@@ -1342,5 +1334,38 @@ contract GatewayTestRepay is GatewayTest {
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+    }
+}
+
+contract GatewayTestAddUnpaidMessage is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, bytes(""));
+    }
+
+    function testCorrectAddUnpaidMessage() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+
+        vm.expectEmit();
+        emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+
+        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        assertEq(counter, 1);
+        assertEq(gasLimit, MESSAGE_GAS_LIMIT);
+    }
+
+    function testCorrectAddUnpaidMessageTwice() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+
+        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        assertEq(counter, 2);
+        assertEq(gasLimit, MESSAGE_GAS_LIMIT);
     }
 }

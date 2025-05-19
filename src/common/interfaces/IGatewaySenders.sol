@@ -73,8 +73,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -83,26 +84,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledCancelRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledShares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) external;
 
     /// @notice Creates and send the message
@@ -158,13 +142,27 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
+
+    /// @notice Creates and send the message
+    function sendExecuteTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external;
 }
 
 /// @notice Interface for dispatch-only gateway
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
-    function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external;
+    function sendInitiateTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external;
 
     /// @notice Creates and send the message
     function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)

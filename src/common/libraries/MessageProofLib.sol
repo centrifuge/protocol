@@ -6,7 +6,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 library MessageProofLib {
     using BytesLib for bytes;
 
-    uint8 constant MESSAGE_PROOF_ID = 1;
+    uint8 constant MESSAGE_PROOF_ID = 255;
 
     error UnknownMessageProofType();
 

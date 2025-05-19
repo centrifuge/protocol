@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/vaults/BaseTest.sol";
+import "test/spokes/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;
@@ -39,7 +39,8 @@ contract RedemptionRestrictionsTest is BaseTest {
             bytes32(bytes20(investor)),
             assetId,
             uint128(amount),
-            uint128(amount)
+            uint128(amount),
+            0
         );
 
         vm.prank(investor);
@@ -64,7 +65,7 @@ contract RedemptionRestrictionsTest is BaseTest {
         uint128 fulfillment = uint128(amount / 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment, 0
         );
 
         vm.prank(investor);

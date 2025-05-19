@@ -1,0 +1,213 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {D18, d18} from "src/misc/types/D18.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {Auth} from "src/misc/Auth.sol";
+
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
+import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
+
+contract HubHelpers is Auth, IHubHelpers {
+    using MathLib for uint256;
+
+    IHoldings public immutable holdings;
+    IAccounting public immutable accounting;
+    IHubRegistry public immutable hubRegistry;
+    IShareClassManager public immutable shareClassManager;
+
+    IHub public hub;
+
+    constructor(
+        IHoldings holdings_,
+        IAccounting accounting_,
+        IHubRegistry hubRegistry_,
+        IShareClassManager shareClassManager_,
+        address deployer
+    ) Auth(deployer) {
+        holdings = holdings_;
+        accounting = accounting_;
+        hubRegistry = hubRegistry_;
+        shareClassManager = shareClassManager_;
+    }
+
+    /// @inheritdoc IHubHelpers
+    function file(bytes32 what, address data) external auth {
+        if (what == "hub") hub = IHub(data);
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    //  Auth methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubHelpers
+    function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        auth
+        returns (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount)
+    {
+        for (uint32 i = 0; i < maxClaims; i++) {
+            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
+                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
+
+            totalPayoutShareAmount += payoutShareAmount;
+            totalPaymentAssetAmount += paymentAssetAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
+            if (cancelled > 0) {
+                cancelledAssetAmount = cancelled;
+            }
+
+            if (!canClaimAgain) {
+                break;
+            }
+        }
+    }
+
+    /// @inheritdoc IHubHelpers
+    function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
+        external
+        auth
+        returns (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount)
+    {
+        for (uint32 i = 0; i < maxClaims; i++) {
+            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
+                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
+
+            totalPayoutAssetAmount += payoutAssetAmount;
+            totalPaymentShareAmount += paymentShareAmount;
+
+            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
+            // the user had a pending cancellation
+            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
+            if (cancelled > 0) {
+                cancelledShareAmount = cancelled;
+            }
+
+            if (!canClaimAgain) {
+                break;
+            }
+        }
+    }
+
+    /// @inheritdoc IHubHelpers
+    /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
+    ///         This updates the asset/expense as well as the equity/liability accounts.
+    function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external
+        auth
+    {
+        if (diff == 0) return;
+
+        accounting.unlock(poolId);
+
+        bool isLiability = holdings.isLiability(poolId, scId, assetId);
+        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
+        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
+
+        if (isPositive) {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+        } else {
+            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), diff);
+            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), diff);
+        }
+
+        accounting.lock();
+    }
+
+    /// @inheritdoc IHubHelpers
+    /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
+    ///         This updates the asset/expense as well as the gain/loss accounts.
+    function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
+        external
+        auth
+    {
+        if (diff == 0) return;
+
+        accounting.unlock(poolId);
+
+        // Save a diff=0 update gas cost
+        if (isPositive && diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+            }
+        } else if (diff > 0) {
+            if (holdings.isLiability(poolId, scId, assetId)) {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
+            } else {
+                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
+                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
+            }
+        }
+
+        accounting.lock();
+    }
+
+    //----------------------------------------------------------------------------------------------
+    //  View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubHelpers
+    function holdingAccounts(
+        AccountId assetAccount,
+        AccountId equityAccount,
+        AccountId gainAccount,
+        AccountId lossAccount
+    ) external pure returns (HoldingAccount[] memory) {
+        HoldingAccount[] memory accounts = new HoldingAccount[](4);
+        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
+        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
+        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
+        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        return accounts;
+    }
+
+    /// @inheritdoc IHubHelpers
+    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
+        external
+        pure
+        returns (HoldingAccount[] memory)
+    {
+        HoldingAccount[] memory accounts = new HoldingAccount[](2);
+        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
+        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
+        return accounts;
+    }
+
+    /// @inheritdoc IHubHelpers
+    function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18) {
+        AssetId poolCurrency = hubRegistry.currency(poolId);
+        // NOTE: We assume symmetric prices are provided by holdings valuation
+        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
+
+        // Retrieve amount of 1 asset unit in pool currency
+        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
+        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
+        uint128 poolAmountPerAsset =
+            valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
+
+        // Retrieve price by normalizing by pool denomination
+        return d18(poolAmountPerAsset, poolUnitAmount);
+    }
+}

@@ -278,7 +278,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.append(batchSlot, message);
         } else {
             _send(centrifugeId, poolId, message, gasService.gasLimit(centrifugeId, message));
-            _refundTransaction();
         }
     }
 
@@ -361,6 +360,15 @@ contract Gateway is Auth, Recoverable, IGateway {
         return true;
     }
 
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
+        bytes32 batchHash = keccak256(message);
+
+        underpaid[centrifugeId][batchHash].counter++;
+        underpaid[centrifugeId][batchHash].gasLimit = gasService.gasLimit(centrifugeId, message);
+
+        emit UnderpaidBatch(centrifugeId, message);
+    }
+
     /// @inheritdoc IGateway
     function repay(uint16 centrifugeId, bytes memory batch) external payable pauseable {
         bytes32 batchHash = keccak256(batch);
@@ -374,25 +382,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
         emit RepayBatch(centrifugeId, batch);
-    }
-
-    function _refundTransaction() internal {
-        if (transactionRefund == address(0)) return;
-
-        // Reset before external call
-        uint256 fuel_ = fuel;
-        address transactionRefund_ = transactionRefund;
-        fuel = 0;
-        transactionRefund = address(0);
-
-        if (fuel_ > 0) {
-            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
-
-            if (!success) {
-                // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
-            }
-        }
     }
 
     function _requestPoolFunding(PoolId poolId) internal {
@@ -428,9 +417,29 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function payTransaction(address payer) external payable auth {
+    function startTransactionPayment(address payer) external payable auth {
         transactionRefund = payer;
         fuel += msg.value;
+    }
+
+    /// @inheritdoc IGateway
+    function endTransactionPayment() external auth {
+        if (transactionRefund == address(0)) return;
+
+        // Reset before external call
+        uint256 fuel_ = fuel;
+        address transactionRefund_ = transactionRefund;
+        fuel = 0;
+        transactionRefund = address(0);
+
+        if (fuel_ > 0) {
+            (bool success,) = payable(transactionRefund_).call{value: fuel_}(new bytes(0));
+
+            if (!success) {
+                // If refund fails, move remaining fuel to global pot
+                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
+            }
+        }
     }
 
     /// @inheritdoc IGateway
@@ -456,8 +465,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
-
-        _refundTransaction();
     }
 
     function _encodeLocator(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
