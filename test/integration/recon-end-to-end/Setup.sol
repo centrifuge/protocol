@@ -145,13 +145,13 @@ abstract contract Setup is
     uint64 internal POOL_ID_COUNTER = 1;
 
     /// === GHOST === ///
-    mapping (address => uint256) requestDeposited;
-    mapping (address => uint256) depositProcessed;
-    mapping (address => uint256) cancelledDeposits;
+    mapping (address vault => mapping (address user => uint256)) requestDeposited;
+    mapping (address vault => mapping (address user => uint256)) depositProcessed;
+    mapping (address vault => mapping (address user => uint256)) cancelledDeposits;
 
-    mapping (address => uint256) requestRedeeemed;
-    mapping (address => uint256) redemptionsProcessed;
-    mapping (address => uint256) cancelledRedemptions;
+    mapping (address vault => mapping (address user => uint256)) requestRedeemed;
+    mapping (address vault => mapping (address user => uint256)) redemptionsProcessed;
+    mapping (address vault => mapping (address user => uint256)) cancelledRedemptions;
 
     uint256 approvedDeposits;
     uint256 approvedRedemptions;

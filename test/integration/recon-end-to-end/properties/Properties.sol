@@ -81,7 +81,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             uint256 pendingRedeemRequestDelta = _before.investments[_getActor()].pendingRedeemRequest - _after.investments[_getActor()].pendingRedeemRequest;
             // tranche tokens get burned when redeemed so the escrowTrancheTokenBalance decreases
             uint256 escrowTokenDelta = _before.escrowTrancheTokenBalance - _after.escrowTrancheTokenBalance;
-                        
+
+            console2.log("asset token balance before", _before.escrowTokenBalance);
+            console2.log("asset token balance after", _after.escrowTokenBalance);
             eq(pendingRedeemRequestDelta, escrowTokenDelta, "pendingRedeemRequest != fullfilledRedeem");
         }
     }
@@ -95,11 +97,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 ghostTotalSupply;
         address shareToken = vault.share();
         uint256 totalSupply = IShareToken(shareToken).totalSupply();
+
         unchecked {
             
             // NOTE: Includes `shareMints` which are arbitrary mints
             ghostTotalSupply = shareMints[address(shareToken)] + executedInvestments[address(shareToken)] + incomingTransfers[address(shareToken)]
                 - outGoingTransfers[address(shareToken)] - executedRedemptions[address(shareToken)];
+                
         }
         eq(totalSupply, ghostTotalSupply, "totalSupply != ghostTotalSupply");
     }
@@ -248,6 +252,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address poolEscrow = address(poolEscrowFactory.escrow(poolId));
         uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow));
+        console2.log("poolEscrow:", poolEscrow);
         unchecked {
             // Deposit Requests + Transfers In
             /// @audit Minted by Asset Payouts by Investors
@@ -273,10 +278,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address shareToken = vault.share();
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
-        unchecked {        
+        address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
+
+        unchecked {            
             ghostBalanceOfEscrow = (
                 sumOfFullfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)]
-                        - sumOfClaimedDeposits[address(shareToken)] - sumOfClaimedRedeemCancelations[address(shareToken)]
+                        - sumOfClaimedDeposits[address(shareToken)] - cancelRedeemShareTokenPayout[address(shareToken)]
                         - sumOfClaimedRequests[address(shareToken)]
             );
         }
@@ -366,7 +373,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
 
         for(uint256 i; i < actors.length; i++) {
-            gte(requestDeposited[actors[i]], depositProcessed[actors[i]], "property_soundness_processed_deposits Actor Requests must be gte than processed amounts");
+            gte(requestDeposited[_getVault()][actors[i]], depositProcessed[_getVault()][actors[i]], "property_soundness_processed_deposits Actor Requests must be gte than processed amounts");
         }
     }
 
@@ -376,7 +383,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            gte(requestRedeeemed[actors[i]], redemptionsProcessed[actors[i]], "property_soundness_processed_redemptions Actor Requests must be gte than processed amounts");
+            gte(requestRedeemed[_getVault()][actors[i]], redemptionsProcessed[_getVault()][actors[i]], "property_soundness_processed_redemptions Actor Requests must be gte than processed amounts");
         }
     }
 
@@ -386,7 +393,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            gte(requestDeposited[actors[i]], cancelledDeposits[actors[i]], "actor requests must be >= cancelled amounts");
+            gte(requestDeposited[_getVault()][actors[i]], cancelledDeposits[_getVault()][actors[i]], "actor requests must be >= cancelled amounts");
         }
     }
 
@@ -396,7 +403,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            gte(requestDeposited[actors[i]], cancelledDeposits[actors[i]] + depositProcessed[actors[i]], "actor requests must be >= cancelled + processed amounts");
+            gte(requestDeposited[_getVault()][actors[i]], cancelledDeposits[_getVault()][actors[i]] + depositProcessed[_getVault()][actors[i]], "actor requests must be >= cancelled + processed amounts");
         }
     }
 
@@ -406,7 +413,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
 
         for(uint256 i; i < actors.length; i++) {
-            gte(requestRedeeemed[actors[i]], cancelledRedemptions[actors[i]] + redemptionsProcessed[actors[i]], "actor requests must be >= cancelled + processed amounts");
+            gte(requestRedeemed[_getVault()][actors[i]], cancelledRedemptions[_getVault()][actors[i]] + redemptionsProcessed[_getVault()][actors[i]], "actor requests must be >= cancelled + processed amounts");
         }
     }
 
@@ -416,7 +423,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 totalDeposits;
 
         for(uint256 i; i < actors.length; i++) {
-            totalDeposits += requestDeposited[actors[i]];
+            totalDeposits += requestDeposited[_getVault()][actors[i]];
         }
 
         gte(totalDeposits, approvedDeposits, "total deposits < approved deposits");
@@ -428,7 +435,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 totalRedemptions;
 
         for(uint256 i; i < actors.length; i++) {
-            totalRedemptions += requestRedeeemed[actors[i]];
+            totalRedemptions += requestRedeemed[_getVault()][actors[i]];
         }
 
         gte(totalRedemptions, approvedRedemptions, "total redemptions < approved redemptions");
@@ -446,7 +453,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             (uint128 pending, ) = shareClassManager.depositRequest(scId, assetId, actors[i].toBytes32());
             (, uint128 queued) = shareClassManager.queuedDepositRequest(scId, assetId, actors[i].toBytes32());
 
-            eq(requestDeposited[actors[i]] - cancelledDeposits[actors[i]] - depositProcessed[actors[i]], pending + queued, "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits");
+            eq(requestDeposited[_getVault()][actors[i]] - cancelledDeposits[_getVault()][actors[i]] - depositProcessed[_getVault()][actors[i]], pending + queued, "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits");
         }
     }
 
@@ -461,8 +468,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         for(uint256 i; i < actors.length; i++) {
             (uint128 pending, ) = shareClassManager.redeemRequest(scId, assetId, actors[i].toBytes32());
             (, uint128 queued) = shareClassManager.queuedRedeemRequest(scId, assetId, actors[i].toBytes32());
-
-            eq(requestRedeeemed[actors[i]] - cancelledRedemptions[actors[i]] - redemptionsProcessed[actors[i]], pending + queued, "property_actor_pending_and_queued_redemptions");
+            
+            eq(requestRedeemed[_getVault()][actors[i]] - cancelledRedemptions[_getVault()][actors[i]] - redemptionsProcessed[_getVault()][actors[i]], pending + queued, "property_actor_pending_and_queued_redemptions");
         }
     }
 
@@ -829,22 +836,16 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
-        uint64[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
 
-                bytes32 actor = CastLib.toBytes32(_getActor());
-                // precondition: user already has non-zero pending redeem
-                if (_before.ghostRedeemRequest[scId][assetId][actor].pending > 0) {
-                    // check that the lastUpdate was > the latest redeem revoke pointer
-                    gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].revoke, "lastUpdate is <= latest redeem revoke");
-                }
-            }
+        bytes32 actor = CastLib.toBytes32(_getActor());
+        // precondition: user already has non-zero pending redeem
+        if (_before.ghostRedeemRequest[scId][assetId][actor].pending > 0) {
+            // check that the lastUpdate was > the latest redeem revoke pointer
+            gt(_before.ghostRedeemRequest[scId][assetId][actor].lastUpdate, _before.ghostEpochId[scId][assetId].revoke, "lastUpdate is <= latest redeem revoke");
         }
     }
 

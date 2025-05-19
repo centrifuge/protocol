@@ -94,7 +94,6 @@ abstract contract AdminTargets is
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = hubRegistry.currency(poolId);
 
-        console2.log("assetAccountAsUint", assetAccountAsUint);
         hub.createHolding(
             poolId, 
             scId, 
@@ -238,7 +237,15 @@ abstract contract AdminTargets is
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId payoutAssetId = hubRegistry.currency(poolId);
+        uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        
         hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare));
+
+        uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        uint256 burnedShares = sharesBefore - sharesAfter;
+
+        // NOTE: shares are burned on cancel 
+        cancelRedeemShareTokenPayout[address(_getShareToken())] += burnedShares;
     }
 
     function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public updateGhosts {

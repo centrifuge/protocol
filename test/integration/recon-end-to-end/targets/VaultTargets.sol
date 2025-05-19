@@ -60,7 +60,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestDeposit(assets, to, _getActor()) {
             // ghost tracking
-            requestDeposited[to] += assets;
+            requestDeposited[_getVault()][to] += assets;
             sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
             requestDepositAssets[to][IBaseVault(_getVault()).asset()] += assets;
      
@@ -99,11 +99,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             t(hasReverted, "LP-1 Must Revert");
         }
 
-        bool isActorFrozen = fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), _getActor());
         bool isToFrozen = fullRestrictions.isFrozen(IBaseVault(_getVault()).share(), to);
-        console2.log("isFrozen check - actor:", _getActor(), "frozen:", isActorFrozen);
-        console2.log("isFrozen check - to:", to, "frozen:", isToFrozen);
-        if (isActorFrozen || isToFrozen) {
+        if (isToFrozen) {
             t(hasReverted, "LP-2 Must Revert");
         }
 
@@ -151,7 +148,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             // ghost tracking
             sumOfRedeemRequests[IBaseVault(_getVault()).share()] += shares; // E-2
             requestRedeemShares[to][IBaseVault(_getVault()).share()] += shares;
-            requestRedeeemed[to] += shares;
+            requestRedeemed[_getVault()][to] += shares;
 
             (uint128 pending, uint32 lastUpdate) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
@@ -220,7 +217,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, _getActor());
 
             // update ghosts
-            cancelledDeposits[controller] += (pendingBefore - pendingAfter);
+            cancelledDeposits[_getVault()][controller] += (pendingBefore - pendingAfter);
             cancelDepositCurrencyPayout[IBaseVault(_getVault()).asset()] += pendingCancelAfter - pendingCancelBefore;
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
@@ -254,13 +251,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), controller.toBytes32());
         (, uint128 cancelledPendingBefore) = shareClassManager.queuedRedeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), controller.toBytes32());
+        
+        vm.prank(controller);
         try IAsyncVault(_getVault()).cancelRedeemRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), controller.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
 
             (, uint128 cancelledPendingAfter) = shareClassManager.queuedRedeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), controller.toBytes32());
             // update ghosts
-            cancelledRedemptions[controller] += (pendingBefore - pendingAfter);
+            cancelledRedemptions[_getVault()][controller] += (pendingBefore - pendingAfter);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
@@ -283,6 +282,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 t(!arithmeticRevert, "cancelRedeemRequest reverts with arithmetic panic");
             }
         }
+
     }
 
     function vault_claimCancelDepositRequest(uint256 toEntropy) public updateGhosts asActor {
@@ -298,9 +298,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shares = IAsyncVault(_getVault()).claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
 
         // NOTE: async vaults get redemptions fulfilled on claim 
-        if(!Helpers.isAsyncVault(_getVault())) {
-            cancelRedeemShareTokenPayout[address(_getShareToken())] += shares;
-        }
+        // if(!Helpers.isAsyncVault(_getVault())) {
+        //     cancelRedeemShareTokenPayout[address(_getShareToken())] += shares;
+        // }
 
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += shares;
     }
@@ -329,7 +329,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         if(!Helpers.isAsyncVault(_getVault())) {
             sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
             executedInvestments[IBaseVault(_getVault()).share()] += shares;
-            depositProcessed[_getVault()] += shares;
+            depositProcessed[_getVault()][_getActor()] += shares;
         }
 
         // Bal after
@@ -398,7 +398,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // Bal after
         uint256 shareUserAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 shareEscrowAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(address(globalEscrow));
-
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
         unchecked {

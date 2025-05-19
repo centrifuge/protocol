@@ -10,6 +10,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
@@ -504,6 +506,100 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    
+    // forge test --match-test test_property_sum_of_minted_equals_total_supply_0 -vvv 
+    function test_property_sum_of_minted_equals_total_supply_0() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_mint_sync(2,10000505065913087102990555253782379);
+
+        console2.log("share total supply before cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).totalSupply());
+        shortcut_cancel_redeem_clamped(1,0,0);
+        console2.log("share total supply after cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).totalSupply());
+        console2.log("user shares after cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor()));
+        
+        property_sum_of_minted_equals_total_supply();
+
+    }
+
+    // forge test --match-test test_property_price_per_share_overall_8 -vvv 
+    function test_property_price_per_share_overall_8() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        property_price_per_share_overall();
+    }
+
+    // forge test --match-test test_property_sum_of_received_leq_fulfilled_9 -vvv 
+    function test_property_sum_of_received_leq_fulfilled_9() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
+
+        shortcut_deposit_and_claim(1,0,1,1,0);
+
+        vault_requestRedeem_clamped(1,0);
+
+        vault_cancelRedeemRequest();
+
+        vault_claimCancelRedeemRequest(0);
+
+        property_sum_of_received_leq_fulfilled();
+
+    }
+
+    // forge test --match-test test_property_sum_of_pending_redeem_request_11 -vvv 
+    function test_property_sum_of_pending_redeem_request_11() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        // mint 2 shares
+        shortcut_mint_sync(2,10001493698620430928097305628073781);
+
+        // burn 1 share
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
+        console2.log("pool escrow balance before notifyRedeem:", IERC20(IBaseVault(_getVault()).asset()).balanceOf(poolEscrow));
+        // claim remaining 1 share
+        hub_notifyRedeem(1);
+        console2.log("pool escrow balance after notifyRedeem:", IERC20(IBaseVault(_getVault()).asset()).balanceOf(poolEscrow));
+
+        property_sum_of_pending_redeem_request();
+
+    }
+
+    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_17 -vvv 
+    function test_property_user_cannot_mutate_pending_redeem_17() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        hub_createLiability_clamped(true,0,0);
+
+        shortcut_mint_sync(2,10017567812503563737449888822777011);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+        bytes32 actor = CastLib.toBytes32(_getActor());
+
+        console2.log("Before addShareClass - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
+        console2.log("Before addShareClass - revoke:", _before.ghostEpochId[scId][assetId].revoke);
+        hub_addShareClass(2);
+        console2.log("After addShareClass - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
+        console2.log("After addShareClass - revoke:", _before.ghostEpochId[scId][assetId].revoke);
+       
+        hub_notifySharePrice(0);
+        console2.log("After notifySharePrice - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
+        console2.log("After notifySharePrice - revoke:", _before.ghostEpochId[scId][assetId].revoke);
+
+        property_user_cannot_mutate_pending_redeem();
+
+    }
+ 
     
 }

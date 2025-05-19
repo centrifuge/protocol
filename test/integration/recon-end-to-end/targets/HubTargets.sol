@@ -75,7 +75,7 @@ abstract contract HubTargets is
         sumOfFullfilledDeposits[_getShareToken()] += (pendingBeforeARM - pendingAfterARM);
         // claims are handled in the ShareClassManager
         sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM);
-        depositProcessed[_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
+        depositProcessed[_getVault()][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {
@@ -86,30 +86,33 @@ abstract contract HubTargets is
 
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
         uint256 investorBalanceBefore = MockERC20(_getAsset()).balanceOf(_getActor());
         (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
+        (uint128 pendingBefore,) = shareClassManager.redeemRequest(scId, assetId, investor);
 
-        hub.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
+        hub.notifyRedeem(PoolId.wrap(_getPool()), scId, assetId, investor, maxClaims);
 
-        (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
+        (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
         (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
         (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
 
         uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
-        uint256 investorShareDelta = investorSharesAfter - investorSharesBefore;
         uint256 investorBalanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
-        uint256 investorBalanceDelta = investorBalanceAfter - investorBalanceBefore;
         
-        executedRedemptions[_getShareToken()] += investorShareDelta;
-        currencyPayout[_getAsset()] += investorBalanceDelta;
+        executedRedemptions[_getShareToken()] += (investorSharesAfter - investorSharesBefore);
+        currencyPayout[_getAsset()] += (investorBalanceAfter - investorBalanceBefore);
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
-        // nowRedeemEpoch = redeemEpochId + 1
-        eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+        redemptionsProcessed[_getVault()][_getActor()] += (pendingBefore - pendingAfter);
+
+        // precondition: lastUpdate doesn't change if there's no claim actually made
+        if(maxClaims > 0) {
+            // nowRedeemEpoch = redeemEpochId + 1
+            eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+        }
     }
 
     /// === EXECUTION FUNCTIONS === ///

@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import {vm} from "@chimera/Hevm.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-
 import {MockERC20} from "@recon/MockERC20.sol";
+
+import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
 
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
@@ -70,7 +71,10 @@ abstract contract ManagerTargets is
 
     /// @dev Mint to arbitrary address, uses owner by default, even though MockERC20 doesn't check
     function asset_mint(address to, uint128 amt) public updateGhosts asAdmin {
-        require(to != address(globalEscrow), "Cannot mint to globalEscrow");
+        // PoolId poolId = IBaseVault(_getVault()).poolId();
+        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
+
+        require(to != address(globalEscrow) && to != poolEscrow, "Cannot mint to globalEscrow or poolEscrow");
         MockERC20(_getAsset()).mint(to, amt);
     }
 }
