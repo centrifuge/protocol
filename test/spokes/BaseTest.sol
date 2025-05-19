@@ -20,7 +20,7 @@ import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 // core contracts
 import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
-import {PoolManager} from "src/spokes/PoolManager.sol";
+import {Spoke} from "src/spokes/Spoke.sol";
 import {Escrow} from "src/spokes/Escrow.sol";
 import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
@@ -113,7 +113,7 @@ contract BaseTest is VaultsDeployer, Test {
         // remove deployer access
         // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, poolManager, syncRequestManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncRequestManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -123,7 +123,7 @@ contract BaseTest is VaultsDeployer, Test {
         vm.label(address(root), "Root");
         vm.label(address(asyncRequestManager), "AsyncRequestManager");
         vm.label(address(syncRequestManager), "SyncRequestManager");
-        vm.label(address(poolManager), "PoolManager");
+        vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
         vm.label(address(messageProcessor), "MessageProcessor");
@@ -138,7 +138,7 @@ contract BaseTest is VaultsDeployer, Test {
         vm.label(address(gasService), "GasService");
         vm.label(address(routerEscrow), "RouterEscrow");
         vm.label(address(guardian), "Guardian");
-        vm.label(address(poolManager.tokenFactory()), "TokenFactory");
+        vm.label(address(spoke.tokenFactory()), "TokenFactory");
         vm.label(address(asyncVaultFactory), "AsyncVaultFactory");
         vm.label(address(syncDepositVaultFactory), "SyncDepositVaultFactory");
         vm.label(address(poolEscrowFactory), "PoolEscrowFactory");
@@ -148,7 +148,7 @@ contract BaseTest is VaultsDeployer, Test {
         excludeContract(address(asyncRequestManager));
         excludeContract(address(syncRequestManager));
         excludeContract(address(balanceSheet));
-        excludeContract(address(poolManager));
+        excludeContract(address(spoke));
         excludeContract(address(gateway));
         excludeContract(address(erc20));
         excludeContract(address(erc6909));
@@ -159,7 +159,7 @@ contract BaseTest is VaultsDeployer, Test {
         excludeContract(address(adapter3));
         excludeContract(address(routerEscrow));
         excludeContract(address(guardian));
-        excludeContract(address(poolManager.tokenFactory()));
+        excludeContract(address(spoke.tokenFactory()));
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
         excludeContract(address(poolEscrowFactory));
@@ -175,19 +175,19 @@ contract BaseTest is VaultsDeployer, Test {
         uint256 assetTokenId,
         uint16 /* TODO: destinationChain */
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        try poolManager.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
+        try spoke.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
-            if (poolManager.pools(POOL_A) == 0) {
+            if (spoke.pools(POOL_A) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        try poolManager.assetToId(asset, assetTokenId) {
-            assetId = poolManager.assetToId(asset, assetTokenId).raw();
+        try spoke.assetToId(asset, assetTokenId) {
+            assetId = spoke.assetToId(asset, assetTokenId).raw();
         } catch {
-            assetId = poolManager.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
+            assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
@@ -196,7 +196,7 @@ contract BaseTest is VaultsDeployer, Test {
         bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
         // Trigger new vault deployment via UpdateContract
-        poolManager.update(
+        spoke.update(
             POOL_A,
             ShareClassId.wrap(scId),
             MessageLib.UpdateContractVaultUpdate({
@@ -205,7 +205,7 @@ contract BaseTest is VaultsDeployer, Test {
                 kind: uint8(VaultUpdateKind.DeployAndLink)
             }).serialize()
         );
-        vaultAddress = IShareToken(poolManager.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
+        vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
 
         gateway.setRefundAddress(POOL_A, gateway);
@@ -241,7 +241,7 @@ contract BaseTest is VaultsDeployer, Test {
         erc20.approve(_vault, amount); // add allowance
         vault.requestDeposit(amount, _investor, _investor);
         // trigger executed collectInvest
-        uint128 assetId = poolManager.assetToId(address(erc20), erc20TokenId).raw();
+        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(),
             vault.scId().raw(),

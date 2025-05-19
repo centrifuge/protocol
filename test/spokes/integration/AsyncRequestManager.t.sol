@@ -8,7 +8,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IEscrow} from "src/spokes/interfaces/IEscrow.sol";
-import {VaultDetails} from "src/spokes/interfaces/IPoolManager.sol";
+import {VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
 import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 import {IBaseRequestManager} from "src/spokes/interfaces/investments/IBaseRequestManager.sol";
@@ -35,7 +35,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
                 PricingLib.calculatePriceAssetPerShare(address(0), shares, address(0), 0, assets, MathLib.Rounding.Down);
         }
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         address shareToken = vault.share();
         return PricingLib.calculatePriceAssetPerShare(
             shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, MathLib.Rounding.Down
@@ -47,7 +47,7 @@ contract AsyncRequestManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(gateway) && nonWard != address(poolManager)
+            nonWard != address(root) && nonWard != address(gateway) && nonWard != address(spoke)
                 && nonWard != address(messageDispatcher) && nonWard != address(messageProcessor)
                 && nonWard != address(syncRequestManager) && nonWard != address(this)
         );
@@ -57,14 +57,14 @@ contract AsyncRequestManagerTest is BaseTest {
 
         // values set correctly
         assertEq(address(asyncRequestManager.sender()), address(messageDispatcher));
-        assertEq(address(asyncRequestManager.poolManager()), address(poolManager));
+        assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
         assertEq(address(asyncRequestManager.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(gateway)), 1);
-        assertEq(asyncRequestManager.wards(address(poolManager)), 1);
+        assertEq(asyncRequestManager.wards(address(spoke)), 1);
         assertEq(asyncRequestManager.wards(address(messageProcessor)), 1);
         assertEq(asyncRequestManager.wards(address(messageDispatcher)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
@@ -79,12 +79,12 @@ contract AsyncRequestManagerTest is BaseTest {
         vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
         asyncRequestManager.file("random", self);
 
-        assertEq(address(asyncRequestManager.poolManager()), address(poolManager));
+        assertEq(address(asyncRequestManager.spoke()), address(spoke));
         // success
         asyncRequestManager.file("sender", randomUser);
         assertEq(address(asyncRequestManager.sender()), randomUser);
-        asyncRequestManager.file("poolManager", randomUser);
-        assertEq(address(asyncRequestManager.poolManager()), randomUser);
+        asyncRequestManager.file("spoke", randomUser);
+        assertEq(address(asyncRequestManager.spoke()), randomUser);
         asyncRequestManager.file("balanceSheet", randomUser);
         assertEq(address(asyncRequestManager.balanceSheet()), randomUser);
         asyncRequestManager.file("poolEscrowProvider", randomUser);
@@ -94,7 +94,7 @@ contract AsyncRequestManagerTest is BaseTest {
         asyncRequestManager.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        asyncRequestManager.file("poolManager", randomUser);
+        asyncRequestManager.file("spoke", randomUser);
     }
 
     // --- Simple Errors ---
@@ -102,7 +102,7 @@ contract AsyncRequestManagerTest is BaseTest {
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         IAsyncVault vault = IAsyncVault(vault_);
 
-        poolManager.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
         vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
         asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));

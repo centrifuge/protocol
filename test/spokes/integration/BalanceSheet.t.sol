@@ -32,9 +32,9 @@ contract BalanceSheetTest is BaseTest {
         defaultPricePoolPerAsset = d18(1, 1);
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        assetId = poolManager.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
-        poolManager.addPool(POOL_A);
-        poolManager.addShareClass(
+        assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId);
+        spoke.addPool(POOL_A);
+        spoke.addShareClass(
             POOL_A,
             defaultTypedShareClassId,
             "testShareClass",
@@ -43,13 +43,13 @@ contract BalanceSheetTest is BaseTest {
             bytes32(""),
             fullRestrictionsHook
         );
-        poolManager.updatePricePoolPerShare(
+        spoke.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
         );
-        poolManager.updatePricePoolPerAsset(
+        spoke.updatePricePoolPerAsset(
             POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
         );
-        poolManager.updateRestriction(
+        spoke.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
@@ -69,7 +69,7 @@ contract BalanceSheetTest is BaseTest {
 
         // values set correctly
         assertEq(address(balanceSheet.root()), address(root));
-        assertEq(address(balanceSheet.poolManager()), address(poolManager));
+        assertEq(address(balanceSheet.spoke()), address(spoke));
         assertEq(address(balanceSheet.sender()), address(messageDispatcher));
         assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
 
@@ -89,8 +89,8 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.file("random", self);
 
         // success
-        balanceSheet.file("poolManager", randomUser);
-        assertEq(address(balanceSheet.poolManager()), randomUser);
+        balanceSheet.file("spoke", randomUser);
+        assertEq(address(balanceSheet.spoke()), randomUser);
         balanceSheet.file("sender", randomUser);
         assertEq(address(balanceSheet.sender()), randomUser);
         balanceSheet.file("poolEscrowProvider", randomUser);
@@ -100,7 +100,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.file("poolManager", randomUser);
+        balanceSheet.file("spoke", randomUser);
     }
 
     // --- IUpdateContract ---
@@ -238,7 +238,7 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
+        IERC20 token = IERC20(spoke.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), 0);
 
         balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare);
@@ -262,7 +262,7 @@ contract BalanceSheetTest is BaseTest {
 
     function testRevoke() public {
         testIssue();
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
+        IERC20 token = IERC20(spoke.shareToken(POOL_A, defaultTypedShareClassId));
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 
         vm.prank(randomUser);
@@ -451,7 +451,7 @@ contract BalanceSheetTest is BaseTest {
     function testTransferSharesFrom() public {
         testIssue();
 
-        IERC20 token = IERC20(poolManager.shareToken(POOL_A, defaultTypedShareClassId));
+        IERC20 token = IERC20(spoke.shareToken(POOL_A, defaultTypedShareClassId));
 
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
 

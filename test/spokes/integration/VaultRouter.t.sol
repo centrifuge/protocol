@@ -17,7 +17,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IBaseVault, IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spokes/interfaces/vaults/IVaultRouter.sol";
-import {IPoolManager} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spokes/interfaces/ISpoke.sol";
 import {IAsyncRequestManager} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 
 contract VaultRouterTest is BaseTest {
@@ -254,8 +254,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault2, amount2, self, self);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -293,8 +293,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: fuel}(vault1, amount1, self, self);
         vaultRouter.requestDeposit{value: fuel}(vault2, amount2, self, self);
 
-        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
         vaultRouter.claimDeposit(vault1, self, self);
@@ -424,8 +424,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.multicall{value: gas * calls.length}(calls);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = poolManager.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = poolManager.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -488,7 +488,7 @@ contract VaultRouterTest is BaseTest {
 
         uint256 gasCost = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3 * 2;
 
-        vm.expectRevert(IPoolManager.UnknownVault.selector);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
         vaultRouter.requestDeposit{value: gasCost}(IAsyncVault(makeAddr("maliciousVault")), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);

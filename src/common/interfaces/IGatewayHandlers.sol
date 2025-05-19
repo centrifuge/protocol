@@ -63,7 +63,7 @@ interface IHubGatewayHandler {
 /// -----------------------------------------------------
 
 /// @notice Interface for Vaults methods related to pools called by messages
-interface IPoolManagerGatewayHandler {
+interface ISpokeGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
     function addPool(PoolId poolId) external;

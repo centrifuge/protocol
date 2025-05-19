@@ -18,7 +18,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IBalanceSheet} from "src/spokes/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/spokes/vaults/SyncDepositVault.sol";
-import {VaultDetails} from "src/spokes/interfaces/IPoolManager.sol";
+import {VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
 import {ISyncRequestManager} from "src/spokes/interfaces/investments/ISyncRequestManager.sol";
 import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IBaseRequestManager} from "src/spokes/interfaces/investments/IBaseRequestManager.sol";
@@ -54,7 +54,7 @@ contract SyncDepositTestHelper is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
@@ -176,7 +176,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         asyncVault.requestRedeem(amount / 2, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
 
-        poolManager.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        spoke.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 

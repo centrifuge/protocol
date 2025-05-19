@@ -83,7 +83,7 @@ struct AssetIdKey {
     uint256 tokenId;
 }
 
-interface IPoolManager {
+interface ISpoke {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
         AssetId indexed assetId,

@@ -129,7 +129,7 @@ contract AssetShareConversionTest is BaseTest {
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
-        poolManager.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vault);
+        spoke.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vault);
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

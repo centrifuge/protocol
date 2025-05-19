@@ -16,7 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAsyncVault, IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IVaultRouter} from "src/spokes/interfaces/vaults/IVaultRouter.sol";
-import {IPoolManager, VaultDetails} from "src/spokes/interfaces/IPoolManager.sol";
+import {ISpoke, VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
 import {IEscrow} from "src/spokes/interfaces/IEscrow.sol";
 import {BaseSyncDepositVault} from "src/spokes/vaults/BaseVaults.sol";
 
@@ -36,7 +36,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     IEscrow public immutable escrow;
     IGateway public immutable gateway;
-    IPoolManager public immutable poolManager;
+    ISpoke public immutable spoke;
     IMessageDispatcher public immutable messageDispatcher;
 
     /// @inheritdoc IVaultRouter
@@ -45,13 +45,13 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     constructor(
         address escrow_,
         IGateway gateway_,
-        IPoolManager poolManager_,
+        ISpoke spoke_,
         IMessageDispatcher messageDispatcher_,
         address deployer
     ) Auth(deployer) {
         escrow = IEscrow(escrow_);
         gateway = gateway_;
-        poolManager = poolManager_;
+        spoke = spoke_;
         messageDispatcher = messageDispatcher_;
     }
 
@@ -111,7 +111,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         if (owner == address(this)) {
             _approveMax(vaultDetails.asset, address(vault));
         }
@@ -129,7 +129,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
@@ -147,7 +147,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
         lockedRequests[controller][vault] += amount;
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(escrow), amount);
 
         emit LockDepositRequest(vault, controller, owner, msg.sender, amount);
@@ -165,7 +165,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(lockedRequest != 0, NoLockedBalance());
         lockedRequests[msg.sender][vault] = 0;
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         escrow.authTransferTo(vaultDetails.asset, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
@@ -182,7 +182,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(lockedRequest != 0, NoLockedRequest());
         lockedRequests[controller][vault] = 0;
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
         escrow.authTransferTo(vaultDetails.asset, address(this), lockedRequest);
 
         _approveMax(vaultDetails.asset, address(vault));
@@ -237,7 +237,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
-        poolManager.vaultDetails(vault);
+        spoke.vaultDetails(vault);
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 
@@ -275,7 +275,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
-        return IPoolManager(poolManager).shareToken(poolId, scId).vault(asset);
+        return ISpoke(spoke).shareToken(poolId, scId).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

@@ -174,7 +174,7 @@ interface IVaultRouter is IMulticall {
         payable;
 
     // --- View Methods ---
-    /// @notice Check IPoolManager.getVault
+    /// @notice Check ISpoke.getVault
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 
     /// @notice Called to check if `user` has permissions on `vault` to execute requests

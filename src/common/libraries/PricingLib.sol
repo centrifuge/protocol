@@ -248,7 +248,7 @@ library PricingLib {
     }
 
     /// @dev When converting assets to shares using the price, all values are normalized to PRICE_DECIMALS
-    ///      NOTE: We require all assets to have 2 <= decimals <= 18, see `PoolManager.registerAsset`
+    ///      NOTE: We require all assets to have 2 <= decimals <= 18, see `Spoke.registerAsset`
     function _toPriceDecimals(uint128 _value, uint8 decimals) private pure returns (uint256) {
         if (PRICE_DECIMALS == decimals) return uint256(_value);
         return uint256(_value) * 10 ** (PRICE_DECIMALS - decimals);

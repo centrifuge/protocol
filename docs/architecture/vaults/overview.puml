@@ -16,7 +16,7 @@ package external {
     class ERC20
 }
 
-class PoolManager
+class Spoke
 
 class AsyncRequestManager
 class SyncRequestManager
@@ -43,32 +43,32 @@ class TokenFactory
 AsyncVaultFactory --|> IVaultFactory
 SyncDepositVaultFactory --|> IVaultFactory
 
-PoolManager --up-> TokenFactory
-PoolManager --up-> PoolEscrowFactory
-PoolManager --up->"n" IVaultFactory
-PoolManager <-left-> BalanceSheet
-PoolManager --down->"n" ShareToken
-PoolManager ---down->"n" BaseVault
-PoolManager --> Gateway
-PoolManager --> MessageDispatcher
+Spoke --up-> TokenFactory
+Spoke --up-> PoolEscrowFactory
+Spoke --up->"n" IVaultFactory
+Spoke <-left-> BalanceSheet
+Spoke --down->"n" ShareToken
+Spoke ---down->"n" BaseVault
+Spoke --> Gateway
+Spoke --> MessageDispatcher
 
 BalanceSheet -up--> PoolEscrowFactory
 BalanceSheet --> MessageDispatcher
 
 SyncRequestManager <-down->"n" SyncDepositVault
-SyncRequestManager -up-> PoolManager
+SyncRequestManager -up-> Spoke
 SyncRequestManager -up-> PoolEscrowFactory
 SyncRequestManager -up-> BalanceSheet
 SyncDepositVault --|> BaseVault
 
 AsyncRequestManager <-down->"n" AsyncVault
 AsyncRequestManager <-down->"n" SyncDepositVault
-AsyncRequestManager -up-> PoolManager
+AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-> BalanceSheet
 AsyncRequestManager -up-> PoolEscrowFactory
 AsyncRequestManager --> MessageDispatcher
 
-VaultRouter -left-> PoolManager
+VaultRouter -left-> Spoke
 VaultRouter -right-> Escrow
 
 PoolEscrowFactory -up-> PoolEscrow
