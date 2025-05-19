@@ -29,7 +29,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _activeAdapters;
-    mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Inbound)) public inbound;
+    mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
         public recoveries;
 
@@ -96,20 +96,20 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
-        bytes32 batchHash;
+        bytes32 payloadHash;
         bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
 
-            batchHash = payload.deserializeMessageProof();
-            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
-            emit HandleProof(centrifugeId, payloadId, batchHash, adapter_);
+            payloadHash = payload.deserializeMessageProof();
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
+            emit HandleProof(centrifugeId, payloadId, payloadHash, adapter_);
         } else {
-            require(adapter.id == PRIMARY_ADAPTER_ID, NonBatchAdapter());
+            require(adapter.id == PRIMARY_ADAPTER_ID, NonPayloadAdapter());
 
-            batchHash = keccak256(payload);
-            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, batchHash));
-            emit HandleBatch(centrifugeId, payloadId, payload, adapter_);
+            payloadHash = keccak256(payload);
+            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
+            emit HandlePayload(centrifugeId, payloadId, payload, adapter_);
         }
 
         // Special case for gas efficiency
@@ -118,7 +118,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
             return;
         }
 
-        Inbound storage state = inbound[centrifugeId][batchHash];
+        Inbound storage state = inbound[centrifugeId][payloadHash];
 
         if (adapter.activeSessionId != state.sessionId) {
             // Clear votes from previous session
@@ -134,17 +134,17 @@ contract MultiAdapter is Auth, IMultiAdapter {
             state.votes.decreaseFirstNValues(adapter.quorum);
 
             if (isMessageProof) {
-                gateway.handle(centrifugeId, state.pendingBatch);
+                gateway.handle(centrifugeId, state.pending);
             } else {
                 gateway.handle(centrifugeId, payload);
             }
 
             // Only if there are no more pending messages, remove the pending message
             if (state.votes.isEmpty()) {
-                delete state.pendingBatch;
+                delete state.pending;
             }
         } else if (!isMessageProof) {
-            state.pendingBatch = payload;
+            state.pending = payload;
         }
     }
 
@@ -185,18 +185,18 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters_.length != 0, EmptyAdapterSet());
 
-        bytes32 hash = keccak256(payload);
-        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, hash));
-        bytes memory proof = hash.serializeMessageProof();
+        bytes32 payloadHash = keccak256(payload);
+        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, payloadHash));
+        bytes memory proof = payloadHash.serializeMessageProof();
 
         uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit);
         bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
-        emit SendBatch(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
+        emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
         for (uint256 i = 1; i < adapters_.length; i++) {
             cost = adapters_[i].estimate(centrifugeId, proof, gasLimit);
             adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, refund);
-            emit SendProof(centrifugeId, payloadId, hash, adapters_[i], adapterData);
+            emit SendProof(centrifugeId, payloadId, payloadHash, adapters_[i], adapterData);
         }
 
         return bytes32(0);
@@ -226,7 +226,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         return adapter.activeSessionId;
     }
 
-    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
-        return inbound[centrifugeId][batchHash].votes;
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+        return inbound[centrifugeId][payloadHash].votes;
     }
 }

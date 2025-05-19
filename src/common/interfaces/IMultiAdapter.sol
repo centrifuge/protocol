@@ -26,28 +26,32 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
-        bytes pendingBatch;
+        bytes pending;
     }
 
     event File(bytes32 indexed what, address addr);
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
 
-    event HandleBatch(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes batch, IAdapter adapter);
-    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter);
-    event SendBatch(
+    event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
+    event SendPayload(
         uint16 indexed centrifugeId,
         bytes32 indexed payloadId,
-        bytes batch,
+        bytes payload,
         IAdapter adapter,
         bytes32 adapterData,
         address refund
     );
     event SendProof(
-        uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
+        uint16 indexed centrifugeId,
+        bytes32 indexed payloadId,
+        bytes32 payloadHash,
+        IAdapter adapter,
+        bytes32 adapterData
     );
 
-    event InitiateRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
-    event DisputeRecovery(uint16 centrifugeId, bytes32 batchHash, IAdapter adapter);
+    event InitiateRecovery(uint16 centrifugeId, bytes32 payloadHash, IAdapter adapter);
+    event DisputeRecovery(uint16 centrifugeId, bytes32 payloadHash, IAdapter adapter);
     event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -68,8 +72,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when the contract is configured with an empty adapter set.
     error NonProofAdapter();
 
-    /// @notice Dispatched when the contract tries to handle a batch from a non message adapter.
-    error NonBatchAdapter();
+    /// @notice Dispatched when the contract tries to handle a payload from a non message adapter.
+    error NonPayloadAdapter();
 
     /// @notice Dispatched when the contract tries to recover a recovery message, which is not allowed.
     error RecoveryPayloadRecovered();
@@ -131,8 +135,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     ///         the result of two or more independ request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  batchHash The hash value of the incoming batch message.
-    function votes(uint16 centrifugeId, bytes32 batchHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    /// @param  payloadHash The hash value of the incoming message.
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
@@ -140,7 +144,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 batchHash)
+    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash)
         external
         view
         returns (uint256 timestamp);
