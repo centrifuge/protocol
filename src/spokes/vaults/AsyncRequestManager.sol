@@ -167,6 +167,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         // to make assets available for managers of the balance sheet
         balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+        balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
@@ -176,6 +177,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler
@@ -194,6 +196,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         globalEscrow.authTransferTo(address(poolManager.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.revoke(poolId, scId, shareAmount);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler

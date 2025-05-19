@@ -267,6 +267,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
         balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
         balanceSheet.issue(poolId, scId, receiver, shares);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
 
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
