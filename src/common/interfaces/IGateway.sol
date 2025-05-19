@@ -42,9 +42,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when the gateway is paused.
     error Paused();
 
-    /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
-    error InvalidAdapter();
-
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();
 

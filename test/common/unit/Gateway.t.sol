@@ -231,21 +231,15 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
-    function testErrInvalidAdapter() public {
-        vm.expectRevert(IGateway.InvalidAdapter.selector);
-        gateway.handle(REMOTE_CENT_ID, new bytes(0));
-    }
-
-    function testErrEmptyMessage() public {
-        vm.prank(address(adapter));
-        vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
     function testMessage() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
-        vm.prank(address(adapter));
         vm.expectEmit();
         emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
         gateway.handle(REMOTE_CENT_ID, batch);
@@ -256,7 +250,6 @@ contract GatewayTestHandle is GatewayTest {
     function testMessageFailed() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        vm.prank(address(adapter));
         vm.expectEmit();
         emit IGateway.FailMessage(REMOTE_CENT_ID, batch, abi.encodeWithSignature("HandleError()"));
         gateway.handle(REMOTE_CENT_ID, batch);
@@ -270,7 +263,6 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message2 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2);
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 2);
@@ -284,7 +276,6 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message3 = MessageKind.WithPoolA2.asBytes();
         bytes memory batch = abi.encodePacked(message1, message2, message3);
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 2);
@@ -297,9 +288,7 @@ contract GatewayTestHandle is GatewayTest {
     function testMultipleSameFailingMessages() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 2);
@@ -309,7 +298,6 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory message = MessageKind.WithPoolAFail.asBytes();
         bytes memory batch = abi.encodePacked(message, message);
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
@@ -331,7 +319,6 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverFailingMessage() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         processor.disableFailure();
@@ -347,9 +334,7 @@ contract GatewayTestRetry is GatewayTest {
     function testRecoverMultipleFailingMessage() public {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
-        vm.prank(address(adapter));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         processor.disableFailure();
@@ -477,7 +462,7 @@ contract GatewayTestSend is GatewayTest {
     function testErrNotEnoughTransactionGas() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
-        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE - 1;
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE - 1;
         gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
@@ -619,7 +604,7 @@ contract GatewayTestSend is GatewayTest {
     function testSendMessageUsingTransactionPayment() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
-        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE + 1234;
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
@@ -786,7 +771,7 @@ contract GatewayTestRepay is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         gateway.send(REMOTE_CENT_ID, batch);
 
-        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE;
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
@@ -804,8 +789,8 @@ contract GatewayTestRepay is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
         gateway.endBatching();
 
-        // Expected: MESSAGE_GAS_LIMIT * 2 * 3 + ...
-        uint256 payment = MESSAGE_GAS_LIMIT * 3 + ADAPTER_ESTIMATE;
+        // Expected: MESSAGE_GAS_LIMIT * 2 + ...
+        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
         vm.expectRevert(IGateway.InsufficientFundsForRepayment.selector);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
     }
@@ -822,7 +807,7 @@ contract GatewayTestRepay is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
         gateway.endBatching();
 
-        uint256 payment = MESSAGE_GAS_LIMIT * 2 * 3 + ADAPTER_ESTIMATE;
+        uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
 
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);

@@ -204,6 +204,14 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
+    function testErrEmptyMessage() public {
+        multiAdapter.file("adapters", REMOTE_CENT_ID, oneAdapter);
+
+        vm.prank(address(batchAdapter));
+        vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
+        multiAdapter.handle(REMOTE_CENT_ID, new bytes(0));
+    }
+
     function testErrNonProofAdapter() public {
         multiAdapter.file("adapters", REMOTE_CENT_ID, threeAdapters);
 
@@ -225,7 +233,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(proofAdapter1));
         vm.expectRevert(IMultiAdapter.NonBatchAdapter.selector);
-        gateway.handle(REMOTE_CENT_ID, MESSAGE_1);
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
     }
 
     function testMessageWithOneAdapter() public {

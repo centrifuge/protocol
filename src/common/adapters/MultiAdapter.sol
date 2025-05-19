@@ -179,27 +179,24 @@ contract MultiAdapter is Auth, IMultiAdapter {
     function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
         external
         payable
+        auth
         returns (bytes32)
     {
-        require(msg.sender == address(gateway), NotGateway());
-        require(adapters[centrifugeId].length != 0, EmptyAdapterSet());
-
         IAdapter[] memory adapters_ = adapters[centrifugeId];
+        require(adapters_.length != 0, EmptyAdapterSet());
+
         bytes32 hash = keccak256(payload);
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, hash));
         bytes memory proof = hash.serializeMessageProof();
 
-        for (uint256 i; i < adapters_.length; i++) {
-            bytes memory adapterPayload = i == PRIMARY_ADAPTER_ID - 1 ? payload : proof;
+        uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit);
+        bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
+        emit SendBatch(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
-            uint256 cost = adapters_[i].estimate(centrifugeId, adapterPayload, gasLimit);
-            bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, adapterPayload, gasLimit, refund);
-
-            if (i == PRIMARY_ADAPTER_ID - 1) {
-                emit SendBatch(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund);
-            } else {
-                emit SendProof(centrifugeId, payloadId, hash, adapters_[i], adapterData);
-            }
+        for (uint256 i = 1; i < adapters_.length; i++) {
+            cost = adapters_[i].estimate(centrifugeId, proof, gasLimit);
+            adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, refund);
+            emit SendProof(centrifugeId, payloadId, hash, adapters_[i], adapterData);
         }
 
         return bytes32(0);

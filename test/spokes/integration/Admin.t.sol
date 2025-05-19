@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IMultiAdapter} from "src/common/interfaces/IMultiAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/spokes/BaseTest.sol";
@@ -21,7 +21,8 @@ contract AdminTest is BaseTest {
 
         // permissions set correctly
         assertEq(root.wards(address(guardian)), 1);
-        assertEq(gateway.wards(address(guardian)), 1);
+        assertEq(multiAdapter.wards(address(guardian)), 1);
+        assertEq(messageDispatcher.wards(address(guardian)), 1);
     }
 
     //------ pause tests ------//
@@ -251,19 +252,19 @@ contract AdminTest is BaseTest {
     }
 
     function testDisputeRecovery() public {
-        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
-
         bytes memory message = MessageLib.NotifyPool(1).serialize();
         bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
 
         // Only send through 2 out of 3 adapters
-        _send(adapter1, message);
-        _send(adapter2, proof);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(OTHER_CHAIN_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(OTHER_CHAIN_ID, proof);
 
-        gateway.initiateRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
+        multiAdapter.initiateRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
-        vm.expectRevert(IGateway.RecoveryChallengePeriodNotEnded.selector);
-        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
+        vm.expectRevert(IMultiAdapter.RecoveryChallengePeriodNotEnded.selector);
+        multiAdapter.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
 
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
@@ -274,12 +275,7 @@ contract AdminTest is BaseTest {
         guardian.disputeRecovery(OTHER_CHAIN_ID, adapter3, keccak256(proof));
 
         // Check that recovery is not possible anymore
-        vm.expectRevert(IGateway.RecoveryNotInitiated.selector);
-        gateway.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
-    }
-
-    function _send(MockAdapter adapter, bytes memory message) internal {
-        vm.prank(address(adapter));
-        gateway.handle(OTHER_CHAIN_ID, message);
+        vm.expectRevert(IMultiAdapter.RecoveryNotInitiated.selector);
+        multiAdapter.executeRecovery(OTHER_CHAIN_ID, adapter3, proof);
     }
 }

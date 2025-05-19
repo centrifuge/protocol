@@ -84,9 +84,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable {
-        require(address(adapter) == msg.sender, InvalidAdapter());
-
+    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
         IMessageProcessor processor_ = processor;
         bytes memory remaining = batch;
 
@@ -158,7 +156,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-        } else {
+        } else { // Subsidized pool payment
             if (cost > subsidy[poolId].value) {
                 _requestPoolFunding(poolId);
             }

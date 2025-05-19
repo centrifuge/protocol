@@ -6,7 +6,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
-/// @notice Interface for dispatch-only gateway
+/// @notice Interface for handling several adapters transparently
 interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
@@ -53,25 +53,25 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
-    /// @notice Dispatched when the gateway is configured with an empty adapter set.
+    /// @notice Dispatched when the contract is configured with an empty adapter set.
     error EmptyAdapterSet();
 
-    /// @notice Dispatched when the gateway is configured with a number of adapter exceeding the maximum.
+    /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
 
-    /// @notice Dispatched when the gateway is configured with duplicate adapters.
+    /// @notice Dispatched when the contract is configured with duplicate adapters.
     error NoDuplicatesAllowed();
 
-    /// @notice Dispatched when the gateway tries to handle a message from an adaptet not contained in the adapter set.
+    /// @notice Dispatched when the contract tries to handle a message from an adaptet not contained in the adapter set.
     error InvalidAdapter();
 
-    /// @notice Dispatched when the gateway is configured with an empty adapter set.
+    /// @notice Dispatched when the contract is configured with an empty adapter set.
     error NonProofAdapter();
 
-    /// @notice Dispatched when the gateway tries to handle a batch from a non message adapter.
+    /// @notice Dispatched when the contract tries to handle a batch from a non message adapter.
     error NonBatchAdapter();
 
-    /// @notice Dispatched when the gateway tries to recover a recovery message, which is not allowed.
+    /// @notice Dispatched when the contract tries to recover a recovery message, which is not allowed.
     error RecoveryPayloadRecovered();
 
     /// @notice Dispatched when a recovery message is executed without being initiated.
@@ -92,6 +92,12 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  value New addresses.
     function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata value) external;
+
+    /// @notice Initiate recovery of a payload.
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
+
+    /// @notice Dispute recovery of a payload.
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
