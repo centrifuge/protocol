@@ -156,8 +156,6 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     /// @inheritdoc IVaultRouter
     function enableLockDepositRequest(IBaseVault vault, uint256 amount) external payable protected {
         enable(vault);
-
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
         lockDepositRequest(vault, amount, msg.sender, msg.sender);
     }
 
@@ -239,7 +237,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault);
+        poolManager.vaultDetails(vault);
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 
