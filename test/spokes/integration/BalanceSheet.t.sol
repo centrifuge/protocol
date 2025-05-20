@@ -114,23 +114,13 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.UpdateManager(POOL_A, randomUser, true);
-
-        balanceSheet.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: true}).serialize()
-        );
+        balanceSheet.updateManager(POOL_A, address(randomUser), true);
 
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         vm.expectEmit();
         emit IBalanceSheet.UpdateManager(POOL_A, randomUser, false);
-
-        balanceSheet.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            MessageLib.UpdateContractUpdateManager({who: bytes20(randomUser), canManage: false}).serialize()
-        );
+        balanceSheet.updateManager(POOL_A, address(randomUser), false);
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
