@@ -8,13 +8,13 @@ import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -29,7 +29,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // TODO: Overflow stuff
     // function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
     //     address investor = _getRandomActor(investorEntropy);
-    //     poolManager.handleTransferShares(poolId, scId, investor, amount);
+    //     spoke.handleTransferShares(poolId, scId, investor, amount);
 
     //     // TF-12 mint share class tokens to user, not tracked in escrow
 
@@ -48,9 +48,9 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     //     }
 
     //     // Exact approval
-    //     token.approve(address(poolManager), amount);
+    //     token.approve(address(spoke), amount);
 
-    //     poolManager.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
+    //     spoke.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
     //     // TF-11 burns share class tokens from user, not tracked in escrow
 
     //     // Track minting for Global-3
@@ -64,7 +64,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 1
     function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public  asAdmin returns (uint128 assetId) {
-        assetId = poolManager.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
+        assetId = spoke.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
 
         // Only if successful
         assetAddressToAssetId[assetAddress] = assetId;
@@ -79,7 +79,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 2
     function poolManager_addPool() public  asAdmin {
-        poolManager.addPool(PoolId.wrap(_getPool()));
+        spoke.addPool(PoolId.wrap(_getPool()));
     }
 
     // Step 3
@@ -91,10 +91,10 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
 
-        poolManager.addShareClass(
+        spoke.addShareClass(
             PoolId.wrap(_getPool()), ShareClassId.wrap(scId), name, symbol, decimals, keccak256(abi.encodePacked(_getPool(), scId)), hook
         );
-        address newToken = address(poolManager.shareToken(PoolId.wrap(_getPool()), ShareClassId.wrap(scId)));
+        address newToken = address(spoke.shareToken(PoolId.wrap(_getPool()), ShareClassId.wrap(scId)));
 
         _addShareClassId(scId);
         _addShareToken(newToken);
@@ -106,9 +106,9 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     function poolManager_deployVault(bool isAsync) public asAdmin returns (address) {
         address vault;
         if (isAsync) {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), asyncVaultFactory));
+            vault = address(spoke.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), asyncVaultFactory));
         } else {
-            vault = address(poolManager.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), syncVaultFactory));
+            vault = address(spoke.deployVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), syncVaultFactory));
         }
 
         _addVault(vault);
@@ -122,7 +122,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Step 5 - link the vault
     function poolManager_linkVault(address vault) public  asAdmin {
-        poolManager.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vault));
+        spoke.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vault));
     }
 
     function poolManager_linkVault_clamped() public {
@@ -131,33 +131,33 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // Extra 6 - remove the vault
     function poolManager_unlinkVault() public asAdmin{
-        poolManager.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(_getVault()));
+        spoke.unlinkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(_getVault()));
     }
 
     /**
      * NOTE: All of these are implicitly clamped using values set in shortcut_deployNewTokenPoolAndShare
     */
     function poolManager_updateMember(uint64 validUntil) public asAdmin {
-        poolManager.updateRestriction(
+        spoke.updateRestriction(
             PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
         );
     }
 
     // NOTE: in e2e tests, these get called as callbacks in notifyAssetPrice and notifySharePrice
     // function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
-    //     poolManager.updatePricePoolPerShare(poolId, scId, price, computedAt);
-    //     poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
+    //     spoke.updatePricePoolPerShare(poolId, scId, price, computedAt);
+    //     spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, computedAt);
     // }
 
     function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
-        poolManager.updateShareMetadata(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), tokenName, tokenSymbol);
+        spoke.updateShareMetadata(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), tokenName, tokenSymbol);
     }
 
     function poolManager_freeze() public asAdmin {
-        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
+        spoke.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
     }
 
     function poolManager_unfreeze() public asAdmin {
-        poolManager.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
+        spoke.updateRestriction(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
     }
 }

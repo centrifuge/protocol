@@ -9,16 +9,18 @@ import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+
+// Test Utils
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
-import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
+import {Properties} from "../properties/Properties.sol";
 
 /**
  * A collection of handlers that interact with the Liquidity Pool
@@ -422,7 +424,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
-        address escrow = address(poolEscrowFactory.deployedEscrow(IBaseVault(_getVault()).poolId()));
+        address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
         // Bal b4
         uint256 tokenUserB4 = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor());
@@ -467,7 +469,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
         address to = _getRandomActor(toEntropy);
-        address escrow = address(poolEscrowFactory.deployedEscrow(IBaseVault(_getVault()).poolId()));
+        address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
         
         // Bal b4
         uint256 tokenUserB4 = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor());

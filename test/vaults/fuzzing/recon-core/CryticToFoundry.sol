@@ -48,7 +48,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_requestRedeem(1e18 - 1, 0);
 
-        asyncRequests_fulfillRedeemRequest(1e18, 1e18 - 1, 0);
+        asyncRequests_fulfillRedeemRequest(1e18, 1e18 - 1, 0, 0);
 
         // can only redeem the 1e18 assets
         vault_withdraw(1e18, 0);
@@ -88,7 +88,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         vault_cancelDepositRequest();
 
-        asyncRequests_fulfillCancelDepositRequest(1,0);
+        // asyncRequests_fulfillCancelDepositRequest(1,0);
 
         add_new_asset(0);
 

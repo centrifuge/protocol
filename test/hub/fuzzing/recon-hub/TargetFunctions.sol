@@ -439,7 +439,7 @@ abstract contract TargetFunctions is
         hub_createAccount(poolId, LOSS_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId, GAIN_ACCOUNT, IS_DEBIT_NORMAL);
 
-        hub_createHolding(poolId, scId, valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
+        hub_initializeHolding(poolId, scId, valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
     }
 
     function shortcut_approve_and_issue_shares(

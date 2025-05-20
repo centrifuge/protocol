@@ -9,16 +9,16 @@ import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {ShareToken} from "src/vaults/token/ShareToken.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {ShareToken} from "src/spokes/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -148,7 +148,7 @@ abstract contract TargetFunctions is
 
         // 6. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](3);
-        approvals[0] = address(poolManager);
+        approvals[0] = address(spoke);
         approvals[1] = address(_getVault());
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 

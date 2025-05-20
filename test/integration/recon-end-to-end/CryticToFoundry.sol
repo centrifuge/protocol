@@ -7,8 +7,8 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -433,7 +433,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_addShareClass(1);
 
-        hub_createLiability_clamped(false,0,0);
+        hub_initializeLiability_clamped(false,0,0);
 
         property_accounting_and_holdings_soundness();
 
@@ -505,7 +505,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
 
-        hub_createLiability_clamped(true,0,0);
+        hub_initializeLiability_clamped(true,0,0);
 
         shortcut_mint_sync(1,10000478396350502620584353829305928);
 
@@ -631,7 +631,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
 
-        hub_createLiability_clamped(true,0,0);
+        hub_initializeLiability_clamped(true,0,0);
 
         shortcut_mint_sync(2,10017567812503563737449888822777011);
 

@@ -282,7 +282,7 @@ function testPOCIssue1(
         poolId,
         trancheId,
         bytes32(bytes20(investor)),
-        poolManager.currencyAddressToId(address(erc20)),
+        spoke.currencyAddressToId(address(erc20)),
         uint128(amount),
         uint128(amount)
     );
@@ -324,7 +324,7 @@ function testPOCIssue1(
         address newErc20 = address(_newErc20("Y's Dollar", "USDY", 6));
         homePools.addAsset(123, newErc20);
         homePools.allowPoolCurrency(poolId, 123);
-        newLPool = LiquidityPool(poolManager.deployLiquidityPool(poolId, trancheId, newErc20));
+        newLPool = LiquidityPool(spoke.deployLiquidityPool(poolId, trancheId, newErc20));
     }
     assert(address(lPool) != address(newLPool));
     
@@ -533,7 +533,7 @@ function processDeposit(address user, uint256 currencyAmount) public auth return
         lPool.requestDeposit(investmentAmount, self);
 
         // trigger executed collectInvest at a price of 1.25
-        uint128 _currencyId = poolManager.currencyAddressToId(address(currency)); // retrieve currencyId
+        uint128 _currencyId = spoke.currencyAddressToId(address(currency)); // retrieve currencyId
         uint128 assets = 100000000; // 100 * 10**6                                          
         uint128 firstTrancheTokenPayout = 80000000000000000000; // 100 * 10**18 / 1.25, rounded down
         homePools.isExecutedCollectInvest(
@@ -1142,7 +1142,7 @@ Due to that the receiver can be different address from the user address , the `d
     }
 ``` 
 
-## [N-03] The `getTranche` function should be created in the `poolManager` contract and used to get the `tranche` from the storage by specifying the `poolId` and `trancheId`
+## [N-03] The `getTranche` function should be created in the `spoke` contract and used to get the `tranche` from the storage by specifying the `poolId` and `trancheId`
 
 https://github.com/code-423n4/2023-09-centrifuge/blob/512e7a71ebd9ae76384f837204216f26380c9f91/src/PoolManager.sol#L308
 
@@ -1151,7 +1151,7 @@ The function `getTranche()` will increase the simplicity and the modularity of t
 function getTranche (uint64 poolId , bytes16 trancheId) private returns ( Tranche storage tranche ){
           tranche =  pools[poolId].tranches[trancheId];
 ```
-This function can be used instead of the line of code in the poolManager.
+This function can be used instead of the line of code in the spoke.
 ```solidity 
         Tranche storage tranche = pools[poolId].tranches[trancheId];
 
@@ -1205,7 +1205,7 @@ https://github.com/code-423n4/2023-09-centrifuge/blob/512e7a71ebd9ae76384f837204
     } 
 ```
 
-## [N-06] The `poolManager` should emit events in case of transfer the tokens to the centrifuge chains 
+## [N-06] The `spoke` should emit events in case of transfer the tokens to the centrifuge chains 
 
 In the functions `transferTrancheTokensToCentrifuge`, `transferTrancheTokensToEVM` and `transfer()` which burn the tokens and transfer the assets, which is a crucial part of the contract that should emit events in case of transfer of the assets and the burn of the tokens. 
 

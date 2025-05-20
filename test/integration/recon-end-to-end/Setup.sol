@@ -10,38 +10,33 @@ import {Utils} from "@recon/Utils.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Vaults
-import {Escrow} from "src/vaults/Escrow.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {Escrow} from "src/spokes/Escrow.sol";
+import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
-import {ShareToken} from "src/vaults/token/ShareToken.sol";
-import {Escrow} from "src/vaults/Escrow.sol";
+import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/spokes/factories/SyncDepositVaultFactory.sol";
+import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
+import {PoolEscrowFactory} from "src/spokes/factories/PoolEscrowFactory.sol";
+import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
+import {ShareToken} from "src/spokes/ShareToken.sol";
+import {Spoke} from "src/spokes/Spoke.sol";
 
 // Hub
 import {Accounting} from "src/hub/Accounting.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Holdings} from "src/hub/Holdings.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-
+import {HubHelpers} from "src/hub/HubHelpers.sol";
 // Interfaces
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
@@ -50,17 +45,17 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 // Common
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 
 // Test Utils
 import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
@@ -73,6 +68,7 @@ import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers
 import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";
 import {ReconVaultManager} from "test/integration/recon-end-to-end/managers/ReconVaultManager.sol";
 import {ReconShareManager} from "test/integration/recon-end-to-end/managers/ReconShareManager.sol";
+
 abstract contract Setup is 
     BaseSetup, 
     SharedStorage, 
@@ -94,9 +90,7 @@ abstract contract Setup is
 
     AsyncRequestManager asyncRequestManager;
     SyncRequestManager syncRequestManager;
-    PoolManager poolManager;
-    // AsyncVault vault;
-    // ShareToken token;
+    Spoke spoke;
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
@@ -122,8 +116,9 @@ abstract contract Setup is
     HubRegistry hubRegistry;
     Holdings holdings;
     Hub hub;
+    HubHelpers hubHelpers;
     ShareClassManager shareClassManager;
-    TransientValuation transientValuation;
+    MockValuation transientValuation;
     IdentityValuation identityValuation;
 
     MockAdapter mockAdapter;
@@ -210,65 +205,63 @@ abstract contract Setup is
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
-        
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
-        vaultFactories[0] = asyncVaultFactory;
-        vaultFactories[1] = syncVaultFactory;
-        poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
+        spoke = new Spoke(tokenFactory, address(this));
         messageDispatcher = new MockMessageDispatcher(); 
 
         // set dependencies
         asyncRequestManager.file("sender", address(messageDispatcher));
-        asyncRequestManager.file("poolManager", address(poolManager));
+        asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));    
         asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
-        syncRequestManager.file("poolManager", address(poolManager));
+        syncRequestManager.file("spoke", address(spoke));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
         syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolManager.file("sender", address(messageDispatcher));
-        poolManager.file("tokenFactory", address(tokenFactory));
-        poolManager.file("gateway", address(gateway));
-        poolManager.file("balanceSheet", address(balanceSheet));
-        poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
+        spoke.file("sender", address(messageDispatcher));
+        spoke.file("tokenFactory", address(tokenFactory));
+        spoke.file("gateway", address(gateway));
+        spoke.file("balanceSheet", address(balanceSheet));
+        spoke.file("poolEscrowFactory", address(poolEscrowFactory));
+        spoke.file("factory", address(asyncVaultFactory));
+        spoke.file("factory", address(syncVaultFactory));
         balanceSheet.file("gateway", address(gateway));
-        balanceSheet.file("poolManager", address(poolManager));
+        balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolEscrowFactory.file("poolManager", address(poolManager));
+        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
 
         // authorize contracts
-        asyncRequestManager.rely(address(poolManager));
+        asyncRequestManager.rely(address(spoke));
         asyncRequestManager.rely(address(asyncVaultFactory));
         asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
         asyncRequestManager.rely(address(syncRequestManager));
-        syncRequestManager.rely(address(poolManager));
+        syncRequestManager.rely(address(spoke));
         syncRequestManager.rely(address(asyncVaultFactory));
         syncRequestManager.rely(address(syncVaultFactory));
         syncRequestManager.rely(address(messageDispatcher));
         syncRequestManager.rely(address(asyncRequestManager));
-        poolManager.rely(address(messageDispatcher));
-        fullRestrictions.rely(address(poolManager));
+        spoke.rely(address(messageDispatcher));
+        fullRestrictions.rely(address(spoke));
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncRequestManager));
         balanceSheet.rely(address(messageDispatcher));
         globalEscrow.rely(address(asyncRequestManager));
         globalEscrow.rely(address(syncRequestManager));
-        globalEscrow.rely(address(poolManager));
+        globalEscrow.rely(address(spoke));
         globalEscrow.rely(address(balanceSheet));
         // Permissions on factories
-        asyncVaultFactory.rely(address(poolManager));
-        syncVaultFactory.rely(address(poolManager));
-        tokenFactory.rely(address(poolManager));
-        poolEscrowFactory.rely(address(poolManager));
+        asyncVaultFactory.rely(address(spoke));
+        syncVaultFactory.rely(address(spoke));
+        tokenFactory.rely(address(spoke));
+        poolEscrowFactory.rely(address(spoke));
     }
 
     function setupHub() internal {
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(IERC6909Decimals(address(hubRegistry)));
+        transientValuation = new MockValuation(IERC6909Decimals(address(hubRegistry)));
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
@@ -277,12 +270,14 @@ abstract contract Setup is
         accounting = new Accounting(address(this)); 
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
+        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IShareClassManager(address(shareClassManager)), address(this));
         hub = new Hub(
-            IShareClassManager(address(shareClassManager)), 
-            IHubRegistry(address(hubRegistry)), 
-            IAccounting(address(accounting)), 
-            IHoldings(address(holdings)), 
             IGateway(address(gateway)), 
+            IHoldings(address(holdings)), 
+            IHubHelpers(address(hubHelpers)), 
+            IAccounting(address(accounting)), 
+            IHubRegistry(address(hubRegistry)), 
+            IShareClassManager(address(shareClassManager)), 
             address(this)
         );
 
@@ -298,7 +293,7 @@ abstract contract Setup is
         // set dependencies
         hub.file("sender", address(messageDispatcher));
         messageDispatcher.file("hub", address(hub)); 
-        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("investmentManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
     }

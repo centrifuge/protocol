@@ -5,16 +5,18 @@ pragma solidity 0.8.28;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {BaseVault} from "src/spokes/vaults/BaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 
+// Test Utils
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
 

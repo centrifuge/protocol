@@ -65,14 +65,14 @@ abstract contract Setup is BaseSetup, Asserts {
     }
 
     function setup() internal virtual override {
-        routerAggregator = new Gateway(CENTRIFUGE_ID, IRoot(address(0)), IGasService(address(0)), address(this));
+        routerAggregator = new Gateway(IRoot(address(0)), IGasService(address(0)), address(this));
 
         // Given config, add adapters
         for (uint256 i = 0; i < RECON_ADAPTERS; i++) {
             adapters.push(new MockAdapter(CENTRIFUGE_ID, routerAggregator));
-        }
 
-        routerAggregator.file("adapters", CENTRIFUGE_ID, adapters);
+            routerAggregator.file("adapter", address(adapters[i]));
+        }
     }
 
     function setupFork() internal {

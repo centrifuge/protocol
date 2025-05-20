@@ -66,7 +66,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_createAccount(poolId.raw(), EQUITY_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId.raw(), LOSS_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId.raw(), GAIN_ACCOUNT, IS_DEBIT_NORMAL);
-        hub_createHolding(poolId.raw(), scId.raw(), identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
+        hub_initializeHolding(poolId.raw(), scId.raw(), identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         
         // request deposit
         hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);

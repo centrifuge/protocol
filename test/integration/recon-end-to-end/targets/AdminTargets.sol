@@ -1,24 +1,19 @@
-// SPDX-License-Identifier: GPL-2.0
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-// Chimera deps
+// Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {vm} from "@chimera/Hevm.sol";
+import {MockERC20} from "@recon/MockERC20.sol";
+import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
-// Helpers
-import {Panic} from "@recon/Panic.sol";
-import {MockERC20} from "@recon/MockERC20.sol";
-
 // Dependencies
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-
-// Interfaces
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-
-// Types
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -26,10 +21,9 @@ import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Test Utils
-import {BeforeAfter, OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
-import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
+import {BeforeAfter, OpType} from "../BeforeAfter.sol";
+import {Properties} from "../properties/Properties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
-import {console2} from "forge-std/console2.sol";
 
 abstract contract AdminTargets is
     BaseTargetFunctions,
@@ -94,7 +88,7 @@ abstract contract AdminTargets is
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = hubRegistry.currency(poolId);
 
-        hub.createHolding(
+        hub.initializeHolding(
             poolId, 
             scId, 
             assetId, 
@@ -116,19 +110,19 @@ abstract contract AdminTargets is
         hub_createHolding(valuation, assetAccount.raw(), equityAccount.raw(), lossAccount.raw(), gainAccount.raw());
     }
 
-    function hub_createLiability(IERC7726 valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint) public updateGhosts {
+    function hub_initializeLiability(IERC7726 valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
-        hub.createLiability(poolId, scId, assetId, valuation, AccountId.wrap(expenseAccountAsUint), AccountId.wrap(liabilityAccountAsUint));
+        hub.initializeLiability(poolId, scId, assetId, valuation, AccountId.wrap(expenseAccountAsUint), AccountId.wrap(liabilityAccountAsUint));
     }
     
-    function hub_createLiability_clamped(bool isIdentityValuation, uint8 expenseAccountEntropy, uint8 liabilityAccountEntropy) public {
+    function hub_initializeLiability_clamped(bool isIdentityValuation, uint8 expenseAccountEntropy, uint8 liabilityAccountEntropy) public {
         IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
         AccountId expenseAccount = Helpers.getRandomAccountId(createdAccountIds, expenseAccountEntropy);
         AccountId liabilityAccount = Helpers.getRandomAccountId(createdAccountIds, liabilityAccountEntropy);
         
-        hub_createLiability(valuation, expenseAccount.raw(), liabilityAccount.raw());
+        hub_initializeLiability(valuation, expenseAccount.raw(), liabilityAccount.raw());
     }
     
     function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.ISSUE) {

@@ -5,7 +5,7 @@ import {BaseSetup} from "@chimera/BaseSetup.sol";
 import {vm} from "@chimera/Hevm.sol";
 import {EnumerableSet} from "@recon/EnumerableSet.sol";
 
-import {PoolId} from "src/vaults/interfaces/IPoolManager.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @dev Source of truth for the share classes being used in the test
 /// @notice No share classes should be used in the suite without being added here first

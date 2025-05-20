@@ -1,15 +1,24 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import { vm } from "@chimera/Hevm.sol";
+import {ActorManager} from "@recon/ActorManager.sol";
+import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {console2} from "forge-std/console2.sol";
+
+import {AsyncInvestmentState} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 
 import {D18} from "src/misc/types/D18.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {Setup} from "./Setup.sol";
-import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
 import {Ghosts} from "./helpers/Ghosts.sol";
 
 
@@ -145,12 +154,12 @@ abstract contract BeforeAfter is Ghosts {
     }
 
     function _priceAssetNonZero() internal view returns (bool) {
-        (D18 priceAsset, ) = poolManager.pricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), false);
+        (D18 priceAsset) = spoke.pricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), false);
         return priceAsset.raw() != 0;
     }
 
     function _priceShareNonZero() internal view returns (bool) {
-        (D18 priceShare, ) = poolManager.pricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), false);
+        (D18 priceShare) = spoke.pricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), false);
         return priceShare.raw() != 0;
     }
 }

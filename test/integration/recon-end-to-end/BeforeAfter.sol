@@ -11,10 +11,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 
-import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
+import {BaseVault} from "src/spokes/vaults/BaseVaults.sol";
+import {AsyncInvestmentState} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
 
 import {Setup} from "./Setup.sol";
 
@@ -273,7 +273,7 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceAsset;
-        try poolManager.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), true) returns (D18 _priceAsset, uint64) {
+        try spoke.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), true) returns (D18 _priceAsset) {
             priceAsset = _priceAsset;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
@@ -291,7 +291,7 @@ abstract contract BeforeAfter is Setup {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
         D18 priceShare;
-        try poolManager.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), false) returns (D18 _priceShare, uint64) {
+        try spoke.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), false) returns (D18 _priceShare) {
             priceShare = _priceShare;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");

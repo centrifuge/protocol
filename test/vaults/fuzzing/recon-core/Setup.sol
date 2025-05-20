@@ -8,21 +8,21 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {Escrow} from "src/vaults/Escrow.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {Escrow} from "src/spokes/Escrow.sol";
+import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
+import {Spoke} from "src/spokes/Spoke.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {PoolEscrowFactory} from "src/vaults/factories/PoolEscrowFactory.sol";
-import {TokenFactory} from "src/vaults/factories/TokenFactory.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
-import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
+import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
+import {PoolEscrowFactory} from "src/spokes/factories/PoolEscrowFactory.sol";
+import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
+import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
+import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {ShareToken} from "src/vaults/token/ShareToken.sol";
+import {ShareToken} from "src/spokes/ShareToken.sol";
 
 import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -44,7 +44,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequestManager asyncRequestManager;
     SyncRequestManager syncRequestManager;
-    PoolManager poolManager;
+    Spoke spoke;
     AsyncVault vault;
     ShareToken token;
     FullRestrictions fullRestrictions;
@@ -155,10 +155,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
-
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](1);
-        vaultFactories[0] = vaultFactory;
-        poolManager = new PoolManager(tokenFactory, vaultFactories, address(this));
+        spoke = new Spoke(tokenFactory, address(this));
+        
         messageDispatcher = new MockMessageDispatcher(); 
         gateway = new MockGateway();
         hub = new MockHub();
@@ -166,47 +164,48 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // set dependencies
         asyncRequestManager.file("sender", address(messageDispatcher));
-        asyncRequestManager.file("poolManager", address(poolManager));
+        asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));    
         asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
-        syncRequestManager.file("poolManager", address(poolManager));
+        syncRequestManager.file("spoke", address(spoke));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
         syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolManager.file("sender", address(messageDispatcher));
-        poolManager.file("tokenFactory", address(tokenFactory));
-        poolManager.file("gateway", address(gateway));
-        poolManager.file("balanceSheet", address(balanceSheet));
-        poolManager.file("poolEscrowFactory", address(poolEscrowFactory));
+        spoke.file("sender", address(messageDispatcher));
+        spoke.file("tokenFactory", address(tokenFactory));
+        spoke.file("gateway", address(gateway));
+        spoke.file("balanceSheet", address(balanceSheet));
+        spoke.file("poolEscrowFactory", address(poolEscrowFactory));
+        spoke.file("vaultFactory", address(vaultFactory));
         balanceSheet.file("gateway", address(gateway));
-        balanceSheet.file("poolManager", address(poolManager));
+        balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolEscrowFactory.file("poolManager", address(poolManager));
+        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
         messageDispatcher.file("hub", address(hub));
-        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
         messageDispatcher.file("investmentManager", address(investmentManager));
         
         // authorize contracts
-        asyncRequestManager.rely(address(poolManager));
+        asyncRequestManager.rely(address(spoke));
         asyncRequestManager.rely(address(vaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
-        poolManager.rely(address(messageDispatcher));
+        spoke.rely(address(messageDispatcher));
 
-        fullRestrictions.rely(address(poolManager));
+        fullRestrictions.rely(address(spoke));
 
         // Setup Escrow Permissions
         escrow.rely(address(asyncRequestManager));
-        escrow.rely(address(poolManager));
+        escrow.rely(address(spoke));
         escrow.rely(address(balanceSheet));
 
         // Permissions on factories
-        vaultFactory.rely(address(poolManager));
-        tokenFactory.rely(address(poolManager));
-        poolEscrowFactory.rely(address(poolManager));
+        vaultFactory.rely(address(spoke));
+        tokenFactory.rely(address(spoke));
+        poolEscrowFactory.rely(address(spoke));
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncRequestManager));
     }
@@ -223,7 +222,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         escrow = Escrow(address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD));
         fullRestrictions = FullRestrictions(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
         asyncRequestManager = AsyncRequestManager(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
-        poolManager = PoolManager(address(0x91808B5E2F6d7483D41A681034D7c9DbB64B9E29));
+        spoke = Spoke(address(0x91808B5E2F6d7483D41A681034D7c9DbB64B9E29));
         root = Root(address(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC));
 
         // Pool specific contracts
@@ -236,7 +235,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolId = 4139607887;
         scId = 0x97aa65f23e7be09fcd62d0554d2e9273;
         // TODO: need tokenId to pass in here
-        // assetId = poolManager.assetToId(address(_getAsset()));
+        // assetId = spoke.assetToId(address(_getAsset()));
 
         // remove previously set actors
         _removeActor(address(this)); // remove default actor

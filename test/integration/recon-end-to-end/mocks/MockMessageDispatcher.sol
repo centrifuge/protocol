@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {
-    IInvestmentManagerGatewayHandler,
-    IPoolManagerGatewayHandler,
+    IRequestManagerGatewayHandler,
+    ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
@@ -31,14 +31,15 @@ contract MockMessageDispatcher {
     uint16 public localCentrifugeId;
 
     IHubGatewayHandler public hub;
-    IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerGatewayHandler public investmentManager;
+    ISpokeGatewayHandler public spoke;
+    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
+    
 
     function file(bytes32 what, address data) external {
         if (what == "hub") hub = IHubGatewayHandler(data);
-        else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
     }
 
@@ -51,7 +52,7 @@ contract MockMessageDispatcher {
     }
 
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external {
-        poolManager.addPool(poolId);
+        spoke.addPool(poolId);
     }
 
     function sendNotifyShareClass(
@@ -64,7 +65,7 @@ contract MockMessageDispatcher {
         bytes32 salt,
         bytes32 hook
     ) external {
-        poolManager.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
+        spoke.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
     }
 
     function sendNotifyShareMetadata(
@@ -74,23 +75,23 @@ contract MockMessageDispatcher {
         string memory name,
         string memory symbol
     ) external {
-        poolManager.updateShareMetadata(poolId, scId, name, symbol);
+        spoke.updateShareMetadata(poolId, scId, name, symbol);
     }
 
     function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external {
-        poolManager.updateShareHook(poolId, scId, hook.toAddress());
+        spoke.updateShareHook(poolId, scId, hook.toAddress());
     }
 
     function sendNotifyPricePoolPerShare(uint16 centrifugeId, PoolId poolId, ShareClassId scId, D18 sharePrice)
         external
     {
         uint64 timestamp = block.timestamp.toUint64();
-        poolManager.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
+        spoke.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
     }
 
     function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external {
         uint64 timestamp = block.timestamp.toUint64();
-        poolManager.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
+        spoke.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
     }
 
     function sendFulfilledDepositRequest(
@@ -98,11 +99,18 @@ contract MockMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external {
         investmentManager.fulfillDepositRequest(
-            poolId, scId, investor.toAddress(), assetId, assetAmount, shareAmount
+            poolId,
+            scId,
+            investor.toAddress(),
+            assetId,
+            fulfilledAssetAmount,
+            fulfilledShareAmount,
+            cancelledAssetAmount
         );
     }
 
@@ -111,42 +119,25 @@ contract MockMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         bytes32 investor,
-        uint128 assetAmount,
-        uint128 shareAmount
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) external {
         investmentManager.fulfillRedeemRequest(
-            poolId, scId, investor.toAddress(), assetId, assetAmount, shareAmount
-        );
-    }
-
-    function sendFulfilledCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledAmount
-    ) external {
-        investmentManager.fulfillCancelDepositRequest(
-            poolId, scId, investor.toAddress(), assetId, cancelledAmount, cancelledAmount
-        );
-    }
-
-    function sendFulfilledCancelRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 cancelledShares
-    ) external {
-        investmentManager.fulfillCancelRedeemRequest(
-            poolId, scId, investor.toAddress(), assetId, cancelledShares
+            poolId,
+            scId,
+            investor.toAddress(),
+            assetId,
+            fulfilledAssetAmount,
+            fulfilledShareAmount,
+            cancelledShareAmount
         );
     }
 
     function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
         external
     {
-        poolManager.updateRestriction(poolId, scId, payload);
+        spoke.updateRestriction(poolId, scId, payload);
     }
 
     function sendUpdateContract(
@@ -156,7 +147,11 @@ contract MockMessageDispatcher {
         bytes32 target,
         bytes calldata payload
     ) external {
-        poolManager.updateContract(poolId, scId, target.toAddress(), payload);
+        spoke.updateContract(poolId, scId, target.toAddress(), payload);
+    }
+
+    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external {
+        balanceSheet.updateManager(poolId, who.toAddress(), canManage);
     }
 
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external {
@@ -178,22 +173,24 @@ contract MockMessageDispatcher {
         // Mock implementation - no actual token recovery
     }
 
-    function sendInitiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-    {
-        // Mock implementation - no actual recovery initiation
+    function sendInitiateTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
+        // Mock implementation - no actual transfer because this is done via the gateway
     }
 
-    function sendDisputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, bytes32 adapter, bytes32 hash)
-        external
-    {
-        // Mock implementation - no actual recovery dispute
-    }
-
-    function sendTransferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-    {
-        poolManager.handleTransferShares(poolId, scId, receiver.toAddress(), amount);
+    function sendExecuteTransferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
+        spoke.executeTransferShares(poolId, scId, receiver, amount);
     }
 
     function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
@@ -269,7 +266,6 @@ contract MockMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        address provider,
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease

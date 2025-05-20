@@ -19,14 +19,15 @@ import {Holdings} from "src/hub/Holdings.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {TransientValuation} from "test/misc/mocks/TransientValuation.sol";
+import {Spoke} from "src/spokes/Spoke.sol";
+import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {HubHelpers} from "src/hub/HubHelpers.sol";
 
 // Interfaces
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -38,6 +39,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 // Types
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -49,7 +51,7 @@ import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 import {MockAsyncRequestManager} from "test/vaults/fuzzing/recon-core/mocks/MockAsyncRequestManager.sol";
-import {MockPoolManager} from "test/hub/fuzzing/recon-hub/mocks/MockPoolManager.sol";
+import {MockSpoke} from "test/hub/fuzzing/recon-hub/mocks/MockSpoke.sol";
 import {MockBalanceSheet} from "test/hub/fuzzing/recon-hub/mocks/MockBalanceSheet.sol";
 
 abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
@@ -58,16 +60,16 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     Holdings holdings;
     Hub hub;
     ShareClassManager shareClassManager;
-    TransientValuation transientValuation;
+    MockValuation transientValuation;
     IdentityValuation identityValuation;
     Root root;
-
+    HubHelpers hubHelpers;
     MockAdapter mockAdapter;
     MockGateway gateway;
     MockMessageDispatcher messageDispatcher;
     MockAccountValue mockAccountValue;
     MockAsyncRequestManager investmentManager;
-    MockPoolManager poolManager;
+    MockSpoke spoke;
     MockBalanceSheet balanceSheet;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
@@ -121,30 +123,32 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         root = new Root(7 days, address(this));
         accounting = new Accounting(address(this)); 
         hubRegistry = new HubRegistry(address(this)); 
-        transientValuation = new TransientValuation(IERC6909Decimals(address(hubRegistry)));
+        transientValuation = new MockValuation(IERC6909Decimals(address(hubRegistry)));
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
         investmentManager = new MockAsyncRequestManager();
-        poolManager = new MockPoolManager();
+        spoke = new MockSpoke();
         balanceSheet = new MockBalanceSheet();
-
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
+        
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
+        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IShareClassManager(address(shareClassManager)), address(this));
         messageDispatcher = new MockMessageDispatcher();
         hub = new Hub(
-            IShareClassManager(address(shareClassManager)), 
-            IHubRegistry(address(hubRegistry)), 
-            IAccounting(address(accounting)), 
-            IHoldings(address(holdings)), 
             IGateway(address(gateway)), 
+            IHoldings(address(holdings)), 
+            IHubHelpers(address(hubHelpers)), 
+            IAccounting(address(accounting)), 
+            IHubRegistry(address(hubRegistry)), 
+            IShareClassManager(address(shareClassManager)), 
             address(this)
         );
 
         // set addresses on the PoolRouter
         hub.file("sender", address(messageDispatcher));
         messageDispatcher.file("hub", address(hub));
-        messageDispatcher.file("poolManager", address(poolManager));
+        messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
         messageDispatcher.file("investmentManager", address(investmentManager));    
 

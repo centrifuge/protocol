@@ -7,7 +7,7 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
 
@@ -20,7 +20,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     // TODO: Overflow stuff
     // function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
     //     address investor = _getRandomActor(investorEntropy);
-    //     poolManager.handleTransferShares(poolId, scId, investor, amount);
+    //     spoke.handleTransferShares(poolId, scId, investor, amount);
 
     //     // TF-12 mint share class tokens to user, not tracked in escrow
 
@@ -39,9 +39,9 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     //     }
 
     //     // Exact approval
-    //     token.approve(address(poolManager), amount);
+    //     token.approve(address(spoke), amount);
 
-    //     poolManager.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
+    //     spoke.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
     //     // TF-11 burns share class tokens from user, not tracked in escrow
 
     //     // Track minting for Global-3

@@ -207,7 +207,7 @@ contract MockAsyncRequestManager {
         _poolEscrowProviderReturn_0 = _value0;
     }
 
-    // Function to set return values for poolManager
+    // Function to set return values for spoke
     function setPoolManagerReturn(address _value0) public {
         _poolManagerReturn_0 = _value0;
     }
@@ -451,8 +451,8 @@ contract MockAsyncRequestManager {
         return _poolEscrowProviderReturn_0;
     }
 
-    // Mock implementation of poolManager
-    function poolManager() public view returns (address) {
+    // Mock implementation of spoke
+    function spoke() public view returns (address) {
         return _poolManagerReturn_0;
     }
 

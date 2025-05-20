@@ -12,10 +12,10 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {PoolEscrow} from "src/vaults/Escrow.sol";
+import {PoolEscrow} from "src/spokes/Escrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
@@ -320,7 +320,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (!Helpers.isAsyncVault(_getVault())) {
             // Sync vault - use maxReserve
             AssetId assetId = hubRegistry.currency(vault.poolId());
-            (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+            (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
             uint256 maxAssets = uint256(syncRequestManager.maxReserve(vault.poolId(), vault.scId(), asset, tokenId));
             max = syncRequestManager.convertToShares(vault, maxAssets);
             console2.log("max %e", max);
@@ -483,7 +483,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId _scId = shareClassManager.previewShareClassId(_poolId, j);
                 AssetId _assetId = hubRegistry.currency(_poolId);
-                (, uint256 _tokenId) = poolManager.idToAsset(_assetId);
+                (, uint256 _tokenId) = spoke.idToAsset(_assetId);
 
                 PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(_poolId))));
 
@@ -1084,7 +1084,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[2] = address(tokenFactory);
         systemAddresses[3] = address(asyncRequestManager);
         systemAddresses[4] = address(syncRequestManager);
-        systemAddresses[5] = address(poolManager);
+        systemAddresses[5] = address(spoke);
         systemAddresses[6] = address(IBaseVault(_getVault()));
         systemAddresses[7] = address(IBaseVault(_getVault()).asset());
         systemAddresses[8] = _getShareToken();

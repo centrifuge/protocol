@@ -1,23 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
-// Chimera deps
+// Recon Deps
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
-import {console2} from "forge-std/console2.sol";
-
-// Recon Helpers
-import {Panic} from "@recon/Panic.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
+import {Panic} from "@recon/Panic.sol";
+import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {Hub} from "src/hub/Hub.sol";
-// Interfaces
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
-
-// Types
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -26,7 +21,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 // Test Utils
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
-import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
+import {Properties} from "../properties/Properties.sol";
 
 abstract contract HubTargets is
     BaseTargetFunctions,

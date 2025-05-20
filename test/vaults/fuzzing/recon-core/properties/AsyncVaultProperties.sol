@@ -5,7 +5,7 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {vm} from "@chimera/Hevm.sol";
 
 import {Setup} from "../Setup.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import "forge-std/console2.sol";
 

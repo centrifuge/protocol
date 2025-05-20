@@ -371,7 +371,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[0] = address(vaultFactory);
         systemAddresses[1] = address(tokenFactory);
         systemAddresses[2] = address(asyncRequestManager);
-        systemAddresses[3] = address(poolManager);
+        systemAddresses[3] = address(spoke);
         systemAddresses[4] = address(vault);
         systemAddresses[5] = address(vault.asset());
         systemAddresses[6] = address(token);
