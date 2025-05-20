@@ -46,7 +46,7 @@ SyncDepositVaultFactory --|> IVaultFactory
 Spoke --up-> TokenFactory
 Spoke --up-> PoolEscrowFactory
 Spoke --up->"n" IVaultFactory
-Spoke <-left-> BalanceSheet
+Spoke <-left- BalanceSheet
 Spoke --down->"n" ShareToken
 Spoke ---down->"n" BaseVault
 Spoke --> Gateway

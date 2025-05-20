@@ -96,9 +96,9 @@ contract BaseTest is SpokeDeployer, Test {
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
-        adapter1 = new MockAdapter(OTHER_CHAIN_ID, gateway);
-        adapter2 = new MockAdapter(OTHER_CHAIN_ID, gateway);
-        adapter3 = new MockAdapter(OTHER_CHAIN_ID, gateway);
+        adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
+        adapter2 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
+        adapter3 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
 
         adapter1.setReturn("estimate", ESTIMATE_ADAPTER_1);
         adapter2.setReturn("estimate", ESTIMATE_ADAPTER_2);
@@ -117,7 +117,7 @@ contract BaseTest is SpokeDeployer, Test {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        gateway.file("adapters", OTHER_CHAIN_ID, testAdapters);
+        multiAdapter.file("adapters", OTHER_CHAIN_ID, testAdapters);
 
         // Label contracts
         vm.label(address(root), "Root");

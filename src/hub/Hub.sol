@@ -273,10 +273,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updateManager(PoolId poolId, address who, bool canManage) external payable {
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
         _isManager(poolId);
 
         hubRegistry.updateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc IHub
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
     }
 
     /// @inheritdoc IHub

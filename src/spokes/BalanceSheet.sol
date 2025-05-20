@@ -35,7 +35,7 @@ import {IPoolEscrowProvider} from "src/spokes/interfaces/factories/IPoolEscrowFa
 ///
 ///         Share and asset updates to the Hub are optionally queued, to reduce the cost
 ///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
-contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler, IUpdateContract {
+contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
     using MathLib for *;
     using CastLib for bytes32;
 
@@ -72,21 +72,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
-    }
-
-    /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId, /* scId */ bytes calldata payload) external auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
-
-        if (kind == uint8(UpdateContractType.UpdateManager)) {
-            MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
-            address who = m.who.toAddress();
-
-            manager[poolId][who] = m.canManage;
-            emit UpdateManager(poolId, who, m.canManage);
-        } else {
-            revert UnknownUpdateContractType();
-        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -240,6 +225,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     //----------------------------------------------------------------------------------------------
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
+    }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares) external auth {

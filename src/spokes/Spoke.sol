@@ -46,7 +46,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
     uint8 internal constant MAX_DECIMALS = 18;
 
     IGateway public gateway;
-    address public balanceSheet;
     ITokenFactory public tokenFactory;
     IVaultMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
@@ -73,7 +72,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         if (what == "sender") sender = IVaultMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "gateway") gateway = IGateway(data);
-        else if (what == "balanceSheet") balanceSheet = data;
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -193,12 +191,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), InvalidHook());
 
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(this);
-        // BalanceSheet needs this in order to mint shares
-        tokenWards[1] = balanceSheet;
-
-        IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt, tokenWards);
+        IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt);
 
         if (hook != address(0)) {
             shareToken_.file("hook", hook);
