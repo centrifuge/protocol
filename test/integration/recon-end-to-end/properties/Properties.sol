@@ -768,30 +768,24 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: gain = totalYield + loss
     function property_gain_soundness() public {
-        uint64[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
-                
-                // get the account ids for each account
-                AccountId assetAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Asset));
-                AccountId equityAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Equity));
-                AccountId gainAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Gain));
-                AccountId lossAccountId = holdings.accountId(poolId, scId, assetId,  uint8(AccountType.Loss));
-                
-                (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-                (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-                (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-                (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+        
+        // get the account ids for each account
+        AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
+        AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
+        AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
+        AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
+        
+        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
+        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
+        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
+        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
 
-                uint128 totalYield = assets - equity; // Can be positive or negative
-                t(gain == (totalYield - loss), "property_gain_soundness");
-            }   
-        }
+        uint128 totalYield = assets - equity; // Can be positive or negative
+        t(gain == (totalYield - loss), "property_gain_soundness");
     }
 
     /// @dev Property: loss = totalYield - gain

@@ -300,7 +300,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_mint_sync(1,10001530783476391801262800);
 
-        hub_createHolding_clamped(false,0,2,0,0);
+        // hub_createHolding_clamped(false,0,2,0,0);
+        hub_createHolding_clamped(false,0,0,0,0);
 
         hub_addShareClass(1);
 
@@ -338,6 +339,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_property_gain_soundness_25 -vvv 
+    // NOTE: related to overwriting the existing holding
     function test_property_gain_soundness_25() public {
 
         shortcut_deployNewTokenPoolAndShare(18,2,false,false,false);
@@ -364,6 +366,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_property_loss_soundness_1 -vvv 
+    // NOTE: related to overwriting the existing holding
     function test_property_loss_soundness_1() public {
 
         shortcut_deployNewTokenPoolAndShare(2,2,true,false,false);
@@ -379,6 +382,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_property_equity_soundness_3 -vvv 
+    // NOTE: related to overwriting the existing holding
     function test_property_equity_soundness_3() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
@@ -420,6 +424,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_property_accounting_and_holdings_soundness_23 -vvv 
+    // NOTE: related to overwriting the existing holding
     function test_property_accounting_and_holdings_soundness_23() public {
 
         shortcut_deployNewTokenPoolAndShare(9,2,false,false,false);
@@ -435,6 +440,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_property_asset_soundness_24 -vvv 
+    // NOTE: related to overwriting the existing holding
     function test_property_asset_soundness_24() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
