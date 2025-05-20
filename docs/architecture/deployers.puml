@@ -4,7 +4,7 @@ hide empty members
 class JsonRegistry
 class CommonDeployer
 class HubDeployer
-class VaultsDeployer
+class SpokeDeployer
 class FullDeployer
 
 class Axelar
@@ -13,15 +13,15 @@ class Localhost
 
 CommonDeployer -up-|> JsonRegistry
 HubDeployer -up-|> CommonDeployer
-VaultsDeployer -up-|> CommonDeployer
+SpokeDeployer -up-|> CommonDeployer
 FullDeployer -up-|> HubDeployer
-FullDeployer -up-|> VaultsDeployer
+FullDeployer -up-|> SpokeDeployer
 
 Axelar -up-|> FullDeployer
 Wormhole -up-|> FullDeployer
 Localhost -up-|> FullDeployer
 
-note right of VaultsDeployer: Used in CV ITs
+note right of SpokeDeployer: Used in CV ITs
 note left of HubDeployer: Used in CP ITs
 note right of FullDeployer: Used in CP-CV ITs
 note bottom of Localhost: Used in Testnets
