@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
-import {IMultiAdapter} from "src/common/interfaces/IMultiAdapter.sol";
+import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/spokes/BaseTest.sol";

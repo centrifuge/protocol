@@ -9,7 +9,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
 import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/IWormholeAdapter.sol";
+import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 

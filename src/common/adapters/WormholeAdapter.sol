@@ -12,7 +12,7 @@ import {
     IWormholeReceiver,
     WormholeSource,
     WormholeDestination
-} from "src/common/interfaces/IWormholeAdapter.sol";
+} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service

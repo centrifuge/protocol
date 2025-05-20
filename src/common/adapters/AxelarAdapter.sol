@@ -11,7 +11,7 @@ import {
     AxelarSource,
     AxelarDestination,
     IAxelarExecutable
-} from "src/common/interfaces/IAxelarAdapter.sol";
+} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @title  Axelar Adapter
