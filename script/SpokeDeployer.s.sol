@@ -25,7 +25,7 @@ import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
-contract VaultsDeployer is CommonDeployer {
+contract SpokeDeployer is CommonDeployer {
     BalanceSheet public balanceSheet;
     AsyncRequestManager public asyncRequestManager;
     SyncRequestManager public syncRequestManager;
@@ -43,7 +43,7 @@ contract VaultsDeployer is CommonDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
+    function deploySpoke(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
         poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
@@ -66,13 +66,13 @@ contract VaultsDeployer is CommonDeployer {
         fullRestrictionsHook = address(new FullRestrictions{salt: SALT}(address(root), deployer));
         redemptionRestrictionsHook = address(new RedemptionRestrictions{salt: SALT}(address(root), deployer));
 
-        _vaultsRegister();
-        _vaultsEndorse();
-        _vaultsRely();
-        _vaultsFile();
+        _spokeRegister();
+        _spokeEndorse();
+        _spokeRely();
+        _spokeFile();
     }
 
-    function _vaultsRegister() private {
+    function _spokeRegister() private {
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));
@@ -89,14 +89,14 @@ contract VaultsDeployer is CommonDeployer {
         register("balanceSheet", address(balanceSheet));
     }
 
-    function _vaultsEndorse() private {
+    function _spokeEndorse() private {
         root.endorse(address(vaultRouter));
         root.endorse(address(globalEscrow));
         root.endorse(address(balanceSheet));
         root.endorse(address(asyncRequestManager));
     }
 
-    function _vaultsRely() private {
+    function _spokeRely() private {
         // Rely Spoke
         IAuth(asyncVaultFactory).rely(address(spoke));
         IAuth(syncDepositVaultFactory).rely(address(spoke));
@@ -162,7 +162,7 @@ contract VaultsDeployer is CommonDeployer {
         spoke.rely(address(vaultRouter));
     }
 
-    function _vaultsFile() public {
+    function _spokeFile() public {
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("investmentManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
@@ -202,7 +202,7 @@ contract VaultsDeployer is CommonDeployer {
         tokenFactory.file("wards", tokenWards);
     }
 
-    function removeVaultsDeployerAccess(address deployer) public {
+    function removeSpokeDeployerAccess(address deployer) public {
         removeCommonDeployerAccess(deployer);
 
         IAuth(asyncVaultFactory).deny(deployer);

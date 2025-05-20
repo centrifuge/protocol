@@ -32,7 +32,7 @@ import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
 import {VaultKind} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 
 // scripts
-import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
+import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
 // mocks
 import {MockCentrifugeChain} from "test/spokes/mocks/MockCentrifugeChain.sol";
@@ -42,7 +42,7 @@ import {MockSafe} from "test/spokes/mocks/MockSafe.sol";
 // test env
 import "forge-std/Test.sol";
 
-contract BaseTest is VaultsDeployer, Test {
+contract BaseTest is SpokeDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -92,7 +92,7 @@ contract BaseTest is VaultsDeployer, Test {
 
         // deploy core contracts
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
-        deployVaults(THIS_CHAIN_ID, adminSafe, address(this), true);
+        deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -111,7 +111,7 @@ contract BaseTest is VaultsDeployer, Test {
         // wire contracts
         wire(OTHER_CHAIN_ID, adapter1, address(this));
         // remove deployer access
-        // removeVaultsDeployerAccess(address(adapter)); // need auth permissions in tests
+        // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncRequestManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
