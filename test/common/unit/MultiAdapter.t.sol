@@ -455,8 +455,14 @@ contract MultiAdapterTestDisputeRecovery is MultiAdapterTest {
         multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
     }
 
+    function testErrRecoveryNotInitiated() public {
+        vm.expectRevert(IMultiAdapter.RecoveryNotInitiated.selector);
+        multiAdapter.disputeRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+    }
+
     function testDisputeRecovery() public {
         multiAdapter.file("adapters", REMOTE_CENT_ID, oneAdapter);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
 
         vm.expectEmit();
         emit IMultiAdapter.DisputeRecovery(REMOTE_CENT_ID, BATCH_HASH, payloadAdapter);
