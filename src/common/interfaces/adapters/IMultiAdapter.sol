@@ -29,6 +29,11 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         bytes pending;
     }
 
+    struct Recovery {
+        uint128 timestamp;
+        uint64 counter;
+    }
+
     event File(bytes32 indexed what, address addr);
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
 
@@ -147,5 +152,5 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash)
         external
         view
-        returns (uint256 timestamp);
+        returns (uint128 timestamp, uint64 counter);
 }

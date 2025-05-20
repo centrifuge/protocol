@@ -30,8 +30,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
     mapping(uint16 centrifugeId => IAdapter[]) public adapters;
     mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
-        public recoveries;
+    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => Recovery))) public
+        recoveries;
 
     constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
@@ -152,26 +152,43 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_adapterDetails[centrifugeId][adapter].id != 0, InvalidAdapter());
-        recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+
+        Recovery memory recovery = recoveries[centrifugeId][adapter][payloadHash];
+        recovery.timestamp = uint128(block.timestamp + RECOVERY_CHALLENGE_PERIOD);
+        recovery.counter++;
+
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IMultiAdapter
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
-        delete recoveries[centrifugeId][adapter][payloadHash];
+        Recovery memory recovery = recoveries[centrifugeId][adapter][payloadHash];
+
+        require(recovery.counter > 0, RecoveryNotInitiated());
+
+        recovery.counter--;
+        if (recovery.counter == 0) {
+            delete recoveries[centrifugeId][adapter][payloadHash];
+        }
+
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IMultiAdapter
     function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
         bytes32 payloadHash = keccak256(payload);
-        uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
+        Recovery memory recovery = recoveries[centrifugeId][adapter][payloadHash];
 
-        require(recovery != 0, RecoveryNotInitiated());
-        require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
+        require(recovery.timestamp != 0, RecoveryNotInitiated());
+        require(recovery.timestamp <= block.timestamp, RecoveryChallengePeriodNotEnded());
 
-        delete recoveries[centrifugeId][adapter][payloadHash];
+        recovery.counter--;
+        if (recovery.counter == 0) {
+            delete recoveries[centrifugeId][adapter][payloadHash];
+        }
+
         _handle(centrifugeId, payload, adapter);
+
         emit ExecuteRecovery(centrifugeId, payload, adapter);
     }
 
