@@ -291,6 +291,10 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     function _encodeLocator(uint16 centrifugeId, PoolId poolId) internal pure returns (bytes32) {
         return bytes32(abi.encodePacked(bytes2(centrifugeId), bytes8(poolId.raw())));
     }
