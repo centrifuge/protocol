@@ -149,7 +149,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         internal
         returns (bool succeeded)
     {
-        bytes32 batchHash = keccak256(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
         // Ensure sufficient funds are available
@@ -164,11 +163,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             if (cost <= subsidy[poolId].value) {
                 subsidy[poolId].value -= uint96(cost);
             } else {
-                Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
-                underpaid_.counter++;
-                underpaid_.gasLimit = batchGasLimit;
-
-                emit UnderpaidBatch(centrifugeId, batch);
+                _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
                 return false;
             }
         }
@@ -183,12 +178,17 @@ contract Gateway is Auth, Recoverable, IGateway {
         return true;
     }
 
+    /// @inheritdoc IGateway
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
+        _addUnpaidBatch(centrifugeId, message, gasService.gasLimit(centrifugeId, message));
+    }
+
+    function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
         bytes32 batchHash = keccak256(message);
 
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         underpaid_.counter++;
-        underpaid_.gasLimit = gasService.gasLimit(centrifugeId, message);
+        underpaid_.gasLimit = gasLimit;
 
         emit UnderpaidBatch(centrifugeId, message);
     }
