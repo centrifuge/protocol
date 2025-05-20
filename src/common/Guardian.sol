@@ -22,9 +22,9 @@ contract Guardian is IGuardian {
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IMultiAdapter gateway_, IRoot root_, IRootMessageSender messageDispatcher_) {
+    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
-        multiAdapter = gateway_;
+        multiAdapter = multiAdapter_;
         safe = safe_;
         sender = messageDispatcher_;
     }
