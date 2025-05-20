@@ -9,7 +9,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
 import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/IWormholeAdapter.sol";
+import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
@@ -67,7 +67,7 @@ contract WormholeAdapterTest is Test {
     }
 
     function testDeploy() public view {
-        assertEq(address(adapter.gateway()), address(GATEWAY));
+        assertEq(address(adapter.entrypoint()), address(GATEWAY));
         assertEq(address(adapter.relayer()), address(relayer));
         assertEq(adapter.localWormholeId(), 2);
 
@@ -152,7 +152,7 @@ contract WormholeAdapterTest is Test {
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
-        vm.expectRevert(IAdapter.NotGateway.selector);
+        vm.expectRevert(IAdapter.NotEntrypoint.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
         vm.deal(address(GATEWAY), 0.1 ether);
