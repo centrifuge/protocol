@@ -11,11 +11,11 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 /// An adapter that sends the message to the another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     uint16 localCentrifugeId;
-    IMessageHandler public gateway;
+    IMessageHandler public entrypoint;
     IMessageHandler public endpoint;
 
-    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
-        gateway = gateway_;
+    constructor(uint16 localCentrifugeId_, IMessageHandler entrypoint_, address deployer) Auth(deployer) {
+        entrypoint = entrypoint_;
         localCentrifugeId = localCentrifugeId_;
     }
 
@@ -28,7 +28,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         // Local messages must be bypassed
         assertNotEq(localCentrifugeId, remoteCentrifugeId, "Local messages must be bypassed");
 
-        gateway.handle(remoteCentrifugeId, message);
+        entrypoint.handle(remoteCentrifugeId, message);
     }
 
     /// @inheritdoc IAdapter
