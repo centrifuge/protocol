@@ -124,6 +124,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
             spoke.updateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.UpdateBalanceSheetManager) {
+            MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);
+            balanceSheet.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
         } else if (kind == MessageType.DepositRequest) {
             MessageLib.DepositRequest memory m = message.deserializeDepositRequest();
             hub.depositRequest(

@@ -27,6 +27,7 @@ enum MessageType {
     ExecuteTransferShares,
     UpdateRestriction,
     UpdateContract,
+    UpdateBalanceSheetManager,
     ApprovedDeposits,
     IssuedShares,
     RevokedShares,
@@ -58,7 +59,6 @@ enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
     VaultUpdate,
-    UpdateManager,
     MaxAssetPriceAge,
     MaxSharePriceAge,
     Valuation,
@@ -98,6 +98,7 @@ library MessageLib {
         (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
+        (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.IssuedShares) * 8) +
         (89  << uint8(MessageType.RevokedShares) * 8) +
@@ -621,29 +622,6 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.UpdateManager (submsg)
-    //---------------------------------------
-
-    struct UpdateContractUpdateManager {
-        bytes32 who;
-        bool canManage;
-    }
-
-    function deserializeUpdateContractUpdateManager(bytes memory data)
-        internal
-        pure
-        returns (UpdateContractUpdateManager memory)
-    {
-        require(updateContractType(data) == UpdateContractType.UpdateManager, UnknownMessageType());
-
-        return UpdateContractUpdateManager({who: data.toBytes32(1), canManage: data.toBool(33)});
-    }
-
-    function serialize(UpdateContractUpdateManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateManager, t.who, t.canManage);
-    }
-
-    //---------------------------------------
     //   UpdateContract.MaxAssetPriceAge (submsg)
     //---------------------------------------
 
@@ -731,6 +709,29 @@ library MessageLib {
 
     function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
+    }
+
+    //---------------------------------------
+    //   UpdateBalanceSheetManager
+    //---------------------------------------
+
+    struct UpdateBalanceSheetManager {
+        uint64 poolId;
+        bytes32 who;
+        bool canManage;
+    }
+
+    function deserializeUpdateBalanceSheetManager(bytes memory data)
+        internal
+        pure
+        returns (UpdateBalanceSheetManager memory)
+    {
+        require(messageType(data) == MessageType.UpdateBalanceSheetManager, UnknownMessageType());
+        return UpdateBalanceSheetManager({poolId: data.toUint64(1), who: data.toBytes32(9), canManage: data.toBool(41)});
+    }
+
+    function serialize(UpdateBalanceSheetManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateBalanceSheetManager, t.poolId, t.who, t.canManage);
     }
 
     //---------------------------------------
