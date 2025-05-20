@@ -112,7 +112,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         gateway.endTransactionPayment();
     }
 
-    // @inheritdoc ISpoke
+    /// @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
