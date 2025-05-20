@@ -172,7 +172,6 @@ contract VaultsDeployer is CommonDeployer {
         messageProcessor.file("balanceSheet", address(balanceSheet));
 
         spoke.file("gateway", address(gateway));
-        spoke.file("balanceSheet", address(balanceSheet));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
         spoke.file("vaultFactory", address(asyncVaultFactory), true);
@@ -195,6 +194,12 @@ contract VaultsDeployer is CommonDeployer {
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
+
+        address[] memory tokenWards = new address[](2);
+        tokenWards[0] = address(spoke);
+        tokenWards[1] = address(balanceSheet);
+
+        tokenFactory.file("wards", tokenWards);
     }
 
     function removeVaultsDeployerAccess(address deployer) public {

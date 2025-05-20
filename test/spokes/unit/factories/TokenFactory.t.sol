@@ -92,7 +92,7 @@ contract FactoryTest is Test {
     }
 
     function testShareShouldBeDeterministic(
-        address asyncRequestManager,
+        address balanceSheet,
         address spoke,
         string memory name,
         string memory symbol,
@@ -119,7 +119,7 @@ contract FactoryTest is Test {
         );
 
         address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(asyncRequestManager);
+        tokenWards[0] = address(balanceSheet);
         tokenWards[1] = address(spoke);
 
         IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
@@ -130,7 +130,7 @@ contract FactoryTest is Test {
 
     function testDeployingDeterministicAddressTwiceReverts(
         bytes32 salt,
-        address asyncRequestManager,
+        address balanceSheet,
         address spoke,
         string memory name,
         string memory symbol,
@@ -157,7 +157,7 @@ contract FactoryTest is Test {
         );
 
         address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(asyncRequestManager);
+        tokenWards[0] = address(balanceSheet);
         tokenWards[1] = address(spoke);
 
         TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));

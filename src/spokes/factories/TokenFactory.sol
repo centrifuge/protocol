@@ -13,19 +13,25 @@ import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 ///         based on the pool id and share class id.
 contract TokenFactory is Auth, ITokenFactory {
     address public immutable root;
+    address[] public tokenWards;
 
     constructor(address _root, address deployer) Auth(deployer) {
         root = _root;
     }
 
+    function file(bytes32 what, address[] memory data) external auth {
+        if (what == "wards") tokenWards = data;
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
+    }
+
     /// @inheritdoc ITokenFactory
-    function newToken(
-        string memory name,
-        string memory symbol,
-        uint8 decimals,
-        bytes32 salt,
-        address[] calldata tokenWards
-    ) public auth returns (IShareToken) {
+    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt)
+        public
+        auth
+        returns (IShareToken)
+    {
         ShareToken token = new ShareToken{salt: salt}(decimals);
 
         token.file("name", name);
