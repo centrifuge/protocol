@@ -397,9 +397,7 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
 
-        assertApproxEqAbs(
-            assetRoundTrip, assetAmount, MIN_PRICE * 10, "Asset->Share->Asset roundtrip target precision excess"
-        );
+        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e7, "Asset->Share->Asset roundtrip target precision excess");
     }
 }
 
@@ -425,12 +423,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint256 shareRoundTrip = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
-        assertApproxEqAbs(
-            shareRoundTrip,
-            shareAmount,
-            MAX_PRICE_POOL_PER_SHARE,
-            "Share->Asset->Share roundtrip target precision excess"
-        );
+        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e19, "Share->Asset->Share roundtrip target precision excess");
     }
 
     function testShareToAssetAmount(
