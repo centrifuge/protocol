@@ -206,6 +206,8 @@ interface ISpoke {
         payable
         returns (AssetId assetId);
 
+    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
+
     /// @notice Deploys a new vault
     ///
     /// @param poolId The pool id
@@ -216,6 +218,17 @@ interface ISpoke {
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         external
         returns (IBaseVault);
+
+    /// @notice Register a vault.
+    function registerVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        IVaultFactory factory,
+        IBaseVault vault
+    ) external;
 
     /// @notice Links a deployed vault to the given pool, share class and asset.
     ///
