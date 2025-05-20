@@ -148,8 +148,8 @@ abstract contract Setup is
     mapping (address vault => mapping (address user => uint256)) redemptionsProcessed;
     mapping (address vault => mapping (address user => uint256)) cancelledRedemptions;
 
-    uint256 approvedDeposits;
-    uint256 approvedRedemptions;
+    mapping(address vault => uint256) approvedDeposits;
+    mapping(address vault => uint256) approvedRedemptions;
 
     modifier asAdmin {
         vm.prank(address(this));

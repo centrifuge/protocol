@@ -85,7 +85,7 @@ abstract contract HubTargets is
         AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
-        uint256 investorBalanceBefore = MockERC20(_getAsset()).balanceOf(_getActor());
+        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
         (uint128 pendingBefore,) = shareClassManager.redeemRequest(scId, assetId, investor);
 
@@ -96,10 +96,10 @@ abstract contract HubTargets is
         (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
 
         uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
-        uint256 investorBalanceAfter = MockERC20(_getAsset()).balanceOf(_getActor());
+        uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         
         executedRedemptions[_getShareToken()] += (investorSharesAfter - investorSharesBefore);
-        currencyPayout[_getAsset()] += (investorBalanceAfter - investorBalanceBefore);
+        currencyPayout[_getAsset()] += (investorClaimableAfter - investorClaimableBefore); // the currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
         redemptionsProcessed[_getVault()][_getActor()] += (pendingBefore - pendingAfter);
 

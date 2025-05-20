@@ -55,7 +55,7 @@ abstract contract AdminTargets is
 
         uint128 pendingDepositAfter = shareClassManager.pendingDeposit(scId, paymentAssetId);
         uint128 approvedAssetAmount = pendingDepositBefore - pendingDepositAfter;
-        approvedDeposits += approvedAssetAmount;
+        approvedDeposits[_getVault()] += approvedAssetAmount;
     }
 
     function hub_approveRedeems(uint32 nowRedeemEpochId, uint128 maxApproval) public updateGhosts {
@@ -68,7 +68,7 @@ abstract contract AdminTargets is
 
         uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
         uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
-        approvedRedemptions += approvedAssetAmount;
+        approvedRedemptions[_getVault()] += approvedAssetAmount;
     }
 
     function hub_approveRedeems_clamped(uint32 nowRedeemEpochId, uint128 maxApproval) public {

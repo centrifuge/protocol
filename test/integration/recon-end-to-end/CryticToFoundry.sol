@@ -656,6 +656,182 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_user_cannot_mutate_pending_redeem();
 
     }
+
+    // forge test --match-test test_property_totalAssets_solvency_0 -vvv 
+    function test_property_totalAssets_solvency_0() public {
+
+        shortcut_deployNewTokenPoolAndShare(6,165580008699847070333638878135418310732111427891776027359330497595662372,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,342,1,24);
+
+        shortcut_request_deposit(1059280971004,1,0,0);
+
+        property_totalAssets_solvency();
+
+    }
+
+    // forge test --match-test test_token_transferFrom_1 -vvv 
+    function test_token_transferFrom_1() public {
+        console2.log("here 1");
+        property_total_issuance_decreased_after_approve_redeems_and_revoke_shares();
+
+        vm.warp(block.timestamp + 1602779);
+
+        vm.roll(block.number + 13317);
+
+        console2.log("here 2");
+        property_price_on_fulfillment();
+
+        vm.roll(block.number + 3188);
+        vm.warp(block.timestamp + 8764);
+        console2.log("here 3");
+        property_total_issuance_increased_after_approve_deposits_and_issue_shares();
+
+        vm.roll(block.number + 115);
+        vm.warp(block.timestamp + 33271);
+        console2.log("here 4");
+        property_soundness_processed_deposits();
+
+        console2.log("here 5");
+        toggle_EquityAccount(1860823282);
+
+        console2.log("here 6");
+        property_price_on_fulfillment();
+
+        console2.log("here 7");
+        shortcut_deployNewTokenPoolAndShare(56,44162503087693492637048630226507605038248149277142374270796472314127281150497,true,true,true);
+
+        vm.roll(block.number + 53451);
+        vm.warp(block.timestamp + 628);
+        console2.log("here 8");
+        shortcut_deposit_and_claim(164,4370001,1524785993,625,1524785991);
+
+        vm.roll(block.number + 2413);
+        vm.warp(block.timestamp + 466678);
+        console2.log("here 9");
+        hub_createAccount(3930847,false);
+
+        console2.log("here 10");
+        property_total_pending_redeem_geq_sum_pending_user_redeem();
+
+        console2.log("here 11");
+        hub_triggerSubmitQueuedAssets(68995);
+
+        vm.roll(block.number + 11742);
+        vm.warp(block.timestamp + 111322);
+        console2.log("here 12");
+        hub_notifySharePrice(41426);
+
+        vm.roll(block.number + 15288);
+        vm.warp(block.timestamp + 62628);
+        console2.log("here 13");
+        hub_updatePricePerShare(279456212145792895394839917904388060014);
+
+        console2.log("here 14");
+        hub_setQueue_clamped(false);
+
+        vm.warp(block.timestamp + 267512);
+
+        vm.roll(block.number + 33537);
+
+        console2.log("here 15");
+        property_asset_soundness();
+
+        console2.log("here 16");
+        hub_triggerSubmitQueuedAssets_clamped();
+
+        console2.log("here 17");
+        hub_addShareClass(47060);
+
+        vm.roll(block.number + 739);
+        vm.warp(block.timestamp + 367611);
+        console2.log("here 18");
+        switch_asset_id(979795318425839602289753191108188770180559342340764706189020711644205116375);
+
+        vm.warp(block.timestamp + 65535);
+
+        vm.roll(block.number + 527);
+
+        vm.roll(block.number + 25058);
+        vm.warp(block.timestamp + 8616);
+        console2.log("here 19");
+        property_sum_of_received_leq_fulfilled_inductive();
+
+        console2.log("here 20");
+        property_epochId_can_increase_by_one_within_same_transaction();
+
+        console2.log("here 21");
+        property_epochId_can_increase_by_one_within_same_transaction();
+
+        console2.log("here 22");
+        property_escrow_solvency();
+
+        // vm.warp(block.timestamp + 70768);
+
+        // vm.roll(block.number + 2425);
+
+        // console2.log("here 23");
+        // toggle_EquityAccount(293139345);
+
+        // vm.warp(block.timestamp + 581537);
+
+        // vm.roll(block.number + 44004);
+
+        // console2.log("here 24");
+        // switch_asset(49);
+
+        // vm.roll(block.number + 12155);
+        // vm.warp(block.timestamp + 289103);
+        // console2.log("here 25");
+        // shortcut_deposit_cancel_claim(82056953979,264779601166233462426810639499768852166,689161065,108113728462738,17793080803900906786677358468037251290824107174238311527783831998541668927739);
+
+        // console2.log("here 26");
+        // property_sum_of_shares_received();
+
+        // vm.roll(block.number + 9);
+        // vm.warp(block.timestamp + 268516);
+        // console2.log("here 27");
+        // hub_triggerSubmitQueuedShares(49385);
+
+        // console2.log("here 28");
+        // property_price_per_share_overall();
+
+        // vm.roll(block.number + 1861);
+        // vm.warp(block.timestamp + 488);
+        // console2.log("here 29");
+        // hub_addShareClass(19218943344643208699322461299216361577554795245819409989354013587335758419105);
+
+        // vm.warp(block.timestamp + 461);
+
+        // vm.roll(block.number + 30784);
+
+        // console2.log("here 30");
+        // property_actor_pending_and_queued_deposits();
+
+        // console2.log("here 31");
+        // hub_updatePricePerShare(9190662);
+
+        // console2.log("here 32");
+        // property_total_pending_and_approved();
+
+        // vm.roll(block.number + 31232);
+        // vm.warp(block.timestamp + 384);
+        // console2.log("here 33");
+        // property_solvency_redemption_requests();
+
+        // console2.log("here 34");
+        // token_transferFrom(0xa0Cb889707d426A7A386870A03bc70d1b0697598,12305867276746262862464579021508713017418924654998358381827311159492122384763);
+    }
  
+    // forge test --match-test test_property_price_per_share_overall_7 -vvv 
+    function test_property_price_per_share_overall_7() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_deposit_sync(1,1);
+
+        property_price_per_share_overall();
+
+    }
     
 }

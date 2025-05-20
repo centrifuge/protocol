@@ -219,8 +219,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, _getActor());
 
             // update ghosts
-            cancelledDeposits[_getVault()][controller] += (pendingBefore - pendingAfter);
-            cancelDepositCurrencyPayout[IBaseVault(_getVault()).asset()] += pendingCancelAfter - pendingCancelBefore;
+            uint256 delta = pendingCancelAfter - pendingCancelBefore;
+            cancelledDeposits[_getVault()][controller] += delta;
+            cancelDepositCurrencyPayout[IBaseVault(_getVault()).asset()] += delta;
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
@@ -319,19 +320,17 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 shares = IBaseVault(_getVault()).deposit(assets, _getActor());
 
-        // NOTE: sync vaults don't request deposits but we need to track this value for the escrow balance property
-        if(!isAsyncVault) {
-            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
-        }
-
         (uint128 pendingAfter,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), _getActor().toBytes32());
 
         // Processed Deposit | E-2 | Global-1
         // for sync vaults, deposits are fulfilled immediately
-        if(!Helpers.isAsyncVault(_getVault())) {
+        if(!isAsyncVault) {
             sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
             executedInvestments[IBaseVault(_getVault()).share()] += shares;
-            depositProcessed[_getVault()][_getActor()] += shares;
+
+            depositProcessed[_getVault()][_getActor()] += assets;
+            requestDeposited[_getVault()][_getActor()] += assets;
+            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
         }
 
         // Bal after
@@ -385,6 +384,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if(!isAsyncVault) {
+            requestDeposited[_getVault()][_getActor()] += assets;
             sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
         }
 
@@ -434,9 +434,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 assets = IBaseVault(_getVault()).redeem(shares, to, _getActor());
 
-        // E-1
-        sumOfClaimedRedemptions[IBaseVault(_getVault()).asset()] += assets;
-        
         // if sync vault, redeem is fulfilled immediately
         if(!Helpers.isAsyncVault(_getVault())) {
             executedRedemptions[IBaseVault(_getVault()).share()] += assets;
@@ -445,6 +442,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // Bal after
         uint256 tokenUserAfter = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor());
         uint256 tokenEscrowAfter = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(escrow);
+
+        // E-1
+        sumOfClaimedRedemptions[IBaseVault(_getVault()).asset()] += assets;
 
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster

@@ -50,6 +50,8 @@ abstract contract BeforeAfter is Setup {
         uint128 ghostDebited;
         uint128 ghostCredited;
 
+        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => D18 pricePoolPerAsset))) pricePoolPerAsset;
+        mapping(PoolId poolId => mapping(ShareClassId scId => D18 pricePoolPerShare)) pricePoolPerShare;
         mapping(address investor => AsyncInvestmentState) investments;
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
@@ -270,11 +272,18 @@ abstract contract BeforeAfter is Setup {
     }
 
     function _priceAssetNonZero(bool before) internal {
-        BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+        if(address(_getVault()) == address(0)) {
+            return;
+        }
 
-        D18 priceAsset;
-        try spoke.pricePoolPerAsset(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), true) returns (D18 _priceAsset) {
-            priceAsset = _priceAsset;
+        BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
+            _structToUpdate.pricePoolPerAsset[poolId][scId][assetId] = _priceAsset;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
             bool invalidPrice = checkError(reason, "InvalidPrice()");
@@ -288,11 +297,17 @@ abstract contract BeforeAfter is Setup {
     }
 
     function _priceShareNonZero(bool before) internal {
+        if(address(_getVault()) == address(0)) {
+            return;
+        }
+        
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
 
-        D18 priceShare;
-        try spoke.pricePoolPerShare(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), false) returns (D18 _priceShare) {
-            priceShare = _priceShare;
+        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
+            _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
             bool invalidPrice = checkError(reason, "InvalidPrice()");
