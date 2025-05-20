@@ -294,6 +294,18 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
+    /// @notice Creates and send the message
+    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize()
+            );
+        }
+    }
+
     /// @inheritdoc IPoolMessageSender
     function sendApprovedDeposits(
         PoolId poolId,
