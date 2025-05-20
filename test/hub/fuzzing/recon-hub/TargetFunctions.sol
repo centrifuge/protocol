@@ -504,8 +504,8 @@ abstract contract TargetFunctions is
     }
 
     /// === Gateway === ///
-    function gateway_topUp() public payable {
-        gateway.topUp{value: msg.value}();
+    function gateway_subsidizePool(uint64 poolId) public payable {
+        gateway.subsidizePool{value: msg.value}(poolId);
     }
 
     function _getMultiShareClassMetrics(ShareClassId scId) internal view returns (uint128 totalIssuance) {

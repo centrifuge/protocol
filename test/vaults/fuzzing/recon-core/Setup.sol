@@ -31,7 +31,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {SharedStorage} from "./helpers/SharedStorage.sol";
 import {MockMessageProcessor} from "./mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
-import {MockGateway} from "./mocks/MockGateway.sol";
+import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
 import {MockHub} from "./mocks/MockHub.sol";
 import {MockAsyncRequestManager} from "./mocks/MockAsyncRequestManager.sol";
 
@@ -175,8 +175,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         spoke.file("gateway", address(gateway));
         spoke.file("balanceSheet", address(balanceSheet));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultFactory", address(vaultFactory));
-        balanceSheet.file("gateway", address(gateway));
+        spoke.file("vaultFactory", address(vaultFactory), true);
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));

@@ -221,9 +221,8 @@ abstract contract Setup is
         spoke.file("gateway", address(gateway));
         spoke.file("balanceSheet", address(balanceSheet));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("factory", address(asyncVaultFactory));
-        spoke.file("factory", address(syncVaultFactory));
-        balanceSheet.file("gateway", address(gateway));
+        spoke.file("vaultFactory", address(asyncVaultFactory), true);
+        spoke.file("vaultFactory", address(syncVaultFactory), true);
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
@@ -257,6 +256,9 @@ abstract contract Setup is
         syncVaultFactory.rely(address(spoke));
         tokenFactory.rely(address(spoke));
         poolEscrowFactory.rely(address(spoke));
+
+        root.endorse(address(asyncRequestManager));
+        root.endorse(address(syncRequestManager));
     }
 
     function setupHub() internal {
@@ -284,10 +286,14 @@ abstract contract Setup is
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
         accounting.rely(address(hub));
+        accounting.rely(address(hubHelpers));
         holdings.rely(address(hub));
         shareClassManager.rely(address(hub));
+        shareClassManager.rely(address(hubHelpers));
         hub.rely(address(hub));
         hub.rely(address(messageDispatcher));
+        hubHelpers.rely(address(hub));
+        hubHelpers.rely(address(messageDispatcher));
         shareClassManager.rely(address(this));
 
         // set dependencies

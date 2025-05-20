@@ -47,7 +47,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 // Test Utils
-import {MockGateway} from "test/hub/fuzzing/recon-hub/mocks/MockGateway.sol";
+import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
 import {MockAsyncRequestManager} from "test/vaults/fuzzing/recon-core/mocks/MockAsyncRequestManager.sol";
@@ -155,9 +155,13 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
         accounting.rely(address(hub));
+        accounting.rely(address(hubHelpers));
         holdings.rely(address(hub));
         shareClassManager.rely(address(hub));
+        shareClassManager.rely(address(hubHelpers));
         hub.rely(address(hub));
+        hubHelpers.rely(address(hub));
+        hubHelpers.rely(address(messageDispatcher));
         shareClassManager.rely(address(this));
     }
 
