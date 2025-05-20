@@ -5,6 +5,8 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 
 interface IMessageProcessor is IMessageHandler, IMessageProperties {
+    error InvalidSourceChain();
+
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 

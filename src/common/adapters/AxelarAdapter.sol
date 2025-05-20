@@ -11,7 +11,7 @@ import {
     AxelarSource,
     AxelarDestination,
     IAxelarExecutable
-} from "src/common/interfaces/IAxelarAdapter.sol";
+} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @title  Axelar Adapter
@@ -19,17 +19,17 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
-    IMessageHandler public immutable gateway;
+    IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
 
     mapping(string axelarId => AxelarSource) public sources;
     mapping(uint16 centrifugeId => AxelarDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_, address deployer)
+    constructor(IMessageHandler entrypoint_, address axelarGateway_, address axelarGasService_, address deployer)
         Auth(deployer)
     {
-        gateway = gateway_;
+        entrypoint = entrypoint_;
         axelarGateway = IAxelarGateway(axelarGateway_);
         axelarGasService = IAxelarGasService(axelarGasService_);
     }
@@ -39,14 +39,17 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, address source) external auth {
-        if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, source);
+    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external auth {
+        if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(source)));
         else revert FileUnrecognizedParam();
         emit File(what, axelarId, centrifugeId, source);
     }
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, address destination) external auth {
+    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination)
+        external
+        auth
+    {
         if (what == "destinations") destinations[centrifugeId] = AxelarDestination(axelarId, destination);
         else revert FileUnrecognizedParam();
         emit File(what, centrifugeId, axelarId, destination);
@@ -64,14 +67,16 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         bytes calldata payload
     ) public {
         AxelarSource memory source = sources[sourceAxelarId];
-        require(source.addr != address(0) && source.addr == sourceAddress.toAddress(), InvalidAddress());
+        require(
+            source.addressHash != bytes32("") && source.addressHash == keccak256(bytes(sourceAddress)), InvalidAddress()
+        );
 
         require(
             axelarGateway.validateContractCall(commandId, sourceAxelarId, sourceAddress, keccak256(payload)),
             NotApprovedByGateway()
         );
 
-        gateway.handle(source.centrifugeId, payload);
+        entrypoint.handle(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -84,25 +89,22 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         payable
         returns (bytes32 adapterData)
     {
-        require(msg.sender == address(gateway), NotGateway());
+        require(msg.sender == address(entrypoint), NotEntrypoint());
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
-        string memory destinationAddress = destination.addr.toString();
         axelarGasService.payNativeGasForContractCall{value: msg.value}(
-            address(this), destination.axelarId, destinationAddress, payload, refund
+            address(this), destination.axelarId, destination.addr, payload, refund
         );
 
-        axelarGateway.callContract(destination.axelarId, destinationAddress, payload);
+        axelarGateway.callContract(destination.axelarId, destination.addr, payload);
 
         adapterData = bytes32("");
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         AxelarDestination memory destination = destinations[centrifugeId];
-        return axelarGasService.estimateGasFee(
-            destination.axelarId, destination.addr.toString(), payload, gasLimit, bytes("")
-        );
+        return axelarGasService.estimateGasFee(destination.axelarId, destination.addr, payload, gasLimit, bytes(""));
     }
 }

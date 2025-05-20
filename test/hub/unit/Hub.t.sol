@@ -8,7 +8,6 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -19,6 +18,7 @@ import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {Hub} from "src/hub/Hub.sol";
 
 contract TestCommon is Test {
@@ -30,12 +30,13 @@ contract TestCommon is Test {
     JournalEntry[] EMPTY;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
+    IHubHelpers immutable hubHelpers = IHubHelpers(makeAddr("HubHelpers"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, address(this));
+    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, scm, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -111,7 +112,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setPoolMetadata(POOL_A, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateManager(POOL_A, address(0), false);
+        hub.updateHubManager(POOL_A, address(0), false);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -138,7 +142,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updatePricePerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.createHolding(
+        hub.initializeHolding(
             POOL_A,
             ShareClassId.wrap(0),
             AssetId.wrap(0),
@@ -150,7 +154,7 @@ contract TestMainMethodsChecks is TestCommon {
         );
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.createLiability(
+        hub.initializeLiability(
             POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), AccountId.wrap(0), AccountId.wrap(0)
         );
 
@@ -198,7 +202,7 @@ contract TestNotifyShareClass is TestCommon {
     }
 }
 
-contract TestCreateHolding is TestCommon {
+contract TestInitializeHolding is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
@@ -206,7 +210,7 @@ contract TestCreateHolding is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.createHolding(
+        hub.initializeHolding(
             POOL_A,
             SC_A,
             ASSET_A,
@@ -219,7 +223,7 @@ contract TestCreateHolding is TestCommon {
     }
 }
 
-contract TestCreateLiability is TestCommon {
+contract TestInitializeLiability is TestCommon {
     function testErrAssetNotFound() public {
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
@@ -227,11 +231,11 @@ contract TestCreateLiability is TestCommon {
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(
-            hub.createLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
+            hub.initializeLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
         );
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.createLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
+        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }

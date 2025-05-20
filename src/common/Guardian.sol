@@ -7,22 +7,24 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;
 
     IRoot public immutable root;
 
-    IHub public hub;
     ISafe public safe;
+    IMultiAdapter public multiAdapter;
+    IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
+    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
+        multiAdapter = multiAdapter_;
         safe = safe_;
         sender = messageDispatcher_;
     }
@@ -45,7 +47,8 @@ contract Guardian is IGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "hub") hub = IHub(data);
+        else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -103,19 +106,13 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external
-        onlySafe
-    {
-        sender.sendInitiateRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
+        multiAdapter.initiateRecovery(centrifugeId, adapter, hash);
     }
 
     /// @inheritdoc IGuardian
-    function disputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external
-        onlySafe
-    {
-        sender.sendDisputeRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
+        multiAdapter.disputeRecovery(centrifugeId, adapter, hash);
     }
 
     //----------------------------------------------------------------------------------------------

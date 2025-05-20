@@ -27,16 +27,16 @@ import {Holdings} from "src/hub/Holdings.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {PoolManager} from "src/vaults/PoolManager.sol";
-import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {VaultRouter} from "src/spokes/vaults/VaultRouter.sol";
+import {Spoke} from "src/spokes/Spoke.sol";
+import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
+import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
+import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {SyncDepositVault} from "src/spokes/vaults/SyncDepositVault.sol";
+import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/spokes/factories/SyncDepositVaultFactory.sol";
 
 import {FullDeployer, HubDeployer, VaultsDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -82,7 +82,7 @@ struct CVaults {
     Gateway gateway;
     // Vaults
     BalanceSheet balanceSheet;
-    PoolManager poolManager;
+    Spoke spoke;
     VaultRouter router;
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncDepositVaultFactory;
@@ -162,7 +162,7 @@ contract TestEndToEnd is Test {
     {
         deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
 
-        adapter = new LocalAdapter(localCentrifugeId, deploy.gateway(), address(deploy));
+        adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         deploy.wire(remoteCentrifugeId, adapter, address(deploy));
 
         deploy.removeFullDeployerAccess(address(deploy));
@@ -177,7 +177,7 @@ contract TestEndToEnd is Test {
             guardian: deploy.guardian(),
             gateway: deploy.gateway(),
             balanceSheet: deploy.balanceSheet(),
-            poolManager: deploy.poolManager(),
+            spoke: deploy.spoke(),
             router: deploy.vaultRouter(),
             fullRestrictionsHook: deploy.fullRestrictionsHook(),
             redemptionRestrictionsHook: deploy.redemptionRestrictionsHook(),
@@ -197,7 +197,7 @@ contract TestEndToEnd is Test {
         asset.file("symbol", "USDC");
         asset.mint(INVESTOR_A, INVESTOR_A_AMOUNT);
 
-        cv.poolManager.registerAsset{value: GAS}(h.centrifugeId, address(asset), 0);
+        cv.spoke.registerAsset{value: GAS}(h.centrifugeId, address(asset), 0);
         assetId = newAssetId(cv.centrifugeId, 1);
 
         // Configure Pool
@@ -218,8 +218,8 @@ contract TestEndToEnd is Test {
         h.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
         h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
         h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
-        h.hub.createHolding(
-            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
+        h.hub.initializeHolding(
+            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 
         h.hub.updatePricePerShare(poolId, scId, IDENTITY_PRICE);
@@ -230,7 +230,7 @@ contract TestEndToEnd is Test {
             poolId,
             scId,
             cv.centrifugeId,
-            address(cv.poolManager).toBytes32(),
+            address(cv.spoke).toBytes32(),
             MessageLib.UpdateContractVaultUpdate({
                 vaultOrFactory: vaultFactory.toBytes32(),
                 assetId: assetId.raw(),
@@ -248,25 +248,27 @@ contract TestEndToEnd is Test {
         _setCV(sameChain);
         (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(cv.asyncVaultFactory));
 
-        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
-        (address asset,) = cv.poolManager.idToAsset(assetId);
+        IShareToken shareToken = IShareToken(cv.spoke.shareToken(poolId, scId));
+        (address asset,) = cv.spoke.idToAsset(assetId);
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
         vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
 
-        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
         vm.startPrank(FM);
+        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
         h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, depositEpochId, INVESTOR_A_AMOUNT);
-        h.hub.issueShares(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
+        h.hub.issueShares{value: GAS}(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
-        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), 1);
+        uint32 maxClaims = h.shareClassManager.maxDepositClaims(scId, INVESTOR_A.toBytes32(), assetId);
+        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), maxClaims);
 
-        //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
+        vm.startPrank(INVESTOR_A);
+        vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
 
-        //assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
+        assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
@@ -274,8 +276,8 @@ contract TestEndToEnd is Test {
         _setCV(sameChain);
         (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(cv.syncDepositVaultFactory));
 
-        IShareToken shareToken = IShareToken(cv.poolManager.shareToken(poolId, scId));
-        (address asset,) = cv.poolManager.idToAsset(assetId);
+        IShareToken shareToken = IShareToken(cv.spoke.shareToken(poolId, scId));
+        (address asset,) = cv.spoke.idToAsset(assetId);
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);

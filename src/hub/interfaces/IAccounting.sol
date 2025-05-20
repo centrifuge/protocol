@@ -85,7 +85,7 @@ interface IAccounting {
     /// @param account The account to get the value of
     /// @return isPositive Indicates whether value is a positive or negative value
     /// @return value The value of the account
-    function accountValue(PoolId poolId, AccountId account) external returns (bool isPositive, uint128 value);
+    function accountValue(PoolId poolId, AccountId account) external view returns (bool isPositive, uint128 value);
 
     /// @notice Returns whether an account exists
     /// @param poolId The pool the account belongs to

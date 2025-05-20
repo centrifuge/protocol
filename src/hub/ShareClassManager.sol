@@ -98,7 +98,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        // NOTE: CV ensures amount > 0
+        // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
 
@@ -122,7 +122,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        // NOTE: CV ensures amount > 0
+        // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, RequestType.Redeem);
     }
 
@@ -724,7 +724,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         }
 
         // Block increasing queued amount if cancelling is already queued
-        // NOTE: Can only happen due to race condition as CV blocks requests if cancellation is in progress
+        // NOTE: Can only happen due to race condition as Vaults blocks requests if cancellation is in progress
         require(!(queued.isCancelling && amount > 0), CancellationQueued());
 
         if (!isIncrement) {

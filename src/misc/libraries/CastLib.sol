@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 /// @title  CastLib
@@ -12,18 +12,9 @@ library CastLib {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function toAddress(string calldata addr) internal pure returns (address) {
-        require(bytes(addr).length == 20, "Input should be 20 bytes");
-        return address(bytes20(bytes(addr)));
-    }
-
     function toAddress(bytes32 addr) internal pure returns (address) {
         require(uint96(uint256(addr)) == 0, "Input should be 20 bytes");
         return address(bytes20(addr));
-    }
-
-    function toString(address addr) internal pure returns (string memory) {
-        return string(abi.encodePacked(addr));
     }
 
     function toBytes32(address addr) internal pure returns (bytes32) {

@@ -15,8 +15,4 @@ interface IMessageDispatcher is IRootMessageSender, IVaultMessageSender, IPoolMe
     /// Accepts a `bytes32` representation of 'hubRegistry' string value.
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
-
-    /// @notice Estimate sending a message through the gateway.
-    /// If the message is to the same centrifugeId, then the estimation is 0.
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount);
 }
