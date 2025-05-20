@@ -95,13 +95,11 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
 
         // values set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
-        assertEq(address(balanceSheet.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(syncRequestManager.spoke()), address(spoke));
 
         assertEq(address(spoke.poolEscrowFactory()), address(poolEscrowFactory));
         assertEq(address(spoke.tokenFactory()), address(tokenFactory));
-        assertEq(address(spoke.balanceSheet()), address(balanceSheet));
         assertEq(address(spoke.sender()), address(messageDispatcher));
 
         // permissions set correctly
@@ -117,12 +115,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         emit ISpoke.File("sender", newSender);
         spoke.file("sender", newSender);
         assertEq(address(spoke.sender()), newSender);
-
-        address newBalanceSheet = makeAddr("newBalanceSheet");
-        vm.expectEmit();
-        emit ISpoke.File("balanceSheet", newBalanceSheet);
-        spoke.file("balanceSheet", newBalanceSheet);
-        assertEq(spoke.balanceSheet(), newBalanceSheet);
 
         address newTokenFactory = makeAddr("newTokenFactory");
         vm.expectEmit();
@@ -812,7 +804,7 @@ contract SpokeRegisterAssetTest is BaseTest {
     using CastLib for *;
     using BytesLib for *;
 
-    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 5;
+    uint32 constant STORAGE_INDEX_ASSET_COUNTER = 4;
     uint256 constant STORAGE_OFFSET_ASSET_COUNTER = 20;
 
     function _assertAssetCounterEq(uint32 expected) internal view {

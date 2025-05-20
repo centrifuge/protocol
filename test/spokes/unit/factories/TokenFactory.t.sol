@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Root} from "src/common/Root.sol";
 
 import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
@@ -68,32 +69,7 @@ contract FactoryTest is Test {
         }
     }
 
-    function testTokenFactoryShouldBeDeterministic(bytes32 salt) public {
-        address predictedAddress = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(this),
-                            salt,
-                            keccak256(
-                                abi.encodePacked(
-                                    type(TokenFactory).creationCode, abi.encode(root), abi.encode(address(this))
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        );
-        TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));
-        assertEq(address(tokenFactory), predictedAddress);
-    }
-
     function testShareShouldBeDeterministic(
-        address balanceSheet,
-        address spoke,
         string memory name,
         string memory symbol,
         bytes32 factorySalt,
@@ -118,54 +94,32 @@ contract FactoryTest is Test {
             )
         );
 
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(balanceSheet);
-        tokenWards[1] = address(spoke);
-
-        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt, tokenWards);
+        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt);
 
         assertEq(address(token), predictedAddress);
         assertEq(tokenFactory.getAddress(decimals, tokenSalt), address(token));
     }
 
-    function testDeployingDeterministicAddressTwiceReverts(
-        bytes32 salt,
-        address balanceSheet,
-        address spoke,
+    function testTokenWards(
         string memory name,
         string memory symbol,
+        bytes32 factorySalt,
+        bytes32 tokenSalt,
         uint8 decimals
     ) public {
         decimals = uint8(bound(decimals, 0, 18));
-        address predictedAddress = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(this),
-                            salt,
-                            keccak256(
-                                abi.encodePacked(
-                                    type(TokenFactory).creationCode, abi.encode(root), abi.encode(address(this))
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        );
+        TokenFactory tokenFactory = new TokenFactory{salt: factorySalt}(root, address(this));
 
         address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(balanceSheet);
-        tokenWards[1] = address(spoke);
+        tokenWards[0] = address(1);
+        tokenWards[1] = address(2);
 
-        TokenFactory tokenFactory = new TokenFactory{salt: salt}(root, address(this));
-        assertEq(address(tokenFactory), predictedAddress);
+        tokenFactory.file("wards", tokenWards);
 
-        tokenFactory.newToken(name, symbol, decimals, bytes32(0), tokenWards);
-        vm.expectRevert();
-        tokenFactory.newToken(name, symbol, decimals, bytes32(0), tokenWards);
+        IShareToken token = tokenFactory.newToken(name, symbol, decimals, tokenSalt);
+
+        assertEq(IAuth(address(token)).wards(address(1)), 1);
+        assertEq(IAuth(address(token)).wards(address(2)), 1);
     }
 
     function _stringToBytes32(string memory source) internal pure returns (bytes32 result) {
