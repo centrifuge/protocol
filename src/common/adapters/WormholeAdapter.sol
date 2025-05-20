@@ -88,7 +88,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata, uint256 gasLimit)
-        public
+        external
         view
         returns (uint256 nativePriceQuote)
     {

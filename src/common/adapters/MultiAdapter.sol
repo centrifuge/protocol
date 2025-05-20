@@ -12,8 +12,6 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 
-/// @title  Axelar Adapter
-/// @notice Routing contract that integrates with an Axelar Gateway
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
     using MessageProofLib for *;
@@ -208,7 +206,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit)
-        public
+        external
         view
         returns (uint256 total)
     {
