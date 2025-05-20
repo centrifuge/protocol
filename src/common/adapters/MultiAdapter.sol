@@ -50,6 +50,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         emit File(what, instance);
     }
 
+    /// @inheritdoc IMultiAdapter
     function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata addresses) external auth {
         if (what == "adapters") {
             uint8 quorum_ = addresses.length.toUint8();
@@ -148,17 +149,20 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
     }
 
+    /// @inheritdoc IMultiAdapter
     function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         require(_adapterDetails[centrifugeId][adapter].id != 0, InvalidAdapter());
         recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
+    /// @inheritdoc IMultiAdapter
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
         delete recoveries[centrifugeId][adapter][payloadHash];
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);
     }
 
+    /// @inheritdoc IMultiAdapter
     function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
         bytes32 payloadHash = keccak256(payload);
         uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
@@ -216,16 +220,19 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
     }
 
+    /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId) external view returns (uint8) {
         Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
         return adapter.quorum;
     }
 
+    /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId) external view returns (uint64) {
         Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
         return adapter.activeSessionId;
     }
 
+    /// @inheritdoc IMultiAdapter
     function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
         return inbound[centrifugeId][payloadHash].votes;
     }

@@ -19,17 +19,17 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
-    IMessageHandler public immutable startpoint;
+    IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
 
     mapping(string axelarId => AxelarSource) public sources;
     mapping(uint16 centrifugeId => AxelarDestination) public destinations;
 
-    constructor(IMessageHandler startpoint_, address axelarGateway_, address axelarGasService_, address deployer)
+    constructor(IMessageHandler entrypoint_, address axelarGateway_, address axelarGasService_, address deployer)
         Auth(deployer)
     {
-        startpoint = startpoint_;
+        entrypoint = entrypoint_;
         axelarGateway = IAxelarGateway(axelarGateway_);
         axelarGasService = IAxelarGasService(axelarGasService_);
     }
@@ -76,7 +76,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
             NotApprovedByGateway()
         );
 
-        startpoint.handle(source.centrifugeId, payload);
+        entrypoint.handle(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         payable
         returns (bytes32 adapterData)
     {
-        require(msg.sender == address(startpoint), NotStartpoint());
+        require(msg.sender == address(entrypoint), NotEntrypoint());
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 

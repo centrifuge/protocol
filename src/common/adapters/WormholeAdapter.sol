@@ -20,14 +20,14 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
     uint16 public immutable localWormholeId;
-    IMessageHandler public immutable startpoint;
+    IMessageHandler public immutable entrypoint;
     IWormholeRelayer public immutable relayer;
 
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint16 centrifugeId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler startpoint_, address relayer_, address deployer) Auth(deployer) {
-        startpoint = startpoint_;
+    constructor(IMessageHandler entrypoint_, address relayer_, address deployer) Auth(deployer) {
+        entrypoint = entrypoint_;
         relayer = IWormholeRelayer(relayer_);
 
         IWormholeDeliveryProvider deliveryProvider = IWormholeDeliveryProvider(relayer.getDefaultDeliveryProvider());
@@ -62,7 +62,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        startpoint.handle(source.centrifugeId, payload);
+        entrypoint.handle(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         payable
         returns (bytes32 adapterData)
     {
-        require(msg.sender == address(startpoint), NotStartpoint());
+        require(msg.sender == address(entrypoint), NotEntrypoint());
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
