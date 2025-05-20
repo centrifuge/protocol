@@ -419,56 +419,56 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 }
 
 contract MultiAdapterTestInitiateRecovery is MultiAdapterTest {
-    bytes32 constant BATCH_HASH = bytes32("1");
+    bytes32 constant PAYLOAD_HASH = bytes32("1");
 
     function testErrInvalidAdapter() public {
         vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
     }
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
     }
 
     function testInitiateRecovery() public {
         multiAdapter.file("adapters", REMOTE_CENT_ID, oneAdapter);
 
         vm.expectEmit();
-        emit IMultiAdapter.InitiateRecovery(REMOTE_CENT_ID, BATCH_HASH, payloadAdapter);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        emit IMultiAdapter.InitiateRecovery(REMOTE_CENT_ID, PAYLOAD_HASH, payloadAdapter);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
 
         assertEq(
-            multiAdapter.recoveries(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH),
+            multiAdapter.recoveries(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH),
             block.timestamp + multiAdapter.RECOVERY_CHALLENGE_PERIOD()
         );
     }
 }
 
 contract MultiAdapterTestDisputeRecovery is MultiAdapterTest {
-    bytes32 constant BATCH_HASH = bytes32("1");
+    bytes32 constant PAYLOAD_HASH = bytes32("1");
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
     }
 
     function testErrRecoveryNotInitiated() public {
         vm.expectRevert(IMultiAdapter.RecoveryNotInitiated.selector);
-        multiAdapter.disputeRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        multiAdapter.disputeRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
     }
 
     function testDisputeRecovery() public {
         multiAdapter.file("adapters", REMOTE_CENT_ID, oneAdapter);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        multiAdapter.initiateRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
 
         vm.expectEmit();
-        emit IMultiAdapter.DisputeRecovery(REMOTE_CENT_ID, BATCH_HASH, payloadAdapter);
-        multiAdapter.disputeRecovery(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH);
+        emit IMultiAdapter.DisputeRecovery(REMOTE_CENT_ID, PAYLOAD_HASH, payloadAdapter);
+        multiAdapter.disputeRecovery(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH);
 
-        assertEq(multiAdapter.recoveries(REMOTE_CENT_ID, payloadAdapter, BATCH_HASH), 0);
+        assertEq(multiAdapter.recoveries(REMOTE_CENT_ID, payloadAdapter, PAYLOAD_HASH), 0);
     }
 }
 
