@@ -4,6 +4,10 @@ pragma solidity 0.8.28;
 import {IRedeemManager} from "src/spoke/interfaces/investments/IRedeemManager.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+
 interface IAsyncRedeemManager is IRedeemManager {
     /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
@@ -49,4 +53,10 @@ interface IAsyncRedeemManager is IRedeemManager {
     /// @notice Indicates whether a user has claimable redeem request cancellation and returns the total claim
     ///         value in shares.
     function claimableCancelRedeemRequest(IBaseVault vault, address user) external view returns (uint256 shares);
+
+    /// @notice Returns the address of the vault for a given pool, share class and asset
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (IBaseVault vault);
 }

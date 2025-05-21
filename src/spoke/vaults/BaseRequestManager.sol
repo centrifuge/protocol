@@ -29,8 +29,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     ISpoke public spoke;
     IPoolEscrowProvider public poolEscrowProvider;
 
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
-
     constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
         root = root_;
@@ -46,32 +44,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc IBaseRequestManager
-    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
-        public
-        virtual
-        auth
-    {
-        require(vault_.asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
-
-        vault[poolId][scId][assetId] = IBaseVault(address(vault_));
-        rely(address(vault_));
-    }
-
-    /// @inheritdoc IBaseRequestManager
-    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
-        public
-        virtual
-        auth
-    {
-        require(vault_.asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
-
-        delete vault[poolId][scId][assetId];
-        deny(address(vault_));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -115,11 +87,6 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
         return poolEscrowProvider.escrow(poolId);
-    }
-
-    /// @inheritdoc IBaseRequestManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
-        return vault[poolId][scId][assetId];
     }
 
     function _assetToShareAmount(

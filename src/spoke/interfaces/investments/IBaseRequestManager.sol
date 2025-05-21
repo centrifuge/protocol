@@ -49,10 +49,4 @@ interface IBaseRequestManager {
 
     /// @notice Removes `vault` from `who`'s authorized callers
     function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
-
-    /// @notice Returns the address of the vault for a given pool, share class and asset
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (IBaseVault vault);
 }

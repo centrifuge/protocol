@@ -93,10 +93,9 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     /// @inheritdoc IBaseRequestManager
     function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
-        override(BaseRequestManager, IBaseRequestManager)
         auth
     {
-        super.addVault(poolId, scId, vault_, asset_, assetId);
+        require(vault_.asset() == asset_, AssetMismatch());
 
         (, uint256 tokenId) = spoke.idToAsset(assetId);
         setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
@@ -107,15 +106,16 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
             require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
             asyncRequestManager.addVault(poolId, scId, vault_, asset_, assetId);
         }
+
+        rely(address(vault_));
     }
 
     /// @inheritdoc IBaseRequestManager
     function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
         public
-        override(BaseRequestManager, IBaseRequestManager)
         auth
     {
-        super.removeVault(poolId, scId, vault_, asset_, assetId);
+        require(vault_.asset() == asset_, AssetMismatch());
 
         (, uint256 tokenId) = spoke.idToAsset(assetId);
         delete maxReserve[poolId][scId][asset_][tokenId];
@@ -126,6 +126,8 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
             require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
             asyncRequestManager.removeVault(poolId, scId, vault_, asset_, assetId);
         }
+
+        deny(address(vault_));
     }
 
     /// @inheritdoc ISyncRequestManager
