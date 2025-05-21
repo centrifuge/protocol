@@ -161,7 +161,7 @@ library PricingLib {
         }
 
         return MathLib.mulDiv(
-            priceQuotePerBase.inner(),
+            priceQuotePerBase.raw(),
             baseAmount * 10 ** quoteDecimals,
             10 ** (baseDecimals + PRICE_DECIMALS), // cancel out exponentiation from D18 multiplication
             rounding
@@ -178,6 +178,8 @@ library PricingLib {
         D18 priceBasePerQuote,
         MathLib.Rounding rounding
     ) internal pure returns (uint256 quoteAmount) {
+        require(priceBasePerQuote.raw() != 0, "PricingLib/division-by-zero");
+
         if (baseDecimals == quoteDecimals) {
             return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding);
         }
@@ -185,7 +187,7 @@ library PricingLib {
         return MathLib.mulDiv(
             baseAmount * 10 ** quoteDecimals,
             10 ** PRICE_DECIMALS,
-            10 ** baseDecimals * priceBasePerQuote.inner(),
+            10 ** baseDecimals * priceBasePerQuote.raw(),
             rounding
         );
     }
@@ -201,10 +203,12 @@ library PricingLib {
         D18 priceDenominator,
         MathLib.Rounding rounding
     ) internal pure returns (uint256 quoteAmount) {
+        require(priceDenominator.raw() != 0, "PricingLib/division-by-zero");
+
         return MathLib.mulDiv(
-            priceNumerator.inner(),
+            priceNumerator.raw(),
             baseAmount * 10 ** quoteDecimals,
-            10 ** baseDecimals * priceDenominator.inner(),
+            10 ** baseDecimals * priceDenominator.raw(),
             rounding
         );
     }
