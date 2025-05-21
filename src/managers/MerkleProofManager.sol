@@ -94,7 +94,7 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     }
 }
 
-function toPolicyLeaf(Call memory call, bytes memory addresses) view returns (PolicyLeaf memory) {
+function toPolicyLeaf(Call memory call, bytes memory addresses) pure returns (PolicyLeaf memory) {
     return PolicyLeaf({
         decoder: call.decoder,
         target: call.target,
