@@ -330,6 +330,15 @@ contract TestMessageLibIdentities is Test {
         // This message is a submessage and has not static message length defined
     }
 
+    function testUpdateContractPolicy(bytes32 who, bytes32 what) public pure {
+        MessageLib.UpdateContractPolicy memory a = MessageLib.UpdateContractPolicy({who: who, what: what});
+        MessageLib.UpdateContractPolicy memory b = MessageLib.deserializeUpdateContractPolicy(a.serialize());
+
+        assertEq(a.who, b.who);
+        assertEq(a.what, b.what);
+        // This message is a submessage and has not static message length defined
+    }
+
     function testUpdateVault(uint64 poolId, bytes16 scId, bytes32 vaultOrFactory, uint128 assetId, uint8 kind)
         public
         pure

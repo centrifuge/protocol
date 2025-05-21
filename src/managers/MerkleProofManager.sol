@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -17,6 +18,8 @@ import {IMerkleProofManager} from "src/managers/interfaces/IMerkleProofManager.s
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
 contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateContract {
+    using CastLib for *;
+
     PoolId public immutable poolId;
     IBalanceSheet public immutable balanceSheet;
 
@@ -32,15 +35,20 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external view auth {
-        // TODO: add updatePolicy
-    }
+    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
 
-    function setPolicy(address strategist, bytes32 root) external auth {
-        // TEMP for testing purposes, until UpdateContract is implemented
-        bytes32 oldRoot = policy[strategist];
-        policy[strategist] = root;
-        emit PolicyUpdated(strategist, oldRoot, root);
+        if (kind == uint8(UpdateContractType.Policy)) {
+            MessageLib.UpdateContractPolicy memory m = MessageLib.deserializeUpdateContractPolicy(payload);
+            address strategist = m.who.toAddress();
+
+            bytes32 oldRoot = policy[strategist];
+            policy[strategist] = m.what;
+
+            emit UpdatePolicy(strategist, oldRoot, m.what);
+        } else {
+            revert UnknownUpdateContractType();
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -68,7 +76,7 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
             _verifyCallData(strategistPolicy, proofs[i], decoders[i], targets[i], values[i], targetData[i]);
 
             _functionCallWithValue(targets[i], targetData[i], values[i]);
-            emit CallExecuted(targets[i], bytes4(targetData[i]), targetData[i], values[i]);
+            emit ExecuteCall(targets[i], bytes4(targetData[i]), targetData[i], values[i]);
         }
     }
 

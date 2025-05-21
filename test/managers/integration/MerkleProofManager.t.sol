@@ -113,7 +113,12 @@ contract BalanceSheetTest is BaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
-        manager.setPolicy(address(this), tree[tree.length - 1][0]);
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            )
+        );
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](3);

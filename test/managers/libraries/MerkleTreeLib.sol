@@ -73,7 +73,7 @@ library MerkleTreeLib {
         }
     }
 
-    function generateProof(bytes32 leaf, bytes32[][] memory tree) internal returns (bytes32[] memory proof) {
+    function generateProof(bytes32 leaf, bytes32[][] memory tree) internal pure returns (bytes32[] memory proof) {
         // The length of each proof is the height of the tree - 1.
         uint256 tree_length = tree.length;
         proof = new bytes32[](tree_length - 1);
