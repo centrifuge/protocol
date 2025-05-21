@@ -75,7 +75,7 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         for (uint256 i; i < numCalls; ++i) {
             _verifyCallData(strategistPolicy, proofs[i], decoders[i], targets[i], values[i], targetData[i]);
 
-            _functionCallWithValue(targets[i], targetData[i], values[i]);
+            _callWithValue(targets[i], targetData[i], values[i]);
             emit ExecuteCall(targets[i], bytes4(targetData[i]), targetData[i], values[i]);
         }
     }
@@ -92,19 +92,19 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         uint256 value,
         bytes calldata targetData
     ) internal view {
-        bytes memory addresses = abi.decode(_functionStaticCall(decoder, targetData), (bytes));
+        bytes memory addresses = abi.decode(_staticCall(decoder, targetData), (bytes));
         bytes32 leafHash = PolicyLeaf(decoder, target, value > 0, bytes4(targetData), addresses).computeHash();
         require(MerkleProofLib.verify(proof, root, leafHash), InvalidProof(target, targetData, value));
     }
 
-    function _functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+    function _staticCall(address target, bytes memory data) internal view returns (bytes memory) {
         (bool success, bytes memory returnData) = target.staticcall(data);
         require(success, CallFailed());
 
         return returnData;
     }
 
-    function _functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
+    function _callWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
         require(address(this).balance >= value, InsufficientBalance());
 
         (bool success, bytes memory returnData) = target.call{value: value}(data);
