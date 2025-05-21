@@ -13,7 +13,7 @@ import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.so
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
-import {IMerkleProofManager} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
@@ -56,46 +56,26 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMerkleProofManager
-    function execute(
-        bytes32[][] calldata proofs,
-        address[] calldata decoders,
-        address[] calldata targets,
-        bytes[] calldata targetData,
-        uint256[] calldata values
-    ) external {
-        uint256 numCalls = targets.length;
-        require(numCalls == proofs.length, InvalidProofLength());
-        require(numCalls == decoders.length, InvalidDecodersLength());
-        require(numCalls == targetData.length, InvalidTargetDataLength());
-        require(numCalls == values.length, InvalidValuesLength());
-
+    function execute(Call[] calldata calls) external {
         bytes32 strategistPolicy = policy[msg.sender];
         require(strategistPolicy != bytes32(0), NotAStrategist());
 
-        for (uint256 i; i < numCalls; ++i) {
-            _verifyCallData(strategistPolicy, proofs[i], decoders[i], targets[i], values[i], targetData[i]);
+        for (uint256 i; i < calls.length; ++i) {
+            bytes memory addresses = abi.decode(_staticCall(calls[i].decoder, calls[i].targetData), (bytes));
+            bytes32 leafHash = computeHash(calls[i].toPolicyLeaf(addresses));
+            require(
+                MerkleProofLib.verify(calls[i].proof, strategistPolicy, leafHash),
+                InvalidProof(calls[i].target, calls[i].targetData, calls[i].value)
+            );
 
-            _callWithValue(targets[i], targetData[i], values[i]);
-            emit ExecuteCall(targets[i], bytes4(targetData[i]), targetData[i], values[i]);
+            _callWithValue(calls[i].target, calls[i].targetData, calls[i].value);
+            emit ExecuteCall(calls[i].target, bytes4(calls[i].targetData), calls[i].targetData, calls[i].value);
         }
     }
 
     //----------------------------------------------------------------------------------------------
     // Helper methods
     //----------------------------------------------------------------------------------------------
-
-    function _verifyCallData(
-        bytes32 root,
-        bytes32[] calldata proof,
-        address decoder,
-        address target,
-        uint256 value,
-        bytes calldata targetData
-    ) internal view {
-        bytes memory addresses = abi.decode(_staticCall(decoder, targetData), (bytes));
-        bytes32 leafHash = PolicyLeaf(decoder, target, value > 0, bytes4(targetData), addresses).computeHash();
-        require(MerkleProofLib.verify(proof, root, leafHash), InvalidProof(target, targetData, value));
-    }
 
     function _staticCall(address target, bytes memory data) internal view returns (bytes memory) {
         (bool success, bytes memory returnData) = target.staticcall(data);
@@ -114,16 +94,20 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     }
 }
 
-struct PolicyLeaf {
-    address decoder;
-    address target;
-    bool valueNonZero;
-    bytes4 selector;
-    bytes addresses;
+function toPolicyLeaf(Call memory call, bytes memory addresses) view returns (PolicyLeaf memory) {
+    return PolicyLeaf({
+        decoder: call.decoder,
+        target: call.target,
+        selector: bytes4(call.targetData),
+        addresses: addresses,
+        valueNonZero: call.value > 0
+    });
 }
+
+using {toPolicyLeaf} for Call;
 
 function computeHash(PolicyLeaf memory leaf) pure returns (bytes32) {
     return keccak256(abi.encodePacked(leaf.decoder, leaf.target, leaf.valueNonZero, leaf.selector, leaf.addresses));
 }
 
-using {computeHash} for PolicyLeaf global;
+using {computeHash} for PolicyLeaf;

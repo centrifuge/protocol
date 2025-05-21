@@ -11,7 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 
-import {MerkleProofManager, PolicyLeaf} from "src/managers/MerkleProofManager.sol";
+import {MerkleProofManager, PolicyLeaf, computeHash, Call} from "src/managers/MerkleProofManager.sol";
 import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
 import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
 
@@ -129,35 +129,43 @@ contract BalanceSheetTest is BaseTest {
         (bytes32[][] memory proofs) = MerkleTreeLib.getProofsUsingTree(_computeHashes(proofLeafs), tree);
 
         // Execute
-        bytes[] memory targetData = new bytes[](3);
-        targetData[0] = abi.encodeWithSelector(
-            BalanceSheet.withdraw.selector,
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(manager),
-            withdrawAmount
-        );
-        targetData[1] = abi.encodeWithSelector(ERC20.approve.selector, address(balanceSheet), depositAmount);
-        targetData[2] = abi.encodeWithSelector(
-            BalanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, depositAmount
-        );
+        Call[] memory calls = new Call[](3);
+        calls[0] = Call({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.withdraw.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                address(manager),
+                withdrawAmount
+            ),
+            value: 0,
+            proof: proofs[0]
+        });
 
-        address[] memory targets = new address[](3);
-        targets[0] = address(balanceSheet);
-        targets[1] = address(erc20);
-        targets[2] = address(balanceSheet);
+        calls[1] = Call({
+            decoder: address(decoder),
+            target: address(erc20),
+            targetData: abi.encodeWithSelector(ERC20.approve.selector, address(balanceSheet), depositAmount),
+            value: 0,
+            proof: proofs[1]
+        });
 
-        uint256[] memory values = new uint256[](3);
-
-        address[] memory decoders = new address[](3);
-        decoders[0] = address(decoder);
-        decoders[1] = address(decoder);
-        decoders[2] = address(decoder);
+        calls[2] = Call({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, depositAmount
+            ),
+            value: 0,
+            proof: proofs[2]
+        });
 
         assertEq(erc20.balanceOf(receiver), 0);
-        manager.execute(proofs, decoders, targets, targetData, values);
+        manager.execute(calls);
         assertEq(erc20.balanceOf(address(manager)), withdrawAmount - depositAmount);
         assertEq(erc20.balanceOf(address(balanceSheet.escrow(POOL_A))), depositAmount);
     }
@@ -169,7 +177,7 @@ contract BalanceSheetTest is BaseTest {
     function _computeHashes(PolicyLeaf[] memory policyLeafs) internal pure returns (bytes32[] memory) {
         bytes32[] memory leafs = new bytes32[](policyLeafs.length);
         for (uint256 i; i < policyLeafs.length; ++i) {
-            leafs[i] = policyLeafs[i].computeHash();
+            leafs[i] = computeHash(policyLeafs[i]);
         }
         return leafs;
     }

@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0;
 
+struct Call {
+    address decoder;
+    address target;
+    bytes targetData;
+    uint256 value;
+    bytes32[] proof;
+}
+
+struct PolicyLeaf {
+    address decoder;
+    address target;
+    bytes4 selector;
+    bytes addresses;
+    bool valueNonZero;
+}
+
 interface IMerkleProofManager {
     event UpdatePolicy(address indexed strategist, bytes32 oldRoot, bytes32 newRoot);
     event ExecuteCall(address indexed target, bytes4 indexed selector, bytes targetData, uint256 value);
@@ -14,11 +30,5 @@ interface IMerkleProofManager {
     error InvalidProof(address target, bytes targetData, uint256 value);
     error NotAStrategist();
 
-    function execute(
-        bytes32[][] calldata proofs,
-        address[] calldata decoders,
-        address[] calldata targets,
-        bytes[] calldata targetData,
-        uint256[] calldata values
-    ) external;
+    function execute(Call[] calldata calls) external;
 }
