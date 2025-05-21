@@ -23,18 +23,9 @@ contract PricingLibBaseTest is Test {
     uint128 constant MAX_AMOUNT = type(uint128).max / MAX_PRICE_POOL_PER_SHARE;
 }
 
-contract ConvertWithPriceTest is Test {
+contract ConvertWithPriceTest is PricingLibBaseTest {
     using PricingLib for *;
     using MathLib for uint256;
-
-    uint8 constant MIN_ASSET_DECIMALS = 2;
-    uint8 constant MAX_ASSET_DECIMALS = 18;
-    uint8 constant POOL_DECIMALS = 18;
-    uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
-    uint128 constant MIN_PRICE = 1e14;
-    uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e20;
-    uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e20;
-    uint128 constant MAX_AMOUNT = type(uint128).max / MAX_PRICE_POOL_PER_SHARE;
 
     function testConvertWithPriceSimple() public pure {
         uint8 baseDecimals = 2;
@@ -93,31 +84,46 @@ contract ConvertWithPriceTest is Test {
         assertEq(result, expectedDown, "convertWithPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
+}
 
-    // Enhanced rounding edge-case check
-    function testRoundingEdgeCases() public pure {
-        uint256 baseAmount = 1;
-        uint8 baseDecimals = 8;
-        uint8 quoteDecimals = 18;
+contract ConvertWithPriceEdgeCasesTest is PricingLibBaseTest {
+    uint256 baseAmount = 1;
+    uint8 baseDecimals = 8;
+    uint8 quoteDecimals = 18;
+    uint128 amountWithoutPrice = 1e10; // 1e18/1e8
 
-        // Min base amount
+    function testEdgeCaseWithPriceMinBaseAmount() public view {
         D18 price = d18(1e18 - 1);
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
-        uint256 expected = price.mulUint256(1e10, MathLib.Rounding.Down);
-        assertEq(result, expected, "Rounding edge case 1 (min base amount) failed");
+        uint256 expected = price.mulUint256(amountWithoutPrice, MathLib.Rounding.Down);
+        assertEq(result, expected);
+        assertEq(expected, amountWithoutPrice - 1);
+    }
 
-        // Very small price
-        price = d18(1e8);
-        result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
-        expected = price.mulUint256(1e10, MathLib.Rounding.Down);
-        assertEq(result, expected, "Rounding edge case 2 (small price) failed");
+    function testEdgeCaseWithPriceSmallestPriceToResultInOne() public view {
+        D18 price = d18(1e18 / amountWithoutPrice);
+        uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
+        assertEq(result, 1);
+    }
 
-        // Max baseAmount
-        baseAmount = type(uint128).max;
-        price = d18(type(uint64).max);
-        result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
-        expected = price.mulUint256(baseAmount * (10 ** (quoteDecimals - baseDecimals)), MathLib.Rounding.Down);
-        assertEq(result, expected, "Rounding edge case 3 (max baseAmount) failed");
+    function testEdgeCaseWithPriceSmallestPriceToResultInZero() public view {
+        D18 price = d18(1e18 / amountWithoutPrice - 1);
+        uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
+        assertEq(result, 0);
+    }
+
+    function testEdgeCaseWithPriceMaxAmounts() public view {
+        uint256 maxBaseAmount = type(uint128).max;
+        D18 price = d18(type(uint64).max);
+        uint256 result = PricingLib.convertWithPrice(maxBaseAmount, baseDecimals, quoteDecimals, price);
+        uint256 expected =
+            price.mulUint256(maxBaseAmount * (10 ** (quoteDecimals - baseDecimals)), MathLib.Rounding.Down);
+        assertEq(result, expected);
+    }
+
+    function testEdgeCaseWithPriceZeroPrice() public pure {
+        uint256 result = PricingLib.convertWithPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
+        assertEq(result, 0);
     }
 }
 
@@ -183,34 +189,59 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         assertEq(result, expectedDown, "convertWithReciprocalPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
+}
 
-    function testRoundingEdgeCasesReciprocal() public pure {
-        uint256 baseAmount = 1;
-        uint8 baseDecimals = 8;
-        uint8 quoteDecimals = 18;
+contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
+    uint256 baseAmount = 1;
+    uint8 baseDecimals = 8;
+    uint8 quoteDecimals = 18;
+    uint128 amountWithoutPrice = 1e10; // 1e18/1e8
 
-        // Min base amount with price close to 1
+    function testEdgeCaseWithReciprocalPriceMinBaseAmount() public view {
         D18 price = d18(1e18 - 1);
         uint256 result =
             PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
-        uint256 expected = price.reciprocalMulUint256(1e10, MathLib.Rounding.Down);
-        assertEq(result, expected, "Reciprocal rounding edge case 1 (min base amount) failed");
+        uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
+        assertEq(result, expected);
+        assertEq(expected, amountWithoutPrice);
+    }
 
-        // Very small price
-        price = d18(1e8);
+    function testEdgeCaseWithReciprocalPriceSmallestPrice() public view {
+        D18 price = d18(1);
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        uint256 expected = price.reciprocalMulUint256(amountWithoutPrice, MathLib.Rounding.Down);
+        assertEq(result, expected);
+        assertEq(expected, 1e28);
+    }
+
+    function testEdgeCaseWithReciprocalPriceSmallestPriceToZero() public view {
+        D18 price = d18(1e28 + 1);
+        uint256 result =
+            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
+        assertEq(result, 0, "Reciprocal rounding edge case (smallest price to result in 0) failed");
+
+        price = d18(1e28);
         result =
             PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
-        expected = price.reciprocalMulUint256(1e10, MathLib.Rounding.Down);
-        assertEq(result, expected, "Reciprocal rounding edge case 2 (small price) failed");
+        assertEq(result, 1, "Reciprocal rounding edge case (smallest price to result in 1) failed");
+    }
 
-        // Max baseAmount
-        baseAmount = type(uint128).max;
-        price = d18(type(uint64).max);
-        result =
-            PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
-        expected =
-            price.reciprocalMulUint256(baseAmount * (10 ** (quoteDecimals - baseDecimals)), MathLib.Rounding.Down);
-        assertEq(result, expected, "Reciprocal rounding edge case 3 (max baseAmount) failed");
+    function testEdgeCaseWithReciprocalPriceMaxAmounts() public view {
+        uint256 maxBaseAmount = type(uint128).max;
+        D18 price = d18(type(uint64).max);
+        uint256 result = PricingLib.convertWithReciprocalPrice(
+            maxBaseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
+        );
+        uint256 expected =
+            price.reciprocalMulUint256(maxBaseAmount * (10 ** (quoteDecimals - baseDecimals)), MathLib.Rounding.Down);
+        assertEq(result, expected);
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testEdgeCaseWithReciprocalPriceZeroPrice() public {
+        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        PricingLib.convertWithReciprocalPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
     }
 }
 
@@ -295,44 +326,68 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         assertEq(result, expectedDown, "convertWithPrices failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
+}
 
-    function testRoundingEdgeCasesWithPrices() public pure {
-        uint256 baseAmount = 1;
-        uint8 baseDecimals = 8;
-        uint8 quoteDecimals = 18;
+contract ConvertWithPricesEdgeCasesTest is PricingLibBaseTest {
+    uint256 baseAmount = 1;
+    uint8 baseDecimals = 8;
+    uint8 quoteDecimals = 18;
+    uint128 amountWithoutPrice = 1e10; // 1e18/1e8
 
-        // Min base amount with prices close to 1
-        D18 priceNumerator = d18(1e18 - 1);
-        D18 priceDenominator = d18(1e18);
+    function testEdgeCaseWithPricesMinBaseAmount() public view {
+        D18 priceLower = d18(1e18 - 1);
+        D18 priceHigher = d18(1e18);
+        uint256 result = PricingLib.convertWithPrices(
+            baseAmount, baseDecimals, quoteDecimals, priceLower, priceHigher, MathLib.Rounding.Down
+        );
+        assertEq(result, amountWithoutPrice - 1, "Lower price in numerator failed");
+
+        result = PricingLib.convertWithPrices(
+            baseAmount, baseDecimals, quoteDecimals, priceHigher, priceLower, MathLib.Rounding.Down
+        );
+        assertEq(result, amountWithoutPrice, "Lower price in denominator failed");
+    }
+
+    function testEdgeCaseWithPricesTinyNumerator() public view {
+        D18 priceNumerator = d18(1);
+        D18 priceDenominator = d18(1e10);
         uint256 result = PricingLib.convertWithPrices(
             baseAmount, baseDecimals, quoteDecimals, priceNumerator, priceDenominator, MathLib.Rounding.Down
         );
-        uint256 expected = MathLib.mulDiv(priceNumerator.inner(), 1e10, priceDenominator.inner(), MathLib.Rounding.Down);
-        assertEq(result, expected, "Prices rounding edge case 1 (min base amount) failed");
+        uint256 expected = amountWithoutPrice / priceDenominator.raw();
+        assertEq(result, expected);
+        assertEq(expected, 1);
+    }
 
-        // Very small prices
-        priceNumerator = d18(1e8);
-        priceDenominator = d18(1e9);
-        result = PricingLib.convertWithPrices(
+    function testEdgeCaseWithPricesTinyDenominator() public view {
+        D18 priceNumerator = d18(1e9);
+        D18 priceDenominator = d18(1);
+        uint256 result = PricingLib.convertWithPrices(
             baseAmount, baseDecimals, quoteDecimals, priceNumerator, priceDenominator, MathLib.Rounding.Down
         );
-        expected = MathLib.mulDiv(priceNumerator.inner(), 1e10, priceDenominator.inner(), MathLib.Rounding.Down);
-        assertEq(result, expected, "Prices rounding edge case 2 (small prices) failed");
+        uint256 expected = priceNumerator.raw() * amountWithoutPrice;
+        assertEq(result, expected);
+        assertEq(expected, 1e19);
+    }
 
-        // Max baseAmount
-        baseAmount = type(uint128).max;
-        priceNumerator = d18(type(uint64).max);
-        priceDenominator = d18(type(uint64).max - 1);
-        result = PricingLib.convertWithPrices(
-            baseAmount, baseDecimals, quoteDecimals, priceNumerator, priceDenominator, MathLib.Rounding.Down
+    function testEdgeCaseWithPricesMaxAmounts() public view {
+        uint256 maxBaseAmount = type(uint128).max;
+
+        D18 priceNumerator = d18(type(uint64).max);
+        D18 priceDenominator = d18(type(uint64).max);
+        uint256 result = PricingLib.convertWithPrices(
+            maxBaseAmount, baseDecimals, quoteDecimals, priceNumerator, priceDenominator, MathLib.Rounding.Down
         );
-        expected = MathLib.mulDiv(
-            priceNumerator.inner(),
-            baseAmount * (10 ** (quoteDecimals - baseDecimals)),
-            priceDenominator.inner(),
-            MathLib.Rounding.Down
-        );
-        assertEq(result, expected, "Prices rounding edge case 3 (max baseAmount) failed");
+        assertEq(result, uint256(amountWithoutPrice * maxBaseAmount));
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testConvertWithPricesZeroPrices() public {
+        uint256 resultNumZero = PricingLib.convertWithPrices(1e18, 18, 18, d18(0), d18(1e18), MathLib.Rounding.Down);
+        assertEq(resultNumZero, 0);
+
+        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        PricingLib.convertWithPrices(1e18, 18, 18, d18(1e18), d18(0), MathLib.Rounding.Down);
     }
 }
 
@@ -463,6 +518,28 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         assertGe(result, underestimate, "shareToAssetAmount should be at least as large as underestimate");
         assertEq(result, expectedDown, "shareToAssetAmount failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
+    }
+
+    function testShareToAssetAmountZeroValues() public {
+        address asset = makeAddr("Asset");
+        address shareToken = makeAddr("ShareToken");
+
+        // Test zero share amount
+        uint256 result =
+            PricingLib.shareToAssetAmount(shareToken, 0, asset, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down);
+        assertEq(result, 0, "Zero share amount should return 0");
+
+        // Test zero pricePoolPerShare
+        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(1e18), d18(0), MathLib.Rounding.Down);
+        assertEq(result, 0, "Zero pricePoolPerShare should return 0");
+
+        // Test zero pricePoolPerAsset
+        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(0), d18(1e18), MathLib.Rounding.Down);
+        assertEq(result, 0, "Zero pricePoolPerAsset should return 0");
+
+        // Test all zeros
+        result = PricingLib.shareToAssetAmount(shareToken, 0, asset, 0, d18(0), d18(0), MathLib.Rounding.Down);
+        assertEq(result, 0, "All zeros should return 0");
     }
 }
 
