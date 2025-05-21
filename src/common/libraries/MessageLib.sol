@@ -27,6 +27,7 @@ enum MessageType {
     ExecuteTransferShares,
     UpdateRestriction,
     UpdateContract,
+    UpdateVault,
     UpdateBalanceSheetManager,
     ApprovedDeposits,
     IssuedShares,
@@ -58,7 +59,6 @@ enum UpdateRestrictionType {
 enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
-    VaultUpdate,
     MaxAssetPriceAge,
     MaxSharePriceAge,
     Valuation,
@@ -98,6 +98,7 @@ library MessageLib {
         (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
+        (74  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.IssuedShares) * 8) +
@@ -594,34 +595,6 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.VaultUpdate (submsg)
-    //---------------------------------------
-
-    struct UpdateContractVaultUpdate {
-        bytes32 vaultOrFactory;
-        uint128 assetId;
-        uint8 kind;
-    }
-
-    function deserializeUpdateContractVaultUpdate(bytes memory data)
-        internal
-        pure
-        returns (UpdateContractVaultUpdate memory)
-    {
-        require(updateContractType(data) == UpdateContractType.VaultUpdate, UnknownMessageType());
-
-        return UpdateContractVaultUpdate({
-            vaultOrFactory: data.toBytes32(1),
-            assetId: data.toUint128(33),
-            kind: data.toUint8(49)
-        });
-    }
-
-    function serialize(UpdateContractVaultUpdate memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.VaultUpdate, t.vaultOrFactory, t.assetId, t.kind);
-    }
-
-    //---------------------------------------
     //   UpdateContract.MaxAssetPriceAge (submsg)
     //---------------------------------------
 
@@ -709,6 +682,33 @@ library MessageLib {
 
     function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.VaultUpdate (submsg)
+    //---------------------------------------
+
+    struct UpdateVault {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes32 vaultOrFactory;
+        uint8 kind;
+    }
+
+    function deserializeUpdateVault(bytes memory data) internal pure returns (UpdateVault memory) {
+        require(messageType(data) == MessageType.UpdateVault, UnknownMessageType());
+        return UpdateVault({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(25),
+            vaultOrFactory: data.toBytes32(41),
+            kind: data.toUint8(73)
+        });
+    }
+
+    function serialize(UpdateVault memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UpdateVault, t.poolId, t.scId, t.assetId, t.vaultOrFactory, t.kind);
     }
 
     //---------------------------------------

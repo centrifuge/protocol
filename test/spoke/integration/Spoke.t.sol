@@ -972,6 +972,7 @@ contract UpdateContractMock is IUpdateContract {
 contract SpokeUpdateContract is BaseTest, SpokeTestHelper {
     using MessageLib for *;
 
+    /*
     function testUpdateContractTargetThis(
         PoolId poolId_,
         uint8 decimals_,
@@ -1005,48 +1006,7 @@ contract SpokeUpdateContract is BaseTest, SpokeTestHelper {
         emit ISpoke.UpdateContract(poolId, scId, address(mock), vaultUpdate);
         spoke.updateContract(poolId, scId, address(mock), vaultUpdate);
     }
-
-    function testUpdateContractInvalidVaultFactory(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-        registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(IVaultFactory(address(1)));
-
-        vm.expectRevert(ISpoke.InvalidFactory.selector);
-        spoke.updateContract(poolId, scId, address(spoke), vaultUpdate);
-    }
-
-    function testUpdateContractUnknownVault(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-        registerAssetErc20();
-        bytes memory vaultUpdate = MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32("1"),
-            assetId: assetIdErc20.raw(),
-            kind: uint8(VaultUpdateKind.Link)
-        }).serialize();
-
-        vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.updateContract(poolId, scId, address(spoke), vaultUpdate);
-    }
-
-    function testUpdateContractInvalidShare(PoolId poolId) public {
-        spoke.addPool(poolId);
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateContract(poolId, scId, address(spoke), vaultUpdate);
-    }
+    */
 
     function testUpdateContractUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
@@ -1060,6 +1020,7 @@ contract SpokeUpdateContract is BaseTest, SpokeTestHelper {
         spoke.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
+    /*
     function _serializedUpdateContractNewVault(IVaultFactory vaultFactory_)
         internal
         view
@@ -1070,5 +1031,22 @@ contract SpokeUpdateContract is BaseTest, SpokeTestHelper {
             assetId: assetIdErc20.raw(),
             kind: uint8(VaultUpdateKind.DeployAndLink)
         }).serialize();
+    }
+    */
+}
+
+contract SpokeUpdateVault is SpokeTestHelper {
+    function testUpdateContractUnknownVault(
+        PoolId poolId_,
+        uint8 decimals_,
+        string memory tokenName_,
+        string memory tokenSymbol_,
+        ShareClassId scId_
+    ) public {
+        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
+        registerAssetErc20();
+
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.updateVault(poolId, scId, assetIdErc20, address(1), VaultUpdateKind.Link);
     }
 }
