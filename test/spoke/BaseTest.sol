@@ -193,18 +193,12 @@ contract BaseTest is SpokeDeployer, Test {
             );
         }
 
-        bytes32 vaultFactory = _vaultKindToVaultFactory(vaultKind);
+        IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
-        // Trigger new vault deployment via UpdateContract
-        spoke.update(
-            POOL_A,
-            ShareClassId.wrap(scId),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: vaultFactory,
-                assetId: assetId,
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
+        spoke.updateVault(
+            POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
+
         vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
 
@@ -274,9 +268,7 @@ contract BaseTest is SpokeDeployer, Test {
         return randomnumber + 1;
     }
 
-    function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (bytes32 vaultFactoryBytes) {
-        IVaultFactory vaultFactory;
-
+    function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (IVaultFactory vaultFactory) {
         if (vaultKind == VaultKind.Async) {
             vaultFactory = asyncVaultFactory;
         } else if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
@@ -285,7 +277,7 @@ contract BaseTest is SpokeDeployer, Test {
             revert("BaseTest/unsupported-vault-kind");
         }
 
-        return bytes32(bytes20(address(vaultFactory)));
+        return vaultFactory;
     }
 
     // assumptions

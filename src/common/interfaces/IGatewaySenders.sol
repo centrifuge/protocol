@@ -6,6 +6,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
     function localCentrifugeId() external view returns (uint16);
@@ -100,6 +101,15 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         bytes32 target,
         bytes calldata payload
+    ) external;
+
+    /// @notice Creates and send the message
+    function sendUpdateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
     ) external;
 
     /// @notice Creates and send the message

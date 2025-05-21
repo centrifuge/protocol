@@ -225,18 +225,7 @@ contract TestEndToEnd is Test {
         h.hub.updatePricePerShare(poolId, scId, IDENTITY_PRICE);
         h.hub.notifySharePrice{value: GAS}(poolId, scId, s.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(poolId, scId, assetId);
-
-        h.hub.updateContract{value: GAS}(
-            poolId,
-            scId,
-            s.centrifugeId,
-            address(s.spoke).toBytes32(),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: vaultFactory.toBytes32(),
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
+        h.hub.updateVault{value: GAS}(poolId, scId, assetId, vaultFactory.toBytes32(), VaultUpdateKind.DeployAndLink);
 
         vm.stopPrank();
         vm.deal(address(this), DEFAULT_SUBSIDY);

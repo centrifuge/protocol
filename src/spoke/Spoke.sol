@@ -285,36 +285,42 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         shareToken_.mint(receiver.toAddress(), amount);
     }
 
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address vaultOrFactory,
+        VaultUpdateKind kind
+    ) external auth {
+        if (kind == VaultUpdateKind.DeployAndLink) {
+            IVaultFactory factory = IVaultFactory(vaultOrFactory);
+
+            IBaseVault vault = deployVault(poolId, scId, assetId, factory);
+            linkVault(poolId, scId, assetId, vault);
+        } else {
+            IBaseVault vault = IBaseVault(vaultOrFactory);
+
+            // Needed as safeguard against non-validated vaults
+            // I.e. we only accept vaults that have been deployed by the pool manager
+            require(_vaultDetails[vault].asset != address(0), UnknownVault());
+
+            if (kind == VaultUpdateKind.Link) {
+                linkVault(poolId, scId, assetId, vault);
+            } else if (kind == VaultUpdateKind.Unlink) {
+                unlinkVault(poolId, scId, assetId, vault);
+            } else {
+                revert MalformedVaultUpdateMessage();
+            }
+        }
+    }
+
     /// @inheritdoc IUpdateContract
     /// @notice The pool manager either deploys the vault if a factory address is provided
     ///         or it simply links/unlinks the vault.
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
-        if (kind == uint8(UpdateContractType.VaultUpdate)) {
-            MessageLib.UpdateContractVaultUpdate memory m = MessageLib.deserializeUpdateContractVaultUpdate(payload);
-
-            if (m.kind == uint8(VaultUpdateKind.DeployAndLink)) {
-                IVaultFactory factory = IVaultFactory(m.vaultOrFactory.toAddress());
-
-                IBaseVault vault = deployVault(poolId, scId, AssetId.wrap(m.assetId), factory);
-                linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
-            } else {
-                IBaseVault vault = IBaseVault(m.vaultOrFactory.toAddress());
-
-                // Needed as safeguard against non-validated vaults
-                // I.e. we only accept vaults that have been deployed by the pool manager
-                require(_vaultDetails[vault].asset != address(0), UnknownVault());
-
-                if (m.kind == uint8(VaultUpdateKind.Link)) {
-                    linkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
-                } else if (m.kind == uint8(VaultUpdateKind.Unlink)) {
-                    unlinkVault(poolId, scId, AssetId.wrap(m.assetId), vault);
-                } else {
-                    revert MalformedVaultUpdateMessage();
-                }
-            }
-        } else if (kind == uint8(UpdateContractType.MaxAssetPriceAge)) {
+        if (kind == uint8(UpdateContractType.MaxAssetPriceAge)) {
             MessageLib.UpdateContractMaxAssetPriceAge memory m =
                 MessageLib.deserializeUpdateContractMaxAssetPriceAge(payload);
 
