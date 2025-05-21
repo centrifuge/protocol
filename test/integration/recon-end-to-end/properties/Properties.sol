@@ -235,36 +235,43 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The balance of currencies in Escrow is the sum of deposit requests -minus sum of claimed redemptions + transfers in -minus transfers out
     /// @dev NOTE: Ignores donations
-    function property_escrow_balance() public tokenIsSet {
+    function property_escrow_balance() public assetIsSet {
         if (address(globalEscrow) == address(0)) {
             return;
         }
+
         IBaseVault vault = IBaseVault(_getVault());
         address asset = vault.asset();
-        if (asset == address(0)) {
-            return;
-        }
-
-        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
-        // NOTE: Overflow should always result back to a rational value as assets cannot overflow due to other
-        // functions permanently reverting
-        
-        uint256 ghostBalOfEscrow;
         PoolId poolId = vault.poolId();
         address poolEscrow = address(poolEscrowFactory.escrow(poolId));
         uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(address(poolEscrow)); // The balance of tokens in Escrow is sum of deposit requests plus transfers in minus transfers out
         uint256 balOfGlobalEscrow = MockERC20(address(asset)).balanceOf(address(globalEscrow));
-        console2.log("poolEscrow:", poolEscrow);
+
+        // NOTE: By removing checked the math can overflow, then underflow back, resulting in correct calculations
+        // NOTE: Overflow should always result back to a rational value as assets cannot overflow due to other
+        // functions permanently reverting
+        uint256 ghostBalOfEscrow;
         unchecked {
-            // Deposit Requests + Transfers In
+            // Deposit Requests + Transfers In - Claimed Redemptions + TransfersOut
             /// @audit Minted by Asset Payouts by Investors
+            // Note: original implementation
+            // ghostBalOfEscrow = (
+            //     (currencyPayout[asset] + 
+            //     sumOfDepositRequests[asset])
+            //     - (sumOfClaimedRedemptions[asset] + 
+            //     sumOfClaimedDepositCancelations[asset]) 
+            // );
+            console2.log("sumOfDepositRequests", sumOfDepositRequests[asset]);
+            console2.log("sumOfSyncDeposits", sumOfSyncDeposits[asset]);
+            console2.log("sumOfClaimedDepositCancelations", sumOfClaimedDepositCancelations[asset]);
+            
             ghostBalOfEscrow = (
-                currencyPayout[asset] + sumOfDepositRequests[asset]
-                    + sumOfTransfersIn[asset]
-                // Minus Claimed Redemptions and TransfersOut
-                - sumOfClaimedRedemptions[asset] - sumOfClaimedDepositCancelations[asset]
-                    - sumOfTransfersOut[asset]
+                (sumOfDepositRequests[asset]  +
+                sumOfSyncDeposits[asset]) -  
+                (sumOfClaimedDepositCancelations[asset] +
+                sumOfClaimedRedemptions[asset])
             );
+            
         }
 
         eq(balOfPoolEscrow + balOfGlobalEscrow, ghostBalOfEscrow, "balOfEscrow != ghostBalOfEscrow");
@@ -280,18 +287,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address shareToken = vault.share();
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
-        address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
-        console2.log("sumOfFullfilledDeposits", sumOfFullfilledDeposits[address(shareToken)]);
-        console2.log("sumOfRedeemRequests", sumOfRedeemRequests[address(shareToken)]);
-        console2.log("sumOfClaimedDeposits", sumOfClaimedDeposits[address(shareToken)]);
-        console2.log("cancelRedeemShareTokenPayout", cancelRedeemShareTokenPayout[address(shareToken)]);
-        console2.log("sumOfClaimedRequests", sumOfClaimedRequests[address(shareToken)]);
         unchecked {            
             ghostBalanceOfEscrow = (
-                sumOfFullfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)]
-                        - sumOfClaimedDeposits[address(shareToken)] - sumOfClaimedRedeemCancelations[address(shareToken)]
-                        - sumOfClaimedRequests[address(shareToken)]
+                (sumOfFullfilledDeposits[address(shareToken)] + 
+                sumOfRedeemRequests[address(shareToken)]) - 
+                (sumOfClaimedDeposits[address(shareToken)] + 
+                cancelRedeemShareTokenPayout[address(shareToken)] +
+                sumOfClaimedRedeemCancelations[address(shareToken)])
             );
         }
         eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");

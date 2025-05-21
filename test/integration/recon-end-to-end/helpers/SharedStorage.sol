@@ -134,10 +134,11 @@ abstract contract SharedStorage {
      * See:
      *         - asyncRequests_fulfillRedeemRequest
      */
-    mapping(address => uint256) sumOfClaimedRequests;
 
     mapping(address => uint256) sumOfClaimedDepositCancelations;
     mapping(address => uint256) sumOfClaimedRedeemCancelations;
+
+    mapping(address => uint256) sumOfSyncDeposits;
 
     // END === invariant_E_2 === //
 

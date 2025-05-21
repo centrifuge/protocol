@@ -323,38 +323,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // === Implementation Issues === ///
-    // forge test --match-test test_token_transferFrom_0 -vvv 
-    function test_token_transferFrom_0() public {
 
-        shortcut_deployNewTokenPoolAndShare(5,1,true,false,false);
-
-        shortcut_mint_sync(1,10015902735433064811715116413824);
-
-        token_transferFrom(0xa0Cb889707d426A7A386870A03bc70d1b0697598,1);
-
-    }
-
-    // forge test --match-test test_token_transfer_9 -vvv 
-    function test_token_transfer_9() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_mint_sync(1,10001671087809592187913324498565266);
-
-        console2.log("hook", IShareToken(_getShareToken()).hook());
-        console2.log("fullRestrictions", address(fullRestrictions));
-        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), 0x1d1499e622D69689cdf9004d05Ec547d650Ff211);
-        (bool isMember2,) = fullRestrictions.isMember(_getShareToken(), _getActor());
-        console2.log("is to a member", isMember);
-        console2.log("is from a member", isMember2);
-        token_transfer(0x1d1499e622D69689cdf9004d05Ec547d650Ff211,1);
-
-        // try to return to sender even though not a member
-        // token_transfer(_getActor(),1);
-
-    }
-
-     // forge test --match-test test_property_total_issuance_decreased_after_approve_redeems_and_revoke_shares_3 -vvv 
+    // forge test --match-test test_property_total_issuance_decreased_after_approve_redeems_and_revoke_shares_3 -vvv 
     function test_property_total_issuance_decreased_after_approve_redeems_and_revoke_shares_3() public {
 
         shortcut_deployNewTokenPoolAndShare(2,4795343,true,false,true);

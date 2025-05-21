@@ -25,6 +25,7 @@ import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
+/// @dev Admin functions called by the admin actor
 abstract contract AdminTargets is
     BaseTargetFunctions,
     Properties
@@ -238,7 +239,7 @@ abstract contract AdminTargets is
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         uint256 burnedShares = sharesBefore - sharesAfter;
 
-        // NOTE: shares are burned on cancel 
+        // NOTE: shares are burned on revoke 
         cancelRedeemShareTokenPayout[address(_getShareToken())] += burnedShares;
     }
 

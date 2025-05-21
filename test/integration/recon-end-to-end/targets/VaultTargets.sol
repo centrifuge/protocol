@@ -174,7 +174,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // After Balances and Checks
         uint256 balanceAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 balanceOfEscrowAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(address(globalEscrow));
-
+        
         // NOTE: We only enforce the check if the tx didn't revert
         if (!hasReverted) {
             // Extra check
@@ -300,11 +300,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         
         uint256 shares = IAsyncVault(_getVault()).claimCancelRedeemRequest(REQUEST_ID, to, _getActor());
 
-        // NOTE: async vaults get redemptions fulfilled on claim 
-        // if(!Helpers.isAsyncVault(_getVault())) {
-        //     cancelRedeemShareTokenPayout[address(_getShareToken())] += shares;
-        // }
-
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += shares;
     }
 
@@ -323,14 +318,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         (uint128 pendingAfter,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), _getActor().toBytes32());
 
         // Processed Deposit | E-2 | Global-1
-        // for sync vaults, deposits are fulfilled immediately
+        // for sync vaults, deposits are fulfilled and claimed immediately
         if(!isAsyncVault) {
             sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
+            sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
             executedInvestments[IBaseVault(_getVault()).share()] += shares;
-
+            
+            sumOfSyncDeposits[IBaseVault(_getVault()).asset()] += assets;
             depositProcessed[_getVault()][_getActor()] += assets;
             requestDeposited[_getVault()][_getActor()] += assets;
-            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
         }
 
         // Bal after
@@ -382,18 +378,17 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 assets = IBaseVault(_getVault()).mint(shares, to);
 
-        // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
-        if(!isAsyncVault) {
-            requestDeposited[_getVault()][_getActor()] += assets;
-            sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
-        }
-
         (uint128 pendingAfter,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32());
 
         // Processed Deposit | E-2
         // for sync vaults, deposits are fulfilled immediately
-        if(!Helpers.isAsyncVault(_getVault())) {
+        // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
+        if(!isAsyncVault) {
+            requestDeposited[_getVault()][_getActor()] += assets;
+
+            sumOfSyncDeposits[IBaseVault(_getVault()).asset()] += assets;
             sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
+            sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBefore - pendingAfter);
             executedInvestments[IBaseVault(_getVault()).share()] += shares;
         }
 

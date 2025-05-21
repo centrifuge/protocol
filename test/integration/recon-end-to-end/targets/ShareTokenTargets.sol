@@ -45,7 +45,8 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         // Not a member | NOTE: Non member actor and from can move tokens?
         (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-        if (!isMember && value > 0) {
+        bool endorsed = root.endorsed(to);
+        if (!isMember && value > 0 && !endorsed) {
             t(hasReverted, "TT-3 Must Revert");
         }
     }
@@ -78,9 +79,10 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
             t(hasReverted, "TT-1 Must Revert");
         }
 
-        // Not a member | NOTE: Non member actor and from can move tokens?
+        // Recipient is not a member | NOTE: Non member actor and from can move tokens?
         (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-        if (!isMember && value > 0) {
+        bool endorsed = root.endorsed(to);
+        if (!isMember && value > 0 && !endorsed) {
             t(hasReverted, "TT-3 Must Revert");
         }
     }
