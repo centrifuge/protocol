@@ -341,7 +341,16 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_mint_sync(1,10001671087809592187913324498565266);
 
+        console2.log("hook", IShareToken(_getShareToken()).hook());
+        console2.log("fullRestrictions", address(fullRestrictions));
+        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), 0x1d1499e622D69689cdf9004d05Ec547d650Ff211);
+        (bool isMember2,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+        console2.log("is to a member", isMember);
+        console2.log("is from a member", isMember2);
         token_transfer(0x1d1499e622D69689cdf9004d05Ec547d650Ff211,1);
+
+        // try to return to sender even though not a member
+        // token_transfer(_getActor(),1);
 
     }
 
