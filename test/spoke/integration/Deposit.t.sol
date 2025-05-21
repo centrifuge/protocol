@@ -455,12 +455,12 @@ contract DepositTest is BaseTest {
         );
 
         // assert deposit & mint values adjusted
-        assertApproxEqAbs(vault.maxDeposit(self), assets, 1);
+        assertApproxEqAbs(vault.maxDeposit(self), assets, 1, "maxDeposit != assets");
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
         (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(depositPrice, 1200000000000000000);
+        assertEq(depositPrice, 1200000000000000000, "depositPrice mismatch");
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
         assets = 50000000; // 50 * 10**6
@@ -471,7 +471,11 @@ contract DepositTest is BaseTest {
 
         // collect the share class tokens
         vault.mint(firstSharePayout + secondSharePayout, self);
-        assertEq(IShareToken(address(vault.share())).balanceOf(self), firstSharePayout + secondSharePayout);
+        assertEq(
+            IShareToken(address(vault.share())).balanceOf(self),
+            firstSharePayout + secondSharePayout,
+            "share token balance mismatch"
+        );
 
         // redeem
         vault.requestRedeem(firstSharePayout + secondSharePayout, address(this), address(this));
@@ -490,7 +494,7 @@ contract DepositTest is BaseTest {
 
         // redeem price should now be ~1.5*10**18.
         (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1492615384615384615);
+        assertEq(redeemPrice, 1492615384615384615, "redeemPrice mismatch");
     }
 
     function testDepositAndRedeemPrecisionWithInverseDecimals(bytes16 scId) public {
