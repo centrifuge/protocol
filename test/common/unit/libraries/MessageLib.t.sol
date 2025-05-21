@@ -290,18 +290,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testUpdateContractVaultUpdate(bytes32 vaultOrFactory, uint128 assetId, uint8 kind) public pure {
-        MessageLib.UpdateContractVaultUpdate memory a =
-            MessageLib.UpdateContractVaultUpdate({vaultOrFactory: vaultOrFactory, assetId: assetId, kind: kind});
-        MessageLib.UpdateContractVaultUpdate memory b = MessageLib.deserializeUpdateContractVaultUpdate(a.serialize());
-
-        assertEq(a.vaultOrFactory, b.vaultOrFactory);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.kind, b.kind);
-
-        // This message is a submessage and has not static message length defined
-    }
-
     function testUpdateContractMaxAssetPriceAge(uint128 assetId, uint64 maxPriceAge) public pure {
         MessageLib.UpdateContractMaxAssetPriceAge memory a =
             MessageLib.UpdateContractMaxAssetPriceAge({assetId: assetId, maxPriceAge: maxPriceAge});
@@ -340,6 +328,30 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.maxReserve, b.maxReserve);
         // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateVault(uint64 poolId, bytes16 scId, bytes32 vaultOrFactory, uint128 assetId, uint8 kind)
+        public
+        pure
+    {
+        MessageLib.UpdateVault memory a = MessageLib.UpdateVault({
+            poolId: poolId,
+            scId: scId,
+            assetId: assetId,
+            vaultOrFactory: vaultOrFactory,
+            kind: kind
+        });
+        MessageLib.UpdateVault memory b = MessageLib.deserializeUpdateVault(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.vaultOrFactory, b.vaultOrFactory);
+        assertEq(a.kind, b.kind);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
     function testUpdateBalanceSheetManager(uint64 poolId, bytes32 who, bool canManage) public pure {

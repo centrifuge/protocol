@@ -47,17 +47,7 @@ contract TestCases is BaseTest {
                 LOSS_ACCOUNT
             );
         }
-        hub.updateContract{value: GAS}(
-            poolId,
-            scId,
-            CHAIN_CV,
-            bytes32("target"),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32("factory"),
-                assetId: USDC_C2.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
+        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -71,14 +61,12 @@ contract TestCases is BaseTest {
         assertEq(m1.salt, SC_SALT);
         assertEq(m1.hook, SC_HOOK);
 
-        MessageLib.UpdateContract memory m2 = MessageLib.deserializeUpdateContract(cv.popMessage());
+        MessageLib.UpdateVault memory m2 = MessageLib.deserializeUpdateVault(cv.popMessage());
+        assertEq(m2.poolId, poolId.raw());
         assertEq(m2.scId, scId.raw());
-        assertEq(m2.target, bytes32("target"));
-
-        MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
-        assertEq(m3.assetId, USDC_C2.raw());
-        assertEq(m3.vaultOrFactory, bytes32("factory"));
-        assertEq(m3.kind, uint8(VaultUpdateKind.DeployAndLink));
+        assertEq(m2.assetId, USDC_C2.raw());
+        assertEq(m2.vaultOrFactory, bytes32("factory"));
+        assertEq(m2.kind, uint8(VaultUpdateKind.DeployAndLink));
     }
 
     /// forge-config: default.isolate = true

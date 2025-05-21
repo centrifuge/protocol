@@ -45,15 +45,12 @@ contract MockCentrifugeChain is Test {
         VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vault));
 
         execute(
-            MessageLib.UpdateContract({
+            MessageLib.UpdateVault({
                 poolId: poolId,
                 scId: scId,
-                target: bytes32(bytes20(address(spoke))),
-                payload: MessageLib.UpdateContractVaultUpdate({
-                    vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId.raw(),
-                    kind: uint8(VaultUpdateKind.Unlink)
-                }).serialize()
+                assetId: vaultDetails.assetId.raw(),
+                vaultOrFactory: bytes32(bytes20(vault)),
+                kind: uint8(VaultUpdateKind.Unlink)
             }).serialize()
         );
     }
@@ -62,15 +59,12 @@ contract MockCentrifugeChain is Test {
         VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(vault));
 
         execute(
-            MessageLib.UpdateContract({
+            MessageLib.UpdateVault({
                 poolId: poolId,
                 scId: scId,
-                target: bytes32(bytes20(address(spoke))),
-                payload: MessageLib.UpdateContractVaultUpdate({
-                    vaultOrFactory: bytes32(bytes20(vault)),
-                    assetId: vaultDetails.assetId.raw(),
-                    kind: uint8(VaultUpdateKind.Link)
-                }).serialize()
+                vaultOrFactory: bytes32(bytes20(vault)),
+                assetId: vaultDetails.assetId.raw(),
+                kind: uint8(VaultUpdateKind.Link)
             }).serialize()
         );
     }
