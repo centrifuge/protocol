@@ -37,7 +37,7 @@ library MerkleTreeLib {
         }
     }
 
-    function generateMerkleTree(bytes32[] memory inputLeafs) internal view returns (bytes32[][] memory tree) {
+    function generateMerkleTree(bytes32[] memory inputLeafs) internal pure returns (bytes32[][] memory tree) {
         uint256 leafsLength = inputLeafs.length;
         bytes32[][] memory leafs = new bytes32[][](1);
 

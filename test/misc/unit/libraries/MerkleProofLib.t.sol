@@ -6,18 +6,18 @@ import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
 /// @author Modified from https://github.com/transmissions11/solmate/blob/main/src/test/MerkleProofLib.t.sol
 contract MerkleProofLibTest is Test {
-    function testVerifyEmptyMerkleProofSuppliedLeafAndRootSame() public {
+    function testVerifyEmptyMerkleProofSuppliedLeafAndRootSame() public view {
         bytes32[] memory proof;
         assertEq(this.verify(proof, 0x00, 0x00), true);
     }
 
-    function testVerifyEmptyMerkleProofSuppliedLeafAndRootDifferent() public {
+    function testVerifyEmptyMerkleProofSuppliedLeafAndRootDifferent() public view {
         bytes32[] memory proof;
         bytes32 leaf = "a";
         assertEq(this.verify(proof, 0x00, leaf), false);
     }
 
-    function testValidProofSupplied() public {
+    function testValidProofSupplied() public view {
         // Merkle tree created from leaves ['a', 'b', 'c'].
         // Leaf is 'a'.
         bytes32[] memory proof = new bytes32[](2);
@@ -28,7 +28,7 @@ contract MerkleProofLibTest is Test {
         assertEq(this.verify(proof, root, leaf), true);
     }
 
-    function testVerifyInvalidProofSupplied() public {
+    function testVerifyInvalidProofSupplied() public view {
         // Merkle tree created from leaves ['a', 'b', 'c'].
         // Leaf is 'a'.
         // Proof is same as testValidProofSupplied but last byte of first element is modified.
