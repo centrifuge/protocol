@@ -112,7 +112,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         gateway.endTransactionPayment();
     }
 
-    // @inheritdoc ISpoke
+    /// @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
@@ -185,20 +185,20 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
         require(isPoolActive(poolId), InvalidPool());
 
-        Pool storage pool = pools[poolId];
-        require(address(pool.shareClasses[scId].shareToken) == address(0), ShareClassAlreadyRegistered());
+        require(address(pools[poolId].shareClasses[scId].shareToken) == address(0), ShareClassAlreadyRegistered());
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), InvalidHook());
 
         IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt);
 
-        if (hook != address(0)) {
-            shareToken_.file("hook", hook);
-        }
+        if (hook != address(0)) shareToken_.file("hook", hook);
+        linkToken(poolId, scId, shareToken_);
+    }
 
-        pool.shareClasses[scId].shareToken = shareToken_;
-
+    /// @inheritdoc ISpoke
+    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken_) public auth {
+        pools[poolId].shareClasses[scId].shareToken = shareToken_;
         emit AddShareClass(poolId, scId, shareToken_);
     }
 
@@ -384,16 +384,27 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(vaultFactory[factory], InvalidFactory());
 
-        // Deploy vault
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         IBaseVault vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
 
-        _vaultDetails[vault] = VaultDetails(assetId, assetIdKey.asset, assetIdKey.tokenId, false);
-        emit DeployVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, factory, vault, vault.vaultKind());
-
+        registerVault(poolId, scId, assetId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
         return vault;
+    }
+
+    /// @inheritdoc ISpoke
+    function registerVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        IVaultFactory factory,
+        IBaseVault vault
+    ) public auth {
+        _vaultDetails[vault] = VaultDetails(assetId, asset, tokenId, false);
+        emit DeployVault(poolId, scId, asset, tokenId, factory, vault, vault.vaultKind());
     }
 
     //----------------------------------------------------------------------------------------------
