@@ -21,7 +21,7 @@ import {OpType} from "../BeforeAfter.sol";
 
 
 // Only for Share
-abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
+abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
 

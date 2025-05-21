@@ -24,7 +24,7 @@ import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
 import {RestrictedTransfersTargets} from "./targets/RestrictedTransfersTargets.sol";
 import {VaultTargets} from "./targets/VaultTargets.sol";
-import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
+import {SpokeTargets} from "./targets/SpokeTargets.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
 import {Properties} from "./properties/Properties.sol";
 import {AdminTargets} from "./targets/AdminTargets.sol";
@@ -38,7 +38,7 @@ abstract contract TargetFunctions is
     ShareTokenTargets,
     RestrictedTransfersTargets,
     VaultTargets,
-    PoolManagerTargets,
+    SpokeTargets,
     ManagerTargets,
     HubTargets,
     AdminTargets,
