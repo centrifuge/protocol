@@ -7,7 +7,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
 
 /// @dev Solely used locally as protection against stack-too-deep

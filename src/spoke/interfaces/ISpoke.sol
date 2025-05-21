@@ -122,7 +122,6 @@ interface ISpoke {
         bytes32 destinationAddress,
         uint128 amount
     );
-    event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
     event LinkVault(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IBaseVault vault
     );

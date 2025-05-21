@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 
@@ -9,6 +12,8 @@ interface IMessageProcessor is IMessageHandler, IMessageProperties {
 
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
+
+    event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();

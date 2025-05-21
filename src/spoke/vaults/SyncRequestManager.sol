@@ -30,7 +30,7 @@ import {
 } from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
 import {IDepositManager} from "src/spoke/interfaces/investments/IDepositManager.sol";
 import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";

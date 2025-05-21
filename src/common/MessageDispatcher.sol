@@ -25,6 +25,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
     using CastLib for *;
@@ -284,7 +285,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes calldata payload
     ) external auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.updateContract(poolId, scId, target.toAddress(), payload);
+            IUpdateContract(target.toAddress()).update(poolId, scId, payload);
         } else {
             gateway.send(
                 centrifugeId,

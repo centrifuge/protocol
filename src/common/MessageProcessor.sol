@@ -24,6 +24,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
@@ -123,7 +124,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            spoke.updateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+            IUpdateContract(m.target.toAddress()).update(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
+            emit UpdateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
         } else if (kind == MessageType.UpdateVault) {
             MessageLib.UpdateVault memory m = MessageLib.deserializeUpdateVault(message);
             spoke.updateVault(

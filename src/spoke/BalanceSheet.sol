@@ -22,7 +22,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet, QueueAmount} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";

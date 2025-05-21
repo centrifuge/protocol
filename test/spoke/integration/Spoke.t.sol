@@ -23,7 +23,7 @@ import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
 import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
 import {ISyncRequestManager} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
@@ -957,85 +957,17 @@ contract SpokeRegisterAssetTest is BaseTest {
     }
 }
 
-contract UpdateContractMock is IUpdateContract {
-    IUpdateContract immutable spoke;
-
-    constructor(address spoke_) {
-        spoke = IUpdateContract(spoke_);
-    }
-
-    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) public {
-        spoke.update(poolId, scId, payload);
-    }
-}
-
-contract SpokeUpdateContract is BaseTest, SpokeTestHelper {
+contract SpokeUpdateTest is SpokeTestHelper {
     using MessageLib for *;
-
-    /*
-    function testUpdateContractTargetThis(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-        registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
-
-        vm.expectEmit();
-        emit ISpoke.UpdateContract(poolId, scId, address(spoke), vaultUpdate);
-        spoke.updateContract(poolId, scId, address(spoke), vaultUpdate);
-    }
-
-    function testUpdateContractTargetUpdateContractMock(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-        registerAssetErc20();
-        bytes memory vaultUpdate = _serializedUpdateContractNewVault(asyncVaultFactory);
-        UpdateContractMock mock = new UpdateContractMock(address(spoke));
-        IAuth(address(spoke)).rely(address(mock));
-
-        vm.expectEmit();
-        emit ISpoke.UpdateContract(poolId, scId, address(mock), vaultUpdate);
-        spoke.updateContract(poolId, scId, address(mock), vaultUpdate);
-    }
-    */
-
-    function testUpdateContractUnauthorized() public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.updateContract(PoolId.wrap(0), ShareClassId.wrap(bytes16(0)), address(0), bytes(""));
-    }
 
     function testUpdateUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
-
-    /*
-    function _serializedUpdateContractNewVault(IVaultFactory vaultFactory_)
-        internal
-        view
-        returns (bytes memory payload)
-    {
-        return MessageLib.UpdateContractVaultUpdate({
-            vaultOrFactory: bytes32(bytes20(address(vaultFactory_))),
-            assetId: assetIdErc20.raw(),
-            kind: uint8(VaultUpdateKind.DeployAndLink)
-        }).serialize();
-    }
-    */
 }
 
-contract SpokeUpdateVault is SpokeTestHelper {
+contract SpokeUpdateVaultTest is SpokeTestHelper {
     function testUpdateContractUnknownVault(
         PoolId poolId_,
         uint8 decimals_,

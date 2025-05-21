@@ -139,13 +139,6 @@ interface ISpokeGatewayHandler {
         address vaultOrFactory,
         VaultUpdateKind kind
     ) external;
-
-    /// @notice Updates the target address. Generic update function from Hub to Vaults
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  target The target address to be called
-    /// @param  update The payload to be processed by the target address
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
 /// @notice Interface for Vaults methods related to async investments called by messages

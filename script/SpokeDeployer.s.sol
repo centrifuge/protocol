@@ -151,11 +151,13 @@ contract SpokeDeployer is CommonDeployer {
         spoke.rely(address(messageProcessor));
         asyncRequestManager.rely(address(messageProcessor));
         balanceSheet.rely(address(messageProcessor));
+        syncRequestManager.rely(address(messageProcessor));
 
         // Rely messageDispatcher
         spoke.rely(address(messageDispatcher));
         asyncRequestManager.rely(address(messageDispatcher));
         balanceSheet.rely(address(messageDispatcher));
+        syncRequestManager.rely(address(messageProcessor));
 
         // Rely VaultRouter
         gateway.rely(address(vaultRouter));

@@ -29,7 +29,7 @@ import {ITokenFactory} from "src/spoke/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IUpdateContract} from "src/common/interfaces/IUpdateContract.sol";
 import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 
@@ -259,17 +259,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         address hook = shareToken_.hook();
         require(hook != address(0), InvalidHook());
         IHook(hook).updateRestriction(address(shareToken_), update_);
-    }
-
-    /// @inheritdoc ISpokeGatewayHandler
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update_) public auth {
-        if (target == address(this)) {
-            update(poolId, scId, update_);
-        } else {
-            IUpdateContract(target).update(poolId, scId, update_);
-        }
-
-        emit UpdateContract(poolId, scId, target, update_);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
