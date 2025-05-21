@@ -5,10 +5,8 @@ import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import {MockHook} from "test/spoke/mocks/MockHook.sol";
 import "test/spoke/BaseTest.sol";
 
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18} from "src/misc/types/D18.sol";
@@ -20,9 +18,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {ISyncRequestManager} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 
