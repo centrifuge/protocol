@@ -21,7 +21,7 @@ import {FullDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
-    using CastLib for address;
+    using CastLib for *;
     using MessageLib for *;
 
     function run() public {
@@ -83,17 +83,7 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateContract(
-            poolId,
-            scId,
-            centrifugeId,
-            bytes32(bytes20(address(spoke))),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
+        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
 
         hub.updatePricePerShare(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -177,16 +167,8 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateContract(
-            poolId,
-            scId,
-            centrifugeId,
-            bytes32(bytes20(address(spoke))),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32(bytes20(address(syncDepositVaultFactory))),
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
+        hub.updateVault(
+            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
         );
 
         hub.updatePricePerShare(poolId, scId, navPerShare);

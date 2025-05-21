@@ -21,7 +21,7 @@ import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
-import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHub, AccountType, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 /// @title  Hub
@@ -387,6 +387,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
         sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload);
+    }
+
+    /// @inheritdoc IHub
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable payTransaction {
+        _isManager(poolId);
+
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
+
+        emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
+        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
     }
 
     /// @inheritdoc IHub

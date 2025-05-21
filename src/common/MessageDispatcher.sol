@@ -8,7 +8,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -294,8 +294,35 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @notice Creates and send the message
-    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external {
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.UpdateVault({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    vaultOrFactory: vaultOrFactory,
+                    kind: uint8(kind)
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        auth
+    {
         if (centrifugeId == localCentrifugeId) {
             balanceSheet.updateManager(poolId, who.toAddress(), canManage);
         } else {

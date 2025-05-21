@@ -46,6 +46,9 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateVault(
+        PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
+    );
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
     );
@@ -215,6 +218,20 @@ interface IHub {
     function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable;
+
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
