@@ -623,7 +623,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _auth();
 
         emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(poolId, scId, centrifugeId, receiver, amount);
+        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
     /// @inheritdoc IHubGatewayHandler

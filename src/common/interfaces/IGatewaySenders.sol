@@ -158,9 +158,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external;
@@ -170,9 +170,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external;

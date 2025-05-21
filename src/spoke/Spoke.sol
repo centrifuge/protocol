@@ -63,6 +63,12 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         tokenFactory = tokenFactory_;
     }
 
+    modifier payTransaction() {
+        gateway.startTransactionPayment{value: msg.value}(msg.sender);
+        _;
+        gateway.endTransactionPayment();
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -92,6 +98,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
     function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
         external
         payable
+        payTransaction
         protected
     {
         IShareToken share = IShareToken(shareToken(poolId, scId));
@@ -101,21 +108,18 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
             CrossChainTransferNotAllowed()
         );
 
-        gateway.startTransactionPayment{value: msg.value}(msg.sender);
-
         share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
         emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendInitiateTransferShares(poolId, scId, centrifugeId, receiver, amount);
-
-        gateway.endTransactionPayment();
+        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
     /// @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
+        payTransaction
         protected
         returns (AssetId assetId)
     {
@@ -126,8 +130,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         decimals = _safeGetAssetDecimals(asset, tokenId);
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
-
-        gateway.startTransactionPayment{value: msg.value}(msg.sender);
 
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);
@@ -151,8 +153,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         }
 
         sender.sendRegisterAsset(centrifugeId, assetId, decimals);
-
-        gateway.endTransactionPayment();
     }
 
     //----------------------------------------------------------------------------------------------

@@ -504,29 +504,33 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IVaultMessageSender
     function sendInitiateTransferShares(
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external auth {
-        gateway.send(
-            poolId.centrifugeId(),
-            MessageLib.InitiateTransferShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                centrifugeId: centrifugeId,
-                receiver: receiver,
-                amount: amount
-            }).serialize()
-        );
+        if (poolId.centrifugeId() == localCentrifugeId) {
+            hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        } else {
+            gateway.send(
+                poolId.centrifugeId(),
+                MessageLib.InitiateTransferShares({
+                    centrifugeId: targetCentrifugeId,
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IPoolMessageSender
     function sendExecuteTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external auth {
