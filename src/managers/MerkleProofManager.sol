@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -18,8 +17,6 @@ import {IMerkleProofManager} from "src/managers/interfaces/IMerkleProofManager.s
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
 contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateContract {
-    using MathLib for uint256;
-
     PoolId public immutable poolId;
     IBalanceSheet public immutable balanceSheet;
 
