@@ -187,643 +187,191 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     /// === REPRODUCERS === ///
-    // forge test --match-test test_property_price_per_share_overall_2 -vvv 
-    function test_property_price_per_share_overall_2() public {
+    
+    /// === Ghost Issues === ///
+    // forge test --match-test test_property_escrow_share_balance_1 -vvv 
+    function test_property_escrow_share_balance_1() public {
 
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+        shortcut_deployNewTokenPoolAndShare(2,14177496652252639380981478672963823008698,true,false,true);
 
-        shortcut_deposit_sync(1,1);
+        shortcut_deposit_and_claim(0,1,1,1,0);
 
-        property_price_per_share_overall();
-    }
-
-    // forge test --match-test test_property_global_1_6 -vvv 
-    function test_property_global_1_6() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        property_sum_of_shares_received();
-    }
-
-    function _logVals() internal {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
-
-        // get the account ids for each account
-        AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-        AccountId equityAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Equity));
-        AccountId gainAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain));
-        AccountId lossAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss));
-
-        (, uint128 assets) = accounting.accountValue(poolId, assetAccountId);
-        (, uint128 equity) = accounting.accountValue(poolId, equityAccountId);
-        (, uint128 gain) = accounting.accountValue(poolId, gainAccountId);
-        (, uint128 loss) = accounting.accountValue(poolId, lossAccountId);
-
-        // assets = accountValue(Equity) + accountValue(Gain) - accountValue(Loss)
-        console2.log("assets:", assets);
-        console2.log("equity:", equity);
-        console2.log("gain:", gain);
-        console2.log("loss:", loss);
-        console2.log("equity + gain - loss:", equity + gain - loss);
-    }
-
-    // forge test --match-test test_property_asset_soundness_7 -vvv 
-    function test_property_asset_soundness_7() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,2,false,false,false);
-
-        shortcut_deposit_sync(1,1000597925025159896);
-
-        console2.log("========= before create holding =========");
-        _logVals();
-
-        hub_createHolding_clamped(false,0,0,0,2);
-        // the existing accounts have ids 1-4
-        hub_createHolding(transientValuation, 1, 1, 1, 3);
-
-        console2.log("========= after create holding =========");
-        _logVals();
-
-        hub_addShareClass(1);
-
-        console2.log("========= after add share class =========");
-        _logVals();
-
-        property_asset_soundness();
-
-    }
-
-    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_8 -vvv 
-    function test_property_user_cannot_mutate_pending_redeem_8() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,356,true,false,true);
-
-        hub_addShareClass(154591680653806130421);
-
-        shortcut_deposit_and_claim(33321005491,6432384007748401500056681183121112,4369999,4369999,292948973611283239402029828536645829108380928802296476463930447206379624861);
-
-        vault_requestRedeem_clamped(79314606078668675351414686616174580970519539374726669971771,2144343559908308263444127176406281849471917493390513644671787);
-
-        property_user_cannot_mutate_pending_redeem();
-
-    }
-
-    // forge test --match-test test_vault_requestDeposit_clamped_18 -vvv 
-    // NOTE: most likely an incorrect property spec which needs to include a check for if the recipient is a member instead of the controller
-    function test_vault_requestDeposit_clamped_18() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
-
-        shortcut_request_deposit(0,1,0,0);
-
-        switch_actor(1);
-
-        address to = _getRandomActor(0);
-        (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
-        (bool isMemberTo,) = fullRestrictions.isMember(_getShareToken(), to);
-        // caller of requestDeposit is not a member
-        console2.log("actor isMember:", isMember);
-        // recipient of requestDeposit is a member
-        console2.log("to isMember:", isMemberTo);
-        vault_requestDeposit_clamped(1,0);
-    }
-
-    // forge test --match-test test_property_loss_soundness_21 -vvv 
-    function test_property_loss_soundness_21() public {
-
-        shortcut_deployNewTokenPoolAndShare(11,2,true,false,false);
-
-        shortcut_mint_sync(1,10001530783476391801262800);
-
-        // hub_createHolding_clamped(false,0,2,0,0);
-        hub_createHolding_clamped(false,0,0,0,0);
-
-        hub_addShareClass(1);
-
-        property_loss_soundness();
-
-    }
-
-    // forge test --match-test test_property_accounting_and_holdings_soundness_22 -vvv 
-    function test_property_accounting_and_holdings_soundness_22() public {
-
-        shortcut_deployNewTokenPoolAndShare(3,1,false,false,false);
-
-        hub_createHolding_clamped(true,0,0,0,0);
-
-        hub_addShareClass(2);
-
-        shortcut_mint_sync(1,1000928848737691948490550833297442);
-
-        property_accounting_and_holdings_soundness();
-
-    }
-
-    // forge test --match-test test_vault_requestDeposit_23 -vvv 
-    // NOTE: same as test_vault_requestDeposit_clamped_18
-    function test_vault_requestDeposit_23() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
-
-        poolManager_updateMember(1524841016);
-
-        switch_actor(1);
-
-        vault_requestDeposit(1,0);
-
-    }
-
-    // forge test --match-test test_property_gain_soundness_25 -vvv 
-    // NOTE: related to overwriting the existing holding
-    function test_property_gain_soundness_25() public {
-
-        shortcut_deployNewTokenPoolAndShare(18,2,false,false,false);
-
-        shortcut_mint_sync(1,1000408793793931473);
-
-        hub_createHolding_clamped(false,0,0,2,0);
-
-        hub_addShareClass(1);
-
-        property_gain_soundness();
-
-    }
-
-    // forge test --match-test test_property_totalAssets_solvency_27 -vvv 
-    function test_property_totalAssets_solvency_27() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        property_totalAssets_solvency();
-
-    }
-
-    // forge test --match-test test_property_loss_soundness_1 -vvv 
-    // NOTE: related to overwriting the existing holding
-    function test_property_loss_soundness_1() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,2,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        hub_addShareClass(1);
-
-        hub_createHolding_clamped(false,0,2,0,0);
-
-        property_loss_soundness();
-
-    }
-
-    // forge test --match-test test_property_equity_soundness_3 -vvv 
-    // NOTE: related to overwriting the existing holding
-    function test_property_equity_soundness_3() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        hub_addShareClass(2);
-
-        hub_createHolding_clamped(false,0,0,0,2);
-
-        property_equity_soundness();
-
-    }
-
-    // forge test --match-test test_property_price_per_share_overall_13 -vvv 
-    function test_property_price_per_share_overall_13() public {
-
-        shortcut_deployNewTokenPoolAndShare(12,1,false,false,false);
-
-        shortcut_deposit_sync(1000037,1000604);
-
-        property_price_per_share_overall();
-
-    }
-
-    // forge test --match-test test_property_total_yield_20 -vvv 
-    function test_property_total_yield_20() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,2,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        hub_addShareClass(1);
-
-        hub_createHolding_clamped(false,0,2,0,2);
-
-        property_total_yield();
-
-    }
-
-    // forge test --match-test test_property_accounting_and_holdings_soundness_23 -vvv 
-    // NOTE: related to overwriting the existing holding
-    function test_property_accounting_and_holdings_soundness_23() public {
-
-        shortcut_deployNewTokenPoolAndShare(9,2,false,false,false);
-
-        shortcut_deposit_sync(1000190147,1001915877);
-
-        hub_addShareClass(1);
-
-        hub_initializeLiability_clamped(false,0,0);
-
-        property_accounting_and_holdings_soundness();
-
-    }
-
-    // forge test --match-test test_property_asset_soundness_24 -vvv 
-    // NOTE: related to overwriting the existing holding
-    function test_property_asset_soundness_24() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_deposit_sync(1,1);
-
-        hub_createHolding_clamped(false,0,0,0,0);
-
-        hub_addShareClass(2);
-
-        property_asset_soundness();
-
-    }
-
-    // forge test --match-test test_property_sum_of_possible_account_balances_leq_escrow_25 -vvv 
-    function test_property_sum_of_possible_account_balances_leq_escrow_25() public {
-
-        shortcut_deployNewTokenPoolAndShare(3,1,true,false,false);
-
-        shortcut_mint_sync(0,1000051331928575182604192358708530);
-
-        property_sum_of_possible_account_balances_leq_escrow();
-    }
-
-    // forge test --match-test test_property_gain_soundness_28 -vvv 
-    function test_property_gain_soundness_28() public {
-
-        shortcut_deployNewTokenPoolAndShare(9,2,false,false,false);
-
-        shortcut_deposit_sync(1000091037,1000792738);
-
-        hub_addShareClass(1);
-
-        hub_createHolding_clamped(false,0,0,2,0);
-
-        property_gain_soundness();
-
-    }
-
-    // forge test --match-test test_doomsday_accountValue_differential_3 -vvv 
-    function test_doomsday_accountValue_differential_3() public {
-
-        doomsday_accountValue_differential(0,1);
-
-    }
-
-    // forge test --match-test test_property_totalAssets_solvency_9 -vvv 
-    function test_property_totalAssets_solvency_9() public {
-
-        shortcut_deployNewTokenPoolAndShare(15,1,true,false,true);
-
-        shortcut_deposit_and_claim(1,0,45,1,0);
-
-        shortcut_request_deposit(1045,0,0,0);
-
-        property_totalAssets_solvency();
-
-    }
-
-    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_15 -vvv 
-    function test_property_holdings_balance_equals_escrow_balance_15() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
-
-        hub_initializeLiability_clamped(true,0,0);
-
-        shortcut_mint_sync(1,10000478396350502620584353829305928);
-
-        IBaseVault vault = IBaseVault(_getVault());
-        address asset = vault.asset();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
-        (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
-        console2.log("holdingAssetAmount in previous holding %e", holdingAssetAmount);
-
-        // creating new holding overrides the existing holding for the given poolId, scId, and assetId
-        // hub_createHolding_clamped(false,0,0,0,0);
-        hub_createAccount(10, false);
-        hub_createAccount(11, false);
-        hub_createAccount(12, false);
-        hub_createAccount(13, false);
-        hub_createHolding(transientValuation, 10, 11, 12, 13);
-
-        // NOTE: issue seems to be that the 
-        vault = IBaseVault(_getVault());
-        asset = vault.asset();
-        assetId = hubRegistry.currency(vault.poolId());
-        (holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
-        console2.log("holdingAssetAmount in new holding %e", holdingAssetAmount);
-
-        property_holdings_balance_equals_escrow_balance();
-
-    }
-
-    // forge test --match-test test_property_accounting_and_holdings_soundness_16 -vvv 
-    function test_property_accounting_and_holdings_soundness_16() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
-
-        hub_createHolding_clamped(false,0,0,0,0);
-
-        shortcut_deposit_sync(1,1000184571638551883);
-
-        property_accounting_and_holdings_soundness();
-
-    }
-
-    // forge test --match-test test_vault_requestDeposit_17 -vvv 
-    function test_vault_requestDeposit_17() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
-
-        shortcut_deposit_and_cancel(0,1,0,0,0);
-
-        switch_actor(1);
-
-        restrictedTransfers_freeze();
-
-        vault_requestDeposit(1,0);
-
-    }
-
-    // forge test --match-test test_property_sum_of_minted_equals_total_supply_0 -vvv 
-    function test_property_sum_of_minted_equals_total_supply_0() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
-
-        shortcut_mint_sync(2,10000505065913087102990555253782379);
-
-        console2.log("share total supply before cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).totalSupply());
         shortcut_cancel_redeem_clamped(1,0,0);
-        console2.log("share total supply after cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).totalSupply());
-        console2.log("user shares after cancel redeem:", IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor()));
-        
+
+        property_escrow_share_balance();
+
+    }
+
+    // forge test --match-test test_property_escrow_balance_2 -vvv 
+    function test_property_escrow_balance_2() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,6220719125742280882885116494485473,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,2,1,0);
+
+        shortcut_cancel_redeem_claim_clamped(1037046715235638606,1,8939997985963703993327973207429562758);
+
+        hub_notifyRedeem(1);
+
+        property_escrow_balance();
+
+    }
+
+        // forge test --match-test test_property_solvency_redemption_requests_5 -vvv 
+    function test_property_solvency_redemption_requests_5() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1197990898591296055414719643049951363178,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,1,1,0);
+
+        vault_requestRedeem_clamped(1,0);
+
+        poolManager_deployVault(false);
+
+        shortcut_queue_redemption(1,0,0);
+
+        property_solvency_redemption_requests();
+
+    }
+
+    // forge test --match-test test_property_cancelled_and_processed_redemptions_soundness_6 -vvv 
+    function test_property_cancelled_and_processed_redemptions_soundness_6() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_mint_sync(2,10000422327224340172730307600109085);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        poolManager_deployVault_clamped();
+
+        hub_notifyRedeem(1);
+
+        property_cancelled_and_processed_redemptions_soundness();
+
+    }
+
+    // forge test --match-test test_property_actor_pending_and_queued_deposits_10 -vvv 
+    function test_property_actor_pending_and_queued_deposits_10() public {
+
+        shortcut_deployNewTokenPoolAndShare(4,1,true,false,false);
+
+        shortcut_mint_sync(1,100427952388798661003401004989581);
+
+        property_actor_pending_and_queued_deposits();
+
+    }
+
+    // forge test --match-test test_property_sum_of_minted_equals_total_supply_11 -vvv 
+    function test_property_sum_of_minted_equals_total_supply_11() public {
+
+        shortcut_deployNewTokenPoolAndShare(8,1,false,false,false);
+
+        shortcut_mint_sync(2,100503941766022670033945);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
         property_sum_of_minted_equals_total_supply();
 
     }
 
-    // forge test --match-test test_property_price_per_share_overall_8 -vvv 
-    function test_property_price_per_share_overall_8() public {
+    // forge test --match-test test_property_soundness_processed_redemptions_15 -vvv 
+    function test_property_soundness_processed_redemptions_15() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_mint_sync(2,10001493698620430928097305628073781);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        poolManager_deployVault_clamped();
+
+        hub_notifyRedeem(1);
+
+        property_soundness_processed_redemptions();
+
+    }
+
+    // forge test --match-test test_property_actor_pending_and_queued_redemptions_18 -vvv 
+    function test_property_actor_pending_and_queued_redemptions_18() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
 
         shortcut_deposit_sync(1,1);
 
-        property_price_per_share_overall();
-    }
+        vault_requestRedeem(1,0);
 
-    // forge test --match-test test_property_sum_of_received_leq_fulfilled_9 -vvv 
-    function test_property_sum_of_received_leq_fulfilled_9() public {
+        poolManager_deployVault_clamped();
 
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
-
-        shortcut_deposit_and_claim(1,0,1,1,0);
-
-        vault_requestRedeem_clamped(1,0);
-
-        vault_cancelRedeemRequest();
-
-        vault_claimCancelRedeemRequest(0);
-
-        property_sum_of_received_leq_fulfilled();
+        property_actor_pending_and_queued_redemptions();
 
     }
 
-    // forge test --match-test test_property_sum_of_pending_redeem_request_11 -vvv 
-    function test_property_sum_of_pending_redeem_request_11() public {
+    // forge test --match-test test_property_sum_of_assets_received_22 -vvv 
+    function test_property_sum_of_assets_received_22() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1989486873372372528915163746500992494654651,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,3,1,0);
+
+        add_new_asset(0);
+
+        shortcut_redeem_and_claim_clamped(5639078477813265771514312817281638816374,1,587614949423672601016258534476771816487634586);
+
+        property_sum_of_assets_received();
+
+    }
+
+    // === Implementation Issues === ///
+    // forge test --match-test test_token_transferFrom_0 -vvv 
+    function test_token_transferFrom_0() public {
+
+        shortcut_deployNewTokenPoolAndShare(5,1,true,false,false);
+
+        shortcut_mint_sync(1,10015902735433064811715116413824);
+
+        token_transferFrom(0xa0Cb889707d426A7A386870A03bc70d1b0697598,1);
+
+    }
+
+    // forge test --match-test test_token_transfer_9 -vvv 
+    function test_token_transfer_9() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
 
-        // mint 2 shares
-        shortcut_mint_sync(2,10001493698620430928097305628073781);
+        shortcut_mint_sync(1,10001671087809592187913324498565266);
 
-        // burn 1 share
-        shortcut_cancel_redeem_clamped(1,0,0);
-
-        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
-        console2.log("pool escrow balance before notifyRedeem:", IERC20(IBaseVault(_getVault()).asset()).balanceOf(poolEscrow));
-        // claim remaining 1 share
-        hub_notifyRedeem(1);
-        console2.log("pool escrow balance after notifyRedeem:", IERC20(IBaseVault(_getVault()).asset()).balanceOf(poolEscrow));
-
-        property_sum_of_pending_redeem_request();
+        token_transfer(0x1d1499e622D69689cdf9004d05Ec547d650Ff211,1);
 
     }
 
-    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_17 -vvv 
-    function test_property_user_cannot_mutate_pending_redeem_17() public {
+     // forge test --match-test test_property_total_issuance_decreased_after_approve_redeems_and_revoke_shares_3 -vvv 
+    function test_property_total_issuance_decreased_after_approve_redeems_and_revoke_shares_3() public {
 
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+        shortcut_deployNewTokenPoolAndShare(2,4795343,true,false,true);
 
-        hub_initializeLiability_clamped(true,0,0);
+        shortcut_deposit_and_claim(0,1,1,1,0);
 
-        shortcut_mint_sync(2,10017567812503563737449888822777011);
+        shortcut_queue_redemption(1,0,0);
 
-        shortcut_cancel_redeem_clamped(1,0,0);
-
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
-        bytes32 actor = CastLib.toBytes32(_getActor());
-
-        console2.log("Before addShareClass - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
-        console2.log("Before addShareClass - revoke:", _before.ghostEpochId[scId][assetId].revoke);
-        hub_addShareClass(2);
-        console2.log("After addShareClass - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
-        console2.log("After addShareClass - revoke:", _before.ghostEpochId[scId][assetId].revoke);
-       
-        hub_notifySharePrice(0);
-        console2.log("After notifySharePrice - lastUpdate:", _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate);
-        console2.log("After notifySharePrice - revoke:", _before.ghostEpochId[scId][assetId].revoke);
-
-        property_user_cannot_mutate_pending_redeem();
-
-    }
-
-    // forge test --match-test test_property_totalAssets_solvency_0 -vvv 
-    function test_property_totalAssets_solvency_0() public {
-
-        shortcut_deployNewTokenPoolAndShare(6,165580008699847070333638878135418310732111427891776027359330497595662372,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,342,1,24);
-
-        shortcut_request_deposit(1059280971004,1,0,0);
-
-        property_totalAssets_solvency();
-
-    }
-
-    // forge test --match-test test_token_transferFrom_1 -vvv 
-    function test_token_transferFrom_1() public {
-        console2.log("here 1");
         property_total_issuance_decreased_after_approve_redeems_and_revoke_shares();
 
-        vm.warp(block.timestamp + 1602779);
+    }
 
-        vm.roll(block.number + 13317);
+    // forge test --match-test test_property_escrow_solvency_4 -vvv 
+    // NOTE: potential misunderstanding of how sync mints are handled
+    function test_property_escrow_solvency_4() public {
 
-        console2.log("here 2");
-        property_price_on_fulfillment();
+        shortcut_deployNewTokenPoolAndShare(5,1,true,false,false);
 
-        vm.roll(block.number + 3188);
-        vm.warp(block.timestamp + 8764);
-        console2.log("here 3");
-        property_total_issuance_increased_after_approve_deposits_and_issue_shares();
+        shortcut_mint_sync(1,10066993534062842573842051391315);
 
-        vm.roll(block.number + 115);
-        vm.warp(block.timestamp + 33271);
-        console2.log("here 4");
-        property_soundness_processed_deposits();
-
-        console2.log("here 5");
-        toggle_EquityAccount(1860823282);
-
-        console2.log("here 6");
-        property_price_on_fulfillment();
-
-        console2.log("here 7");
-        shortcut_deployNewTokenPoolAndShare(56,44162503087693492637048630226507605038248149277142374270796472314127281150497,true,true,true);
-
-        vm.roll(block.number + 53451);
-        vm.warp(block.timestamp + 628);
-        console2.log("here 8");
-        shortcut_deposit_and_claim(164,4370001,1524785993,625,1524785991);
-
-        vm.roll(block.number + 2413);
-        vm.warp(block.timestamp + 466678);
-        console2.log("here 9");
-        hub_createAccount(3930847,false);
-
-        console2.log("here 10");
-        property_total_pending_redeem_geq_sum_pending_user_redeem();
-
-        console2.log("here 11");
-        hub_triggerSubmitQueuedAssets(68995);
-
-        vm.roll(block.number + 11742);
-        vm.warp(block.timestamp + 111322);
-        console2.log("here 12");
-        hub_notifySharePrice(41426);
-
-        vm.roll(block.number + 15288);
-        vm.warp(block.timestamp + 62628);
-        console2.log("here 13");
-        hub_updatePricePerShare(279456212145792895394839917904388060014);
-
-        console2.log("here 14");
-        hub_setQueue_clamped(false);
-
-        vm.warp(block.timestamp + 267512);
-
-        vm.roll(block.number + 33537);
-
-        console2.log("here 15");
-        property_asset_soundness();
-
-        console2.log("here 16");
-        hub_triggerSubmitQueuedAssets_clamped();
-
-        console2.log("here 17");
-        hub_addShareClass(47060);
-
-        vm.roll(block.number + 739);
-        vm.warp(block.timestamp + 367611);
-        console2.log("here 18");
-        switch_asset_id(979795318425839602289753191108188770180559342340764706189020711644205116375);
-
-        vm.warp(block.timestamp + 65535);
-
-        vm.roll(block.number + 527);
-
-        vm.roll(block.number + 25058);
-        vm.warp(block.timestamp + 8616);
-        console2.log("here 19");
-        property_sum_of_received_leq_fulfilled_inductive();
-
-        console2.log("here 20");
-        property_epochId_can_increase_by_one_within_same_transaction();
-
-        console2.log("here 21");
-        property_epochId_can_increase_by_one_within_same_transaction();
-
-        console2.log("here 22");
         property_escrow_solvency();
 
-        // vm.warp(block.timestamp + 70768);
-
-        // vm.roll(block.number + 2425);
-
-        // console2.log("here 23");
-        // toggle_EquityAccount(293139345);
-
-        // vm.warp(block.timestamp + 581537);
-
-        // vm.roll(block.number + 44004);
-
-        // console2.log("here 24");
-        // switch_asset(49);
-
-        // vm.roll(block.number + 12155);
-        // vm.warp(block.timestamp + 289103);
-        // console2.log("here 25");
-        // shortcut_deposit_cancel_claim(82056953979,264779601166233462426810639499768852166,689161065,108113728462738,17793080803900906786677358468037251290824107174238311527783831998541668927739);
-
-        // console2.log("here 26");
-        // property_sum_of_shares_received();
-
-        // vm.roll(block.number + 9);
-        // vm.warp(block.timestamp + 268516);
-        // console2.log("here 27");
-        // hub_triggerSubmitQueuedShares(49385);
-
-        // console2.log("here 28");
-        // property_price_per_share_overall();
-
-        // vm.roll(block.number + 1861);
-        // vm.warp(block.timestamp + 488);
-        // console2.log("here 29");
-        // hub_addShareClass(19218943344643208699322461299216361577554795245819409989354013587335758419105);
-
-        // vm.warp(block.timestamp + 461);
-
-        // vm.roll(block.number + 30784);
-
-        // console2.log("here 30");
-        // property_actor_pending_and_queued_deposits();
-
-        // console2.log("here 31");
-        // hub_updatePricePerShare(9190662);
-
-        // console2.log("here 32");
-        // property_total_pending_and_approved();
-
-        // vm.roll(block.number + 31232);
-        // vm.warp(block.timestamp + 384);
-        // console2.log("here 33");
-        // property_solvency_redemption_requests();
-
-        // console2.log("here 34");
-        // token_transferFrom(0xa0Cb889707d426A7A386870A03bc70d1b0697598,12305867276746262862464579021508713017418924654998358381827311159492122384763);
     }
- 
+
     // forge test --match-test test_property_price_per_share_overall_7 -vvv 
+    // NOTE: issue with assets being 0 in expected shares calculation
     function test_property_price_per_share_overall_7() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
@@ -833,5 +381,125 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_price_per_share_overall();
 
     }
-    
+
+    // forge test --match-test test_property_sum_of_account_balances_leq_escrow_12 -vvv 
+    function test_property_sum_of_account_balances_leq_escrow_12() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,202817328946178875990884541382869241,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,1,1,0);
+
+        shortcut_queue_redemption(1,1003528737181707744,0);
+
+        hub_notifyRedeem(1);
+
+        property_sum_of_account_balances_leq_escrow();
+
+    }
+
+    // forge test --match-test test_property_price_on_fulfillment_13 -vvv 
+    function test_property_price_on_fulfillment_13() public {
+
+        shortcut_deployNewTokenPoolAndShare(13,115833232541743952731636843130624,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,29,1,0);
+
+        shortcut_deposit_cancel_claim(166977638,1,89198889783443011232416108452159138080202841691510285825866430006,0,131122318721772452744012695522941701218970521149292692);
+
+        property_price_on_fulfillment();
+
+    }
+
+    // forge test --match-test test_property_sum_of_pending_redeem_request_14 -vvv 
+    function test_property_sum_of_pending_redeem_request_14() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,false);
+
+        shortcut_mint_sync(2,10001493698620430928097305628073781);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        hub_notifyRedeem(1);
+
+        property_sum_of_pending_redeem_request();
+
+    }
+
+    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_16 -vvv 
+    function test_property_holdings_balance_equals_escrow_balance_16() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,false,false,false);
+
+        hub_setQueue(0,true);
+
+        shortcut_deposit_sync(1,5429837);
+
+        property_holdings_balance_equals_escrow_balance();
+
+    }
+
+    // forge test --match-test test_property_user_cannot_mutate_pending_redeem_17 -vvv 
+    function test_property_user_cannot_mutate_pending_redeem_17() public {
+
+        shortcut_deployNewTokenPoolAndShare(4,1,true,false,false);
+
+        shortcut_mint_sync(2,100226024907937472287174369274618);
+
+        shortcut_cancel_redeem_clamped(48266540483328231371004030046248961672990027205716,0,318538688645079951209647344638790798296308773414516);
+
+        hub_addShareClass(2);
+
+        token_approve(0x0000000000000000000000000000000000000000,0);
+
+        property_user_cannot_mutate_pending_redeem();
+
+    }
+
+    // forge test --match-test test_doomsday_accountValue_differential_19 -vvv 
+    function test_doomsday_accountValue_differential_19() public {
+
+        doomsday_accountValue_differential(0,1);
+
+    }
+
+    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_20 -vvv 
+    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_20() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,1,1,0);
+
+        shortcut_cancel_redeem_clamped(1,0,0);
+
+        property_total_pending_redeem_geq_sum_pending_user_redeem();
+
+    }
+
+
+    /// === Potential Issues === ///
+    // forge test --match-test test_asyncVault_maxRedeem_8 -vvv 
+    function test_asyncVault_maxRedeem_8() public {
+
+        shortcut_deployNewTokenPoolAndShare(16,29654276389875203551777999997167602027943,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,143,1,0);
+
+        shortcut_redeem_and_claim_clamped(44055836141804467353088311715299154505223682107,1,60194726908356682833407755266714281307);
+
+        asyncVault_maxRedeem(0,0,0);
+
+    }
+
+    // forge test --match-test test_property_totalAssets_solvency_21 -vvv 
+    function test_property_totalAssets_solvency_21() public {
+
+        shortcut_deployNewTokenPoolAndShare(16,138703409147916997321469414388245120880630781437050655901962979,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,2,1,0);
+
+        shortcut_request_deposit(251,1,0,0);
+
+        property_totalAssets_solvency();
+
+    }
 }
