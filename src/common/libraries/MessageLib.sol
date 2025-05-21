@@ -685,7 +685,7 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.VaultUpdate (submsg)
+    //   VaultUpdate
     //---------------------------------------
 
     struct UpdateVault {
