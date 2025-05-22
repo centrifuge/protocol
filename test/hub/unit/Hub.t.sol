@@ -17,7 +17,7 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {Hub} from "src/hub/Hub.sol";
 
@@ -112,7 +112,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setPoolMetadata(POOL_A, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateManager(POOL_A, address(0), false);
+        hub.updateHubManager(POOL_A, address(0), false);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -131,6 +134,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));

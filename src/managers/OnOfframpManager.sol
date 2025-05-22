@@ -5,41 +5,47 @@ import {Auth} from "src/misc/Auth.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 
-import {IPoolEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "src/vaults/interfaces/IUpdateContract.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
 contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManager, IUpdateContract {
+    using CastLib for *;
     using MathLib for uint256;
 
-    event UpdateManager(PoolId indexed poolId, address who, bool canManage);
+    event UpdateManager(address who, bool canManage);
+    event UpdateOnramp(address who, bool isEnabled);
+    event UpdateOfframp(address who, bool isEnabled);
 
     error NotAllowedOnrampAsset();
-    error ZeroAssetsDeposited();
+    error InvalidAmount();
     error InvalidOfframpDestination();
 
+    PoolId public immutable poolId;
+    ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
+    mapping(address => bool) public manager;
     mapping(address asset => bool) public onramp;
-    mapping(PoolId => mapping(address => bool)) public manager;
     mapping(address asset => mapping(address receiver => bool)) public offramp;
 
-    constructor(IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, ShareClassId scId_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+        poolId = poolId_;
+        scId = scId_;
         balanceSheet = balanceSheet_;
     }
 
-    modifier authOrManager(PoolId poolId) {
-        require(wards[msg.sender] == 1 || manager[poolId][msg.sender], IAuth.NotAuthorized());
+    modifier authOrManager() {
+        require(wards[msg.sender] == 1 || manager[msg.sender], IAuth.NotAuthorized());
         _;
     }
 
@@ -48,21 +54,18 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId poolId, ShareClassId, /* scId */ bytes calldata payload) external auth {
+    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
         uint8 kind = uint8(MessageLib.updateContractType(payload));
 
-        if (kind == uint8(UpdateContractType.UpdateManager)) {
-            MessageLib.UpdateContractUpdateManager memory m = MessageLib.deserializeUpdateContractUpdateManager(payload);
-            address who = m.who.toAddress();
-
-            manager[poolId][who] = m.canManage;
-            emit UpdateManager(poolId, who, m.canManage);
-        } else if (kind == uint8(UpdateContractType.UpdateAddress)) {
+        if (kind == uint8(UpdateContractType.UpdateAddress)) {
             MessageLib.UpdateContractUpdateAddress memory m = MessageLib.deserializeUpdateContractUpdateAddress(payload);
             address who = m.who.toAddress();
 
-            manager[poolId][who] = m.canManage;
-            emit UpdateAddress(poolId, who, m.canManage);
+            if (m.what == "onramp") {
+                onramp[who] = m.isEnabled;
+                emit UpdateOnramp(who, m.isEnabled);
+            }
+            // TODO: add offramp
         } else {
             revert UnknownUpdateContractType();
         }
@@ -73,29 +76,18 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256, /* tokenId */ uint128 /* amount */ )
-        external
-    {
+    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external authOrManager {
         require(onramp[asset], NotAllowedOnrampAsset());
+        require(owner == address(this) || owner == msg.sender);
+        require(amount <= IERC20(asset).balanceOf(owner), InvalidAmount());
 
-        IPoolEscrow escrow = balanceSheet.escrow(poolId);
-        (uint128 holding,) = escrow.holding(scId, asset, 0);
-        uint128 amount = IERC20(asset).balanceOf(address(escrow)) - holding;
-        require(amount > 0, ZeroAssetsDeposited());
-
-        balanceSheet.noteDeposit(poolId, scId, asset, 0, amount);
+        balanceSheet.deposit(poolId, scId, asset, 0, amount);
     }
 
     /// @inheritdoc IWithdrawManager
-    function withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256, /* tokenId */
-        uint128 amount,
-        address receiver
-    ) external authOrManager {
+    function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external authOrManager {
         require(offramp[asset][receiver], InvalidOfframpDestination());
+
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }
 
