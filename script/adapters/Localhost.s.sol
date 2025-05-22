@@ -85,7 +85,7 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
 
-        hub.updatePricePerShare(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
@@ -110,7 +110,7 @@ contract LocalhostDeployer is FullDeployer {
         balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
 
         // Update price, deposit principal + yield
-        hub.updatePricePerShare(poolId, scId, d18(11, 10));
+        hub.updateSharePrice(poolId, scId, d18(11, 10));
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
@@ -171,7 +171,7 @@ contract LocalhostDeployer is FullDeployer {
             poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
         );
 
-        hub.updatePricePerShare(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
