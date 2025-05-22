@@ -69,8 +69,8 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
                 InvalidProof(leaf, calls[i].proof)
             );
 
-            _callWithValue(calls[i].target, calls[i].targetData, calls[i].value);
             emit ExecuteCall(calls[i].target, bytes4(calls[i].targetData), calls[i].targetData, calls[i].value);
+            _callWithValue(calls[i].target, calls[i].targetData, calls[i].value);
         }
     }
 

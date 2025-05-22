@@ -35,5 +35,6 @@ interface IMerkleProofManager is IERC7751 {
     error InvalidProof(PolicyLeaf leaf, bytes32[] proof);
     error NotAStrategist();
 
+    /// @notice Execute a series of calls.
     function execute(Call[] calldata calls) external;
 }
