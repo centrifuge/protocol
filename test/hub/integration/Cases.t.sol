@@ -17,7 +17,7 @@ contract TestCases is BaseTest {
 
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        guardian.createPool(poolId, FM, USD);
+        guardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -167,7 +167,7 @@ contract TestCases is BaseTest {
     /// forge-config: default.isolate = true
     function testUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
-        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
+        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD_ID.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true);

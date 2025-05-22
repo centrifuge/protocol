@@ -114,13 +114,14 @@ contract TestEndToEnd is Test {
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
 
-    uint128 constant INVESTOR_A_AMOUNT = 1_000_000e6;
+    uint128 constant INVESTOR_A_USDC_AMOUNT = 1_000_000e6; // Measured in USDC: 1M of USDC
 
     AccountId constant ASSET_ACCOUNT = AccountId.wrap(0x01);
     AccountId constant EQUITY_ACCOUNT = AccountId.wrap(0x02);
     AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
     AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
 
+    AssetId USD_ID;
     PoolId POOL_A;
     ShareClassId SC_1;
     AssetId USDC_ID;
@@ -128,7 +129,6 @@ contract TestEndToEnd is Test {
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
-    AssetId USD = deployA.USD();
     CHub h;
     CSpoke s;
 
@@ -166,6 +166,7 @@ contract TestEndToEnd is Test {
         });
 
         // Initialize default values
+        USD_ID = deployA.USD_ID();
         POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
         SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
     }
@@ -214,7 +215,7 @@ contract TestEndToEnd is Test {
     function testConfigureAsset(bool sameChain) public {
         _setSpoke(sameChain);
 
-        s.usdc.mint(INVESTOR_A, INVESTOR_A_AMOUNT);
+        s.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
         s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s.usdc), 0);
 
         assertEq(h.hubRegistry.decimals(USDC_ID), 6, "expected decimals");
@@ -224,7 +225,7 @@ contract TestEndToEnd is Test {
         testConfigureAsset(sameChain);
 
         vm.startPrank(address(h.guardian.safe()));
-        h.guardian.createPool(POOL_A, FM, USD);
+        h.guardian.createPool(POOL_A, FM, USD_ID);
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
@@ -262,12 +263,12 @@ contract TestEndToEnd is Test {
         IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
 
         vm.startPrank(INVESTOR_A);
-        s.usdc.approve(address(vault), INVESTOR_A_AMOUNT);
-        vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
+        s.usdc.approve(address(vault), INVESTOR_A_USDC_AMOUNT);
+        vault.requestDeposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A, INVESTOR_A);
 
         vm.startPrank(FM);
         uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(SC_1, USDC_ID);
-        h.hub.approveDeposits{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, INVESTOR_A_AMOUNT);
+        h.hub.approveDeposits{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, INVESTOR_A_USDC_AMOUNT);
         h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
@@ -275,9 +276,10 @@ contract TestEndToEnd is Test {
         h.hub.notifyDeposit{value: GAS}(POOL_A, SC_1, USDC_ID, INVESTOR_A.toBytes32(), maxClaims);
 
         vm.startPrank(INVESTOR_A);
-        vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
+        vault.mint(s.asyncRequestManager.maxMint(vault, INVESTOR_A), INVESTOR_A);
 
-        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT, "expected shares");
+        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
     }
 
     /// forge-config: default.isolate = true
@@ -292,9 +294,10 @@ contract TestEndToEnd is Test {
         IBaseVault vault = s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID);
 
         vm.startPrank(INVESTOR_A);
-        s.usdc.approve(address(vault), INVESTOR_A_AMOUNT);
-        vault.deposit(INVESTOR_A_AMOUNT, INVESTOR_A);
+        s.usdc.approve(address(vault), INVESTOR_A_USDC_AMOUNT);
+        vault.deposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A);
 
-        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT, "expected shares");
+        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
     }
 }
