@@ -105,6 +105,7 @@ contract TestEndToEnd is Test {
     uint256 constant DEFAULT_SUBSIDY = 100 ether;
 
     address immutable FM = makeAddr("FM");
+    address immutable BSM = makeAddr("BSM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
 
@@ -226,6 +227,7 @@ contract TestEndToEnd is Test {
         h.hub.notifySharePrice{value: GAS}(poolId, scId, s.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(poolId, scId, assetId);
         h.hub.updateVault{value: GAS}(poolId, scId, assetId, vaultFactory.toBytes32(), VaultUpdateKind.DeployAndLink);
+        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, poolId, BSM.toBytes32(), true);
 
         vm.stopPrank();
         vm.deal(address(this), DEFAULT_SUBSIDY);
@@ -257,7 +259,7 @@ contract TestEndToEnd is Test {
         vm.startPrank(INVESTOR_A);
         vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
 
-        assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT);
+        assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT, "expected shares");
     }
 
     /// forge-config: default.isolate = true
@@ -273,10 +275,6 @@ contract TestEndToEnd is Test {
         ERC20(asset).approve(address(vault), INVESTOR_A_AMOUNT);
         vault.deposit(INVESTOR_A_AMOUNT, INVESTOR_A);
 
-        // TODO: Continue investing process
-        //s.balanceSheet.approveDeposits(poolId, scId, assetId, INVESTOR_A_AMOUNT);
-        //s.balanceSheet.issue(poolId, scId, assetId, INVESTOR_A_AMOUNT);
-
-        //vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
+        assertEq(shareToken.balanceOf(INVESTOR_A), INVESTOR_A_AMOUNT, "expected shares");
     }
 }
