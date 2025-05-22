@@ -1510,7 +1510,7 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
 
 ///@dev Contains all deposit tests which deal with rounding edge cases
 contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest {
-    using MathLib for uint128;
+    using MathLib for *;
 
     uint128 constant MIN_REQUEST_AMOUNT_OTHER_STABLE = DENO_OTHER_STABLE;
     uint128 constant MAX_REQUEST_AMOUNT_OTHER_STABLE = 1e24;
@@ -1611,12 +1611,123 @@ contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest 
         assertEq(paymentC, depositAmountC, "Payment C should never be zero");
         assertEq(cancelledA + cancelledB + cancelledC, 0, "No queued cancellation");
     }
+
+    /// @dev Proves that for any deposit request, the difference between payment calculated with
+    /// rounding down (actual) vs rounding up (theoretical) is at most 1 atom
+    function testPaymentDiffRoundedDownVsUpAtMostOne(
+        uint128 depositAmountA_,
+        uint128 depositAmountB_,
+        uint128 approvalRatio_
+    ) public {
+        // Bound deposit amounts to reasonable ranges
+        depositAmountA_ =
+            uint128(bound(depositAmountA_, MIN_REQUEST_AMOUNT_OTHER_STABLE, MAX_REQUEST_AMOUNT_OTHER_STABLE / 2));
+        depositAmountB_ =
+            uint128(bound(depositAmountB_, MIN_REQUEST_AMOUNT_OTHER_STABLE, MAX_REQUEST_AMOUNT_OTHER_STABLE / 2));
+        approvalRatio_ = uint128(bound(approvalRatio_, 1, 100));
+        uint128 depositAmountA = depositAmountA_;
+        uint128 depositAmountB = depositAmountB_;
+        uint128 totalDeposit = depositAmountA + depositAmountB;
+        uint128 approvedAssetAmount =
+            (totalDeposit * approvalRatio_ / 100).max(MIN_REQUEST_AMOUNT_OTHER_STABLE).toUint128();
+        uint128 issuedShares = 100 * DENO_POOL;
+        D18 navPerShare = d18(_intoPoolAmount(OTHER_STABLE, approvedAssetAmount), issuedShares);
+
+        shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
+
+        (uint128 claimedSharesA, uint128 paymentAssetA,,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedSharesB, uint128 paymentAssetB,,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_B, OTHER_STABLE);
+
+        // Calculate theoretical payments with rounding up
+        uint128 paymentAssetARoundedUp =
+            depositAmountA.mulDiv(approvedAssetAmount, totalDeposit, MathLib.Rounding.Up).toUint128();
+        uint128 paymentAssetBRoundedUp =
+            depositAmountB.mulDiv(approvedAssetAmount, totalDeposit, MathLib.Rounding.Up).toUint128();
+
+        // Assert that the difference between rounded down and rounded up payment is at most 1
+        assertApproxEqAbs(paymentAssetARoundedUp, paymentAssetA, 1, "Investor A payment diff should be at most 1");
+        assertApproxEqAbs(paymentAssetBRoundedUp, paymentAssetB, 1, "Investor B payment diff should be at most 1");
+
+        // Assert that the sum of payments equals the total approved amount (or is off by at most 1)
+        assertApproxEqAbs(
+            paymentAssetA + paymentAssetB,
+            approvedAssetAmount,
+            1,
+            "Sum of actual payments should not exceed approvedAmount with at most 1 delta"
+        );
+
+        // The sum of rounded-up payments might exceed the approved amount by at most the number of investors
+        assertApproxEqAbs(
+            paymentAssetARoundedUp + paymentAssetBRoundedUp,
+            approvedAssetAmount,
+            2,
+            "Sum of rounded-up payments should not exceed approvedAmount + 2"
+        );
+
+        // Verify that the total shares issued matches the sum of claimed shares (accounting for dust)
+        uint128 totalClaimedShares = claimedSharesA + claimedSharesB;
+        assertApproxEqAbs(issuedShares, totalClaimedShares, 1e8 + 1, "Share dust should be at most 1e8");
+    }
+
+    /// @dev One investor pays nothing despite having non-zero pending amount, while the other claims almost all shares.
+    ///
+    /// Proves that it is possible for a deposit > 1 to pay (and receive) nothing. Since
+    /// `testPaymentDiffRoundedDownVsUpAtMostOne` proves that the difference between rounded up and rounded down payment
+    /// is at most 1, this test also proves that even if we reduced deposits by the rounded up payment, they could get
+    /// stuck for many epochs if the deposit amount is "dust" and there is at least one other large deposit processed
+    /// in the same epoch(s)
+    function testInvestorPaysNothingOtherClaimsAlmostAll() public {
+        uint128 depositAmountA = 100;
+        uint128 depositAmountB = 1000 * DENO_OTHER_STABLE;
+        uint128 totalDeposit = depositAmountA + depositAmountB;
+
+        // Approve slightly less than the total deposit (by exactly 1 unit)
+        uint128 approvedAssetAmount = (totalDeposit - depositAmountA) / depositAmountA;
+        uint128 issuedShares = 100 * DENO_POOL;
+        D18 navPerShare = d18(_intoPoolAmount(OTHER_STABLE, approvedAssetAmount), issuedShares);
+        assertEq(navPerShare.raw(), 1e15, "d18(1e18, 1e20) = 1e16");
+
+        shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
+        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
+
+        (uint128 claimedSharesA, uint128 paymentAssetA,,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 claimedSharesB, uint128 paymentAssetB,,) =
+            shareClass.claimDeposit(poolId, scId, INVESTOR_B, OTHER_STABLE);
+
+        // Investor A should pay nothing and get no shares
+        assertEq(paymentAssetA, 0, "Investor A should pay nothing due to rounding");
+        assertEq(claimedSharesA, 0, "Investor A should get no shares");
+        uint128 paymentAssetARoundedUp =
+            depositAmountA.mulDiv(approvedAssetAmount, totalDeposit, MathLib.Rounding.Up).toUint128();
+        assertApproxEqAbs(
+            paymentAssetARoundedUp, paymentAssetA, 1, "Diff between paymentA rounded up and down should be at most 1"
+        );
+
+        // Investor B should pay almost all and get almost all shares
+        assertEq(
+            paymentAssetB, approvedAssetAmount - 1, "Investor B should pay the entire approved amount minus 1 atom"
+        );
+        // NOTE: pool(payB) / navPerShare = ((1e19 - 1e4) * 1e18) / 1e15 = 1e20 - 1e7 = issuedShares - 1e7
+        assertEq(claimedSharesB, issuedShares - 1e7, "Investor B should get all shares minus 1e5");
+
+        // Check remaining state
+        _assertDepositRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(depositAmountA, 2));
+        _assertDepositRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(depositAmountB - paymentAssetB, 2));
+
+        // 1e7 shares should remain unclaimed in the system
+        assertEq(claimedSharesA + claimedSharesB + 1e7, issuedShares, "System should have 1 share atom surplus");
+    }
 }
 
 ///@dev Contains all deposit tests which deal with rounding edge cases
 contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
-    using MathLib for uint128;
-    using MathLib for uint256;
+    using MathLib for *;
 
     bytes32 constant INVESTOR_A = bytes32("investorA");
     bytes32 constant INVESTOR_B = bytes32("investorB");
@@ -1638,13 +1749,14 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
     function _approveAllRedeemsAndRevoke(uint128 approvedShares, uint128 expectedAssetPayout, D18 navPerShare)
         private
     {
+        uint128 pendingRedeem = shareClass.pendingRedeem(scId, OTHER_STABLE);
         shareClass.approveRedeems(
             poolId, scId, OTHER_STABLE, _nowRedeem(OTHER_STABLE), approvedShares, _pricePoolPerAsset(OTHER_STABLE)
         );
         (, uint128 assetPayout,) =
             shareClass.revokeShares(poolId, scId, OTHER_STABLE, _nowRevoke(OTHER_STABLE), navPerShare);
         assertEq(_totalIssuance(), TOTAL_ISSUANCE - approvedShares, "Mismatch in expected shares");
-        assertEq(shareClass.pendingRedeem(scId, OTHER_STABLE), 0, "Pending redeem should have decreased");
+        assertLt(shareClass.pendingRedeem(scId, OTHER_STABLE), pendingRedeem, "Pending redeem should have decreased");
         assertEq(assetPayout, expectedAssetPayout, "Mismatch in expected asset payout");
     }
 
@@ -1735,6 +1847,74 @@ contract ShareClassManagerRoundingEdgeCasesRedeem is ShareClassManagerBaseTest {
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_A, UserOrder(0, 2));
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_B, UserOrder(0, 2));
         _assertRedeemRequestEq(OTHER_STABLE, INVESTOR_C, UserOrder(0, 2));
+    }
+
+    /// @dev Proves that for any redeem request, the difference between payment calculated with
+    /// rounding down (actual) vs rounding up (theoretical) is at most 1 atom
+    function testRedeemPaymentDiffRoundedDownVsUpAtMostOne(
+        uint128 redeemSharesA_,
+        uint128 redeemSharesB_,
+        uint128 approvalRatio_,
+        uint128 navPerShareValue_
+    ) public {
+        redeemSharesA_ = uint128(bound(redeemSharesA_, MIN_REQUEST_AMOUNT_SHARES, TOTAL_ISSUANCE / 4));
+        redeemSharesB_ = uint128(bound(redeemSharesB_, MIN_REQUEST_AMOUNT_SHARES, TOTAL_ISSUANCE / 4));
+        approvalRatio_ = uint128(bound(approvalRatio_, 1, 100));
+        navPerShareValue_ = uint128(bound(navPerShareValue_, 1e15, 1e20));
+        D18 navPerShare = d18(navPerShareValue_);
+        uint128 redeemSharesA = redeemSharesA_;
+        uint128 redeemSharesB = redeemSharesB_;
+        uint128 totalRedeemShares = redeemSharesA + redeemSharesB;
+        uint128 approvedShares = (totalRedeemShares * approvalRatio_ / 100).max(MIN_REQUEST_AMOUNT_SHARES).toUint128();
+        uint128 poolPayout = navPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
+        uint128 expectedAssetPayout = _intoAssetAmount(OTHER_STABLE, poolPayout);
+
+        shareClass.requestRedeem(poolId, scId, redeemSharesA, INVESTOR_A, OTHER_STABLE);
+        shareClass.requestRedeem(poolId, scId, redeemSharesB, INVESTOR_B, OTHER_STABLE);
+        _approveAllRedeemsAndRevoke(approvedShares, expectedAssetPayout, navPerShare);
+        (uint128 payoutAssetA, uint128 paymentSharesA,,) =
+            shareClass.claimRedeem(poolId, scId, INVESTOR_A, OTHER_STABLE);
+        (uint128 payoutAssetB, uint128 paymentSharesB,,) =
+            shareClass.claimRedeem(poolId, scId, INVESTOR_B, OTHER_STABLE);
+
+        // Calculate theoretical payments with rounding up
+        uint128 paymentSharesARoundedUp =
+            redeemSharesA.mulDiv(approvedShares, totalRedeemShares, MathLib.Rounding.Up).toUint128();
+        uint128 paymentSharesBRoundedUp =
+            redeemSharesB.mulDiv(approvedShares, totalRedeemShares, MathLib.Rounding.Up).toUint128();
+
+        // Assert that the difference between rounded down and rounded up payment is at most 1
+        assertApproxEqAbs(
+            paymentSharesA, paymentSharesARoundedUp, 1, "Investor A share payment diff should be at most 1"
+        );
+        assertApproxEqAbs(
+            paymentSharesB, paymentSharesBRoundedUp, 1, "Investor B share payment diff should be at most 1"
+        );
+
+        // Assert that the sum of share payments equals the total approved amount (or is off by at most 1)
+        assertApproxEqAbs(
+            paymentSharesA + paymentSharesB,
+            approvedShares,
+            1,
+            "Sum of actual share payments should be approvedShares at most 1 delta"
+        );
+
+        // The sum of rounded-up payments might exceed the approved amount by at most the number of investors
+        assertApproxEqAbs(
+            paymentSharesARoundedUp + paymentSharesBRoundedUp,
+            approvedShares,
+            2,
+            "Sum of rounded-up payments should not exceed approvedShares + 2"
+        );
+
+        // Verify that the total assets paid out match the sum of claimed assets (accounting for dust)
+        uint128 totalPaidOutAssets = payoutAssetA + payoutAssetB;
+        assertApproxEqAbs(
+            totalPaidOutAssets,
+            expectedAssetPayout,
+            2, // Allow for precision loss due to asset conversion
+            "Asset payout dust should be at most 2"
+        );
     }
 }
 
