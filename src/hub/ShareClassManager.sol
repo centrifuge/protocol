@@ -41,6 +41,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(ShareClassId scId => ShareClassMetrics) public metrics;
     mapping(ShareClassId scId => ShareClassMetadata) public metadata;
     mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
+    mapping(ShareClassId scId => mapping(uint16 centrifugeId => uint128)) public issuance;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -340,24 +341,19 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId_, uint128 amount, bool isIssuance) external auth {
+    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId_, uint128 amount, bool isIssuance)
+        external
+        auth
+    {
         require(exists(poolId, scId_), ShareClassNotFound());
+        require(isIssuance || issuance[scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
 
-        uint128 newIssuance = metrics[scId_].totalIssuance + amount;
+        uint128 newIssuance = isIssuance ? metrics[scId_].totalIssuance + amount : metrics[scId_].totalIssuance - amount;
         metrics[scId_].totalIssuance = newIssuance;
+        issuance[scId_][centrifugeId] = newIssuance;
 
-        if (isIssuance) emit RemoteIssueShares(poolId, scId_, amount);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId_, uint128 amount) external auth {
-        require(exists(poolId, scId_), ShareClassNotFound());
-        require(metrics[scId_].totalIssuance >= amount, DecreaseMoreThanIssued());
-
-        uint128 newIssuance = metrics[scId_].totalIssuance - amount;
-        metrics[scId_].totalIssuance = newIssuance;
-
-        emit RemoteRevokeShares(poolId, scId_, amount);
+        if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
+        else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
     }
 
     //----------------------------------------------------------------------------------------------

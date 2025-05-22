@@ -29,6 +29,7 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
+uint16 constant CHAIN_ID = 1;
 uint64 constant POOL_ID = 42;
 uint32 constant SC_ID_INDEX = 1;
 ShareClassId constant SC_ID = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + SC_ID_INDEX));
@@ -83,6 +84,7 @@ abstract contract ShareClassManagerBaseTest is Test {
 
     address hubRegistryMock = address(new HubRegistryMock());
 
+    uint16 centrifugeId = 1;
     PoolId poolId = PoolId.wrap(POOL_ID);
     ShareClassId scId = SC_ID;
     bytes32 investor = bytes32("investor");
@@ -345,8 +347,8 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
     function testIncreaseShareClassIssuance(uint128 amount) public {
         vm.expectEmit();
-        emit IShareClassManager.RemoteIssueShares(poolId, scId, amount);
-        shareClass.increaseShareClassIssuance(poolId, scId, amount);
+        emit IShareClassManager.RemoteIssueShares(centrifugeId, poolId, scId, amount);
+        shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, amount);
@@ -354,10 +356,10 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     }
 
     function testDecreaseShareClassIssuance(uint128 amount) public {
-        shareClass.increaseShareClassIssuance(poolId, scId, amount);
+        shareClass.updateShares(centrifugeId, poolId, scId, amount, true);
         vm.expectEmit();
-        emit IShareClassManager.RemoteRevokeShares(poolId, scId, amount);
-        shareClass.decreaseShareClassIssuance(poolId, scId, amount);
+        emit IShareClassManager.RemoteRevokeShares(centrifugeId, poolId, scId, amount);
+        shareClass.updateShares(centrifugeId, poolId, scId, amount, false);
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
@@ -1846,19 +1848,14 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         shareClass.updateMetadata(poolId, wrongShareClassId, "", "");
     }
 
-    function testIncreaseIssuanceWrongShareClassId() public {
+    function testUpdateShareseWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.increaseShareClassIssuance(poolId, wrongShareClassId, 0);
-    }
-
-    function testDecreaseIssuanceWrongShareClassId() public {
-        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.decreaseShareClassIssuance(poolId, wrongShareClassId, 0);
+        shareClass.updateShares(CHAIN_ID, poolId, wrongShareClassId, 0, true);
     }
 
     function testDecreaseOverFlow() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.DecreaseMoreThanIssued.selector));
-        shareClass.decreaseShareClassIssuance(poolId, scId, 1);
+        shareClass.updateShares(CHAIN_ID, poolId, scId, 1, false);
     }
 
     function testIssueSharesBeforeApproval() public {
