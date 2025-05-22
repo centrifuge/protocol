@@ -37,6 +37,8 @@ import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {HubHelpers} from "src/hub/HubHelpers.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
 // Interfaces
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
@@ -140,16 +142,17 @@ abstract contract Setup is
     uint64 internal POOL_ID_COUNTER = 1;
 
     /// === GHOST === ///
-    mapping (address vault => mapping (address user => uint256)) requestDeposited;
-    mapping (address vault => mapping (address user => uint256)) depositProcessed;
-    mapping (address vault => mapping (address user => uint256)) cancelledDeposits;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestDeposited;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) depositProcessed;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) cancelledDeposits;
 
-    mapping (address vault => mapping (address user => uint256)) requestRedeemed;
-    mapping (address vault => mapping (address user => uint256)) redemptionsProcessed;
-    mapping (address vault => mapping (address user => uint256)) cancelledRedemptions;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestRedeemed;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestRedeemedAssets;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) redemptionsProcessed;
+    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) cancelledRedemptions;
 
-    mapping(address vault => uint256) approvedDeposits;
-    mapping(address vault => uint256) approvedRedemptions;
+    mapping (ShareClassId scId => mapping (AssetId assetId => uint256)) approvedDeposits;
+    mapping (ShareClassId scId => mapping (AssetId assetId => uint256)) approvedRedemptions;
 
     modifier asAdmin {
         vm.prank(address(this));

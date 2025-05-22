@@ -56,20 +56,21 @@ abstract contract AdminTargets is
 
         uint128 pendingDepositAfter = shareClassManager.pendingDeposit(scId, paymentAssetId);
         uint128 approvedAssetAmount = pendingDepositBefore - pendingDepositAfter;
-        approvedDeposits[_getVault()] += approvedAssetAmount;
+        approvedDeposits[scId][paymentAssetId] += approvedAssetAmount;
     }
 
     function hub_approveRedeems(uint32 nowRedeemEpochId, uint128 maxApproval) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId payoutAssetId = AssetId.wrap(_getAssetId());
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId payoutAssetId = hubRegistry.currency(poolId);
         uint128 pendingRedeemBefore = shareClassManager.pendingRedeem(scId, payoutAssetId);
         
         hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, maxApproval);
 
         uint128 pendingRedeemAfter = shareClassManager.pendingRedeem(scId, payoutAssetId);
         uint128 approvedAssetAmount = pendingRedeemBefore - pendingRedeemAfter;
-        approvedRedemptions[_getVault()] += approvedAssetAmount;
+        approvedRedemptions[scId][payoutAssetId] += approvedAssetAmount;
     }
 
     function hub_approveRedeems_clamped(uint32 nowRedeemEpochId, uint128 maxApproval) public {
@@ -126,18 +127,28 @@ abstract contract AdminTargets is
         hub_initializeLiability(valuation, expenseAccount.raw(), liabilityAccount.raw());
     }
     
-    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.ISSUE) {
+    /// @dev Property: After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
+    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhosts {
+        uint128 totalIssuanceBefore;
+        uint128 totalIssuanceAfter;
+
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = AssetId.wrap(_getAssetId());
         uint256 escrowSharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        (totalIssuanceBefore,) = shareClassManager.metrics(scId);
         
         hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        (totalIssuanceAfter,) = shareClassManager.metrics(scId);
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
+
+        if(navPerShare > 0) {
+            gt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not increased after issueShares");
+        }
     }
 
     function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {
@@ -228,19 +239,27 @@ abstract contract AdminTargets is
         hub_setQueue(CENTRIFUGE_CHAIN_ID, enabled);
     }
 
-    function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.REVOKE) {
+    /// @dev After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
+    function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
+        (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId);
         
         hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare));
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         uint256 burnedShares = sharesBefore - sharesAfter;
+        (uint128 totalIssuanceAfter,) = shareClassManager.metrics(scId);
 
         // NOTE: shares are burned on revoke 
         cancelRedeemShareTokenPayout[address(_getShareToken())] += burnedShares;
+        executedRedemptions[IBaseVault(_getVault()).share()] += burnedShares;
+
+        if(navPerShare > 0) {
+            lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");
+        }
     }
 
     function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public updateGhosts {

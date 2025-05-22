@@ -41,7 +41,8 @@ abstract contract BeforeAfter is Setup {
     }
 
     struct BeforeAfterVars {
-        uint256 escrowTokenBalance;
+        uint256 escrowAssetBalance;
+        uint256 poolEscrowAssetBalance;
         uint256 escrowTrancheTokenBalance;
         uint256 totalAssets;
         uint256 actualAssets;
@@ -58,7 +59,6 @@ abstract contract BeforeAfter is Setup {
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
-        mapping(ShareClassId scId => uint128 totalIssuance) ghostMetrics; // only stores the totalIssuance because we don't need navPerShare
         
         // global ghost variable only updated as needed
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals;
@@ -111,7 +111,6 @@ abstract contract BeforeAfter is Setup {
 
                 (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
                 _before.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
-                (_before.ghostMetrics[scId],) = shareClassManager.metrics(scId);
                 (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 
                 // loop over all actors
@@ -159,7 +158,6 @@ abstract contract BeforeAfter is Setup {
 
                 (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
                 _after.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
-                (_after.ghostMetrics[scId],) = shareClassManager.metrics(scId);
                 (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
                 
                 // loop over all actors
@@ -266,7 +264,8 @@ abstract contract BeforeAfter is Setup {
         }
 
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowTokenBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+            _structToUpdate.escrowAssetBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+            _structToUpdate.poolEscrowAssetBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId())));
             _structToUpdate.actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(_getVault()));
         }
     }
@@ -300,7 +299,7 @@ abstract contract BeforeAfter is Setup {
         if(address(_getVault()) == address(0)) {
             return;
         }
-        
+
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();

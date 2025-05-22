@@ -70,7 +70,7 @@ abstract contract HubTargets is
         sumOfFullfilledDeposits[_getShareToken()] += (pendingBeforeARM - pendingAfterARM);
         // claims are handled in the ShareClassManager
         sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM);
-        depositProcessed[_getVault()][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
+        depositProcessed[scId][assetId][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {
@@ -81,27 +81,24 @@ abstract contract HubTargets is
 
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
-        uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 investorSharesBefore = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
-        (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
-        (uint128 pendingBefore,) = shareClassManager.redeemRequest(scId, assetId, investor);
+        (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
+        (uint128 pendingBefore,) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
 
-        hub.notifyRedeem(PoolId.wrap(_getPool()), scId, assetId, investor, maxClaims);
+        hub.notifyRedeem(IBaseVault(_getVault()).poolId(), IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor, maxClaims);
 
-        (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
-        (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, assetId);
-        (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
+        (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
+        (, uint32 redeemEpochId,, )= shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
+        (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
 
-        uint256 investorSharesAfter = IShareToken(_getShareToken()).balanceOf(_getActor());
+        uint256 investorSharesAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         
-        executedRedemptions[_getShareToken()] += (investorSharesAfter - investorSharesBefore);
-        currencyPayout[_getAsset()] += (investorClaimableAfter - investorClaimableBefore); // the currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
+        currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore); // the currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
-        redemptionsProcessed[_getVault()][_getActor()] += (pendingBefore - pendingAfter);
+        redemptionsProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += (pendingBefore - pendingAfter);
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {

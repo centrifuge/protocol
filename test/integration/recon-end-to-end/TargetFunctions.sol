@@ -225,6 +225,8 @@ abstract contract TargetFunctions is
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
+        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        console2.log("pendingRedeem after requestRedeem", pendingRedeem);
 
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
@@ -268,6 +270,8 @@ abstract contract TargetFunctions is
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
+        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        console2.log("pendingRedeem after cancelRedeemRequest", pendingRedeem);
     }
 
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
@@ -295,8 +299,14 @@ abstract contract TargetFunctions is
         uint32 epochId,
         uint128 navPerShare
     ) public  {        
+        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        console2.log("pendingRedeem before approveRedeems", pendingRedeem);
         hub_approveRedeems(epochId, maxApproval);
+        pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        console2.log("pendingRedeem after approveRedeems", pendingRedeem);
         hub_revokeShares(epochId, navPerShare);
+        pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        console2.log("pendingRedeem after revokeShares", pendingRedeem);
     }
 
     /// === Transient Valuation === ///
