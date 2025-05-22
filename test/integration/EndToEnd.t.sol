@@ -116,6 +116,10 @@ contract TestEndToEnd is Test {
     AccountId constant LOSS_ACCOUNT = AccountId.wrap(0x03);
     AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
 
+    PoolId POOL_A;
+    ShareClassId SC_1;
+    AssetId USDC;
+
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
@@ -155,6 +159,10 @@ contract TestEndToEnd is Test {
             hub: deployA.hub(),
             identityValuation: deployA.identityValuation()
         });
+
+        // Initialize default values
+        POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
+        SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
     }
 
     function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
@@ -170,6 +178,8 @@ contract TestEndToEnd is Test {
     }
 
     function _setSpoke(bool sameChain) internal {
+        if (s.centrifugeId != 0) return; // Already set
+
         FullDeployer deploy = (sameChain) ? deployA : deployB;
         uint16 centrifugeId = (sameChain) ? CENTRIFUGE_ID_A : CENTRIFUGE_ID_B;
         s = CSpoke({
@@ -185,13 +195,13 @@ contract TestEndToEnd is Test {
             asyncVaultFactory: deploy.asyncVaultFactory(),
             syncDepositVaultFactory: deploy.syncDepositVaultFactory()
         });
+
+        // Initialize default values
+        USDC = newAssetId(s.centrifugeId, 1);
     }
 
-    function _configurePool(address vaultFactory)
-        internal
-        returns (PoolId poolId, ShareClassId scId, AssetId assetId)
-    {
-        // Register AssetId
+    function testConfigureAsset(bool sameChain) internal {
+        _setSpoke(sameChain);
 
         ERC20 asset = new ERC20(6);
         asset.file("name", "USD Coin");
@@ -199,48 +209,50 @@ contract TestEndToEnd is Test {
         asset.mint(INVESTOR_A, INVESTOR_A_AMOUNT);
 
         s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(asset), 0);
-        assetId = newAssetId(s.centrifugeId, 1);
 
-        // Configure Pool
-        poolId = h.hubRegistry.poolId(h.centrifugeId, 1);
+        assertEq(h.hubRegistry.decimals(USDC), 6, "expected decimals");
+    }
+
+    function testConfigurePool(bool sameChain) internal {
+        testConfigureAsset(sameChain);
 
         vm.startPrank(address(h.guardian.safe()));
-        h.guardian.createPool(poolId, FM, USD);
-
-        scId = h.shareClassManager.previewNextShareClassId(poolId);
+        h.guardian.createPool(POOL_A, FM, USD);
 
         vm.startPrank(FM);
-        h.hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        h.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32("salt"));
-        h.hub.notifyPool{value: GAS}(poolId, s.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(poolId, scId, s.centrifugeId, s.redemptionRestrictionsHook.toBytes32());
+        h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
+        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s.centrifugeId, s.redemptionRestrictionsHook.toBytes32());
 
-        h.hub.createAccount(poolId, ASSET_ACCOUNT, true);
-        h.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
-        h.hub.createAccount(poolId, LOSS_ACCOUNT, false);
-        h.hub.createAccount(poolId, GAIN_ACCOUNT, false);
+        h.hub.createAccount(POOL_A, ASSET_ACCOUNT, true);
+        h.hub.createAccount(POOL_A, EQUITY_ACCOUNT, false);
+        h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
+        h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
         h.hub.initializeHolding(
-            poolId, scId, assetId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            POOL_A, SC_1, USDC, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
 
-        h.hub.updateSharePrice(poolId, scId, IDENTITY_PRICE);
-        h.hub.notifySharePrice{value: GAS}(poolId, scId, s.centrifugeId);
-        h.hub.notifyAssetPrice{value: GAS}(poolId, scId, assetId);
-        h.hub.updateVault{value: GAS}(poolId, scId, assetId, vaultFactory.toBytes32(), VaultUpdateKind.DeployAndLink);
-        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, poolId, BSM.toBytes32(), true);
+        h.hub.updateSharePrice(POOL_A, SC_1, IDENTITY_PRICE);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, USDC);
+        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
         vm.stopPrank();
         vm.deal(address(this), DEFAULT_SUBSIDY);
-        s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(poolId);
+        s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     /// forge-config: default.isolate = true
     function testAsyncDeposit(bool sameChain) public {
-        _setSpoke(sameChain);
-        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(s.asyncVaultFactory));
+        testConfigurePool(sameChain);
 
-        IShareToken shareToken = IShareToken(s.spoke.shareToken(poolId, scId));
-        (address asset,) = s.spoke.idToAsset(assetId);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, USDC, address(s.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+        );
+
+        IShareToken shareToken = IShareToken(s.spoke.shareToken(POOL_A, SC_1));
+        (address asset,) = s.spoke.idToAsset(USDC);
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);
@@ -248,13 +260,13 @@ contract TestEndToEnd is Test {
         vault.requestDeposit(INVESTOR_A_AMOUNT, INVESTOR_A, INVESTOR_A);
 
         vm.startPrank(FM);
-        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(scId, assetId);
-        h.hub.approveDeposits{value: GAS}(poolId, scId, assetId, depositEpochId, INVESTOR_A_AMOUNT);
-        h.hub.issueShares{value: GAS}(poolId, scId, assetId, depositEpochId, IDENTITY_PRICE);
+        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(SC_1, USDC);
+        h.hub.approveDeposits{value: GAS}(POOL_A, SC_1, USDC, depositEpochId, INVESTOR_A_AMOUNT);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC, depositEpochId, IDENTITY_PRICE);
 
         vm.startPrank(ANY);
-        uint32 maxClaims = h.shareClassManager.maxDepositClaims(scId, INVESTOR_A.toBytes32(), assetId);
-        h.hub.notifyDeposit{value: GAS}(poolId, scId, assetId, INVESTOR_A.toBytes32(), maxClaims);
+        uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), USDC);
+        h.hub.notifyDeposit{value: GAS}(POOL_A, SC_1, USDC, INVESTOR_A.toBytes32(), maxClaims);
 
         vm.startPrank(INVESTOR_A);
         vault.mint(INVESTOR_A_AMOUNT, INVESTOR_A);
@@ -264,11 +276,14 @@ contract TestEndToEnd is Test {
 
     /// forge-config: default.isolate = true
     function testSyncDeposit(bool sameChain) public {
-        _setSpoke(sameChain);
-        (PoolId poolId, ShareClassId scId, AssetId assetId) = _configurePool(address(s.syncDepositVaultFactory));
+        testConfigurePool(sameChain);
 
-        IShareToken shareToken = IShareToken(s.spoke.shareToken(poolId, scId));
-        (address asset,) = s.spoke.idToAsset(assetId);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, USDC, address(s.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+        );
+
+        IShareToken shareToken = IShareToken(s.spoke.shareToken(POOL_A, SC_1));
+        (address asset,) = s.spoke.idToAsset(USDC);
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(asset)));
 
         vm.startPrank(INVESTOR_A);
