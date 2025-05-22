@@ -27,6 +27,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
     AssetId assetId;
     ShareClassId defaultTypedShareClassId;
 
+    address receiver = makeAddr("receiver");
     MerkleProofManager manager;
     VaultDecoder decoder;
 
@@ -103,12 +104,68 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.execute(calls);
     }
 
-    function testNotSetAsBalanceSheetManager() public {
-        uint128 withdrawAmount = 100_000;
-
-        address receiver = makeAddr("receiver");
+    function testInvalidDecoder() public {
         decoder = new VaultDecoder();
+        uint128 withdrawAmount = 100_000;
+        _depositIntoBalanceSheet(withdrawAmount);
 
+        // Generate policy root hash
+        PolicyLeaf[] memory leafs = new PolicyLeaf[](2);
+        leafs[0] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(erc20, manager)
+        });
+
+        leafs[1] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
+            addresses: abi.encodePacked(erc20)
+        });
+
+        bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            )
+        );
+
+        // Generate proof for execution
+        PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
+        proofLeafs[0] = leafs[0]; // withdraw
+
+        (bytes32[][] memory proofs) = MerkleTreeLib.getProofsUsingTree(_computeHashes(proofLeafs), tree);
+
+        // Execute
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({
+            decoder: makeAddr("notADecoder"),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.withdraw.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                address(manager),
+                withdrawAmount
+            ),
+            value: 0,
+            proof: proofs[0]
+        });
+
+        vm.expectRevert();
+        manager.execute(calls);
+    }
+
+    function testNotSetAsBalanceSheetManager() public {
+        decoder = new VaultDecoder();
+        uint128 withdrawAmount = 100_000;
         _depositIntoBalanceSheet(withdrawAmount);
 
         // Generate policy root hash
@@ -172,6 +229,154 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         );
         manager.execute(calls);
     }
+
+    function testInvalidProof() public {
+        decoder = new VaultDecoder();
+        uint128 withdrawAmount = 100_000;
+        _depositIntoBalanceSheet(withdrawAmount);
+
+        // Set merkle proof manager as balance sheet manager
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        // Generate policy root hash
+        PolicyLeaf[] memory leafs = new PolicyLeaf[](2);
+        leafs[0] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(erc20, manager)
+        });
+
+        leafs[1] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
+            addresses: abi.encodePacked(erc20)
+        });
+
+        bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            )
+        );
+
+        // Generate proof for execution
+        PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
+        proofLeafs[0] = leafs[1]; // deposit (should be withdraw)
+
+        (bytes32[][] memory proofs) = MerkleTreeLib.getProofsUsingTree(_computeHashes(proofLeafs), tree);
+
+        // Execute
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.withdraw.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                address(manager),
+                withdrawAmount
+            ),
+            value: 0,
+            proof: proofs[0]
+        });
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IMerkleProofManager.InvalidProof.selector,
+                PolicyLeaf({
+                    decoder: address(decoder),
+                    target: address(balanceSheet),
+                    selector: BalanceSheet.withdraw.selector,
+                    addresses: abi.encodePacked(address(erc20), address(manager)),
+                    valueNonZero: false
+                }),
+                proofs[0]
+            )
+        );
+        manager.execute(calls);
+    }
+
+    function testInvalidCall() public {
+        decoder = new VaultDecoder();
+        uint128 withdrawAmount = 100_000;
+        _depositIntoBalanceSheet(withdrawAmount);
+
+        // Set merkle proof manager as balance sheet manager
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        // Generate policy root hash
+        PolicyLeaf[] memory leafs = new PolicyLeaf[](2);
+        leafs[0] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(erc20, manager)
+        });
+
+        leafs[1] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
+            addresses: abi.encodePacked(erc20)
+        });
+
+        bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            )
+        );
+
+        // Generate proof for execution
+        PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
+        proofLeafs[0] = leafs[0]; // withdraw
+
+        (bytes32[][] memory proofs) = MerkleTreeLib.getProofsUsingTree(_computeHashes(proofLeafs), tree);
+
+        // Execute
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.withdraw.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                makeAddr("otherTarget"), // invalid target, should be address(manager)
+                withdrawAmount
+            ),
+            value: 0,
+            proof: proofs[0]
+        });
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IMerkleProofManager.InvalidProof.selector,
+                PolicyLeaf({
+                    decoder: address(decoder),
+                    target: address(balanceSheet),
+                    selector: BalanceSheet.withdraw.selector,
+                    addresses: abi.encodePacked(address(erc20), makeAddr("otherTarget")),
+                    valueNonZero: false
+                }),
+                proofs[0]
+            )
+        );
+        manager.execute(calls);
+    }
 }
 
 contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
@@ -182,9 +387,7 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
         withdrawAmount = uint128(bound(withdrawAmount, 0, type(uint128).max / 2));
         depositAmount = uint128(bound(depositAmount, 0, withdrawAmount));
 
-        address receiver = makeAddr("receiver");
         decoder = new VaultDecoder();
-
         _depositIntoBalanceSheet(withdrawAmount);
 
         // Set merkle proof manager as balance sheet manager

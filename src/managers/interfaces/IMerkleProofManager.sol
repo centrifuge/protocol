@@ -26,6 +26,7 @@ interface IMerkleProofManager is IERC7751 {
     event ExecuteCall(address indexed target, bytes4 indexed selector, bytes targetData, uint256 value);
 
     error InsufficientBalance();
+    error DecodingFailed();
     error CallFailed();
     error InvalidProofLength();
     error InvalidTargetDataLength();

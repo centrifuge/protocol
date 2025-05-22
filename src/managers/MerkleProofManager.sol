@@ -78,6 +78,7 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     // Helpers
     //----------------------------------------------------------------------------------------------
 
+    /// @dev Convert call data + decoded addresses into a merkle tree leaf
     function _toPolicyLeaf(Call memory call, bytes memory addresses) internal pure returns (PolicyLeaf memory) {
         return PolicyLeaf({
             decoder: call.decoder,
@@ -88,10 +89,12 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         });
     }
 
+    /// @dev Convert hash of a merkle tree leaf
     function _computeHash(PolicyLeaf memory leaf) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(leaf.decoder, leaf.target, leaf.valueNonZero, leaf.selector, leaf.addresses));
     }
 
+    /// @dev Execute a static call to a contract
     function _staticCall(address target, bytes memory data) internal view returns (bytes memory) {
         (bool success, bytes memory returnData) = target.staticcall(data);
         require(success, CallFailed());
@@ -99,6 +102,7 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         return returnData;
     }
 
+    /// @dev Execute a call with value to a contract
     function _callWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
         require(address(this).balance >= value, InsufficientBalance());
 
