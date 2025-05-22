@@ -23,8 +23,9 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     using MathLib for uint256;
 
     event UpdateManager(address who, bool canManage);
-    event UpdateOnramp(address who, bool isEnabled);
-    event UpdateOfframp(address who, bool isEnabled);
+    event UpdatePermissionless(bool isSet);
+    event UpdateOnramp(address indexed asset, bool isEnabled);
+    event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
 
     error NotAllowedOnrampAsset();
     error InvalidAmount();
@@ -34,6 +35,7 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
+    bool public permissionless;
     mapping(address => bool) public manager;
     mapping(address asset => bool) public onramp;
     mapping(address asset => mapping(address receiver => bool)) public offramp;
@@ -61,18 +63,28 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
             MessageLib.UpdateContractUpdateAddress memory m = MessageLib.deserializeUpdateContractUpdateAddress(payload);
             address who = m.who.toAddress();
 
-            if (m.what == "onramp") {
+            if (m.kind == "onramp") {
                 onramp[who] = m.isEnabled;
                 emit UpdateOnramp(who, m.isEnabled);
+            } else if (m.kind == "offramp") {
+                address asset = m.what.toAddress();
+                offramp[asset][who] = m.isEnabled;
+                emit UpdateOfframp(asset, who, m.isEnabled);
             }
-            // TODO: add offramp
+        } else if (kind == uint8(UpdateContractType.Toggle)) {
+            MessageLib.UpdateContractToggle memory m = MessageLib.deserializeUpdateContractToggle(payload);
+
+            if (m.what == "permissionless") {
+                permissionless = m.isEnabled;
+                emit UpdatePermissionless(m.isEnabled);
+            }
         } else {
             revert UnknownUpdateContractType();
         }
     }
 
     //----------------------------------------------------------------------------------------------
-    // Permissionless actions
+    // Deposit & withdraw actions
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
