@@ -71,10 +71,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
+        hub.updateHoldingAmount(
+            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true);
+        hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.stopPrank();
     }

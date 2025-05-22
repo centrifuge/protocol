@@ -596,10 +596,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease,
-        bool isSnapshot
+        bool isSnapshot,
+        uint88 nonce
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease); // TODO , isSnapshot
+            hub.updateHoldingAmount(
+                localCentrifugeId, poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, isSnapshot, nonce
+            );
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -611,19 +614,24 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),
                     isIncrease: isIncrease,
-                    isSnapshot: isSnapshot
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
                 }).serialize()
             );
         }
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance, bool isSnapshot)
-        external
-        auth
-    {
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shares,
+        bool isIssuance,
+        bool isSnapshot,
+        uint88 nonce
+    ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance); // TODO , isSnapshot
+            hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -633,7 +641,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     shares: shares,
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance,
-                    isSnapshot: isSnapshot
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
                 }).serialize()
             );
         }

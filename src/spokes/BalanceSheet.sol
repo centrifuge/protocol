@@ -137,7 +137,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         } else {
             bool isSnapshot =
                 queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, true, isSnapshot);
+            sender.sendUpdateHoldingAmount(
+                poolId, scId, assetId, amount, pricePoolPerAsset_, true, isSnapshot, queuedShares[poolId][scId].nonce
+            );
         }
     }
 
@@ -170,7 +172,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         } else {
             bool isSnapshot =
                 queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset_, false, isSnapshot);
+            sender.sendUpdateHoldingAmount(
+                poolId, scId, assetId, amount, pricePoolPerAsset_, false, isSnapshot, queuedShares[poolId][scId].nonce
+            );
         }
 
         escrow_.authTransferTo(asset, tokenId, receiver, amount);
@@ -193,7 +197,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             }
         } else {
             bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot);
+            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot, queuedShares[poolId][scId].nonce);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -217,7 +221,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             }
         } else {
             bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot);
+            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot, queuedShares[poolId][scId].nonce);
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);

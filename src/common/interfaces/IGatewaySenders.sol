@@ -189,10 +189,17 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         uint128 amount,
         D18 pricePoolPerAsset,
         bool isIncrease,
-        bool isSnapshot
+        bool isSnapshot,
+        uint88 nonce
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance, bool isSnapshot)
-        external;
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shares,
+        bool isIssuance,
+        bool isSnapshot,
+        uint88 nonce
+    ) external;
 }

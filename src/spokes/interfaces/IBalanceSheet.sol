@@ -68,7 +68,7 @@ interface IBalanceSheet {
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter);
+        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint88 nonce);
     function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view

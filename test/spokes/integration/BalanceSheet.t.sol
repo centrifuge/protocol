@@ -249,14 +249,14 @@ contract BalanceSheetTest is BaseTest {
         );
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount);
         assertEq(delta, defaultAmount);
         assertEq(isPositive, true);
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 2);
 
-        (uint128 deltaAfter, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 deltaAfter, bool isPositive2,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount * 3);
         assertEq(deltaAfter, defaultAmount * 3);
         assertEq(isPositive2, true);
@@ -279,7 +279,7 @@ contract BalanceSheetTest is BaseTest {
         );
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 2);
 
-        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount);
         assertEq(delta, defaultAmount);
         assertEq(isPositive, true);
@@ -290,7 +290,7 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.revoke(POOL_A, defaultTypedShareClassId, defaultAmount * 3);
 
-        (uint128 delta2, bool isPositive2,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta2, bool isPositive2,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(token.balanceOf(address(this)), defaultAmount);
         assertEq(delta2, defaultAmount * 2);
         assertEq(isPositive2, false);
@@ -312,7 +312,7 @@ contract BalanceSheetTest is BaseTest {
         );
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount * 3);
-        (uint128 delta, bool isPositive,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(delta, defaultAmount);
         assertEq(isPositive, true);
 
@@ -322,7 +322,7 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
-        (uint128 deltaAfter, bool isPositiveAfter,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(deltaAfter, 0);
         assertEq(isPositiveAfter, true);
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
@@ -414,7 +414,7 @@ contract BalanceSheetTest is BaseTest {
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, 0);
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();
         assertEq(shares, defaultAmount);
@@ -438,7 +438,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
-        (uint128 increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (uint128 increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, defaultAmount);
 
         // Submit with queue disabled
@@ -446,7 +446,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
 
         // Shares should be submitted even if disabled
-        (increase,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
+        (increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(increase, 0);
 
         (uint128 shares, bool isIssuance) = DispatcherSpy(address(balanceSheet.sender())).sendUpdateShares_result();

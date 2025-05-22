@@ -97,11 +97,11 @@ contract Holdings is Auth, IHoldings {
         external
         auth
     {
-        Snapshot storage snapshot = snapshot[poolId][scId][centrifugeId];
-        require(snapshot.nonce == nonce, InvalidNonce());
+        Snapshot storage snapshot_ = snapshot[poolId][scId][centrifugeId];
+        require(snapshot_.nonce == nonce, InvalidNonce());
 
-        snapshot.isSnapshot = isSnapshot;
-        snapshot.nonce++;
+        snapshot_.isSnapshot = isSnapshot;
+        snapshot_.nonce++;
 
         emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }

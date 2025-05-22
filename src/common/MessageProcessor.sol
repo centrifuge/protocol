@@ -180,11 +180,21 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.amount,
                 D18.wrap(m.pricePerUnit),
-                m.isIncrease
+                m.isIncrease,
+                m.isSnapshot,
+                m.nonce
             );
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
-            hub.updateShares(centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares, m.isIssuance);
+            hub.updateShares(
+                centrifugeId,
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.shares,
+                m.isIssuance,
+                m.isSnapshot,
+                m.nonce
+            );
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
             investmentManager.approvedDeposits(
