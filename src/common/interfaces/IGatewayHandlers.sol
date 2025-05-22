@@ -51,11 +51,9 @@ interface IHubGatewayHandler {
         uint128 amount
     ) external;
 
-    /// @notice Increases the total issuance of shares by request from vaults.
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
-
-    /// @notice Decreases the total issuance of shares by request from vaults.
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    /// @notice Updates the total issuance of shares by request from vaults.
+    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
+        external;
 }
 
 /// -----------------------------------------------------

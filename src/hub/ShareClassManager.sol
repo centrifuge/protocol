@@ -340,13 +340,13 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId_, uint128 amount) external auth {
+    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId_, uint128 amount, bool isIssuance) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
 
         uint128 newIssuance = metrics[scId_].totalIssuance + amount;
         metrics[scId_].totalIssuance = newIssuance;
 
-        emit RemoteIssueShares(poolId, scId_, amount);
+        if (isIssuance) emit RemoteIssueShares(poolId, scId_, amount);
     }
 
     /// @inheritdoc IShareClassManager

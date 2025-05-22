@@ -600,17 +600,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
+    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
+        external
+    {
         _auth();
 
-        shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
-        _auth();
-
-        shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
+        shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
     }
 
     //----------------------------------------------------------------------------------------------

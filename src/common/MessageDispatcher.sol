@@ -623,11 +623,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, shares); // TODO , isSnapshot
-            } else {
-                hub.decreaseShareIssuance(poolId, scId, shares); // TODO , isSnapshot
-            }
+            hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance); // TODO , isSnapshot
         } else {
             gateway.send(
                 poolId.centrifugeId(),
