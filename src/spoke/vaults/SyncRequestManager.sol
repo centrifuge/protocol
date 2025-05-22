@@ -263,7 +263,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
-        balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
         balanceSheet.issue(poolId, scId, receiver, shares);
         balanceSheet.resetPricePoolPerShare(poolId, scId);
 
