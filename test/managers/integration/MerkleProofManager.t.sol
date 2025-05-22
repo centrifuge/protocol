@@ -11,13 +11,13 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 
-import {MerkleProofManager, PolicyLeaf, computeHash, Call} from "src/managers/MerkleProofManager.sol";
+import {MerkleProofManager, PolicyLeaf, Call} from "src/managers/MerkleProofManager.sol";
 import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
 import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
 
-contract BalanceSheetTest is BaseTest {
-    using MessageLib for *;
+abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
+    using MessageLib for *;
 
     uint128 defaultAmount;
     D18 defaultPricePoolPerShare;
@@ -60,6 +60,31 @@ contract BalanceSheetTest is BaseTest {
 
         manager = new MerkleProofManager(POOL_A, balanceSheet, address(this));
     }
+
+    function _selector(string memory signature) internal pure returns (bytes4) {
+        return bytes4(keccak256(abi.encodePacked(signature)));
+    }
+
+    function _computeHashes(PolicyLeaf[] memory policyLeafs) internal pure returns (bytes32[] memory) {
+        bytes32[] memory leafs = new bytes32[](policyLeafs.length);
+        for (uint256 i; i < policyLeafs.length; ++i) {
+            leafs[i] = keccak256(
+                abi.encodePacked(
+                    policyLeafs[i].decoder,
+                    policyLeafs[i].target,
+                    policyLeafs[i].valueNonZero,
+                    policyLeafs[i].selector,
+                    policyLeafs[i].addresses
+                )
+            );
+        }
+        return leafs;
+    }
+}
+
+contract MerkleProofManagerSuccessTest is MerkleProofManagerBaseTest {
+    using CastLib for *;
+    using MessageLib for *;
 
     function testExecute(uint128 withdrawAmount, uint128 depositAmount) public {
         withdrawAmount = uint128(bound(withdrawAmount, 0, type(uint128).max / 2));
@@ -168,17 +193,5 @@ contract BalanceSheetTest is BaseTest {
         manager.execute(calls);
         assertEq(erc20.balanceOf(address(manager)), withdrawAmount - depositAmount);
         assertEq(erc20.balanceOf(address(balanceSheet.escrow(POOL_A))), depositAmount);
-    }
-
-    function _selector(string memory signature) internal pure returns (bytes4) {
-        return bytes4(keccak256(abi.encodePacked(signature)));
-    }
-
-    function _computeHashes(PolicyLeaf[] memory policyLeafs) internal pure returns (bytes32[] memory) {
-        bytes32[] memory leafs = new bytes32[](policyLeafs.length);
-        for (uint256 i; i < policyLeafs.length; ++i) {
-            leafs[i] = computeHash(policyLeafs[i]);
-        }
-        return leafs;
     }
 }

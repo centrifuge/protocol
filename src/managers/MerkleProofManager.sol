@@ -62,10 +62,11 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
 
         for (uint256 i; i < calls.length; ++i) {
             bytes memory addresses = abi.decode(_staticCall(calls[i].decoder, calls[i].targetData), (bytes));
-            bytes32 leafHash = computeHash(calls[i].toPolicyLeaf(addresses));
+            PolicyLeaf memory leaf = _toPolicyLeaf(calls[i], addresses);
+
             require(
-                MerkleProofLib.verify(calls[i].proof, strategistPolicy, leafHash),
-                InvalidProof(calls[i].target, calls[i].targetData, calls[i].value)
+                MerkleProofLib.verify(calls[i].proof, strategistPolicy, _computeHash(leaf)),
+                InvalidProof(leaf, calls[i].proof)
             );
 
             _callWithValue(calls[i].target, calls[i].targetData, calls[i].value);
@@ -74,8 +75,22 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     }
 
     //----------------------------------------------------------------------------------------------
-    // Helper methods
+    // Helpers
     //----------------------------------------------------------------------------------------------
+
+    function _toPolicyLeaf(Call memory call, bytes memory addresses) internal pure returns (PolicyLeaf memory) {
+        return PolicyLeaf({
+            decoder: call.decoder,
+            target: call.target,
+            selector: bytes4(call.targetData),
+            addresses: addresses,
+            valueNonZero: call.value > 0
+        });
+    }
+
+    function _computeHash(PolicyLeaf memory leaf) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(leaf.decoder, leaf.target, leaf.valueNonZero, leaf.selector, leaf.addresses));
+    }
 
     function _staticCall(address target, bytes memory data) internal view returns (bytes memory) {
         (bool success, bytes memory returnData) = target.staticcall(data);
@@ -93,21 +108,3 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         return returnData;
     }
 }
-
-function toPolicyLeaf(Call memory call, bytes memory addresses) pure returns (PolicyLeaf memory) {
-    return PolicyLeaf({
-        decoder: call.decoder,
-        target: call.target,
-        selector: bytes4(call.targetData),
-        addresses: addresses,
-        valueNonZero: call.value > 0
-    });
-}
-
-using {toPolicyLeaf} for Call;
-
-function computeHash(PolicyLeaf memory leaf) pure returns (bytes32) {
-    return keccak256(abi.encodePacked(leaf.decoder, leaf.target, leaf.valueNonZero, leaf.selector, leaf.addresses));
-}
-
-using {computeHash} for PolicyLeaf;

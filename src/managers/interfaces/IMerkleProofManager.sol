@@ -27,7 +27,7 @@ interface IMerkleProofManager {
     error InvalidTargetDataLength();
     error InvalidValuesLength();
     error InvalidDecodersLength();
-    error InvalidProof(address target, bytes targetData, uint256 value);
+    error InvalidProof(PolicyLeaf leaf, bytes32[] proof);
     error NotAStrategist();
 
     function execute(Call[] calldata calls) external;
