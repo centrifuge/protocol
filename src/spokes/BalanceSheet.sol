@@ -310,10 +310,11 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         ShareQueueAmount storage queue = queuedShares[poolId][scId];
 
         bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot);
+        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot, queue.nonce);
 
         queue.delta = 0;
         queue.isPositive = true;
+        queue.nonce++;
     }
 
     function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
@@ -327,16 +328,32 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         bool isSnapshot = queuedShares[poolId][scId].delta == 0 && queuedShares[poolId][scId].queuedAssetCounter == 0;
         if (queue.deposits > queue.withdrawals) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.deposits - queue.withdrawals, pricePoolPerAsset, true, isSnapshot
+                poolId,
+                scId,
+                assetId,
+                queue.deposits - queue.withdrawals,
+                pricePoolPerAsset,
+                true,
+                isSnapshot,
+                queuedShares[poolId][scId].nonce
             );
         } else if (queue.withdrawals > queue.deposits) {
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, queue.withdrawals - queue.deposits, pricePoolPerAsset, false, isSnapshot
+                poolId,
+                scId,
+                assetId,
+                queue.withdrawals - queue.deposits,
+                pricePoolPerAsset,
+                false,
+                isSnapshot,
+                queuedShares[poolId][scId].nonce
             );
         }
 
         queue.deposits = 0;
         queue.withdrawals = 0;
+
+        queuedShares[poolId][scId].nonce++;
     }
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {

@@ -107,8 +107,8 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
         (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
-        (83  << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (51  << uint8(MessageType.UpdateShares) * 8) +
+        (94  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (62  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
         (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
         (41 << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
@@ -938,6 +938,7 @@ library MessageLib {
         uint64 timestamp;
         bool isIncrease;
         bool isSnapshot;
+        uint88 nonce;
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
@@ -951,7 +952,8 @@ library MessageLib {
             pricePerUnit: data.toUint128(57),
             timestamp: data.toUint64(73),
             isIncrease: data.toBool(81),
-            isSnapshot: data.toBool(82)
+            isSnapshot: data.toBool(82),
+            nonce: data.toUint88(83)
         });
     }
 
@@ -965,7 +967,8 @@ library MessageLib {
             t.pricePerUnit,
             t.timestamp,
             t.isIncrease,
-            t.isSnapshot
+            t.isSnapshot,
+            t.nonce
         );
     }
 
@@ -980,6 +983,7 @@ library MessageLib {
         uint64 timestamp;
         bool isIssuance;
         bool isSnapshot;
+        uint88 nonce;
     }
 
     function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
@@ -991,13 +995,14 @@ library MessageLib {
             shares: data.toUint128(25),
             timestamp: data.toUint64(41),
             isIssuance: data.toBool(49),
-            isSnapshot: data.toBool(50)
+            isSnapshot: data.toBool(50),
+            nonce: data.toUint88(51)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance, t.isSnapshot
+            MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance, t.isSnapshot, t.nonce
         );
     }
 

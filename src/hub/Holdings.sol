@@ -17,12 +17,21 @@ import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.s
 
 /// @title  Holdings
 /// @notice Bookkeeping of the holdings and its associated accounting IDs for each pool.
+/// @dev    Keeps track of whether the current holdings + share issuance in `ShareClassManager` is a snapshot. This is
+///         the case when assets and shares are in sync for the given network, and can be used to derive computations
+///         that rely on the ratio, such as the price per share.
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256;
 
     IHubRegistry public immutable hubRegistry;
 
+    struct Snapshot {
+        bool isSnapshot;
+        uint88 nonce;
+    }
+
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => Snapshot))) public snapshot;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
@@ -81,6 +90,20 @@ contract Holdings is Auth, IHoldings {
         holding_.valuation = valuation_;
 
         emit UpdateValuation(poolId, scId, assetId, valuation_);
+    }
+
+    /// @inheritdoc IHoldings
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint88 nonce)
+        external
+        auth
+    {
+        Snapshot storage snapshot = snapshot[poolId][scId][centrifugeId];
+        require(snapshot.nonce == nonce, InvalidNonce());
+
+        snapshot.isSnapshot = isSnapshot;
+        snapshot.nonce++;
+
+        emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
     //----------------------------------------------------------------------------------------------

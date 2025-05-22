@@ -174,6 +174,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hub.updateHoldingAmount(
+                centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),

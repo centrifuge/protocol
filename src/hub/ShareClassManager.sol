@@ -341,10 +341,14 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     /// @inheritdoc IShareClassManager
-    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId_, uint128 amount, bool isIssuance)
-        external
-        auth
-    {
+    function updateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId_,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot
+    ) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(isIssuance || issuance[scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
 

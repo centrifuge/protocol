@@ -500,7 +500,8 @@ contract TestMessageLibIdentities is Test {
         uint128 pricePerUnit,
         uint64 timestamp,
         bool isIncrease,
-        bool isSnapshot
+        bool isSnapshot,
+        uint88 nonce
     ) public pure {
         MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: poolId,
@@ -510,7 +511,8 @@ contract TestMessageLibIdentities is Test {
             pricePerUnit: pricePerUnit,
             timestamp: timestamp,
             isIncrease: isIncrease,
-            isSnapshot: isSnapshot
+            isSnapshot: isSnapshot,
+            nonce: nonce
         });
 
         MessageLib.UpdateHoldingAmount memory b = MessageLib.deserializeUpdateHoldingAmount(a.serialize());
@@ -523,6 +525,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIncrease, b.isIncrease);
         assertEq(a.isSnapshot, b.isSnapshot);
+        assertEq(a.nonce, b.nonce);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -535,7 +538,8 @@ contract TestMessageLibIdentities is Test {
         uint128 shares,
         uint64 timestamp,
         bool isIssuance,
-        bool isSnapshot
+        bool isSnapshot,
+        uint88 nonce
     ) public pure {
         MessageLib.UpdateShares memory a = MessageLib.UpdateShares({
             poolId: poolId,
@@ -543,7 +547,8 @@ contract TestMessageLibIdentities is Test {
             shares: shares,
             timestamp: timestamp,
             isIssuance: isIssuance,
-            isSnapshot: isSnapshot
+            isSnapshot: isSnapshot,
+            nonce: nonce
         });
 
         MessageLib.UpdateShares memory b = MessageLib.deserializeUpdateShares(a.serialize());
@@ -554,6 +559,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.timestamp, b.timestamp);
         assertEq(a.isIssuance, b.isIssuance);
         assertEq(a.isSnapshot, b.isSnapshot);
+        assertEq(a.nonce, b.nonce);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
