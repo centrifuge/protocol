@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import "test/spoke/BaseTest.sol";
+import {IAuth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
@@ -14,6 +15,7 @@ import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {MerkleProofManager, PolicyLeaf, Call} from "src/managers/MerkleProofManager.sol";
 import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
 import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
+import {IMerkleProofManager, IERC7751} from "src/managers/interfaces/IMerkleProofManager.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -61,6 +63,14 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         manager = new MerkleProofManager(POOL_A, balanceSheet, address(this));
     }
 
+    function _depositIntoBalanceSheet(uint128 amount) internal {
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
+
+        erc20.mint(address(this), amount);
+        erc20.approve(address(balanceSheet), amount);
+        balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, amount);
+    }
+
     function _selector(string memory signature) internal pure returns (bytes4) {
         return bytes4(keccak256(abi.encodePacked(signature)));
     }
@@ -82,7 +92,89 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
     }
 }
 
-contract MerkleProofManagerSuccessTest is MerkleProofManagerBaseTest {
+contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
+    using CastLib for *;
+    using MessageLib for *;
+
+    function testNotStrategist() public {
+        Call[] memory calls = new Call[](0);
+
+        vm.expectRevert(IMerkleProofManager.NotAStrategist.selector);
+        manager.execute(calls);
+    }
+
+    function testNotSetAsBalanceSheetManager() public {
+        uint128 withdrawAmount = 100_000;
+
+        address receiver = makeAddr("receiver");
+        decoder = new VaultDecoder();
+
+        _depositIntoBalanceSheet(withdrawAmount);
+
+        // Generate policy root hash
+        PolicyLeaf[] memory leafs = new PolicyLeaf[](2);
+        leafs[0] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
+            addresses: abi.encodePacked(erc20, manager)
+        });
+
+        leafs[1] = PolicyLeaf({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            valueNonZero: false,
+            selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
+            addresses: abi.encodePacked(erc20)
+        });
+
+        bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            )
+        );
+
+        // Generate proof for execution
+        PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
+        proofLeafs[0] = leafs[0]; // withdraw
+
+        (bytes32[][] memory proofs) = MerkleTreeLib.getProofsUsingTree(_computeHashes(proofLeafs), tree);
+
+        // Execute
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({
+            decoder: address(decoder),
+            target: address(balanceSheet),
+            targetData: abi.encodeWithSelector(
+                BalanceSheet.withdraw.selector,
+                POOL_A,
+                defaultTypedShareClassId,
+                address(erc20),
+                erc20TokenId,
+                address(manager),
+                withdrawAmount
+            ),
+            value: 0,
+            proof: proofs[0]
+        });
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC7751.WrappedError.selector,
+                address(balanceSheet),
+                BalanceSheet.withdraw.selector,
+                abi.encodeWithSelector(IAuth.NotAuthorized.selector),
+                abi.encodeWithSignature("CallFailed()")
+            )
+        );
+        manager.execute(calls);
+    }
+}
+
+contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
     using CastLib for *;
     using MessageLib for *;
 
@@ -93,12 +185,7 @@ contract MerkleProofManagerSuccessTest is MerkleProofManagerBaseTest {
         address receiver = makeAddr("receiver");
         decoder = new VaultDecoder();
 
-        // Deposit ERC20 in balance sheet
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
-
-        erc20.mint(address(this), withdrawAmount);
-        erc20.approve(address(balanceSheet), withdrawAmount);
-        balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, withdrawAmount);
+        _depositIntoBalanceSheet(withdrawAmount);
 
         // Set merkle proof manager as balance sheet manager
         balanceSheet.updateManager(POOL_A, address(manager), true);

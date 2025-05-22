@@ -103,7 +103,10 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
         require(address(this).balance >= value, InsufficientBalance());
 
         (bool success, bytes memory returnData) = target.call{value: value}(data);
-        require(success, CallFailed());
+
+        if (!success) {
+            revert WrappedError(target, bytes4(data), returnData, abi.encodeWithSelector(CallFailed.selector));
+        }
 
         return returnData;
     }
