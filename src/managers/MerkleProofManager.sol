@@ -17,7 +17,7 @@ import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMe
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
-contract MerkleProofManager is Auth, IMerkleProofManager, IUpdateContract {
+contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     using CastLib for *;
 
     PoolId public immutable poolId;
@@ -26,7 +26,7 @@ contract MerkleProofManager is Auth, IMerkleProofManager, IUpdateContract {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    constructor(PoolId poolId_, address spoke_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, address spoke_, IBalanceSheet balanceSheet_, address deployer) {
         poolId = poolId_;
         spoke = spoke_;
         balanceSheet = balanceSheet_;
@@ -37,7 +37,8 @@ contract MerkleProofManager is Auth, IMerkleProofManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external {
+    function update(PoolId poolId_, ShareClassId, /* scId */ bytes calldata payload) external {
+        require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == spoke, NotAuthorized());
 
         uint8 kind = uint8(MessageLib.updateContractType(payload));

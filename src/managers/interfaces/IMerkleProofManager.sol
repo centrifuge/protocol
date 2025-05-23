@@ -34,6 +34,8 @@ interface IMerkleProofManager is IERC7751 {
     error InvalidDecodersLength();
     error InvalidProof(PolicyLeaf leaf, bytes32[] proof);
     error NotAStrategist();
+    error InvalidPoolId();
+    error NotAuthorized();
 
     /// @notice Execute a series of calls.
     function execute(Call[] calldata calls) external;
