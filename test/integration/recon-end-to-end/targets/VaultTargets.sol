@@ -331,7 +331,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             executedInvestments[vault.share()] += shares;
             
-            sumOfSyncDeposits[vault.asset()] += assets;
+            sumOfSyncDeposits[vault.scId()][hubRegistry.currency(vault.poolId())] += assets;
             depositProcessed[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
             requestDeposited[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
         }
@@ -394,7 +394,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         if(!isAsyncVault) {
             requestDeposited[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
             depositProcessed[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
-            sumOfSyncDeposits[vault.asset()] += assets;
+            sumOfSyncDeposits[vault.scId()][hubRegistry.currency(vault.poolId())] += assets;
 
             sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
             sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);

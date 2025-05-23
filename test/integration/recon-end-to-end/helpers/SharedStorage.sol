@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "src/misc/ERC20.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 abstract contract SharedStorage {
     /**
@@ -138,7 +140,7 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfClaimedDepositCancelations;
     mapping(address => uint256) sumOfClaimedRedeemCancelations;
 
-    mapping(address => uint256) sumOfSyncDeposits;
+    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) sumOfSyncDeposits;
 
     // END === invariant_E_2 === //
 

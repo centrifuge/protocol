@@ -235,7 +235,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             /// @audit Minted by Asset Payouts by Investors
             ghostBalOfEscrow = (
                 (sumOfDepositRequests[asset]  +
-                sumOfSyncDeposits[asset]) -  
+                sumOfSyncDeposits[vault.scId()][hubRegistry.currency(vault.poolId())]) -  
                 (sumOfClaimedDepositCancelations[asset] +
                 sumOfClaimedRedemptions[asset])
             );
@@ -883,6 +883,19 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
         
         eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
+    }
+
+    function property_total_issuance_soundness() public {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        (uint128 totalIssuance,) = shareClassManager.metrics(scId);
+        
+        uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId] + sumOfSyncDeposits[scId][assetId];
+        uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
+        lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
     /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
