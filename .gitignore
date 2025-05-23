@@ -2,7 +2,7 @@
 cache/
 out/
 broadcast/
-*.env
+!.env.example
 .idea/
 .DS_Store
 .env.*
@@ -19,6 +19,3 @@ deployments/ci
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
-
-## VSCode Configs
-/slither.config.json
