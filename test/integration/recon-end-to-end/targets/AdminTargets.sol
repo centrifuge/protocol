@@ -260,7 +260,6 @@ abstract contract AdminTargets is
         (uint128 balanceSheetSharesAfter, ) = balanceSheet.queuedShares(poolId, scId);
 
         // NOTE: shares are burned on revoke 
-        cancelRedeemShareTokenPayout[address(_getShareToken())] += burnedShares;
         executedRedemptions[IBaseVault(_getVault()).share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += burnedShares;
         revokedBalanceSheetShares[poolId][scId] += (balanceSheetSharesBefore - balanceSheetSharesAfter);

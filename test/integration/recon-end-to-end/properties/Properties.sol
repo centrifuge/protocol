@@ -256,7 +256,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 ghostBalanceOfEscrow;
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
-        unchecked {            
+        unchecked {       
             ghostBalanceOfEscrow = (
                 (sumOfFullfilledDeposits[address(shareToken)] + 
                 sumOfRedeemRequests[address(shareToken)]) - 
