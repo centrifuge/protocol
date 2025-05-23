@@ -1,7 +1,0 @@
-{
-  "detectors_to_exclude": "naming-convention,reentrancy-events,solc-version,timestamp,name-reused,arbitrary-send-erc20",
-  "filter_paths": "(lib|test)",
-  "solc_remaps": [
-    "forge-std/=lib/forge-std/src/"
-  ]
-}
