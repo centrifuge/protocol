@@ -267,6 +267,13 @@ abstract contract TargetFunctions is
     function shortcut_cancel_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
+        vault_requestRedeem(shares, toEntropy);
+
+        vault_cancelRedeemRequest();
+    }
+
+    function shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
@@ -276,7 +283,7 @@ abstract contract TargetFunctions is
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
-        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        vault_requestRedeem(shares, toEntropy);
 
         vault_cancelRedeemRequest();
         vault_claimCancelRedeemRequest(toEntropy);
