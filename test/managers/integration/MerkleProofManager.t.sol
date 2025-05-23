@@ -61,7 +61,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
 
-        manager = new MerkleProofManager(POOL_A, balanceSheet, address(this));
+        manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet, address(this));
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {
@@ -128,6 +128,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+
+        vm.prank(address(spoke));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -187,6 +189,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+
+        vm.prank(address(spoke));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -257,6 +261,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+
+        vm.prank(address(spoke));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -331,6 +337,8 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+
+        vm.prank(address(spoke));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -428,6 +436,8 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
+
+        vm.prank(address(spoke));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,

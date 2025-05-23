@@ -17,16 +17,18 @@ import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMe
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
-contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateContract {
+contract MerkleProofManager is Auth, IMerkleProofManager, IUpdateContract {
     using CastLib for *;
 
     PoolId public immutable poolId;
+    address public immutable spoke;
     IBalanceSheet public immutable balanceSheet;
 
     mapping(address strategist => bytes32 root) public policy;
 
-    constructor(PoolId poolId_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, address spoke_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
         poolId = poolId_;
+        spoke = spoke_;
         balanceSheet = balanceSheet_;
     }
 
@@ -35,9 +37,10 @@ contract MerkleProofManager is Auth, Recoverable, IMerkleProofManager, IUpdateCo
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external {
+        require(msg.sender == spoke, NotAuthorized());
 
+        uint8 kind = uint8(MessageLib.updateContractType(payload));
         if (kind == uint8(UpdateContractType.Policy)) {
             MessageLib.UpdateContractPolicy memory m = MessageLib.deserializeUpdateContractPolicy(payload);
             address strategist = m.who.toAddress();
