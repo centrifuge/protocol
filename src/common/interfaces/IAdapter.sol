@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 interface IAdapter is IAuth {
-    error NotGateway();
+    error NotEntrypoint();
     error UnknownChainId();
 
     /// @notice Send a payload to the destination chain

@@ -7,6 +7,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
 ///  Hub Handlers
@@ -133,6 +134,20 @@ interface ISpokeGatewayHandler {
     /// @dev    The function can only be executed internally or by the gateway contract.
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address vaultOrFactory,
+        VaultUpdateKind kind
+    ) external;
+
     /// @notice Updates the target address. Generic update function from Hub to Vaults
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
@@ -213,6 +228,8 @@ interface IRequestManagerGatewayHandler {
 
 /// @notice Interface for Vaults methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
+    function updateManager(PoolId poolId, address who, bool canManage) external;
+
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external;

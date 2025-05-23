@@ -12,7 +12,7 @@ import {
     IWormholeReceiver,
     WormholeSource,
     WormholeDestination
-} from "src/common/interfaces/IWormholeAdapter.sol";
+} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service
@@ -20,14 +20,14 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     using CastLib for bytes32;
 
     uint16 public immutable localWormholeId;
-    IMessageHandler public immutable gateway;
+    IMessageHandler public immutable entrypoint;
     IWormholeRelayer public immutable relayer;
 
     mapping(uint16 wormholeId => WormholeSource) public sources;
     mapping(uint16 centrifugeId => WormholeDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address relayer_, address deployer) Auth(deployer) {
-        gateway = gateway_;
+    constructor(IMessageHandler entrypoint_, address relayer_, address deployer) Auth(deployer) {
+        entrypoint = entrypoint_;
         relayer = IWormholeRelayer(relayer_);
 
         IWormholeDeliveryProvider deliveryProvider = IWormholeDeliveryProvider(relayer.getDefaultDeliveryProvider());
@@ -62,7 +62,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        gateway.handle(source.centrifugeId, payload);
+        entrypoint.handle(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         payable
         returns (bytes32 adapterData)
     {
-        require(msg.sender == address(gateway), NotGateway());
+        require(msg.sender == address(entrypoint), NotEntrypoint());
         WormholeDestination memory destination = destinations[centrifugeId];
         require(destination.wormholeId != 0, UnknownChainId());
 
@@ -88,7 +88,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata, uint256 gasLimit)
-        public
+        external
         view
         returns (uint256 nativePriceQuote)
     {

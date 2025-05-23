@@ -8,7 +8,7 @@ import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
@@ -295,6 +295,45 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
+    function sendUpdateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.UpdateVault({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    vaultOrFactory: vaultOrFactory,
+                    kind: uint8(kind)
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
     function sendApprovedDeposits(
         PoolId poolId,
         ShareClassId scId,
@@ -465,29 +504,33 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IVaultMessageSender
     function sendInitiateTransferShares(
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external auth {
-        gateway.send(
-            poolId.centrifugeId(),
-            MessageLib.InitiateTransferShares({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                centrifugeId: centrifugeId,
-                receiver: receiver,
-                amount: amount
-            }).serialize()
-        );
+        if (poolId.centrifugeId() == localCentrifugeId) {
+            hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        } else {
+            gateway.send(
+                poolId.centrifugeId(),
+                MessageLib.InitiateTransferShares({
+                    centrifugeId: targetCentrifugeId,
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    receiver: receiver,
+                    amount: amount
+                }).serialize()
+            );
+        }
     }
 
     /// @inheritdoc IPoolMessageSender
     function sendExecuteTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external auth {

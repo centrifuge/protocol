@@ -70,7 +70,7 @@ contract AxelarAdapterTest is Test {
     }
 
     function testDeploy() public view {
-        assertEq(address(adapter.gateway()), address(GATEWAY));
+        assertEq(address(adapter.entrypoint()), address(GATEWAY));
         assertEq(address(adapter.axelarGateway()), address(axelarGateway));
         assertEq(address(adapter.axelarGasService()), address(axelarGasService));
 
@@ -151,7 +151,7 @@ contract AxelarAdapterTest is Test {
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
-        vm.expectRevert(IAdapter.NotGateway.selector);
+        vm.expectRevert(IAdapter.NotEntrypoint.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
         vm.deal(address(GATEWAY), 0.1 ether);
