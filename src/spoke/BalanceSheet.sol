@@ -255,55 +255,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
-        _submitQueuedAssets(poolId, scId, assetId);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
-        _submitQueuedShares(poolId, scId);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Internal
-    //----------------------------------------------------------------------------------------------
-
-    function _updateAssets(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 amount,
-        bool isDeposit,
-        D18 pricePoolPerAsset
-    ) internal {
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
-        if (queueEnabled[poolId][scId]) {
-            if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;
-
-            if (isDeposit) assetQueue.deposits += amount;
-            else assetQueue.withdrawals += amount;
-        } else {
-            bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
-            sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce
-            );
-
-            shareQueue.nonce++;
-        }
-    }
-
-    function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {
-        ShareQueueAmount storage queue = queuedShares[poolId][scId];
-
-        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot, queue.nonce);
-
-        queue.delta = 0;
-        queue.isPositive = true;
-        queue.nonce++;
-    }
-
-    function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
 
@@ -340,6 +291,47 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+        ShareQueueAmount storage queue = queuedShares[poolId][scId];
+
+        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
+        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot, queue.nonce);
+
+        queue.delta = 0;
+        queue.isPositive = true;
+        queue.nonce++;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal
+    //----------------------------------------------------------------------------------------------
+
+    function _updateAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 amount,
+        bool isDeposit,
+        D18 pricePoolPerAsset
+    ) internal {
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
+        if (queueEnabled[poolId][scId]) {
+            if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;
+
+            if (isDeposit) assetQueue.deposits += amount;
+            else assetQueue.withdrawals += amount;
+        } else {
+            bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
+            sender.sendUpdateHoldingAmount(
+                poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce
+            );
+
+            shareQueue.nonce++;
+        }
     }
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
