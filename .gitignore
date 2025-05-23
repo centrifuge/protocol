@@ -9,6 +9,7 @@ broadcast/
 lcov.info
 .vscode
 deployments/latest
+deployments/ci
 
 ## Recon
 /medusa
@@ -18,3 +19,6 @@ deployments/latest
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
+
+## VSCode Configs
+/slither.config.json
