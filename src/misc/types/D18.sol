@@ -23,7 +23,7 @@ function sub(D18 d1, D18 d2) pure returns (D18) {
 /// - nominator (decimal): 50e18
 /// - denominator (decimal):  2e19
 /// - result (decimal): 25e17
-function divD8(D18 d1, D18 d2) pure returns (D18) {
+function divD18(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), 1e18, D18.unwrap(d2)).toUint128());
 }
 
@@ -31,7 +31,7 @@ function divD8(D18 d1, D18 d2) pure returns (D18) {
 /// - value1 (decimal): 50e18
 /// - value2 (decimal):  2e19
 /// - result (decimal): 100e19
-function mulD8(D18 d1, D18 d2) pure returns (D18) {
+function mulD18(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), D18.unwrap(d2), 1e18).toUint128());
 }
 
@@ -52,16 +52,16 @@ function reciprocal(D18 d) pure returns (D18) {
 /// - d (decimal):      1_500_000_000_000_000_000
 /// - value (integer):  4_000_000_000_000_000_000
 /// - result (integer): 6_000_000_000_000_000_000
-function mulUint128(D18 d, uint128 value) pure returns (uint128) {
-    return MathLib.mulDiv(D18.unwrap(d), value, 1e18).toUint128();
+function mulUint128(D18 d, uint128 value, MathLib.Rounding rounding) pure returns (uint128) {
+    return MathLib.mulDiv(D18.unwrap(d), value, 1e18, rounding).toUint128();
 }
 
 /// @dev Multiplies a decimal by an integer. i.e:
 /// - d (decimal):      1_500_000_000_000_000_000
 /// - value (integer):  4_000_000_000_000_000_000
 /// - result (integer): 6_000_000_000_000_000_000
-function mulUint256(D18 d, uint256 value) pure returns (uint256) {
-    return MathLib.mulDiv(D18.unwrap(d), value, 1e18);
+function mulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure returns (uint256) {
+    return MathLib.mulDiv(D18.unwrap(d), value, 1e18, rounding);
 }
 
 /// @dev  Divides an integer by a decimal, i.e.
@@ -69,8 +69,8 @@ function mulUint256(D18 d, uint256 value) pure returns (uint256) {
 /// - d (decimal):      2_000_000_000_000_000_000
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
-function reciprocalMulUint128(D18 d, uint128 value) pure returns (uint128) {
-    return MathLib.mulDiv(value, 1e18, d.inner()).toUint128();
+function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) pure returns (uint128) {
+    return MathLib.mulDiv(value, 1e18, d.inner(), rounding).toUint128();
 }
 
 /// @dev  Divides an integer by a decimal, i.e.
@@ -78,8 +78,8 @@ function reciprocalMulUint128(D18 d, uint128 value) pure returns (uint128) {
 /// - d (decimal):      2_000_000_000_000_000_000
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
-function reciprocalMulUint256(D18 d, uint256 value) pure returns (uint256) {
-    return MathLib.mulDiv(value, 1e18, d.inner());
+function reciprocalMulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure returns (uint256) {
+    return MathLib.mulDiv(value, 1e18, d.inner(), rounding);
 }
 
 /// @dev Easy way to construct a decimal number
@@ -103,10 +103,10 @@ function raw(D18 d) pure returns (uint128) {
 using {
     add as +,
     sub as -,
-    divD8 as /,
+    divD18 as /,
     inner,
     eq,
-    mulD8 as *,
+    mulD18 as *,
     mulUint128,
     mulUint256,
     reciprocalMulUint128,

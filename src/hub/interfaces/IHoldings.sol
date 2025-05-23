@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -21,9 +22,6 @@ struct HoldingAccount {
 }
 
 interface IHoldings {
-    /// @notice Emitted when a call to `file()` was performed.
-    event File(bytes32 indexed what, address addr);
-
     /// @notice Emitted when a holding is created
     event Create(
         PoolId indexed,
@@ -39,7 +37,7 @@ interface IHoldings {
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        IERC7726 valuation,
+        D18 pricePoolPerAsset,
         uint128 amount,
         uint128 increasedValue
     );
@@ -49,13 +47,15 @@ interface IHoldings {
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        IERC7726 valuation,
+        D18 pricePoolPerAsset,
         uint128 amount,
         uint128 decreasedValue
     );
 
     /// @notice Emitted when the holding is updated
-    event Update(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, int128 diffValue);
+    event Update(
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
+    );
 
     /// @notice Emitted when a holding valuation is updated
     event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
@@ -64,9 +64,6 @@ interface IHoldings {
     event SetAccountId(
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
-
-    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
 
     /// @notice Item was not found for a required action
     error HoldingNotFound();
@@ -80,12 +77,6 @@ interface IHoldings {
     /// @notice AssetId is not valid.
     error WrongAssetId();
 
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hubRegistry' string value.
-    /// @param data New value given to the `what` parameter
-    function file(bytes32 what, address data) external;
-
     /// @notice Creates a new holding in a pool using a valuation
     function create(
         PoolId poolId,
@@ -98,19 +89,22 @@ interface IHoldings {
 
     /// @notice Increments the amount of a holding and updates the value for that increment.
     /// @return value The value the holding has increment.
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of a holding and updates the value for that decrement.
     /// @return value The value the holding has decrement.
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Reset the value of a holding using the current valuation.
+    /// @return isPositive Indicates whether the diffValue is positive or negative
     /// @return diffValue The difference in value after the new valuation.
-    function update(PoolId poolId, ShareClassId scId, AssetId assetId) external returns (int128 diffValue);
+    function update(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        returns (bool isPositive, uint128 diffValue);
 
     /// @notice Updates the valuation method used for this holding.
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external;

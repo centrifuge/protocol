@@ -29,7 +29,7 @@ interface IGuardian {
     function file(bytes32 what, address data) external;
 
     /// @notice Registers a new pool
-    function createPool(address admin, AssetId currency) external returns (PoolId poolId);
+    function createPool(PoolId poolId, address admin, AssetId currency) external;
 
     /// @notice Pause the protocol
     /// @dev callable by both safe and owners

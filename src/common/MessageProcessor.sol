@@ -4,8 +4,7 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
@@ -13,17 +12,14 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
     IGatewayHandler,
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
-    IInvestmentManagerGatewayHandler
+    IRequestManagerGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender, IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -41,7 +37,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IGatewayHandler public gateway;
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerGatewayHandler public investmentManager;
+    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
@@ -49,17 +45,25 @@ contract MessageProcessor is Auth, IMessageProcessor {
         tokenRecoverer = tokenRecoverer_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageProcessor
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGatewayHandler(data);
         else if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Handlers
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
     function handle(uint16, bytes calldata message) external auth {
@@ -106,13 +110,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
             poolManager.updatePricePoolPerAsset(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.price, m.timestamp
             );
-        } else if (kind == MessageType.UpdateShareClassMetadata) {
-            MessageLib.UpdateShareClassMetadata memory m = MessageLib.deserializeUpdateShareClassMetadata(message);
+        } else if (kind == MessageType.NotifyShareMetadata) {
+            MessageLib.NotifyShareMetadata memory m = MessageLib.deserializeNotifyShareMetadata(message);
             poolManager.updateShareMetadata(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
             );
-        } else if (kind == MessageType.UpdateShareClassHook) {
-            MessageLib.UpdateShareClassHook memory m = MessageLib.deserializeUpdateShareClassHook(message);
+        } else if (kind == MessageType.UpdateShareHook) {
+            MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
             poolManager.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.TransferShares) {
             MessageLib.TransferShares memory m = MessageLib.deserializeTransferShares(message);
@@ -186,56 +190,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 AssetId.wrap(m.assetId),
                 m.cancelledShares
             );
-        } else if (kind == MessageType.TriggerRedeemRequest) {
-            MessageLib.TriggerRedeemRequest memory m = message.deserializeTriggerRedeemRequest();
-            investmentManager.triggerRedeemRequest(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.investor.toAddress(),
-                AssetId.wrap(m.assetId),
-                m.shares
+        } else if (kind == MessageType.TriggerIssueShares) {
+            MessageLib.TriggerIssueShares memory m = message.deserializeTriggerIssueShares();
+            balanceSheet.triggerIssueShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
             );
-        } else if (kind == MessageType.TriggerUpdateHoldingAmount) {
-            MessageLib.TriggerUpdateHoldingAmount memory m = message.deserializeTriggerUpdateHoldingAmount();
-
-            if (m.isIncrease) {
-                balanceSheet.triggerDeposit(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    AssetId.wrap(m.assetId),
-                    m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
-                );
-            } else {
-                balanceSheet.triggerWithdraw(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    AssetId.wrap(m.assetId),
-                    m.who.toAddress(),
-                    m.amount,
-                    D18.wrap(m.pricePerUnit)
-                );
-            }
-        } else if (kind == MessageType.TriggerUpdateShares) {
-            MessageLib.TriggerUpdateShares memory m = message.deserializeTriggerUpdateShares();
-            if (m.isIssuance) {
-                balanceSheet.triggerIssueShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
-                );
-            } else {
-                balanceSheet.triggerRevokeShares(
-                    PoolId.wrap(m.poolId),
-                    ShareClassId.wrap(m.scId),
-                    m.who.toAddress(),
-                    D18.wrap(m.pricePerShare),
-                    m.shares
-                );
-            }
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hub.updateHoldingAmount(
@@ -249,24 +208,43 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
             if (m.isIssuance) {
-                hub.increaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             } else {
-                hub.decreaseShareIssuance(
-                    PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.pricePerShare), m.shares
-                );
+                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
             }
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
-            balanceSheet.approvedDeposits(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            investmentManager.approvedDeposits(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                D18.wrap(m.pricePoolPerAsset)
+            );
+        } else if (kind == MessageType.IssuedShares) {
+            MessageLib.IssuedShares memory m = message.deserializeIssuedShares();
+            investmentManager.issuedShares(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shareAmount, D18.wrap(m.pricePoolPerShare)
             );
         } else if (kind == MessageType.RevokedShares) {
             MessageLib.RevokedShares memory m = message.deserializeRevokedShares();
-            balanceSheet.revokedShares(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.assetAmount
+            investmentManager.revokedShares(
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                m.assetAmount,
+                m.shareAmount,
+                D18.wrap(m.pricePoolPerShare)
             );
+        } else if (kind == MessageType.TriggerSubmitQueuedShares) {
+            MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();
+            balanceSheet.submitQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
+        } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
+            MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
+            balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
+        } else if (kind == MessageType.SetQueue) {
+            MessageLib.SetQueue memory m = message.deserializeSetQueue();
+            balanceSheet.setQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
         } else {
             revert InvalidMessage(uint8(kind));
         }

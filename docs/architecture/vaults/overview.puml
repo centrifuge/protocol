@@ -1,0 +1,87 @@
+@startuml
+hide empty members
+
+package misc {
+    abstract Multicall
+    abstract ReentrancyProtection
+    abstract Recoverable
+}
+
+package common {
+    class Gateway
+    class MessageDispatcher
+}
+
+package external {
+    class ERC20
+}
+
+class PoolManager
+
+class AsyncRequestManager
+class SyncRequestManager
+
+class AsyncVault
+class SyncDepositVault
+
+class Escrow
+class PoolEscrow
+
+class ShareToken
+
+class BalanceSheet
+class VaultRouter
+
+interface IVaultFactory
+abstract BaseVault
+
+class AsyncVaultFactory
+class PoolEscrowFactory
+class SyncDepositVaultFactory
+class TokenFactory
+
+AsyncVaultFactory --|> IVaultFactory
+SyncDepositVaultFactory --|> IVaultFactory
+
+PoolManager --up-> TokenFactory
+PoolManager --up-> PoolEscrowFactory
+PoolManager --up->"n" IVaultFactory
+PoolManager <-left-> BalanceSheet
+PoolManager --down->"n" ShareToken
+PoolManager ---down->"n" BaseVault
+PoolManager --> Gateway
+PoolManager --> MessageDispatcher
+
+BalanceSheet -up--> PoolEscrowFactory
+BalanceSheet --> MessageDispatcher
+
+SyncRequestManager <-down->"n" SyncDepositVault
+SyncRequestManager -up-> PoolManager
+SyncRequestManager -up-> PoolEscrowFactory
+SyncRequestManager -up-> BalanceSheet
+SyncDepositVault --|> BaseVault
+
+AsyncRequestManager <-down->"n" AsyncVault
+AsyncRequestManager <-down->"n" SyncDepositVault
+AsyncRequestManager -up-> PoolManager
+AsyncRequestManager -up-> BalanceSheet
+AsyncRequestManager -up-> PoolEscrowFactory
+AsyncRequestManager --> MessageDispatcher
+
+VaultRouter -left-> PoolManager
+VaultRouter -right-> Escrow
+
+PoolEscrowFactory -up-> PoolEscrow
+PoolEscrow --|> Escrow
+
+BaseVault --> ShareToken
+BaseVault --> ERC20
+BaseVault --> ERC6909
+AsyncVault --|> BaseVault
+
+VaultRouter --> Gateway
+VaultRouter -up-|> Multicall
+VaultRouter -up-|> Recoverable
+Multicall -up-|> ReentrancyProtection
+
+@enduml

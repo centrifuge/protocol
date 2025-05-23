@@ -8,7 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Mock} from "test/common/mocks/Mock.sol";
 
-import {WormholeAdapter} from "src/common/WormholeAdapter.sol";
+import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
 import {IWormholeAdapter} from "src/common/interfaces/IWormholeAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";

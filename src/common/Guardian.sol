@@ -7,19 +7,17 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;
 
     IRoot public immutable root;
 
+    IHubGuardianActions public hub;
     ISafe public safe;
-    IHub public hub;
     IRootMessageSender public sender;
 
     constructor(ISafe safe_, IRoot root_, IRootMessageSender messageDispatcher_) {
@@ -38,20 +36,27 @@ contract Guardian is IGuardian {
         _;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
-        else if (what == "hub") hub = IHub(data);
+        else if (what == "hub") hub = IHubGuardianActions(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }
 
-    // --- Admin actions ---
+    //----------------------------------------------------------------------------------------------
+    // Admin actions
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IGuardian
-    function createPool(address admin, AssetId currency) external onlySafe returns (PoolId poolId) {
-        return hub.createPool(admin, currency);
+    function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
+        return hub.createPool(poolId, admin, currency);
     }
 
     /// @inheritdoc IGuardian
@@ -112,7 +117,10 @@ contract Guardian is IGuardian {
         sender.sendDisputeRecovery(centrifugeId, adapterCentrifugeId, address(adapter).toBytes32(), hash);
     }
 
-    // --- Helpers ---
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     function _isSafeOwner(address addr) internal view returns (bool) {
         try safe.isOwner(addr) returns (bool isOwner) {
             return isOwner;

@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {Accounting} from "src/hub/Accounting.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 enum AccountType {
     Asset,
@@ -27,6 +27,7 @@ contract AccountingTest is Test {
     AccountId immutable EQUITY_ACCOUNT = AccountId.wrap(301);
     AccountId immutable GAIN_ACCOUNT = AccountId.wrap(302);
     AccountId immutable NON_INITIALIZED_ACCOUNT = AccountId.wrap(999);
+    JournalEntry[] EMPTY_JOURNAL_ENTRY;
 
     Accounting accounting = new Accounting(address(this));
 
@@ -44,6 +45,15 @@ contract AccountingTest is Test {
             beforeTestCalldata = new bytes[](1);
             beforeTestCalldata[0] = abi.encode(this.setupJournalId.selector);
         }
+    }
+
+    function _assertEqValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
+        internal
+        view
+    {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
     }
 
     function testAccount() public {
@@ -75,10 +85,10 @@ contract AccountingTest is Test {
         accounting.addCredit(CASH_ACCOUNT, 250);
         accounting.lock();
 
-        assertEq(accounting.accountValue(POOL_A, CASH_ACCOUNT), 250);
-        assertEq(accounting.accountValue(POOL_A, EQUITY_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_A, BOND1_INVESTMENT_ACCOUNT), 245);
-        assertEq(accounting.accountValue(POOL_A, FEES_EXPENSE_ACCOUNT), 5);
+        _assertEqValue(POOL_A, CASH_ACCOUNT, true, 250);
+        _assertEqValue(POOL_A, EQUITY_ACCOUNT, true, 500);
+        _assertEqValue(POOL_A, BOND1_INVESTMENT_ACCOUNT, true, 245);
+        _assertEqValue(POOL_A, FEES_EXPENSE_ACCOUNT, true, 5);
     }
 
     function testPoolIsolation() public {
@@ -95,10 +105,10 @@ contract AccountingTest is Test {
         accounting.addCredit(EQUITY_ACCOUNT, 120);
         accounting.lock();
 
-        assertEq(accounting.accountValue(POOL_A, CASH_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_A, EQUITY_ACCOUNT), 500);
-        assertEq(accounting.accountValue(POOL_B, CASH_ACCOUNT), 120);
-        assertEq(accounting.accountValue(POOL_B, EQUITY_ACCOUNT), 120);
+        _assertEqValue(POOL_A, CASH_ACCOUNT, true, 500);
+        _assertEqValue(POOL_A, EQUITY_ACCOUNT, true, 500);
+        _assertEqValue(POOL_B, CASH_ACCOUNT, true, 120);
+        _assertEqValue(POOL_B, EQUITY_ACCOUNT, true, 120);
     }
 
     function testUnequalDebitsAndCredits(uint128 v) public {
@@ -145,6 +155,9 @@ contract AccountingTest is Test {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         accounting.addCredit(EQUITY_ACCOUNT, 500);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        accounting.addJournal(EMPTY_JOURNAL_ENTRY, EMPTY_JOURNAL_ENTRY);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         accounting.lock();
@@ -197,27 +210,27 @@ contract AccountingTest is Test {
 
     function testJournalId() public {
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.unlock(POOL_A);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.lock();
 
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.StartJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.unlock(POOL_A);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 64) | 2);
+        emit IAccounting.EndJournalId(POOL_A, (uint256(POOL_A.raw()) << 128) | 2);
         accounting.lock();
 
         vm.expectEmit();
-        emit IAccounting.StartJournalId(POOL_B, (uint256(POOL_B.raw()) << 64) | 1);
+        emit IAccounting.StartJournalId(POOL_B, (uint256(POOL_B.raw()) << 128) | 1);
         accounting.unlock(POOL_B);
 
         vm.expectEmit();
-        emit IAccounting.EndJournalId(POOL_B, (uint256(POOL_B.raw()) << 64) | 1);
+        emit IAccounting.EndJournalId(POOL_B, (uint256(POOL_B.raw()) << 128) | 1);
         accounting.lock();
     }
 }

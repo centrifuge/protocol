@@ -5,17 +5,15 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {ITransientValuation} from "src/misc/interfaces/ITransientValuation.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
-    IInvestmentManagerGatewayHandler,
+    IRequestManagerGatewayHandler,
     IPoolManagerGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler
@@ -42,7 +40,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     IHubGatewayHandler public hub;
     IPoolManagerGatewayHandler public poolManager;
-    IInvestmentManagerGatewayHandler public investmentManager;
+    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(
@@ -58,22 +56,34 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         tokenRecoverer = tokenRecoverer_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "poolManager") poolManager = IPoolManagerGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IInvestmentManagerGatewayHandler(data);
+        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Helpers
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IMessageDispatcher
     function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
         if (centrifugeId == localCentrifugeId) return 0;
         return gateway.estimate(centrifugeId, payload);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Outgoing
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IPoolMessageSender
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external auth {
@@ -109,6 +119,41 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     salt: salt,
                     hook: hook
                 }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendNotifyShareMetadata(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        string memory name,
+        string memory symbol
+    ) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.updateShareMetadata(poolId, scId, name, symbol);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.NotifyShareMetadata({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    name: name,
+                    symbol: symbol.toBytes32()
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            poolManager.updateShareHook(poolId, scId, hook.toAddress());
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.UpdateShareHook({poolId: poolId.raw(), scId: scId.raw(), hook: hook}).serialize()
             );
         }
     }
@@ -293,12 +338,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendApprovedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount)
-        external
-        auth
-    {
+    function sendApprovedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            balanceSheet.approvedDeposits(poolId, scId, assetId, assetAmount);
+            investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -306,16 +354,47 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    assetAmount: assetAmount
+                    assetAmount: assetAmount,
+                    pricePoolPerAsset: pricePoolPerAsset.raw()
                 }).serialize()
             );
         }
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendRevokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) external auth {
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            balanceSheet.revokedShares(poolId, scId, assetId, assetAmount);
+            investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.IssuedShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    shareAmount: shareAmount,
+                    pricePoolPerShare: pricePoolPerShare.raw()
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendRevokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -323,8 +402,66 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    assetAmount: assetAmount
+                    assetAmount: assetAmount,
+                    shareAmount: shareAmount,
+                    pricePoolPerShare: pricePoolPerShare.raw()
                 }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
+        external
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.triggerIssueShares(poolId, scId, who, shares);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.TriggerIssueShares({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    who: who.toBytes32(),
+                    shares: shares
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.submitQueuedShares(poolId, scId);
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.TriggerSubmitQueuedShares({poolId: poolId.raw(), scId: scId.raw()}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external auth {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            balanceSheet.submitQueuedAssets(poolId, scId, assetId);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.TriggerSubmitQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()})
+                    .serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            balanceSheet.setQueue(poolId, scId, enabled);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.SetQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
             );
         }
     }
@@ -418,12 +555,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.depositRequest(poolId, scId, investor, AssetId.wrap(assetId), amount);
+            hub.depositRequest(poolId, scId, investor, assetId, amount);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -431,7 +568,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     investor: investor,
-                    assetId: assetId,
+                    assetId: assetId.raw(),
                     amount: amount
                 }).serialize()
             );
@@ -439,12 +576,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId, uint128 amount)
+    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
         external
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.redeemRequest(poolId, scId, investor, AssetId.wrap(assetId), amount);
+            hub.redeemRequest(poolId, scId, investor, assetId, amount);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -452,7 +589,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     investor: investor,
-                    assetId: assetId,
+                    assetId: assetId.raw(),
                     amount: amount
                 }).serialize()
             );
@@ -460,12 +597,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId)
+    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
         external
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.cancelDepositRequest(poolId, scId, investor, AssetId.wrap(assetId));
+            hub.cancelDepositRequest(poolId, scId, investor, assetId);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -473,19 +610,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     investor: investor,
-                    assetId: assetId
+                    assetId: assetId.raw()
                 }).serialize()
             );
         }
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, uint128 assetId)
+    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId)
         external
         auth
     {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.cancelRedeemRequest(poolId, scId, investor, AssetId.wrap(assetId));
+            hub.cancelRedeemRequest(poolId, scId, investor, assetId);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -493,7 +630,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     investor: investor,
-                    assetId: assetId
+                    assetId: assetId.raw()
                 }).serialize()
             );
         }
@@ -529,19 +666,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        address receiver,
-        D18 pricePoolPerShare,
-        uint128 shares,
-        bool isIssuance
-    ) external auth {
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             if (isIssuance) {
-                hub.increaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.increaseShareIssuance(poolId, scId, shares);
             } else {
-                hub.decreaseShareIssuance(poolId, scId, pricePoolPerShare, shares);
+                hub.decreaseShareIssuance(poolId, scId, shares);
             }
         } else {
             gateway.send(
@@ -549,8 +679,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    who: receiver.toBytes32(),
-                    pricePerShare: pricePoolPerShare.raw(),
                     shares: shares,
                     timestamp: uint64(block.timestamp),
                     isIssuance: isIssuance
@@ -560,11 +688,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IVaultMessageSender
-    function sendRegisterAsset(uint16 centrifugeId, uint128 assetId, uint8 decimals) external auth {
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external auth {
         if (centrifugeId == localCentrifugeId) {
-            hub.registerAsset(AssetId.wrap(assetId), decimals);
+            hub.registerAsset(assetId, decimals);
         } else {
-            gateway.send(centrifugeId, MessageLib.RegisterAsset({assetId: assetId, decimals: decimals}).serialize());
+            gateway.send(
+                centrifugeId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize()
+            );
         }
     }
 }

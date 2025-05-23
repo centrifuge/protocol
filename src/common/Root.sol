@@ -2,9 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 
@@ -13,30 +11,23 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 /// @dev    Pausing can happen instantaneously, but relying on other contracts
 ///         is restricted to the timelock set by the delay.
 contract Root is Auth, IRoot {
-    using BytesLib for bytes;
-
     /// @dev To prevent filing a delay that would block any updates indefinitely
     uint256 internal constant MAX_DELAY = 4 weeks;
 
-    /// @inheritdoc IRoot
     bool public paused;
-
-    /// @inheritdoc IRoot
     uint256 public delay;
-
-    /// @inheritdoc IRoot
     mapping(address => uint256) public endorsements;
-
-    /// @inheritdoc IRoot
     mapping(address relyTarget => uint256 timestamp) public schedule;
 
     constructor(uint256 _delay, address deployer) Auth(deployer) {
         require(_delay <= MAX_DELAY, DelayTooLong());
-
         delay = _delay;
     }
 
-    // --- Administration ---
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function file(bytes32 what, uint256 data) external auth {
         if (what == "delay") {
@@ -48,7 +39,6 @@ contract Root is Auth, IRoot {
         emit File(what, data);
     }
 
-    /// --- Endorsements ---
     /// @inheritdoc IRoot
     function endorse(address user) external auth {
         endorsements[user] = 1;
@@ -62,11 +52,14 @@ contract Root is Auth, IRoot {
     }
 
     /// @inheritdoc IRoot
-    function endorsed(address user) public view returns (bool) {
+    function endorsed(address user) external view returns (bool) {
         return endorsements[user] == 1;
     }
 
-    // --- Pause management ---
+    //----------------------------------------------------------------------------------------------
+    // Pause management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function pause() external auth {
         paused = true;
@@ -79,15 +72,18 @@ contract Root is Auth, IRoot {
         emit Unpause();
     }
 
-    /// --- Timelocked ward management ---
+    //----------------------------------------------------------------------------------------------
+    // Timelocked ward management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
-    function scheduleRely(address target) public auth {
+    function scheduleRely(address target) external auth {
         schedule[target] = block.timestamp + delay;
         emit ScheduleRely(target, schedule[target]);
     }
 
     /// @inheritdoc IRoot
-    function cancelRely(address target) public auth {
+    function cancelRely(address target) external auth {
         require(schedule[target] != 0, TargetNotScheduled());
         schedule[target] = 0;
         emit CancelRely(target);
@@ -104,7 +100,10 @@ contract Root is Auth, IRoot {
         schedule[target] = 0;
     }
 
-    /// --- External contract ward management ---
+    //----------------------------------------------------------------------------------------------
+    // External contract ward management
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IRoot
     function relyContract(address target, address user) external auth {
         IAuth(target).rely(user);

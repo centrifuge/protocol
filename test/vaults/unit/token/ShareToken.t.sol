@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import "forge-std/Test.sol";
+
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {ERC20} from "src/misc/ERC20.sol";
 
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import "src/misc/interfaces/IERC7575.sol";
+import "src/misc/interfaces/IERC7540.sol";
+import {ShareToken} from "src/vaults/token/ShareToken.sol";
 
-import "src/vaults/interfaces/IERC7575.sol";
-import "src/vaults/interfaces/IERC7540.sol";
-import {CentrifugeToken} from "src/vaults/token/ShareToken.sol";
-
-import "forge-std/Test.sol";
-import {MockRestrictedTransfers} from "test/vaults/mocks/MockRestrictedTransfers.sol";
-import {IHook} from "src/vaults/interfaces/token/IHook.sol";
+import {MockFullRestrictions} from "test/vaults/mocks/MockFullRestrictions.sol";
+import {IHook} from "src/common/interfaces/IHook.sol";
 import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
 
 interface ERC20Like {
@@ -20,8 +21,8 @@ interface ERC20Like {
 }
 
 contract ShareTokenTest is Test {
-    CentrifugeToken token;
-    MockRestrictedTransfers restrictedTransfers;
+    ShareToken token;
+    MockFullRestrictions fullRestrictionsHook;
 
     address self;
     address escrow = makeAddr("escrow");
@@ -31,12 +32,12 @@ contract ShareTokenTest is Test {
 
     function setUp() public {
         self = address(this);
-        token = new CentrifugeToken(18);
+        token = new ShareToken(18);
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        restrictedTransfers = new MockRestrictedTransfers(address(new MockRoot()), address(this));
-        token.file("hook", address(restrictedTransfers));
+        fullRestrictionsHook = new MockFullRestrictions(address(new MockRoot()), address(this));
+        token.file("hook", address(fullRestrictionsHook));
     }
 
     // --- Admnistration ---
@@ -44,7 +45,7 @@ contract ShareTokenTest is Test {
         address hook = makeAddr("hook");
 
         // fail: unrecognized param
-        vm.expectRevert(IShareToken.FileUnrecognizedParam.selector);
+        vm.expectRevert(ERC20.FileUnrecognizedParam.selector);
         token.file("random", hook);
 
         // success
@@ -87,14 +88,14 @@ contract ShareTokenTest is Test {
         assertEq(token.messageForTransferRestriction(1), "transfer-blocked");
     }
 
-    // --- RestrictedTransfers ---
+    // --- FullRestrictions ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFrom() public {
         _testTransferFrom(1, true);
     }
 
-    // --- RestrictedTransfers ---
+    // --- FullRestrictions ---
     // transferFrom
     /// forge-config: default.isolate = true
     function testTransferFromFuzz(uint256 amount) public {
@@ -104,30 +105,30 @@ contract ShareTokenTest is Test {
     function _testTransferFrom(uint256 amount, bool snap) internal {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
+        fullRestrictionsHook.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
+        fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictedTransfers.freeze(address(token), self);
+        fullRestrictionsHook.freeze(address(token), self);
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictedTransfers.unfreeze(address(token), self);
-        restrictedTransfers.freeze(address(token), targetUser);
+        fullRestrictionsHook.unfreeze(address(token), self);
+        fullRestrictionsHook.freeze(address(token), targetUser);
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictedTransfers.unfreeze(address(token), targetUser);
+        fullRestrictionsHook.unfreeze(address(token), targetUser);
         if (snap) {
             vm.startSnapshotGas("ShareToken", "transferFrom");
         }
@@ -146,10 +147,10 @@ contract ShareTokenTest is Test {
     function testTransferFromTokensWithApproval(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
         address sender = makeAddr("sender");
-        restrictedTransfers.updateMember(address(token), sender, uint64(validUntil));
+        fullRestrictionsHook.updateMember(address(token), sender, uint64(validUntil));
         token.mint(sender, amount);
 
-        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
+        fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
 
         vm.expectRevert(IERC20.InsufficientAllowance.selector);
         token.transferFrom(sender, targetUser, amount);
@@ -165,24 +166,24 @@ contract ShareTokenTest is Test {
     function testTransfer(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max / 2);
 
-        restrictedTransfers.updateMember(address(token), self, uint64(validUntil));
+        fullRestrictionsHook.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
+        fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
-        restrictedTransfers.freeze(address(token), self);
+        fullRestrictionsHook.freeze(address(token), self);
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
-        restrictedTransfers.unfreeze(address(token), self);
+        fullRestrictionsHook.unfreeze(address(token), self);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), amount);
         afterTransferAssumptions(self, targetUser, amount);
@@ -196,7 +197,7 @@ contract ShareTokenTest is Test {
     function testAuthTransferFrom(uint256 amount) public {
         amount = bound(amount, 0, type(uint128).max);
         address sourceUser = makeAddr("sourceUser");
-        restrictedTransfers.updateMember(address(token), sourceUser, uint64(validUntil));
+        fullRestrictionsHook.updateMember(address(token), sourceUser, uint64(validUntil));
         token.mint(sourceUser, amount);
 
         vm.prank(address(2));
@@ -218,8 +219,8 @@ contract ShareTokenTest is Test {
         vm.expectRevert(IHook.TransferBlocked.selector);
         token.mint(targetUser, amount);
 
-        restrictedTransfers.updateMember(address(token), targetUser, uint64(validUntil));
-        (bool _isMember, uint64 _validUntil) = restrictedTransfers.isMember(address(token), targetUser);
+        fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
+        (bool _isMember, uint64 _validUntil) = fullRestrictionsHook.isMember(address(token), targetUser);
         assertTrue(_isMember);
         assertEq(_validUntil, validUntil);
 
@@ -234,8 +235,8 @@ contract ShareTokenTest is Test {
     }
 
     function afterTransferAssumptions(address from, address to, uint256 value) internal view {
-        assertEq(restrictedTransfers.values_address("onERC20Transfer_from"), from);
-        assertEq(restrictedTransfers.values_address("onERC20Transfer_to"), to);
-        assertEq(restrictedTransfers.values_uint256("onERC20Transfer_value"), value);
+        assertEq(fullRestrictionsHook.values_address("onERC20Transfer_from"), from);
+        assertEq(fullRestrictionsHook.values_address("onERC20Transfer_to"), to);
+        assertEq(fullRestrictionsHook.values_uint256("onERC20Transfer_value"), value);
     }
 }

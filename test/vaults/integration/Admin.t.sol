@@ -5,7 +5,8 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGuardian, IGateway} from "src/common/Guardian.sol";
+import {IGuardian} from "src/common/interfaces/IGuardian.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/vaults/BaseTest.sol";
@@ -215,12 +216,12 @@ contract AdminTest is BaseTest {
         vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
-        assertEq(asyncRequests.wards(address(this)), 1);
-        root.denyContract(address(asyncRequests), address(this));
-        assertEq(asyncRequests.wards(address(this)), 0);
+        assertEq(asyncRequestManager.wards(address(this)), 1);
+        root.denyContract(address(asyncRequestManager), address(this));
+        assertEq(asyncRequestManager.wards(address(this)), 0);
 
-        root.relyContract(address(asyncRequests), address(this));
-        assertEq(asyncRequests.wards(address(this)), 1);
+        root.relyContract(address(asyncRequestManager), address(this));
+        assertEq(asyncRequestManager.wards(address(this)), 1);
     }
 
     //Endorsements

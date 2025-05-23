@@ -9,7 +9,7 @@ interface IBaseValuation is IERC7726 {
     event File(bytes32 indexed what, address addr);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.

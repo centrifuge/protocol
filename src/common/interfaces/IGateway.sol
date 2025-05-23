@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
+import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
+
 import {IGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
@@ -37,30 +39,38 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
         /// @dev    Overflows with type(uint64).max / 10**18 = 7.923 × 10^10 ETH
         uint96 value;
         /// @notice Address where to refund the remaining gas
-        address refund;
+        IRecoverable refund;
+    }
+
+    // Used to bypass stack too deep issue
+    struct SendData {
+        bytes32 batchHash;
+        bytes32 payloadId;
+        uint256[] gasCost;
+    }
+
+    struct Underpaid {
+        uint128 counter;
+        uint128 gasLimit;
     }
 
     // --- Events ---
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
+    event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event SendBatch(
         uint16 indexed centrifugeId,
-        bytes32 payloadId,
+        bytes32 indexed payloadId,
         bytes batch,
         IAdapter adapter,
         bytes32 adapterData,
-        address refund,
-        bool underpaid
+        address refund
     );
     event SendProof(
-        uint16 indexed centrifugeId,
-        bytes32 payloadId,
-        bytes32 batchHash,
-        IAdapter adapter,
-        bytes32 adapterData,
-        bool underpaid
+        uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter, bytes32 adapterData
     );
-    event HandleBatch(uint16 indexed centrifugeId, bytes32 payloadId, bytes batch, IAdapter adapter);
-    event HandleProof(uint16 indexed centrifugeId, bytes32 payloadId, bytes32 batchHash, IAdapter adapter);
+    event HandleBatch(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes batch, IAdapter adapter);
+    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 batchHash, IAdapter adapter);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
 
@@ -73,7 +83,7 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
     event File(bytes32 indexed what, address addr);
 
-    event SetRefundAddress(PoolId poolId, address refund);
+    event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -122,6 +132,12 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
+    /// @notice Dispatched when a batch that has not been underpaid is repaid.
+    error NotUnderpaidBatch();
+
+    /// @notice Dispatched when a batch is repaid with insufficient funds.
+    error InsufficientFundsForRepayment();
+
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxBatchSize();
 
@@ -142,8 +158,14 @@ interface IGateway is IMessageHandler, IMessageSender, IGatewayHandler {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
+    /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
+    function repay(uint16 centrifugeId, bytes memory batch) external payable;
+
+    /// @notice Retry a failed message.
+    function retry(uint16 centrifugeId, bytes memory message) external;
+
     /// @notice Set the refund address for message associated to a poolId
-    function setRefundAddress(PoolId poolId, address refund) external;
+    function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 
     /// @notice Pay upfront to later be able to subsidize messages associated to a pool
     function subsidizePool(PoolId poolId) external payable;

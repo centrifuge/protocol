@@ -67,14 +67,15 @@ targets = [
 ]
 
 [profile.smt.model_checker.contracts]
-"src/vaults/ERC7540Vault.sol" = ["ERC7540Vault"]
-"src/vaults/InvestmentManager.sol" = ["InvestmentManager"]
+"src/vaults/AsyncVault.sol" = ["AsyncVault"]
+"src/vaults/AsyncRequestManager.sol" = ["AsyncRequestManager"]
+"src/vaults/SyncRequestManager.sol" = ["SyncRequestManager"]
 "src/vaults/PoolManager.sol" = ["PoolManager"]
 "src/vaults/Escrow.sol" = ["Escrow"]
 "src/vaults/Root.sol" = ["Root"]
 "src/vaults/token/ERC20.sol" = ["ERC20"]
-"src/vaults/token/Tranche.sol" = ["Tranche"]
-"src/vaults/token/RestrictionManager.sol" = ["RestrictionManager"]
+"src/vaults/token/ShareToken.sol" = ["ShareToken"]
+"src/vaults/token/FullRestrictions.sol" = ["FullRestrictions"]
 "src/vaults/admin/Guardian.sol" = ["Guardian"]
 
 [doc]
@@ -95,9 +96,7 @@ ignore = [
   "test/*.sol",
   #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
   "src/misc/ReentrancyProtection.sol", #Because transient keyword
-  "src/pools/Accounting.sol",          #Because transient keyword
-  "src/pools/PoolRouter.sol",          #Because transient keyword
-  "src/pools/MultiShareClass.sol",     #Because transient keyword
+  "src/hub/Accounting.sol",            #Because transient keyword
   "src/common/Gateway.sol",            #Because transient keyword
 ]
 

@@ -11,7 +11,7 @@ import {IERC20, IERC20Metadata, IERC20Permit} from "src/misc/interfaces/IERC20.s
 /// @notice Standard ERC-20 implementation, with mint/burn functionality and permit logic.
 /// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/src/Dai.sol
 contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
-    error FileUnrecognizedWhat();
+    error FileUnrecognizedParam();
 
     /// @inheritdoc IERC20Metadata
     string public name;
@@ -73,7 +73,7 @@ contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     function file(bytes32 what, string memory data) public virtual auth {
         if (what == "name") name = data;
         else if (what == "symbol") symbol = data;
-        else revert FileUnrecognizedWhat();
+        else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 

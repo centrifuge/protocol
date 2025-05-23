@@ -8,12 +8,11 @@ import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
+/// @title  Hub Registry
+/// @notice Registry of all known pools, currencies, and assets.
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
-
-    uint48 public latestId;
 
     mapping(AssetId => uint8) internal _decimals;
 
@@ -23,6 +22,10 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     constructor(address deployer) Auth(deployer) {}
+
+    //----------------------------------------------------------------------------------------------
+    // Registration methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
     function registerAsset(AssetId assetId, uint8 decimals_) external auth {
@@ -34,40 +37,38 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function registerPool(address manager_, uint16 centrifugeId, AssetId currency_)
-        external
-        auth
-        returns (PoolId poolId)
-    {
+    function registerPool(PoolId poolId_, address manager_, AssetId currency_) external auth {
         require(manager_ != address(0), EmptyAccount());
         require(!currency_.isNull(), EmptyCurrency());
-        require(currency[poolId].isNull(), PoolAlreadyRegistered());
+        require(currency[poolId_].isNull(), PoolAlreadyRegistered());
 
-        poolId = newPoolId(centrifugeId, ++latestId);
+        manager[poolId_][manager_] = true;
+        currency[poolId_] = currency_;
 
-        manager[poolId][manager_] = true;
-        currency[poolId] = currency_;
-
-        emit NewPool(poolId, manager_, currency_);
+        emit NewPool(poolId_, manager_, currency_);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Update methods
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHubRegistry
-    function updateManager(PoolId poolId, address manager_, bool canManage) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+    function updateManager(PoolId poolId_, address manager_, bool canManage) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
         require(manager_ != address(0), EmptyAccount());
 
-        manager[poolId][manager_] = canManage;
+        manager[poolId_][manager_] = canManage;
 
-        emit UpdateManager(poolId, manager_, canManage);
+        emit UpdateManager(poolId_, manager_, canManage);
     }
 
     /// @inheritdoc IHubRegistry
-    function setMetadata(PoolId poolId, bytes calldata metadata_) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+    function setMetadata(PoolId poolId_, bytes calldata metadata_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
 
-        metadata[poolId] = metadata_;
+        metadata[poolId_] = metadata_;
 
-        emit SetMetadata(poolId, metadata_);
+        emit SetMetadata(poolId_, metadata_);
     }
 
     /// @inheritdoc IHubRegistry
@@ -78,18 +79,33 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function updateCurrency(PoolId poolId, AssetId currency_) external auth {
-        require(exists(poolId), NonExistingPool(poolId));
+    function updateCurrency(PoolId poolId_, AssetId currency_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
         require(!currency_.isNull(), EmptyCurrency());
 
-        currency[poolId] = currency_;
+        currency[poolId_] = currency_;
 
-        emit UpdateCurrency(poolId, currency_);
+        emit UpdateCurrency(poolId_, currency_);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRegistry
+    function poolId(uint16 centrifugeId, uint48 postfix) public pure returns (PoolId poolId_) {
+        poolId_ = newPoolId(centrifugeId, postfix);
     }
 
     /// @inheritdoc IHubRegistry
-    function decimals(PoolId poolId) public view returns (uint8 decimals_) {
-        decimals_ = _decimals[currency[poolId]];
+    function decimals(AssetId assetId) public view returns (uint8 decimals_) {
+        decimals_ = _decimals[assetId];
+        require(decimals_ > 0, AssetNotFound());
+    }
+
+    /// @inheritdoc IHubRegistry
+    function decimals(PoolId poolId_) public view returns (uint8 decimals_) {
+        decimals_ = _decimals[currency[poolId_]];
         require(decimals_ > 0, AssetNotFound());
     }
 
@@ -100,8 +116,8 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function exists(PoolId poolId) public view returns (bool) {
-        return !currency[poolId].isNull();
+    function exists(PoolId poolId_) public view returns (bool) {
+        return !currency[poolId_].isNull();
     }
 
     /// @inheritdoc IHubRegistry
