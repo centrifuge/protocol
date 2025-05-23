@@ -12,6 +12,7 @@ import {Setup} from "test/integration/recon-end-to-end/Setup.sol";
 import {AsyncVaultProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultProperties.sol";
 import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
 
+import {console2} from "forge-std/console2.sol";
 /// @dev ERC-7540 Properties used by Centrifuge
 /// See `AsyncVaultProperties` for more properties that can be re-used in your project
 abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultProperties {
@@ -239,6 +240,14 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
                 eq(pendingRedeem, 0, "pendingRedeem should be 0 after maxRedeem");
                 lte(shares, maxRedeemBefore, "shares redeemed surpass maxRedeem");
             }
+
+            // for optimizing the difference between the two
+            if(maxRedeemAfter > maxRedeemBefore) {
+                maxRedeemDifference = int256(maxRedeemAfter - maxRedeemBefore);
+            } else {
+                maxRedeemDifference = int256(maxRedeemBefore - maxRedeemAfter);
+            }
+
         }
         catch {
             // t(latestRedeemApproval < redeemAmount, "reverts on redeem for approved amount");

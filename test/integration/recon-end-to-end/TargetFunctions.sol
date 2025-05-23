@@ -19,6 +19,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
 import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {PoolEscrow} from "src/spokes/Escrow.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -225,7 +226,6 @@ abstract contract TargetFunctions is
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
 
         uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
@@ -252,6 +252,7 @@ abstract contract TargetFunctions is
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(shares);
+        
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
     }
@@ -297,11 +298,8 @@ abstract contract TargetFunctions is
         uint32 epochId,
         uint128 navPerShare
     ) public  {        
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         hub_approveRedeems(epochId, maxApproval);
-        pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         hub_revokeShares(epochId, navPerShare);
-        pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
     }
 
     /// === Transient Valuation === ///

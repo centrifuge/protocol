@@ -79,7 +79,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         AssetId assetId = hubRegistry.currency(vault.poolId());
         address asset = vault.asset();
 
-        lte(sumOfClaimedRedemptions[address(asset)], requestRedeemedAssets[scId][assetId][_getActor()], "sumOfClaimedRedemptions > requestRedeemedAssets");
+        lte(sumOfClaimedRedemptions[address(asset)], redemptionsProcessed[scId][assetId][_getActor()], "sumOfClaimedRedemptions > redemptionsProcessed");
     }
 
     /// @dev Property: The sum of tranche tokens minted/transferred is equal to the total supply of tranche tokens
@@ -283,7 +283,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
             try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
-                emit DebugWithString("maxWithdraw", amt);
+                emit DebugWithString("amt", amt);
                 acc += amt;
             } catch {}
         }
@@ -333,6 +333,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         
         uint256 differenceInAssets = totalAssets - actualAssets;
         uint256 differenceInShares = vault.convertToShares(differenceInAssets);
+        console2.log("differenceInShares", differenceInShares);
 
         // precondition: check if the difference is greater than one share
         if (differenceInShares > (10 ** IShareToken(vault.share()).decimals()) - 1) {
@@ -477,7 +478,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: escrow holding must be >= reserved
+    /// @dev Property: escrow total must be >= reserved
     function property_escrow_solvency() public {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -486,49 +487,54 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
 
         PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
-        (uint128 holding, uint128 reserved) = poolEscrow.holding(scId, assetAddr, tokenId);
-        gte(holding, reserved, "escrow holding must be >= reserved");
+        (uint128 total, uint128 reserved) = poolEscrow.holding(scId, assetAddr, tokenId);
+        gte(total, reserved, "escrow total must be >= reserved");
     }
 
     /// @dev Property: The price per share used in the entire system is ALWAYS provided by the admin
-    function property_price_per_share_overall() public {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+    // TODO: this needs to be redefined as an inline property in the target functions where assets are transferred and shares are minted/burned
+    // function property_price_per_share_overall() public {
+    //     IBaseVault vault = IBaseVault(_getVault());
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     AssetId assetId = hubRegistry.currency(poolId);
 
-        // first check if the share amount changed 
-        uint256 shareDelta;
-        uint256 assetDelta;
-        if(_before.totalShareSupply != _after.totalShareSupply) {
-            if(_before.totalShareSupply > _after.totalShareSupply) {
-                shareDelta = _before.totalShareSupply - _after.totalShareSupply;
-                uint256 globalEscrowAssetDelta = _before.escrowAssetBalance - _after.escrowAssetBalance;
-                uint256 poolEscrowAssetDelta = _before.poolEscrowAssetBalance - _after.poolEscrowAssetBalance;
-                assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
-            } else {
-                shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-                uint256 globalEscrowAssetDelta = _after.escrowAssetBalance - _before.escrowAssetBalance;
-                uint256 poolEscrowAssetDelta = _after.poolEscrowAssetBalance - _before.poolEscrowAssetBalance;
-                assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
-            }
+    //     // first check if the share amount changed 
+    //     uint256 shareDelta;
+    //     uint256 assetDelta;
+    //     if(_before.totalShareSupply != _after.totalShareSupply) {
+    //         if(_before.totalShareSupply > _after.totalShareSupply) {
+    //             shareDelta = _before.totalShareSupply - _after.totalShareSupply;
+    //             uint256 globalEscrowAssetDelta = _before.escrowAssetBalance - _after.escrowAssetBalance;
+    //             uint256 poolEscrowAssetDelta = _before.poolEscrowAssetBalance - _after.poolEscrowAssetBalance;
+    //             assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
+    //         } else {
+    //             shareDelta = _after.totalShareSupply - _before.totalShareSupply;
+    //             uint256 globalEscrowAssetDelta = _after.escrowAssetBalance - _before.escrowAssetBalance;
+    //             uint256 poolEscrowAssetDelta = _after.poolEscrowAssetBalance - _before.poolEscrowAssetBalance;
+    //             assetDelta = globalEscrowAssetDelta + poolEscrowAssetDelta;
+    //         }
             
-            // calculate the expected share delta using the asset delta and the price per share
-            VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-            uint256 expectedShareDelta = PricingLib.assetToShareAmount(
-                vault.share(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                assetDelta.toUint128(),
-                _before.pricePoolPerAsset[poolId][scId][assetId],
-                _before.pricePoolPerShare[poolId][scId],
-                MathLib.Rounding.Down
-            );
+    //         // calculate the expected share delta using the asset delta and the price per share
+    //         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
+    //         console2.log("shareDelta", shareDelta);
+    //         console2.log("assetDelta", assetDelta);
+    //         console2.log("pricePoolPerAsset", _before.pricePoolPerAsset[poolId][scId][assetId].raw());
+    //         console2.log("pricePoolPerShare", _before.pricePoolPerShare[poolId][scId].raw());
+    //         uint256 expectedShareDelta = PricingLib.assetToShareAmount(
+    //             vault.share(),
+    //             vaultDetails.asset,
+    //             vaultDetails.tokenId,
+    //             assetDelta.toUint128(),
+    //             _before.pricePoolPerAsset[poolId][scId][assetId],
+    //             _before.pricePoolPerShare[poolId][scId],
+    //             MathLib.Rounding.Down
+    //         );
 
-            // if the share amount changed, check if it used the correct price per share set by the admin
-            eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
-        }
-    }
+    //         // if the share amount changed, check if it used the correct price per share set by the admin
+    //         eq(shareDelta, expectedShareDelta, "shareDelta must be equal to expectedShareDelta");
+    //     }
+    // }
 
     /// === HUB === ///
 
@@ -1059,19 +1065,25 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     // === OPTIMIZATION TESTS === // 
 
-    /// @dev Optimzation test to check if the difference between totalAssets and actualAssets is greater than 1 share
+    /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
         uint256 totalAssets = IBaseVault(_getVault()).totalAssets();
         uint256 actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
         uint256 difference = totalAssets - actualAssets;
 
-        uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
+        return int256(difference);
+        // uint256 differenceInShares = IBaseVault(_getVault()).convertToShares(difference);
 
-        if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
-            return int256(difference);
-        }
+        // if (differenceInShares > (10 ** IShareToken(_getShareToken()).decimals()) - 1) {
+        //     return int256(difference);
+        // }
 
-        return 0;
+        // return 0;
+    }
+
+    // NOTE: see the asyncVault_maxRedeem test for how we get the maxRedeemDifference
+    function optimize_maxRedeem_difference() public view returns (int256) {
+        return maxRedeemDifference;
     }
     
     /// === HELPERS === ///
