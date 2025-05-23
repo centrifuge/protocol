@@ -166,7 +166,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         // Note deposit and transfer from global escrow into the pool escrow,
         // to make assets available for managers of the balance sheet
         balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
-        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
         balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));

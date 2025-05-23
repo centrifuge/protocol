@@ -143,13 +143,7 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            defaultPricePoolPerAsset
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
@@ -166,17 +160,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            defaultPricePoolPerAsset
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
-        balanceSheet.noteDeposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
-        );
+        balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         // Ensure no balance transfer occurred but escrow holding was incremented nevertheless
         assertEq(erc20.balanceOf(address(this)), 0);
@@ -483,11 +469,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount, pricePerAsset
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, pricePerAsset
         );
-        balanceSheet.noteDeposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
-        );
+        balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
@@ -508,17 +492,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            POOL_A,
-            defaultTypedShareClassId,
-            address(erc20),
-            erc20TokenId,
-            address(this),
-            defaultAmount,
-            defaultPricePoolPerAsset
+            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
-        balanceSheet.noteDeposit(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount
-        );
+        balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 

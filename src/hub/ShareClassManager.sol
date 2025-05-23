@@ -251,7 +251,7 @@ contract ShareClassManager is Auth, IShareClassManager {
             MathLib.Rounding.Down
         ).toUint128();
 
-        metrics[scId_].totalIssuance += issuedShareAmount;
+        metrics[scId_].totalIssuance += issuedShareAmount; // TODO: remove
         epochAmounts.issuedAt = block.timestamp.toUint64();
         epochId[scId_][depositAssetId].issue = nowIssueEpochId;
 
@@ -290,7 +290,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(epochAmounts.approvedShareAmount <= metrics[scId_].totalIssuance, RevokeMoreThanIssued());
 
         // NOTE: shares and pool currency have the same decimals - no conversion needed!
-        payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
+        payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down); // TODO:
+            // remove
 
         payoutAssetAmount = PricingLib.poolToAssetAmount(
             payoutPoolAmount,
@@ -301,7 +302,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         ).toUint128();
         revokedShareAmount = epochAmounts.approvedShareAmount;
 
-        metrics[scId_].totalIssuance -= epochAmounts.approvedShareAmount;
+        metrics[scId_].totalIssuance -= epochAmounts.approvedShareAmount; // TODO: remove
         epochAmounts.payoutAssetAmount = payoutAssetAmount;
         epochAmounts.revokedAt = block.timestamp.toUint64();
         epochId[scId_][payoutAssetId].revoke = nowRevokeEpochId;

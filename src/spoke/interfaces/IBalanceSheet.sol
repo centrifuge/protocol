@@ -47,7 +47,6 @@ interface IBalanceSheet {
         ShareClassId indexed scId,
         address asset,
         uint256 tokenId,
-        address provider,
         uint128 amount,
         D18 pricePoolPerAsset
     );
@@ -84,14 +83,7 @@ interface IBalanceSheet {
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
     ///         This function is mostly useful to keep higher level integrations CEI adherent.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    function noteDeposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount
-    ) external;
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
     /// @notice Withdraw assets from the escrow of the pool.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
