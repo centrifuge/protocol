@@ -69,8 +69,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
-
-        setRefundAddress(GLOBAL_POT, IRecoverable(address(this)));
     }
 
     modifier pauseable() {
@@ -419,6 +417,10 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function setRefundAddress(PoolId poolId, IRecoverable refund) public auth {
+        _setRefundAddress(poolId, refund);
+    }
+
+    function _setRefundAddress(PoolId poolId, IRecoverable refund) internal {
         subsidy[poolId].refund = refund;
         emit SetRefundAddress(poolId, refund);
     }

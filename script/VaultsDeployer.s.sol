@@ -5,6 +5,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Create3Factory} from "src/common/Create3Factory.sol";
 
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {BalanceSheet} from "src/vaults/BalanceSheet.sol";
@@ -43,32 +44,22 @@ contract VaultsDeployer is CommonDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deployVaults(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
+    function deployVaults(
+        uint16 centrifugeId,
+        ISafe adminSafe_,
+        address deployer,
+        bool isTests
+    ) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
-        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
-        tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
-
-        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        syncRequestManager = new SyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
-        syncDepositVaultFactory =
-            new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, deployer);
-
-        IVaultFactory[] memory vaultFactories = new IVaultFactory[](2);
-        vaultFactories[0] = asyncVaultFactory;
-        vaultFactories[1] = syncDepositVaultFactory;
-
-        poolManager = new PoolManager(tokenFactory, deployer);
-        balanceSheet = new BalanceSheet(root, deployer);
-        vaultRouter = new VaultRouter(address(routerEscrow), gateway, poolManager, messageDispatcher, deployer);
-
-        // Hooks
-        freezeOnlyHook = address(new FreezeOnly{salt: SALT}(address(root), deployer));
-        fullRestrictionsHook = address(new FullRestrictions{salt: SALT}(address(root), deployer));
-        redemptionRestrictionsHook = address(new RedemptionRestrictions{salt: SALT}(address(root), deployer));
+        _deployEscrows(deployer);
+        _deployFactories(deployer);
+        _deployRequestManagers(deployer);
+        _deployVaultFactories(deployer);
+        _deployPoolManager(deployer);
+        _deployBalanceSheet(deployer);
+        _deployVaultRouter(deployer);
+        _deployHooks(deployer);
 
         _vaultsRegister();
         _vaultsEndorse();
@@ -76,12 +67,214 @@ contract VaultsDeployer is CommonDeployer {
         _vaultsFile();
     }
 
+    function _deployEscrows(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        routerEscrow = Escrow(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("router-escrow")),
+                abi.encodePacked(
+                    type(Escrow).creationCode,
+                    abi.encode(deployer)
+                )
+            )
+        );
+
+        globalEscrow = Escrow(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("global-escrow")),
+                abi.encodePacked(
+                    type(Escrow).creationCode,
+                    abi.encode(deployer)
+                )
+            )
+        );
+    }
+
+    function _deployFactories(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        poolEscrowFactory = PoolEscrowFactory(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("pool-escrow-factory")),
+                abi.encodePacked(
+                    type(PoolEscrowFactory).creationCode,
+                    abi.encode(address(root), deployer)
+                )
+            )
+        );
+
+        tokenFactory = TokenFactory(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("token-factory")),
+                abi.encodePacked(
+                    type(TokenFactory).creationCode,
+                    abi.encode(address(root), deployer)
+                )
+            )
+        );
+    }
+
+    function _deployRequestManagers(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        asyncRequestManager = AsyncRequestManager(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("async-request-manager")),
+                abi.encodePacked(
+                    type(AsyncRequestManager).creationCode,
+                    abi.encode(IEscrow(globalEscrow), address(root), deployer)
+                )
+            )
+        );
+
+        syncRequestManager = SyncRequestManager(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("sync-request-manager")),
+                abi.encodePacked(
+                    type(SyncRequestManager).creationCode,
+                    abi.encode(IEscrow(globalEscrow), address(root), deployer)
+                )
+            )
+        );
+    }
+
+    function _deployVaultFactories(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        asyncVaultFactory = AsyncVaultFactory(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("async-vault-factory")),
+                abi.encodePacked(
+                    type(AsyncVaultFactory).creationCode,
+                    abi.encode(address(root), asyncRequestManager, deployer)
+                )
+            )
+        );
+
+        syncDepositVaultFactory = SyncDepositVaultFactory(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("sync-deposit-vault-factory")),
+                abi.encodePacked(
+                    type(SyncDepositVaultFactory).creationCode,
+                    abi.encode(
+                        address(root),
+                        syncRequestManager,
+                        asyncRequestManager,
+                        deployer
+                    )
+                )
+            )
+        );
+    }
+
+    function _deployPoolManager(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        poolManager = PoolManager(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("pool-manager")),
+                abi.encodePacked(
+                    type(PoolManager).creationCode,
+                    abi.encode(tokenFactory, deployer)
+                )
+            )
+        );
+    }
+
+    function _deployBalanceSheet(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        balanceSheet = BalanceSheet(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("balance-sheet")),
+                abi.encodePacked(
+                    type(BalanceSheet).creationCode,
+                    abi.encode(root, deployer)
+                )
+            )
+        );
+    }
+
+    function _deployVaultRouter(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        vaultRouter = VaultRouter(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("vault-router")),
+                abi.encodePacked(
+                    type(VaultRouter).creationCode,
+                    abi.encode(
+                        address(routerEscrow),
+                        gateway,
+                        poolManager,
+                        messageDispatcher,
+                        deployer
+                    )
+                )
+            )
+        );
+    }
+
+    function _deployHooks(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        freezeOnlyHook = address(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("freeze-only-hook")),
+                abi.encodePacked(
+                    type(FreezeOnly).creationCode,
+                    abi.encode(address(root), deployer)
+                )
+            )
+        );
+
+        fullRestrictionsHook = address(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("full-restrictions-hook")),
+                abi.encodePacked(
+                    type(FullRestrictions).creationCode,
+                    abi.encode(address(root), deployer)
+                )
+            )
+        );
+
+        redemptionRestrictionsHook = address(
+            create3Factory.deploy(
+                keccak256(abi.encodePacked("redemption-restrictions-hook")),
+                abi.encodePacked(
+                    type(RedemptionRestrictions).creationCode,
+                    abi.encode(address(root), deployer)
+                )
+            )
+        );
+    }
+
     function _vaultsRegister() private {
         register("poolEscrowFactory", address(poolEscrowFactory));
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));
         register("freezeOnlyHook", address(freezeOnlyHook));
-        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
+        register(
+            "redemptionRestrictionsHook",
+            address(redemptionRestrictionsHook)
+        );
         register("fullRestrictionsHook", address(fullRestrictionsHook));
         register("tokenFactory", address(tokenFactory));
         register("asyncRequestManager", address(asyncRequestManager));
@@ -167,11 +360,17 @@ contract VaultsDeployer is CommonDeployer {
 
     function _vaultsFile() public {
         messageDispatcher.file("poolManager", address(poolManager));
-        messageDispatcher.file("investmentManager", address(asyncRequestManager));
+        messageDispatcher.file(
+            "investmentManager",
+            address(asyncRequestManager)
+        );
         messageDispatcher.file("balanceSheet", address(balanceSheet));
 
         messageProcessor.file("poolManager", address(poolManager));
-        messageProcessor.file("investmentManager", address(asyncRequestManager));
+        messageProcessor.file(
+            "investmentManager",
+            address(asyncRequestManager)
+        );
         messageProcessor.file("balanceSheet", address(balanceSheet));
 
         poolManager.file("gateway", address(gateway));
@@ -181,16 +380,26 @@ contract VaultsDeployer is CommonDeployer {
         poolManager.file("asyncRequestManager", address(asyncRequestManager));
         poolManager.file("syncRequestManager", address(syncRequestManager));
         poolManager.file("vaultFactory", address(asyncVaultFactory), true);
-        poolManager.file("vaultFactory", address(syncDepositVaultFactory), true);
+        poolManager.file(
+            "vaultFactory",
+            address(syncDepositVaultFactory),
+            true
+        );
 
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("poolManager", address(poolManager));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        asyncRequestManager.file(
+            "poolEscrowProvider",
+            address(poolEscrowFactory)
+        );
 
         syncRequestManager.file("poolManager", address(poolManager));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
-        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        syncRequestManager.file(
+            "poolEscrowProvider",
+            address(poolEscrowFactory)
+        );
 
         balanceSheet.file("poolManager", address(poolManager));
         balanceSheet.file("sender", address(messageDispatcher));
@@ -199,7 +408,10 @@ contract VaultsDeployer is CommonDeployer {
         poolEscrowFactory.file("poolManager", address(poolManager));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
+        poolEscrowFactory.file(
+            "asyncRequestManager",
+            address(asyncRequestManager)
+        );
     }
 
     function removeVaultsDeployerAccess(address deployer) public {
