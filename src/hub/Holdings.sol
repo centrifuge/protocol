@@ -98,7 +98,7 @@ contract Holdings is Auth, IHoldings {
         auth
     {
         Snapshot storage snapshot_ = snapshot[poolId][scId][centrifugeId];
-        require(snapshot_.nonce == nonce, InvalidNonce());
+        require(snapshot_.nonce == nonce, InvalidNonce(snapshot_.nonce, nonce));
 
         snapshot_.isSnapshot = isSnapshot;
         snapshot_.nonce++;

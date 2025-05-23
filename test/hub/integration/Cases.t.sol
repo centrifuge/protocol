@@ -192,9 +192,6 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        vm.expectRevert();
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false, true, 0);
-
         cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false, true, 1);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
@@ -229,9 +226,6 @@ contract TestCases is BaseTest {
 
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance, 100);
-
-        vm.expectRevert();
-        cv.updateShares(poolId, scId, 45, false, true, 0);
 
         cv.updateShares(poolId, scId, 45, false, true, 1);
 

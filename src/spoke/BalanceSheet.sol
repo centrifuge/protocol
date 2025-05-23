@@ -12,7 +12,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -132,20 +131,22 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) public authOrManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (queueEnabled[poolId][scId]) {
-            if (queuedShares[poolId][scId].isPositive || queuedShares[poolId][scId].delta == 0) {
-                queuedShares[poolId][scId].delta += shares;
-                queuedShares[poolId][scId].isPositive = true;
-            } else if (queuedShares[poolId][scId].delta > shares) {
-                queuedShares[poolId][scId].delta -= shares;
-                queuedShares[poolId][scId].isPositive = false;
+            if (shareQueue.isPositive || shareQueue.delta == 0) {
+                shareQueue.delta += shares;
+                shareQueue.isPositive = true;
+            } else if (shareQueue.delta > shares) {
+                shareQueue.delta -= shares;
+                shareQueue.isPositive = false;
             } else {
-                queuedShares[poolId][scId].delta = shares - queuedShares[poolId][scId].delta;
-                queuedShares[poolId][scId].isPositive = true;
+                shareQueue.delta = shares - shareQueue.delta;
+                shareQueue.isPositive = true;
             }
         } else {
-            bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot, queuedShares[poolId][scId].nonce);
+            bool isSnapshot = shareQueue.queuedAssetCounter == 0;
+            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot, shareQueue.nonce);
+            shareQueue.nonce++;
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -156,20 +157,22 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external authOrManager(poolId) {
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (queueEnabled[poolId][scId]) {
-            if (!queuedShares[poolId][scId].isPositive) {
-                queuedShares[poolId][scId].delta += shares;
-                queuedShares[poolId][scId].isPositive = false;
-            } else if (queuedShares[poolId][scId].delta > shares) {
-                queuedShares[poolId][scId].delta -= shares;
-                queuedShares[poolId][scId].isPositive = true;
+            if (!shareQueue.isPositive) {
+                shareQueue.delta += shares;
+                shareQueue.isPositive = false;
+            } else if (shareQueue.delta > shares) {
+                shareQueue.delta -= shares;
+                shareQueue.isPositive = true;
             } else {
-                queuedShares[poolId][scId].delta = shares - queuedShares[poolId][scId].delta;
-                queuedShares[poolId][scId].isPositive = false;
+                shareQueue.delta = shares - shareQueue.delta;
+                shareQueue.isPositive = false;
             }
         } else {
-            bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot, queuedShares[poolId][scId].nonce);
+            bool isSnapshot = shareQueue.queuedAssetCounter == 0;
+            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot, shareQueue.nonce);
+            shareQueue.nonce++;
         }
 
         IShareToken token = spoke.shareToken(poolId, scId);
@@ -284,6 +287,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             sender.sendUpdateHoldingAmount(
                 poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce
             );
+
+            shareQueue.nonce++;
         }
     }
 
@@ -334,7 +339,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
-
         shareQueue.nonce++;
     }
 

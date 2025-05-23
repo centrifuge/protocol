@@ -507,7 +507,7 @@ contract BalanceSheetTest is BaseTest {
 }
 
 contract DispatcherSpy {
-    function sendUpdateShares(PoolId, ShareClassId, uint128 shares, bool isIssuance, bool) external {
+    function sendUpdateShares(PoolId, ShareClassId, uint128 shares, bool isIssuance, bool, uint88) external {
         bytes32 slot = keccak256("dispatchedShares");
         bytes32 slot2 = keccak256("dispatchedSharesIsIssuance");
         assembly {
@@ -525,7 +525,7 @@ contract DispatcherSpy {
         }
     }
 
-    function sendUpdateHoldingAmount(PoolId, ShareClassId, AssetId, uint128 amount, D18, bool isIncrease, bool)
+    function sendUpdateHoldingAmount(PoolId, ShareClassId, AssetId, uint128 amount, D18, bool isIncrease, bool, uint88)
         external
     {
         bytes32 slot = keccak256("dispatchedHoldingAmount");

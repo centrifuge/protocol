@@ -84,7 +84,7 @@ interface IHoldings {
     /// @notice Holding was already initialized.
     error AlreadyInitialized();
 
-    error InvalidNonce();
+    error InvalidNonce(uint88 expected, uint88 actual);
 
     /// @notice Initializes a new holding in a pool using a valuation
     /// @dev    `increase()` and `decrease()` can be called before initialize

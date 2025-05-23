@@ -21,6 +21,7 @@ struct ShareQueueAmount {
     // Number of queued asset IDs for this share class
     uint32 queuedAssetCounter;
     // Nonce for share + asset messages to the hub
+    // TODO: update to uint88
     uint88 nonce;
 }
 
