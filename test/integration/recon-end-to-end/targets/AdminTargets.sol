@@ -139,7 +139,7 @@ abstract contract AdminTargets is
         (totalIssuanceBefore,) = shareClassManager.metrics(scId);
         (uint128 balanceSheetSharesBefore, ) = balanceSheet.queuedShares(poolId, scId);
         
-        hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
+        (uint128 issuedShareAmount,,) = hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         (totalIssuanceAfter,) = shareClassManager.metrics(scId);
@@ -147,8 +147,8 @@ abstract contract AdminTargets is
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
-        issuedHubShares[poolId][scId][assetId] += escrowShareDelta;
-        issuedBalanceSheetShares[poolId][scId] += (balanceSheetSharesAfter - balanceSheetSharesBefore);
+        issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
+        issuedBalanceSheetShares[poolId][scId] += escrowShareDelta;
 
         if(navPerShare > 0) {
             gt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not increased after issueShares");
@@ -252,7 +252,7 @@ abstract contract AdminTargets is
         (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId);
         (uint128 balanceSheetSharesBefore, ) = balanceSheet.queuedShares(poolId, scId);
         
-        hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare));
+        (uint128 revokedShareAmount,,) = hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare));
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         uint256 burnedShares = sharesBefore - sharesAfter;
@@ -261,8 +261,8 @@ abstract contract AdminTargets is
 
         // NOTE: shares are burned on revoke 
         executedRedemptions[IBaseVault(_getVault()).share()] += burnedShares;
-        revokedHubShares[poolId][scId][payoutAssetId] += burnedShares;
-        revokedBalanceSheetShares[poolId][scId] += (balanceSheetSharesBefore - balanceSheetSharesAfter);
+        revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
+        revokedBalanceSheetShares[poolId][scId] += burnedShares;
 
         if(navPerShare > 0) {
             lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");

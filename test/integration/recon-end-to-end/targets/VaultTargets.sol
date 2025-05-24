@@ -331,7 +331,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             executedInvestments[vault.share()] += shares;
             
-            sumOfSyncDeposits[vault.scId()][hubRegistry.currency(vault.poolId())] += assets;
+            sumOfSyncDepositsAsset[vault.asset()] += assets;
+            sumOfSyncDepositsShare[vault.share()] += shares;
             depositProcessed[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
             requestDeposited[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
         }
@@ -388,22 +389,25 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         (uint128 pendingAfter,) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), to.toBytes32());
 
+        // Bal after
+        uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(to);
+        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+
         // Processed Deposit | E-2
         // for sync vaults, deposits are fulfilled immediately
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if(!isAsyncVault) {
             requestDeposited[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
             depositProcessed[vault.scId()][hubRegistry.currency(vault.poolId())][_getActor()] += assets;
-            sumOfSyncDeposits[vault.scId()][hubRegistry.currency(vault.poolId())] += assets;
-
+            sumOfSyncDepositsAsset[vault.asset()] += assets;
+            
+            sumOfSyncDepositsShare[vault.share()] += shares;
             sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
             sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             executedInvestments[vault.share()] += shares;
         }
 
-        // Bal after
-        uint256 shareUserAfter = IShareToken(vault.share()).balanceOf(to);
-        uint256 shareEscrowAfter = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+
         // Extra check | // TODO: This math will prob overflow
         // NOTE: Unchecked so we get broken property and debug faster
         unchecked {

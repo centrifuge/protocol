@@ -140,7 +140,8 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfClaimedDepositCancelations;
     mapping(address => uint256) sumOfClaimedRedeemCancelations;
 
-    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) sumOfSyncDeposits;
+    mapping(address asset => uint256) sumOfSyncDepositsAsset;
+    mapping(address share => uint256) sumOfSyncDepositsShare;
 
     // END === invariant_E_2 === //
 
