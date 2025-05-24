@@ -61,7 +61,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
 
-        manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet, address(this));
+        manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet);
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {
