@@ -85,4 +85,28 @@ contract VaultDecoder is BaseDecoder {
     {
         addressesFound = abi.encodePacked(controller);
     }
+
+    // @desc claim cancel deposit request into the ERC7887 vault
+    // @tag receiver:address:the address of the receiver of the assets
+    // @tag controller:address:the address of the controller of the request
+    function claimCancelDepositRequest(uint256, address receiver, address controller)
+        external
+        view
+        virtual
+        returns (bytes memory addressesFound)
+    {
+        addressesFound = abi.encodePacked(receiver, controller);
+    }
+
+    // @desc claim cancel redeem request into the ERC7887 vault
+    // @tag receiver:address:the address of the receiver of the assets
+    // @tag controller:address:the address of the controller of the request
+    function claimCancelRedeemRequest(uint256, address receiver, address controller)
+        external
+        view
+        virtual
+        returns (bytes memory addressesFound)
+    {
+        addressesFound = abi.encodePacked(receiver, controller);
+    }
 }
