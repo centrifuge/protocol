@@ -1474,9 +1474,7 @@ contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest 
     bytes32 constant INVESTOR_B = bytes32("investorB");
     bytes32 constant INVESTOR_C = bytes32("investorC");
 
-    function _approveAllDepositsAndIssue(uint128 approvedAssetAmount, uint128 expectedShareIssuance, D18 navPerShare)
-        private
-    {
+    function _approveAllDepositsAndIssue(uint128 approvedAssetAmount, D18 navPerShare) private {
         shareClass.approveDeposits(
             poolId, scId, OTHER_STABLE, _nowDeposit(OTHER_STABLE), approvedAssetAmount, _pricePoolPerAsset(OTHER_STABLE)
         );
@@ -1493,7 +1491,7 @@ contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest 
 
         shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
         shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
-        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
+        _approveAllDepositsAndIssue(approvedAssetAmount, navPerShare);
 
         (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
             shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
@@ -1521,7 +1519,7 @@ contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest 
 
         shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
         shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
-        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
+        _approveAllDepositsAndIssue(approvedAssetAmount, navPerShare);
 
         (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
             shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
@@ -1547,7 +1545,7 @@ contract ShareClassManagerRoundingEdgeCasesDeposit is ShareClassManagerBaseTest 
         shareClass.requestDeposit(poolId, scId, depositAmountA, INVESTOR_A, OTHER_STABLE);
         shareClass.requestDeposit(poolId, scId, depositAmountB, INVESTOR_B, OTHER_STABLE);
         shareClass.requestDeposit(poolId, scId, depositAmountC, INVESTOR_C, OTHER_STABLE);
-        _approveAllDepositsAndIssue(approvedAssetAmount, issuedShares, navPerShare);
+        _approveAllDepositsAndIssue(approvedAssetAmount, navPerShare);
 
         (uint128 claimedA, uint128 paymentA, uint128 cancelledA,) =
             shareClass.claimDeposit(poolId, scId, INVESTOR_A, OTHER_STABLE);
