@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 /// @dev Token not returning any boolean.
@@ -88,19 +89,19 @@ contract SafeTransferLibTest is Test {
     function testSafeTransferWithBoolFalse(address to, uint256 amount) public {
         tokenWithBooleanAlwaysFalse.setBalance(address(this), amount);
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         this.safeTransfer(address(tokenWithBooleanAlwaysFalse), to, amount);
     }
 
     function testSafeTransferFromWithBoolFalse(address from, address to, uint256 amount) public {
         tokenWithBooleanAlwaysFalse.setBalance(from, amount);
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         this.safeTransferFrom(address(tokenWithBooleanAlwaysFalse), from, to, amount);
     }
 
     function testSafeApproveWithBoolFalse(address spender, uint256 amount) public {
-        vm.expectRevert(SafeTransferLib.SafeApproveFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         this.safeApprove(address(tokenWithBooleanAlwaysFalse), spender, amount);
     }
 

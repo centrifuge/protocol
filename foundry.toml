@@ -46,7 +46,7 @@ fail_on_revert = false
 verbosity = 2
 
 [profile.ci-coverage.coverage]
-ignore = ["test/vaults/fuzzing/**/*.sol"]
+ignore = ["test/spokes/fuzzing/**/*.sol"]
 
 [profile.ci-coverage.fuzz]
 runs = 512                # 2x of default
@@ -67,16 +67,16 @@ targets = [
 ]
 
 [profile.smt.model_checker.contracts]
-"src/vaults/AsyncVault.sol" = ["AsyncVault"]
-"src/vaults/AsyncRequestManager.sol" = ["AsyncRequestManager"]
-"src/vaults/SyncRequestManager.sol" = ["SyncRequestManager"]
-"src/vaults/PoolManager.sol" = ["PoolManager"]
-"src/vaults/Escrow.sol" = ["Escrow"]
-"src/vaults/Root.sol" = ["Root"]
-"src/vaults/token/ERC20.sol" = ["ERC20"]
-"src/vaults/token/ShareToken.sol" = ["ShareToken"]
-"src/vaults/token/FullRestrictions.sol" = ["FullRestrictions"]
-"src/vaults/admin/Guardian.sol" = ["Guardian"]
+"src/spokes/vaults/AsyncVault.sol" = ["AsyncVault"]
+"src/spokes/vaults/AsyncRequestManager.sol" = ["AsyncRequestManager"]
+"src/spokes/vaults/SyncRequestManager.sol" = ["SyncRequestManager"]
+"src/spokes/Spoke.sol" = ["Spoke"]
+"src/spokes/Escrow.sol" = ["Escrow"]
+"src/spokes/Root.sol" = ["Root"]
+"src/spokes/ERC20.sol" = ["ERC20"]
+"src/spokes/ShareToken.sol" = ["ShareToken"]
+"src/spokes/FullRestrictions.sol" = ["FullRestrictions"]
+"src/spokes/admin/Guardian.sol" = ["Guardian"]
 
 [doc]
 ignore = ["**/*.t.sol", "**/*.s.sol"]

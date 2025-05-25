@@ -7,50 +7,33 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
-///  Common Handlers
-/// -----------------------------------------------------
-/// @notice Interface for Gateway methods called by messages
-interface IGatewayHandler {
-    /// @notice Initialize the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-
-    /// @notice Cancel the recovery of a payload.
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  adapter Adapter that the recovery was targeting
-    /// @param  payloadHash Hash of the payload being disputed
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
-}
-
-/// -----------------------------------------------------
-///  CP Handlers
+///  Hub Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CP methods called by messages
+/// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
-    /// @notice Tells that an asset was already registered in CV, in order to perform the corresponding register.
+    /// @notice Tells that an asset was already registered in Vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
-    /// @notice Perform a deposit that was requested from CV.
+    /// @notice Perform a deposit that was requested from Vaults.
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external;
 
-    /// @notice Perform a redeem that was requested from CV.
+    /// @notice Perform a redeem that was requested from Vaults.
     function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
         external;
 
-    /// @notice Perform a deposit cancellation that was requested from CV.
+    /// @notice Perform a deposit cancellation that was requested from Vaults.
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external;
 
-    /// @notice Perform a redeem cancellation that was requested from CV.
+    /// @notice Perform a redeem cancellation that was requested from Vaults.
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
 
-    /// @notice Update a holding by request from CAL.
+    /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
@@ -60,19 +43,28 @@ interface IHubGatewayHandler {
         bool isIncrease
     ) external;
 
-    /// @notice Increases the total issuance of shares by request from CAL.
+    /// @notice Forward an initiated share transfer to the destination chain.
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external;
+
+    /// @notice Increases the total issuance of shares by request from vaults.
     function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
 
-    /// @notice Decreases the total issuance of shares by request from CAL.
+    /// @notice Decreases the total issuance of shares by request from vaults.
     function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
 }
 
 /// -----------------------------------------------------
-///  CV Handlers
+///  Vaults Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for CV methods related to pools called by messages
-interface IPoolManagerGatewayHandler {
+/// @notice Interface for Vaults methods related to pools called by messages
+interface ISpokeGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @dev       The function can only be executed by the gateway contract.
     function addPool(PoolId poolId) external;
@@ -132,10 +124,23 @@ interface IPoolManagerGatewayHandler {
 
     /// @notice Mints share class tokens to a recipient
     /// @dev    The function can only be executed internally or by the gateway contract.
-    function handleTransferShares(PoolId poolId, ShareClassId scId, address destinationAddress, uint128 amount)
-        external;
+    function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
-    /// @notice Updates the target address. Generic update function from CP to CV
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address vaultOrFactory,
+        VaultUpdateKind kind
+    ) external;
+
+    /// @notice Updates the target address. Generic update function from Hub to Vaults
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
@@ -143,7 +148,7 @@ interface IPoolManagerGatewayHandler {
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
-/// @notice Interface for CV methods related to async investments called by messages
+/// @notice Interface for Vaults methods related to async investments called by messages
 interface IRequestManagerGatewayHandler {
     /// @notice Signal from the Hub that an asynchronous investment order has been approved
     ///
@@ -174,113 +179,48 @@ interface IRequestManagerGatewayHandler {
     ) external;
 
     // --- Deposits ---
-    /// @notice Fulfills pending deposit requests after successful epoch execution on CP.
+    /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
     ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
-    ///         The MaxMint bookkeeping value is updated.
+    ///         The maxMint and claimableCancelDepositRequest bookkeeping values are updated.
     ///         The request fulfillment can be partial.
     /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
     ///         and mint calls.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
         address user,
         AssetId assetId,
-        uint128 assets,
-        uint128 shares
-    ) external;
-
-    /// @notice Fulfills deposit request cancellation after successful epoch execution on CP.
-    ///         The amount of assets that can be claimed by the user is locked in the escrow contract.
-    ///         Updates claimableCancelDepositRequest bookkeeping value. The cancellation order execution can be
-    ///         partial.
-    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user during
-    ///         claimCancelDepositRequest calls.
-    ///         `fulfillment` represents the decrease in `pendingDepositRequest`.
-    ///         This is a separate parameter from `assets` since there can be some precision loss when calculating this,
-    ///         which would lead to having dust in the pendingDepositRequest value and
-    ///         never closing out the request even after it is technically fulfilled.
-    ///
-    ///         Example:
-    ///         User deposits 100 units of the vaults underlying asset.
-    ///         - At some point they make cancellation request. The order in which is not guaranteed
-    ///         Both requests arrive at CentrifugeChain. If the cancellation is first then all of the
-    ///         deposited amount will be cancelled.
-    ///
-    ///         - There is the case where the deposit event is first and it gets completely fulfilled then
-    ///         No amount of the deposited asset will be cancelled.
-    ///
-    ///         - There is the case where partially the deposit request is fulfilled. Let's say 40 units.
-    ///         Then the cancel request arrives.
-    ///         The remaining amount of deposited funds which is 60 units will cancelled.
-    ///         There is a scenario where the deposit funds might different from the pool currency so some
-    ///         swapping might happen. Either during this swapping or some fee collection or rounding there will be
-    ///         difference between the actual amount that will be returned to the user.
-    ///         `fulfillment` in this case will be 60 units but assets will be some lower amount because of the
-    ///         aforementioned reasons
-    ///         Let's assume the `asset` is 59. The user will be able to take back these 59 but
-    ///         in order to not let any dust, we use `fulfillment` in our calculations.
-    ///
-    ///         `pendingDepositRequest` not necessary gets zeroed during this cancellation event.
-    ///         When CentrifugeChain process the cancel event on its side, part of the deposit might be fulfilled.
-    ///         In such case the chain will send two messages, one `fulfillDepositRequest` and one
-    ///         `fulfillCancelDepositRequest`. In the example above, given the 100 units
-    ///         deposited, 40 units are fulfilled and 60 can be cancelled.
-    ///         The two messages sent from CentrifugeChain are not guaranteed to arrive in order.
-    ///
-    ///         Assuming first is the `fulfillCancelDepositRequest` the `pendingDepositRequest` here will be reduced to
-    ///         60 units only. Then the `fulfillCancelDepositRequest` arrives with `fulfillment` 60. This amount is
-    ///         removed from `pendingDepositRequests`. Since there are not more pendingDepositRequest` the
-    ///         `pendingCancelDepositRequest` gets deleted.
-    ///
-    ///         Assuming first the `fulfillCancelDepositRequest` arrives then the `pendingDepositRequest` will be 100.
-    ///         `fulfillment` is 60 so we are left with `pendingDepositRequest` equals to 40 ( 100 - 60 ).
-    ///         Then the second message arrives which is `fulfillDepositRequest`. ( Check `fulfillDepositRequest`
-    ///         implementation for details.)
-    ///         When it arrives the `pendingDepositRequest` is 40 and the assets is 40
-    ///         so there are no more `pendingDepositRequest` and right there the `pendingCancelDepositRequest will be
-    ///         deleted.
-    function fulfillCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        address user,
-        AssetId assetId,
-        uint128 assets,
-        uint128 fulfillment
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
     ) external;
 
     // --- Redeems ---
-    /// @notice Fulfills pending redeem requests after successful epoch execution on CP.
+    /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
     ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
-    ///         return is locked in the escrow contract. The MaxWithdraw bookkeeping value is updated.
+    ///         return is locked in the escrow contract.
+    ///         The maxWithdraw and claimableCancelRedeemRequest bookkeeping values are updated.
     ///         The request fulfillment can be partial.
     /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
     ///         and withdraw calls.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
         address user,
         AssetId assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
     ) external;
-
-    /// @notice Fulfills redeem request cancellation after successful epoch execution on CP.
-    ///         The amount of shares that can be claimed by the user is locked in the escrow contract.
-    ///         Updates claimableCancelRedeemRequest bookkeeping value. The cancellation order execution can also be
-    ///         partial.
-    /// @dev    The shares in the escrow are reserved for the user and are transferred to the user during
-    ///         claimCancelRedeemRequest calls.
-    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        external;
 }
 
-/// @notice Interface for CV methods related to epoch called by messages
+/// @notice Interface for Vaults methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
-    function triggerDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, address provider, uint128 amount)
-        external;
-
-    function triggerWithdraw(PoolId poolId, ShareClassId scId, AssetId assetId, address receiver, uint128 amount)
-        external;
+    function updateManager(PoolId poolId, address who, bool canManage) external;
 
     function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 

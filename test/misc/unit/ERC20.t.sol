@@ -631,8 +631,8 @@ contract ERC20Test is Test {
         token.permit(owner, to, amount, deadline + 1, v, r, s);
     }
 
-    function testPermitPastDeadline(uint128 privateKey, address to, uint256 amount, uint256 deadline) public {
-        if (deadline == type(uint256).max) deadline -= 1;
+    function testPermitPastDeadline(uint128 privateKey, address to, uint256 amount, uint64 deadline) public {
+        if (deadline == type(uint64).max) deadline -= 1;
         vm.warp(deadline);
 
         // private key cannot be 0 for secp256k1 pubkey generation

@@ -11,7 +11,7 @@ package hub {
 
 package vaults {
     class PoolEscrow
-    class PoolManager
+    class Spoke
     class AsyncRequestManager
     class BalanceSheet
 }
@@ -37,7 +37,7 @@ WormholeAdapter -up--> Gateway
 MessageProcessor --up-> Root
 MessageProcessor --up-> TokenRecoverer
 MessageProcessor --up-> Hub
-MessageProcessor --up-> PoolManager
+MessageProcessor --up-> Spoke
 MessageProcessor --up-> AsyncRequestManager
 MessageProcessor --up-> BalanceSheet
 MessageProcessor --up-> Gateway
@@ -46,7 +46,7 @@ MessageDispatcher ---> Root
 MessageDispatcher ---> TokenRecoverer
 MessageDispatcher ---> Gateway
 MessageDispatcher ---> Hub
-MessageDispatcher ---> PoolManager
+MessageDispatcher ---> Spoke
 MessageDispatcher ---> AsyncRequestManager
 MessageDispatcher ---> BalanceSheet
 

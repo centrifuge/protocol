@@ -46,8 +46,14 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateVault(
+        PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
+    );
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
+    );
+    event ForwardTransferShares(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
 
     /// @notice Emitted when a call to `file()` was performed.
@@ -124,8 +130,13 @@ interface IHub {
         external
         payable;
 
-    /// @notice Allow/disallow an account to interact as pool manager
-    function updateManager(PoolId poolId, address who, bool canManage) external payable;
+    /// @notice Allow/disallow an account to interact as hub manager this pool
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
+
+    /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        payable;
 
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
@@ -208,6 +219,20 @@ interface IHub {
         external
         payable;
 
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
+
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
@@ -237,7 +262,7 @@ interface IHub {
     /// @param equityAccount Used to track the equity value
     /// @param gainAccount Used to track the gain value
     /// @param lossAccount Used to track the loss value
-    function createHolding(
+    function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -254,7 +279,7 @@ interface IHub {
     /// @param valuation Used to transform between the holding asset and pool currency
     /// @param expenseAccount Used to track the expense value
     /// @param liabilityAccount Used to track the liability value
-    function createLiability(
+    function initializeLiability(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
