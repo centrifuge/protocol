@@ -111,10 +111,7 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         require(address(this).balance >= value, InsufficientBalance());
 
         (bool success, bytes memory returnData) = target.call{value: value}(data);
-
-        if (!success) {
-            revert WrappedError(target, bytes4(data), returnData, abi.encodeWithSelector(CallFailed.selector));
-        }
+        require(success, WrappedError(target, bytes4(data), returnData, abi.encodeWithSelector(CallFailed.selector)));
 
         return returnData;
     }
