@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
