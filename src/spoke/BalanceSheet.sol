@@ -12,7 +12,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -22,7 +21,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet, QueueAmount} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
