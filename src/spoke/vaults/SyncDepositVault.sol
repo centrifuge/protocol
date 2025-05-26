@@ -6,7 +6,8 @@ import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
+import {BaseVault} from "src/spoke/BaseVault.sol";
+import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
