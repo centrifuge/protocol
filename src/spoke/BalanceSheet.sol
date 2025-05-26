@@ -244,6 +244,32 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+        _submitQueuedAssets(poolId, scId, assetId);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+        _submitQueuedShares(poolId, scId);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal
+    //----------------------------------------------------------------------------------------------
+
+    function _submitQueuedShares(PoolId poolId, ShareClassId scId) internal {
+        QueueAmount storage queue = queuedShares[poolId][scId];
+
+        if (queue.increase > queue.decrease) {
+            sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true);
+        } else if (queue.decrease > queue.increase) {
+            sender.sendUpdateShares(poolId, scId, queue.decrease - queue.increase, false);
+        }
+
+        queue.increase = 0;
+        queue.decrease = 0;
+    }
+
+    function _submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         QueueAmount storage queue = queuedAssets[poolId][scId][assetId];
 
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
@@ -260,24 +286,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         queue.increase = 0;
         queue.decrease = 0;
     }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
-        QueueAmount storage queue = queuedShares[poolId][scId];
-
-        if (queue.increase > queue.decrease) {
-            sender.sendUpdateShares(poolId, scId, queue.increase - queue.decrease, true);
-        } else if (queue.decrease > queue.increase) {
-            sender.sendUpdateShares(poolId, scId, queue.decrease - queue.increase, false);
-        }
-
-        queue.increase = 0;
-        queue.decrease = 0;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Internal
-    //----------------------------------------------------------------------------------------------
 
     function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
         if (TransientStorageLib.tloadBool(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)))) {
