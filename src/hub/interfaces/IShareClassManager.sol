@@ -2,7 +2,6 @@
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -113,7 +112,9 @@ interface IShareClassManager {
         D18 navAssetPerShare,
         uint128 issuedShareAmount
     );
-    event RemoteIssueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 issuedShareAmount);
+    event RemoteIssueShares(
+        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 issuedShareAmount
+    );
     event RevokeShares(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -125,7 +126,9 @@ interface IShareClassManager {
         uint128 revokedAssetAmount,
         uint128 revokedPoolAmount
     );
-    event RemoteRevokeShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount);
+    event RemoteRevokeShares(
+        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount
+    );
     event ClaimDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -402,19 +405,15 @@ interface IShareClassManager {
             bool canClaimAgain
         );
 
-    /// @notice Increases the share class issuance
+    /// @notice Update the share class issuance
     ///
+    /// @param centrifugeId Identifier of the chain
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param amount The amount to increase the share class issuance by
-    function increaseShareClassIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
-
-    /// @notice Decreases the share class issuance
-    ///
-    /// @param poolId Identifier of the pool
-    /// @param scId Identifier of the share class
-    /// @param amount The amount to decrease the share class issuance by
-    function decreaseShareClassIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    /// @param isIssuance Whether it is an issuance or revocation
+    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
+        external;
 
     /// @notice Adds a new share class to the given pool.
     ///
@@ -432,7 +431,7 @@ interface IShareClassManager {
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param pricePoolPerShare The price per share of the share class (in the pool currency denomination)
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external;
 
     /// @notice Updates the metadata of a share class.
     ///
@@ -500,9 +499,15 @@ interface IShareClassManager {
 
     /// @notice Exposes relevant metrics for a share class
     ///
-    /// @return totalIssuance The total number of shares known to the CP side
+    /// @return totalIssuance The total number of shares known to the Hub side
     /// @return pricePoolPerShare The amount of pool units per unit share
     function metrics(ShareClassId scId) external view returns (uint128 totalIssuance, D18 pricePoolPerShare);
+
+    /// @notice Exposes issuance of a share class on a given network
+    ///
+    /// @param scId Identifier of the share class
+    /// @param centrifugeId Identifier of the chain
+    function issuance(ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
 
     /// @notice Determines the next share class id for the given pool.
     ///

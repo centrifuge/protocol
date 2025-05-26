@@ -96,11 +96,13 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(messageProcessor));
         gateway.rely(address(multiAdapter));
+        multiAdapter.rely(address(root));
         multiAdapter.rely(address(guardian));
         multiAdapter.rely(address(gateway));
         messageDispatcher.rely(address(root));
-        messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
+        messageProcessor.rely(address(root));
+        messageProcessor.rely(address(gateway));
         tokenRecoverer.rely(address(messageDispatcher));
         tokenRecoverer.rely(address(messageProcessor));
     }
@@ -126,6 +128,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         root.deny(deployer);
         gateway.deny(deployer);
+        multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);

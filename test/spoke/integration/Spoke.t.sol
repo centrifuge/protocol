@@ -19,7 +19,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 
@@ -283,7 +283,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
 
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         spoke.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
         spoke.updateRestriction(
             poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()

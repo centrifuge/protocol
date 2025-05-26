@@ -154,13 +154,13 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Creates and send the message
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
+    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external;
@@ -170,9 +170,9 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 interface IVaultMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external;
@@ -201,9 +201,18 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external;
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shares,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external;
 }

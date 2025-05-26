@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 
 /// Provides a base implementation for all ERC7726 valuation in the system
-interface IBaseValuation is IERC7726 {
+interface IBaseValuation is IValuation {
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 indexed what, address addr);
 

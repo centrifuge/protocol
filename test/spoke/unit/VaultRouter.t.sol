@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import "test/spoke/BaseTest.sol";
 
 import "src/misc/interfaces/IERC20.sol";
 import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -100,8 +99,10 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
 
+        balanceSheet.setQueue(vault.poolId(), vault.scId(), false);
+
         erc20.approve(address(vault_), amount);
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vaultRouter.deposit{value: gas}(vault, amount, self, self);
 
         erc20.approve(address(vaultRouter), amount);

@@ -7,4 +7,8 @@ function raw(AccountId accountId_) pure returns (uint32) {
     return AccountId.unwrap(accountId_);
 }
 
-using {raw} for AccountId global;
+function neq(AccountId a, AccountId b) pure returns (bool) {
+    return AccountId.unwrap(a) != AccountId.unwrap(b);
+}
+
+using {raw, neq as !=} for AccountId global;
