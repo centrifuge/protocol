@@ -11,7 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

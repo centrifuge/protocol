@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/spoke/BaseTest.sol";
 
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 
 contract OperatorTest is BaseTest {

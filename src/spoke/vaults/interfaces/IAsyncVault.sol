@@ -6,7 +6,7 @@ import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 
 /**
  * @title  IAsyncRedeemVault

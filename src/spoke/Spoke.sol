@@ -23,7 +23,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/spoke/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";

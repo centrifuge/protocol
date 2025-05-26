@@ -9,7 +9,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 interface IDepositManager is IBaseRequestManager {

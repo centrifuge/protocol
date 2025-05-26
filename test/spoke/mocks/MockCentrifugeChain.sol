@@ -15,7 +15,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
