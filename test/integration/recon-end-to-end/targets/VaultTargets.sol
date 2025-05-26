@@ -197,7 +197,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
-    function vault_cancelDepositRequest() public updateGhostsWithType(OpType.NOTIFY) asActor {
+    function vault_cancelDepositRequest() public updateGhostsWithType(OpType.NOTIFY) {
         address controller = _getActor();
         IBaseVault vault = IBaseVault(_getVault());
         
@@ -205,6 +205,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         (uint32 depositEpochId,,, ) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
         uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, controller);
 
+        vm.prank(_getActor());
         // REQUEST_ID is always passed as 0 (unused in the function)
         try IAsyncVault(_getVault()).cancelDepositRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
@@ -241,7 +242,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function vault_cancelRedeemRequest() public updateGhostsWithType(OpType.NOTIFY) asActor {
+    function vault_cancelRedeemRequest() public updateGhostsWithType(OpType.NOTIFY) {
         address controller = _getActor();
         IBaseVault vault = IBaseVault(_getVault());
         
