@@ -17,7 +17,7 @@ import {IVaultRouter} from "src/spoke/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IAsyncVault} from "src/spoke/interfaces/IBaseVaults.sol";
+import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 
 interface Authlike {
