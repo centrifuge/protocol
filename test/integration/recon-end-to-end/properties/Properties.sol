@@ -875,6 +875,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
     }
 
+    /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
     function property_total_issuance_soundness() public {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -883,7 +884,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         
-        uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId] + sumOfSyncDepositsShare[vault.share()];
+        uint256 minted = issuedHubShares[poolId][scId][assetId] + sumOfSyncDepositsShare[vault.share()];
         uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
         lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }

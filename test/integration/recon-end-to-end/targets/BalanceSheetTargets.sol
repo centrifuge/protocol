@@ -41,7 +41,12 @@ abstract contract BalanceSheetTargets is
 
     function balanceSheet_issue(uint128 shares) public asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.issue(vault.poolId(), vault.scId(), _getActor(), shares);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        balanceSheet.issue(poolId, scId, _getActor(), shares);
+
+        issuedBalanceSheetShares[poolId][scId] += shares;
     }
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public asActor {
@@ -85,7 +90,12 @@ abstract contract BalanceSheetTargets is
 
     function balanceSheet_revoke(uint128 shares) public asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.revoke(vault.poolId(), vault.scId(), shares);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        balanceSheet.revoke(poolId, scId, shares);
+
+        revokedBalanceSheetShares[poolId][scId] += shares;
     }
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public asActor {

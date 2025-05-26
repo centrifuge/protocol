@@ -148,7 +148,6 @@ abstract contract AdminTargets is
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
-        issuedBalanceSheetShares[poolId][scId] += escrowShareDelta;
 
         if(navPerShare > 0) {
             gt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not increased after issueShares");
@@ -262,7 +261,6 @@ abstract contract AdminTargets is
         // NOTE: shares are burned on revoke 
         executedRedemptions[IBaseVault(_getVault()).share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
-        revokedBalanceSheetShares[poolId][scId] += burnedShares;
 
         if(navPerShare > 0) {
             lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");
