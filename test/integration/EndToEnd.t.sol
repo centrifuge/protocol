@@ -33,12 +33,13 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {AsyncVaultFactory} from "src/spoke/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/spoke/factories/SyncDepositVaultFactory.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault, IAsyncRedeemVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 
 import {FullDeployer, HubDeployer, SpokeDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -215,76 +216,17 @@ contract EndToEndDeployment is Test {
     }
 }
 
-/// Common and generic actions ready to be used in different tests
-contract EndToEndActionsSet is EndToEndDeployment {
+/// Common and generic utilities ready to be used in different tests
+contract EndToEndUtils is EndToEndDeployment {
     using CastLib for *;
+    using MessageLib for *;
 
-    function asyncDeposit(address investor, uint128 amount) internal {
-        IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
-
-        vm.startPrank(investor);
-        s.usdc.approve(address(vault), amount);
-        vault.requestDeposit(amount, investor, investor);
-    }
-
-    function approve(uint128 amount) internal {
-        vm.startPrank(FM);
-        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(SC_1, USDC_ID);
-        h.hub.approveDeposits{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, amount);
-    }
-
-    function issue() internal {
-        vm.startPrank(FM);
-        uint32 depositEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, USDC_ID);
-        h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, IDENTITY_PRICE);
-    }
-
-    function asyncClaim(address investor) internal {
-        vm.startPrank(ANY);
-        uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, investor.toBytes32(), USDC_ID);
-        h.hub.notifyDeposit{value: GAS}(POOL_A, SC_1, USDC_ID, investor.toBytes32(), maxClaims);
-
-        IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
-
-        vm.startPrank(investor);
-        vault.mint(s.asyncRequestManager.maxMint(vault, investor), investor);
-    }
-
-    function syncDeposit(address investor, uint128 amount) internal {
-        IBaseVault vault = s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID);
-
-        vm.startPrank(investor);
-        s.usdc.approve(address(vault), amount);
-        vault.deposit(amount, investor);
-    }
-
-    function withdraw(uint128 amount) internal {
-        vm.startPrank(BSM);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, amount);
-    }
-
-    function setSharePrice(D18 yield) internal {
-        vm.startPrank(FM);
-        h.hub.updateSharePrice{value: GAS}(POOL_A, SC_1, IDENTITY_PRICE + yield);
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-    }
-
-    function deposit(uint128 amount, uint128 newAmount) internal {
-        vm.startPrank(DEPLOYER);
-        s.usdc.mint(BSM, newAmount);
-
-        vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), amount);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, amount);
-    }
-
-    function updateRestrictionMemberMsg() internal returns (bytes memory) {
-        return
-            MessageLib.UpdateRestrictionMember({user: INVESTOR_A.toBytes32(), validUntil: type(uint64).max}).serialize();
+    function updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
+        return MessageLib.UpdateRestrictionMember({user: addr.toBytes32(), validUntil: type(uint64).max}).serialize();
     }
 }
 
-contract EndToEndUseCases is EndToEndActionsSet {
+contract EndToEndUseCases is EndToEndUtils {
     using CastLib for *;
 
     /// forge-config: default.isolate = true
@@ -334,13 +276,33 @@ contract EndToEndUseCases is EndToEndActionsSet {
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
 
-        asyncDeposit(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
-        approve(INVESTOR_A_USDC_AMOUNT);
-        issue();
-        asyncClaim(INVESTOR_A);
+        IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
 
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), INVESTOR_A_USDC_AMOUNT);
+        vault.requestDeposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A, INVESTOR_A);
+
+        vm.startPrank(FM);
+        uint32 depositEpochId = h.hub.shareClassManager().nowDepositEpoch(SC_1, USDC_ID);
+        h.hub.approveDeposits{value: GAS}(POOL_A, SC_1, USDC_ID, depositEpochId, INVESTOR_A_USDC_AMOUNT);
+
+        vm.startPrank(FM);
+        uint32 issueEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, USDC_ID);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC_ID, issueEpochId, IDENTITY_PRICE);
+
+        vm.startPrank(ANY);
+        uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), USDC_ID);
+        h.hub.notifyDeposit{value: GAS}(POOL_A, SC_1, USDC_ID, INVESTOR_A.toBytes32(), maxClaims);
+
+        vm.startPrank(INVESTOR_A);
+        vault.mint(s.asyncRequestManager.maxMint(vault, INVESTOR_A), INVESTOR_A);
+
+        // CHECKS
         uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
+
+        // TODO: Add more checks
+        // TODO: Check accounting
     }
 
     /// forge-config: default.isolate = true
@@ -350,30 +312,79 @@ contract EndToEndUseCases is EndToEndActionsSet {
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink);
 
-        syncDeposit(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
+        IBaseVault vault = s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID);
 
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), INVESTOR_A_USDC_AMOUNT);
+        vault.deposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A);
+
+        // CHECKS
         uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
+
+        // TODO: Add more checks
+        // TODO: Check accounting
     }
 
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
         testAsyncDeposit(sameChain);
 
-        withdraw(INVESTOR_A_USDC_AMOUNT);
+        vm.startPrank(BSM);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, INVESTOR_A_USDC_AMOUNT);
 
-        // Emulates a yield
         uint128 increment = TEN_PERCENT.mulUint128(INVESTOR_A_USDC_AMOUNT, MathLib.Rounding.Down);
-        deposit(INVESTOR_A_USDC_AMOUNT, increment);
+
+        vm.startPrank(DEPLOYER);
+        s.usdc.mint(BSM, increment);
+
+        vm.startPrank(BSM);
+        s.usdc.approve(address(s.balanceSheet), INVESTOR_A_USDC_AMOUNT + increment);
+        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, INVESTOR_A_USDC_AMOUNT + increment);
+
+        // CHECKS
+        // TODO: Check holdings in the Hub
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeem(bool sameChain) public {
-        testAsyncDeposit();
+    function testAsyncRedeem(bool sameChain, bool afterAsyncDeposit) public {
+        IBaseRequestManager vaultManager;
+        if (afterAsyncDeposit) {
+            testAsyncDeposit(sameChain);
+            vaultManager = s.asyncRequestManager;
+        } else {
+            testSyncDeposit(sameChain);
+            vaultManager = s.syncRequestManager;
+        }
 
-        h.hub.updateRestriction(POOL_A, SC_1, s.centrifugeId, updateRestrictionMemberMsg());
+        vm.startPrank(FM);
+        h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s.centrifugeId, updateRestrictionMemberMsg(INVESTOR_A));
 
-        ///
-        setSharePrice(IDENTITY_PRICE + TEN_PERCENT);
+        IAsyncRedeemVault vault = IAsyncRedeemVault(address(vaultManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
+
+        vm.startPrank(INVESTOR_A);
+        uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
+        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
+
+        vm.startPrank(FM);
+        uint32 redeemEpochId = h.shareClassManager.nowRedeemEpoch(SC_1, USDC_ID);
+        h.hub.approveRedeems(POOL_A, SC_1, USDC_ID, redeemEpochId, shares);
+
+        vm.startPrank(FM);
+        uint32 revokeEpochId = h.shareClassManager.nowRevokeEpoch(SC_1, USDC_ID);
+        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, USDC_ID, revokeEpochId, IDENTITY_PRICE);
+
+        vm.startPrank(ANY);
+        uint32 maxClaims = h.shareClassManager.maxRedeemClaims(SC_1, INVESTOR_A.toBytes32(), USDC_ID);
+        h.hub.notifyRedeem{value: GAS}(POOL_A, SC_1, USDC_ID, INVESTOR_A.toBytes32(), maxClaims);
+
+        vm.startPrank(INVESTOR_A);
+        vault.withdraw(INVESTOR_A_USDC_AMOUNT, INVESTOR_A, INVESTOR_A);
+
+        // CHECKS
+        assertEq(s.usdc.balanceOf(INVESTOR_A), INVESTOR_A_USDC_AMOUNT);
+
+        // TODO: Add more checks
+        // TODO: Check accounting
     }
 }
