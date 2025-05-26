@@ -9,7 +9,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 

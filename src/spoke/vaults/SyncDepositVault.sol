@@ -11,7 +11,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits

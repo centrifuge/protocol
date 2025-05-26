@@ -7,7 +7,7 @@ import {Root} from "src/common/Root.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
-import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {BaseTest} from "test/spoke/BaseTest.sol";

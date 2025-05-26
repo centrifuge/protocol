@@ -19,7 +19,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";

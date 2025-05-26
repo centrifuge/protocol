@@ -12,7 +12,7 @@ import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/IBaseVaults.sol";
 import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spoke/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";

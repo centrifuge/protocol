@@ -12,7 +12,7 @@ import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.so
 import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts

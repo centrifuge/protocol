@@ -24,7 +24,7 @@ import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";

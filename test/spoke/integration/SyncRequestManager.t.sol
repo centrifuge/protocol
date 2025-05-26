@@ -17,7 +17,7 @@ import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/interfaces/IBaseVaults.sol";
 
 import "test/spoke/BaseTest.sol";
 

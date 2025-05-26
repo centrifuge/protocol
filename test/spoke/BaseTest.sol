@@ -29,7 +29,7 @@ import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
-import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 
 // scripts
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";

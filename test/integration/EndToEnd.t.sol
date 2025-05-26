@@ -32,7 +32,7 @@ import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncVault} from "src/spoke/interfaces/IBaseVaults.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {AsyncVaultFactory} from "src/spoke/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/spoke/factories/SyncDepositVaultFactory.sol";

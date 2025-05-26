@@ -5,7 +5,7 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/IBaseVaults.sol";
 import {BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
 
 interface IVaultRouter is IMulticall {
