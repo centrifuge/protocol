@@ -242,7 +242,7 @@ abstract contract AdminTargets is
         hub_setQueue(CENTRIFUGE_CHAIN_ID, enabled);
     }
 
-    /// @dev After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
+    /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
     function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
