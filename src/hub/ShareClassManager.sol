@@ -378,12 +378,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage pendingOrder = depositRequest[scId_][depositAssetId][investor];
         require(!_claimingRequired(pendingOrder, nowDepositEpoch(scId_, depositAssetId)), ClaimingRequired());
 
-        cancelledAmount = pendingOrder.pending + queuedDepositRequest[scId_][depositAssetId][investor].amount;
+        cancelledAmount = pendingOrder.pending;
 
         // Clear storage
         pendingDeposit[scId_][depositAssetId] -= pendingOrder.pending;
         delete depositRequest[scId_][depositAssetId][investor];
-        delete queuedDepositRequest[scId_][depositAssetId][investor];
         cancelledDepositRequestFlag[scId_][depositAssetId][investor] = false;
 
         emit ForceCancelDepositRequest(poolId, scId_, depositAssetId, investor, cancelledAmount);
@@ -402,12 +401,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage pendingOrder = redeemRequest[scId_][payoutAssetId][investor];
         require(!_claimingRequired(pendingOrder, nowRedeemEpoch(scId_, payoutAssetId)), ClaimingRequired());
 
-        cancelledAmount = pendingOrder.pending + queuedRedeemRequest[scId_][payoutAssetId][investor].amount;
+        cancelledAmount = pendingOrder.pending;
 
         // Clear storage
         pendingRedeem[scId_][payoutAssetId] -= pendingOrder.pending;
         delete redeemRequest[scId_][payoutAssetId][investor];
-        delete queuedRedeemRequest[scId_][payoutAssetId][investor];
         cancelledRedeemRequestFlag[scId_][payoutAssetId][investor] = false;
 
         emit ForceCancelRedeemRequest(poolId, scId_, payoutAssetId, investor, cancelledAmount);
