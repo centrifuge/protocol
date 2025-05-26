@@ -25,7 +25,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     uint256 internal constant REQUEST_ID = 0;
 
     IRoot public immutable root;
-    /// @dev this naming MUST NEVER change - due to legacy v2 vaults
     IBaseRequestManager public manager;
 
     /// @inheritdoc IBaseVault
