@@ -66,7 +66,7 @@ interface IHoldings {
     );
 
     event SetSnapshot(
-        PoolId indexed, ShareClassId indexed scId, uint16 indexed centrifugeId, bool isSnapshot, uint88 nonce
+        PoolId indexed, ShareClassId indexed scId, uint16 indexed centrifugeId, bool isSnapshot, uint64 nonce
     );
 
     /// @notice Item was not found for a required action.
@@ -84,7 +84,7 @@ interface IHoldings {
     /// @notice Holding was already initialized.
     error AlreadyInitialized();
 
-    error InvalidNonce(uint88 expected, uint88 actual);
+    error InvalidNonce(uint64 expected, uint64 actual);
 
     /// @notice Initializes a new holding in a pool using a valuation
     /// @dev    `increase()` and `decrease()` can be called before initialize
@@ -123,7 +123,7 @@ interface IHoldings {
     function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external;
 
-    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint88 nonce)
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
         external;
 
     /// @notice Returns the value of this holding.

@@ -138,17 +138,6 @@ library BytesLib {
         return tempUint;
     }
 
-    function toUint88(bytes memory _bytes, uint256 _start) internal pure returns (uint88) {
-        require(_bytes.length >= _start + 9, SliceOutOfBounds());
-        uint88 tempUint;
-
-        assembly {
-            tempUint := mload(add(add(_bytes, 0xb), _start))
-        }
-
-        return tempUint;
-    }
-
     function toUint128(bytes memory _bytes, uint256 _start) internal pure returns (uint128) {
         require(_bytes.length >= _start + 16, SliceOutOfBounds());
         uint128 tempUint;

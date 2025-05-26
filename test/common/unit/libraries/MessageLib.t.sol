@@ -516,7 +516,7 @@ contract TestMessageLibIdentities is Test {
         uint64 timestamp,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) public pure {
         MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
             poolId: poolId,
@@ -554,7 +554,7 @@ contract TestMessageLibIdentities is Test {
         uint64 timestamp,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) public pure {
         MessageLib.UpdateShares memory a = MessageLib.UpdateShares({
             poolId: poolId,

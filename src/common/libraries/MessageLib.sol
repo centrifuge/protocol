@@ -109,12 +109,12 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
         (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
-        (94  << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (62  << uint8(MessageType.UpdateShares) * 8) +
+        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (59  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
-        (41 << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
-        (26 << uint8(MessageType.SetQueue) * 8);
+        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
+        (41  << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
+        (26  << uint8(MessageType.SetQueue) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -939,7 +939,7 @@ library MessageLib {
         uint64 timestamp;
         bool isIncrease;
         bool isSnapshot;
-        uint88 nonce;
+        uint64 nonce;
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
@@ -954,7 +954,7 @@ library MessageLib {
             timestamp: data.toUint64(73),
             isIncrease: data.toBool(81),
             isSnapshot: data.toBool(82),
-            nonce: data.toUint88(83)
+            nonce: data.toUint64(83)
         });
     }
 
@@ -984,7 +984,7 @@ library MessageLib {
         uint64 timestamp;
         bool isIssuance;
         bool isSnapshot;
-        uint88 nonce;
+        uint64 nonce;
     }
 
     function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
@@ -997,7 +997,7 @@ library MessageLib {
             timestamp: data.toUint64(41),
             isIssuance: data.toBool(49),
             isSnapshot: data.toBool(50),
-            nonce: data.toUint88(51)
+            nonce: data.toUint64(51)
         });
     }
 

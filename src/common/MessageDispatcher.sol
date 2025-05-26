@@ -640,7 +640,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateHoldingAmount(
@@ -671,7 +671,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 shares,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);

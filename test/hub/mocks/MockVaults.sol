@@ -114,7 +114,7 @@ contract MockVaults is Test, Auth, IAdapter {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) public {
         handler.handle(
             sourceChainId,
@@ -138,7 +138,7 @@ contract MockVaults is Test, Auth, IAdapter {
         uint128 amount,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) public {
         handler.handle(
             sourceChainId,

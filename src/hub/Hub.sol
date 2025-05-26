@@ -602,7 +602,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external {
         _auth();
 
@@ -639,7 +639,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         uint128 amount,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external {
         _auth();
 

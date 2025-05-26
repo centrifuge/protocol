@@ -27,7 +27,7 @@ contract Holdings is Auth, IHoldings {
 
     struct Snapshot {
         bool isSnapshot;
-        uint88 nonce;
+        uint64 nonce;
     }
 
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
@@ -93,7 +93,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint88 nonce)
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
         external
         auth
     {

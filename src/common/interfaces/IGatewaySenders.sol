@@ -203,7 +203,7 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external;
 
     /// @notice Creates and send the message
@@ -213,6 +213,6 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         uint128 shares,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external;
 }

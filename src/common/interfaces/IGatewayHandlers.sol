@@ -43,7 +43,7 @@ interface IHubGatewayHandler {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external;
 
     /// @notice Forward an initiated share transfer to the destination chain.
@@ -63,7 +63,7 @@ interface IHubGatewayHandler {
         uint128 amount,
         bool isIssuance,
         bool isSnapshot,
-        uint88 nonce
+        uint64 nonce
     ) external;
 }
 
