@@ -254,13 +254,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
+        if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) return;
 
-        if (assetQueue.deposits > 0 || assetQueue.withdrawals > 0) {
-            shareQueue.queuedAssetCounter--;
-        }
-
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
         if (assetQueue.deposits > assetQueue.withdrawals) {
@@ -290,18 +287,20 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
+        shareQueue.queuedAssetCounter--;
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
-        ShareQueueAmount storage queue = queuedShares[poolId][scId];
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        if (shareQueue.delta == 0) return;
 
         bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot, queue.nonce);
+        sender.sendUpdateShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
 
-        queue.delta = 0;
-        queue.isPositive = true;
-        queue.nonce++;
+        shareQueue.delta = 0;
+        shareQueue.isPositive = true;
+        shareQueue.nonce++;
     }
 
     //----------------------------------------------------------------------------------------------
