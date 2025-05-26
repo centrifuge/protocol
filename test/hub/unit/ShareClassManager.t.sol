@@ -1512,18 +1512,16 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
 
     function testForceCancelRedeemRequestImmediate(uint128 redeemAmount) public {
         redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        
+
         // Set cancelledRedeemRequestFlag to true (initialize cancellation)
         shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
-        
+
         // Submit a redeem request, which will be applied since pending is zero
         shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-        
+
         // Force cancel before approval -> expect instant cancellation
         vm.expectEmit();
-        emit IShareClassManager.UpdateRedeemRequest(
-            poolId, scId, USDC, _nowRedeem(USDC), investor, 0, 0, 0, false
-        );
+        emit IShareClassManager.UpdateRedeemRequest(poolId, scId, USDC, _nowRedeem(USDC), investor, 0, 0, 0, false);
         uint128 cancelledAmount = shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Verify cancellation was immediate and not queued
