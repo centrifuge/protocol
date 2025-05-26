@@ -13,11 +13,15 @@ import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 
-struct ShareQueueAmount {
+struct Delta {
     // Net queued shares
-    uint128 delta;
+    uint128 amount;
     // Whether the net queued shares lead to an issuance or revocation
     bool isPositive;
+}
+
+struct ShareQueueAmount {
+    Delta delta;
     // Number of queued asset IDs for this share class
     uint32 queuedAssetCounter;
     // Nonce for share + asset messages to the hub
@@ -67,7 +71,7 @@ interface IBalanceSheet {
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce);
+        returns (Delta calldata delta, uint32 queuedAssetCounter, uint64 nonce);
     function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view

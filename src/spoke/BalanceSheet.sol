@@ -133,15 +133,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (queueEnabled[poolId][scId]) {
-            if (shareQueue.isPositive || shareQueue.delta == 0) {
-                shareQueue.delta += shares;
-                shareQueue.isPositive = true;
-            } else if (shareQueue.delta > shares) {
-                shareQueue.delta -= shares;
-                shareQueue.isPositive = false;
+            if (shareQueue.delta.isPositive || shareQueue.delta.amount == 0) {
+                shareQueue.delta.amount += shares;
+                shareQueue.delta.isPositive = true;
+            } else if (shareQueue.delta.amount > shares) {
+                shareQueue.delta.amount -= shares;
+                shareQueue.delta.isPositive = false;
             } else {
-                shareQueue.delta = shares - shareQueue.delta;
-                shareQueue.isPositive = true;
+                shareQueue.delta.amount = shares - shareQueue.delta.amount;
+                shareQueue.delta.isPositive = true;
             }
         } else {
             bool isSnapshot = shareQueue.queuedAssetCounter == 0;
@@ -159,15 +159,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (queueEnabled[poolId][scId]) {
-            if (!shareQueue.isPositive) {
-                shareQueue.delta += shares;
-                shareQueue.isPositive = false;
-            } else if (shareQueue.delta > shares) {
-                shareQueue.delta -= shares;
-                shareQueue.isPositive = true;
+            if (!shareQueue.delta.isPositive) {
+                shareQueue.delta.amount += shares;
+                shareQueue.delta.isPositive = false;
+            } else if (shareQueue.delta.amount > shares) {
+                shareQueue.delta.amount -= shares;
+                shareQueue.delta.isPositive = true;
             } else {
-                shareQueue.delta = shares - shareQueue.delta;
-                shareQueue.isPositive = false;
+                shareQueue.delta.amount = shares - shareQueue.delta.amount;
+                shareQueue.delta.isPositive = false;
             }
         } else {
             bool isSnapshot = shareQueue.queuedAssetCounter == 0;
@@ -263,7 +263,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         }
 
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
-        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
+        bool isSnapshot = shareQueue.delta.amount == 0 && shareQueue.queuedAssetCounter == 0;
         if (assetQueue.deposits > assetQueue.withdrawals) {
             sender.sendUpdateHoldingAmount(
                 poolId,
@@ -298,10 +298,10 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         ShareQueueAmount storage queue = queuedShares[poolId][scId];
 
         bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        sender.sendUpdateShares(poolId, scId, queue.delta, queue.isPositive, isSnapshot, queue.nonce);
+        sender.sendUpdateShares(poolId, scId, queue.delta.amount, queue.delta.isPositive, isSnapshot, queue.nonce);
 
-        queue.delta = 0;
-        queue.isPositive = true;
+        queue.delta.amount = 0;
+        queue.delta.isPositive = true;
         queue.nonce++;
     }
 
@@ -325,7 +325,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             if (isDeposit) assetQueue.deposits += amount;
             else assetQueue.withdrawals += amount;
         } else {
-            bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
+            bool isSnapshot = shareQueue.delta.amount == 0 && shareQueue.queuedAssetCounter == 0;
             sender.sendUpdateHoldingAmount(
                 poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce
             );
