@@ -22,12 +22,8 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {
-    ISyncRequestManager,
-    Prices,
-    ISyncDepositValuation
-} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
+import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";

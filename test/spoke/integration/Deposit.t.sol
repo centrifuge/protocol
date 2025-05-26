@@ -12,7 +12,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/spoke/BaseTest.sol";
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
 import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/IBaseVaults.sol";
 
 contract DepositTest is BaseTest {
