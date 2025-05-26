@@ -44,8 +44,7 @@ enum MessageType {
     UpdateShares,
     TriggerIssueShares,
     TriggerSubmitQueuedShares,
-    TriggerSubmitQueuedAssets,
-    SetQueue
+    TriggerSubmitQueuedAssets
 }
 
 enum UpdateRestrictionType {
@@ -113,8 +112,7 @@ library MessageLib {
         (59  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
         (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
-        (41  << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
-        (26  << uint8(MessageType.SetQueue) * 8);
+        (41  << uint8(MessageType.TriggerSubmitQueuedAssets) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -141,8 +139,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to SetQueue contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetQueue)) {
+        // All messages from NotifyPool to TriggerSubmitQueuedAssets contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerSubmitQueuedAssets)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -1165,24 +1163,5 @@ library MessageLib {
 
     function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.TriggerSubmitQueuedAssets, t.poolId, t.scId, t.assetId);
-    }
-
-    //---------------------------------------
-    //    SetQueue
-    //---------------------------------------
-
-    struct SetQueue {
-        uint64 poolId;
-        bytes16 scId;
-        bool enabled;
-    }
-
-    function deserializeSetQueue(bytes memory data) internal pure returns (SetQueue memory) {
-        require(messageType(data) == MessageType.SetQueue, UnknownMessageType());
-        return SetQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
-    }
-
-    function serialize(SetQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetQueue, t.poolId, t.scId, t.enabled);
     }
 }

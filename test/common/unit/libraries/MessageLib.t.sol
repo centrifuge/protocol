@@ -682,17 +682,4 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
-
-    function testSetQueue(uint64 poolId, bytes16 scId, bool enabled) public pure {
-        MessageLib.SetQueue memory a = MessageLib.SetQueue({poolId: poolId, scId: scId, enabled: enabled});
-        MessageLib.SetQueue memory b = MessageLib.deserializeSetQueue(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.enabled, b.enabled);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
 }

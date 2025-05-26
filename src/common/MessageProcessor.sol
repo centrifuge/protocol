@@ -237,9 +237,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
-        } else if (kind == MessageType.SetQueue) {
-            MessageLib.SetQueue memory m = message.deserializeSetQueue();
-            balanceSheet.setQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
         } else {
             revert InvalidMessage(uint8(kind));
         }
