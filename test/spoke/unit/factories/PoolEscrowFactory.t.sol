@@ -8,7 +8,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {PoolEscrow} from "src/spoke/Escrow.sol";
 import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
 

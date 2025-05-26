@@ -28,7 +28,7 @@ import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {VaultKind} from "src/spoke/interfaces/IBaseVault.sol";
 
 // scripts

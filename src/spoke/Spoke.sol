@@ -22,12 +22,12 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
-import {ITokenFactory} from "src/spoke/interfaces/factories/ITokenFactory.sol";
+import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrowFactory} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IHook} from "src/common/interfaces/IHook.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";

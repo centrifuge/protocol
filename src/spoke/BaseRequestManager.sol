@@ -15,7 +15,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IBaseVault, VaultKind} from "src/spoke/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";

@@ -20,7 +20,7 @@ import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
-import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
