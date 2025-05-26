@@ -11,18 +11,25 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
+import {IHoldings, Holding, HoldingAccount, Snapshot} from "src/hub/interfaces/IHoldings.sol";
 
 /// @title  Holdings
 /// @notice Bookkeeping of the holdings and its associated accounting IDs for each pool.
+/// @dev    Keeps track of whether the current holdings + share issuance in `ShareClassManager` is a snapshot. This is
+///         the case when assets and shares are in sync for the given network, and can be used to derive computations
+///         that rely on the ratio, such as the price per share.
 contract Holdings is Auth, IHoldings {
     using MathLib for uint256;
 
     IHubRegistry public immutable hubRegistry;
 
+    mapping(PoolId => ISnapshotHook) public snapshotHook;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => Snapshot))) public snapshot;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
@@ -81,6 +88,32 @@ contract Holdings is Auth, IHoldings {
         holding_.valuation = valuation_;
 
         emit UpdateValuation(poolId, scId, assetId, valuation_);
+    }
+
+    /// @inheritdoc IHoldings
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external auth {
+        snapshotHook[poolId] = hook;
+
+        emit SetSnapshotHook(poolId, hook);
+    }
+
+    /// @inheritdoc IHoldings
+    function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
+        external
+        auth
+    {
+        Snapshot storage snapshot_ = snapshot[poolId][scId][centrifugeId];
+        require(snapshot_.nonce == nonce, InvalidNonce(snapshot_.nonce, nonce));
+
+        snapshot_.isSnapshot = isSnapshot;
+        snapshot_.nonce++;
+
+        emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+
+        if (!isSnapshot) return;
+
+        ISnapshotHook hook = snapshotHook[poolId];
+        if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -8,7 +8,7 @@ import {MockRoot} from "test/common/mocks/MockRoot.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {ShareToken} from "src/spoke/ShareToken.sol";
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
@@ -27,7 +27,7 @@ contract FullRestrictionsTest is Test {
     }
 
     function testHandleInvalidMessage() public {
-        vm.expectRevert(IHook.InvalidUpdate.selector);
+        vm.expectRevert(ITransferHook.InvalidUpdate.selector);
         fullRestrictionsHook.updateRestriction(address(token), abi.encodePacked(uint8(0)));
     }
 
@@ -87,7 +87,7 @@ contract FullRestrictionsTest is Test {
         vm.assume(unsupportedInterfaceId != erc165 && unsupportedInterfaceId != hook);
 
         assertEq(type(IERC165).interfaceId, erc165);
-        assertEq(type(IHook).interfaceId, hook);
+        assertEq(type(ITransferHook).interfaceId, hook);
 
         assertEq(fullRestrictionsHook.supportsInterface(erc165), true);
         assertEq(fullRestrictionsHook.supportsInterface(hook), true);

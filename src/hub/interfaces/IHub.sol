@@ -12,6 +12,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -72,6 +74,9 @@ interface IHub {
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
 
+    /// @notice Dispatched when an invalid combination of account IDs is passed.
+    error InvalidAccountCombination();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -124,6 +129,9 @@ interface IHub {
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
+
+    /// @notice Set snapshot hook for a pool
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable;
 
     /// @notice Update name & symbol of share class
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
@@ -210,7 +218,9 @@ interface IHub {
     function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    /// @dev    Can only be disabled on the local chain. On remote chains, queuing is enforced to reduce
+    ///         issues with asynchronous updates of the state.
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -248,7 +258,7 @@ interface IHub {
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will register the different accounts used for holdings.

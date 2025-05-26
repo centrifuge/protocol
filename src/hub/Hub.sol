@@ -16,12 +16,13 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
-import {IHub, AccountType, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 /// @title  Hub
@@ -74,6 +75,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
@@ -245,14 +247,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled)
-        public
-        payable
-        payTransaction
-    {
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) public payable {
         _isManager(poolId);
 
-        sender.sendSetQueue(centrifugeId, poolId, scId, enabled);
+        sender.sendSetQueue(poolId, scId, enabled);
     }
 
     /// @inheritdoc IHub
@@ -260,6 +258,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         hubRegistry.setMetadata(poolId, metadata);
+    }
+
+    /// @inheritdoc IHub
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
+        _isManager(poolId);
+
+        holdings.setSnapshotHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
@@ -422,10 +427,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
 
-        shareClassManager.updatePricePerShare(poolId, scId, navPoolPerShare);
+        shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
     }
 
     /// @inheritdoc IHub
@@ -442,6 +447,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            assetAccount != equityAccount && assetAccount != gainAccount && assetAccount != lossAccount,
+            IHub.InvalidAccountCombination()
+        );
         require(
             accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
                 && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
@@ -473,6 +482,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
         require(
             accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
             IAccounting.AccountDoesNotExist()
@@ -594,12 +604,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     /// @inheritdoc IHubGatewayHandler
     function updateHoldingAmount(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external {
         _auth();
 
@@ -610,6 +623,25 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
+
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+    }
+
+    /// @inheritdoc IHubGatewayHandler
+    function updateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external {
+        _auth();
+
+        shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
+
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
     /// @inheritdoc IHubGatewayHandler
@@ -624,20 +656,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
         sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
-        _auth();
-
-        shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
-        _auth();
-
-        shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
     }
 
     //----------------------------------------------------------------------------------------------
