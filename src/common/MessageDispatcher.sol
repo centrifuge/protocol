@@ -451,15 +451,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IPoolMessageSender
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        if (centrifugeId == localCentrifugeId) {
-            balanceSheet.setQueue(poolId, scId, enabled);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.SetQueue({poolId: poolId.raw(), scId: scId.raw(), enabled: enabled}).serialize()
-            );
-        }
+    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        balanceSheet.setQueue(poolId, scId, enabled);
     }
 
     /// @inheritdoc IRootMessageSender

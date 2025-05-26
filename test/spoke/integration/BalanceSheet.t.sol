@@ -354,6 +354,7 @@ contract BalanceSheetTest is BaseTest {
         erc20.mint(address(this), defaultAmount);
         erc20.approve(address(balanceSheet), defaultAmount);
 
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
@@ -388,6 +389,7 @@ contract BalanceSheetTest is BaseTest {
             abi.encodeWithSelector(DispatcherSpy.sendUpdateShares_result.selector)
         );
 
+        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
 
         (uint128 increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);

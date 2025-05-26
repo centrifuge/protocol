@@ -63,7 +63,7 @@ interface IBalanceSheet {
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
-    function queueEnabled(PoolId poolId, ShareClassId scId) external view returns (bool);
+    function queueDisabled(PoolId poolId, ShareClassId scId) external view returns (bool);
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view

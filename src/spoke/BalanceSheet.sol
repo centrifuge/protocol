@@ -44,7 +44,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IPoolEscrowProvider public poolEscrowProvider;
 
     mapping(PoolId => mapping(address => bool)) public manager;
-    mapping(PoolId poolId => mapping(ShareClassId scId => bool)) public queueEnabled;
+    mapping(PoolId poolId => mapping(ShareClassId scId => bool)) public queueDisabled;
     mapping(PoolId poolId => mapping(ShareClassId scId => ShareQueueAmount)) public queuedShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => AssetQueueAmount))) public
         queuedAssets;
@@ -132,7 +132,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (queueEnabled[poolId][scId]) {
+        if (!queueDisabled[poolId][scId]) {
             if (shareQueue.isPositive || shareQueue.delta == 0) {
                 shareQueue.delta += shares;
                 shareQueue.isPositive = true;
@@ -158,7 +158,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (queueEnabled[poolId][scId]) {
+        if (!queueDisabled[poolId][scId]) {
             if (!shareQueue.isPositive) {
                 shareQueue.delta += shares;
             } else if (shareQueue.delta > shares) {
@@ -249,7 +249,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
 
     /// @inheritdoc IBalanceSheetGatewayHandler
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        queueEnabled[poolId][scId] = enabled;
+        queueDisabled[poolId][scId] = !enabled;
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
@@ -317,7 +317,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ) internal {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
-        if (queueEnabled[poolId][scId]) {
+        if (!queueDisabled[poolId][scId]) {
             if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;
 
             if (isDeposit) assetQueue.deposits += amount;

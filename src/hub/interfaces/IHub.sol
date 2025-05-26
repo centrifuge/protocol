@@ -218,7 +218,9 @@ interface IHub {
     function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    /// @dev    Can only be disabled on the local chain. On remote chains, queuing is enforced to reduce
+    ///         issues with asynchronous updates of the state.
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
