@@ -2051,26 +2051,46 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testClaimDepositWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimDeposit(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
     }
 
     function testClaimRedeemWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.claimRedeem(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
     }
 
     function testUpdateSharePriceWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateSharePrice(poolId, wrongShareClassId, d18(1));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.updateSharePrice(poolId, scId, d18(1));
     }
 
     function testUpdateMetadataWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateMetadata(poolId, wrongShareClassId, "", "");
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL);
     }
 
     function testUpdateSharesWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.updateShares(CHAIN_ID, poolId, wrongShareClassId, 0, true);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.updateShares(CHAIN_ID, poolId, scId, 0, true);
     }
 
     function testDecreaseOverFlow() public {
@@ -2248,6 +2268,10 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testForceCancelDepositRequestWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.forceCancelDepositRequest(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
     }
 
     function testForceCancelDepositRequestCancellationNotInitialized() public {
@@ -2274,6 +2298,10 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testForceCancelRedeemRequestWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
         shareClass.forceCancelRedeemRequest(poolId, wrongShareClassId, investor, USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
     }
 
     function testForceCancelRedeemRequestCancellationNotInitialized() public {
