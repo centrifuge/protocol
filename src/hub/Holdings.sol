@@ -115,6 +115,8 @@ contract Holdings is Auth, IHoldings {
 
         emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
 
+        if (!isSnapshot) return;
+
         ISnapshotHook hook = snapshotHook[poolId];
         if (address(hook) != address(0)) hook.onSnapshot(poolId, scId, centrifugeId);
     }
