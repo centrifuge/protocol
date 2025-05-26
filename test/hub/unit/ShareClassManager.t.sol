@@ -334,10 +334,10 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
         assertEq(shareClass.previewShareClassId(poolId, index).raw(), bytes16((uint128(poolId.raw()) << 64) + index));
     }
 
-    function testUpdatePricePerShare() public {
+    function testUpdateSharePrice() public {
         vm.expectEmit();
         emit IShareClassManager.UpdateShareClass(poolId, scId, d18(2, 1));
-        shareClass.updatePricePerShare(poolId, scId, d18(2, 1));
+        shareClass.updateSharePrice(poolId, scId, d18(2, 1));
     }
 
     function testIncreaseShareClassIssuance(uint128 amount) public {
@@ -1778,9 +1778,9 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         shareClass.claimRedeem(poolId, wrongShareClassId, investor, USDC);
     }
 
-    function testUpdatePricePerShareWrongShareClassId() public {
+    function testUpdateSharePriceWrongShareClassId() public {
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
-        shareClass.updatePricePerShare(poolId, wrongShareClassId, d18(1));
+        shareClass.updateSharePrice(poolId, wrongShareClassId, d18(1));
     }
 
     function testUpdateMetadataWrongShareClassId() public {
