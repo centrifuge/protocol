@@ -26,20 +26,20 @@ abstract contract BalanceSheetTargets is
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
-    function balanceSheet_deny() public asActor {
+    function balanceSheet_deny() public updateGhosts asActor {
         balanceSheet.deny(_getActor());
     }
 
-    function balanceSheet_deposit(uint256 tokenId, uint128 amount) public asActor {
+    function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.deposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
     }
 
-    function balanceSheet_file(bytes32 what, address data) public asActor {
+    function balanceSheet_file(bytes32 what, address data) public updateGhosts asActor {
         balanceSheet.file(what, data);
     }
 
-    function balanceSheet_issue(uint128 shares) public asActor {
+    function balanceSheet_issue(uint128 shares) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -49,46 +49,46 @@ abstract contract BalanceSheetTargets is
         issuedBalanceSheetShares[poolId][scId] += shares;
     }
 
-    function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public asActor {
+    function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.noteDeposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
     }
 
-    function balanceSheet_overridePricePoolPerAsset(D18 value) public asActor {
+    function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         AssetId assetId = hubRegistry.currency(vault.poolId());
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
-    function balanceSheet_overridePricePoolPerShare(D18 value) public asActor {
+    function balanceSheet_overridePricePoolPerShare(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.overridePricePoolPerShare(vault.poolId(), vault.scId(), value);
     }
 
-    function balanceSheet_recoverTokens(address token, uint256 amount) public asActor {
+    function balanceSheet_recoverTokens(address token, uint256 amount) public updateGhosts asActor {
         balanceSheet.recoverTokens(token, _getActor(), amount);
     }
 
-    function balanceSheet_recoverTokens(address token, uint256 tokenId, uint256 amount) public asActor {
+    function balanceSheet_recoverTokens(address token, uint256 tokenId, uint256 amount) public updateGhosts asActor {
         balanceSheet.recoverTokens(token, tokenId, _getActor(), amount);
     }
 
-    function balanceSheet_rely() public asActor {
+    function balanceSheet_rely() public updateGhosts asActor {
         balanceSheet.rely(_getActor());
     }
 
-    function balanceSheet_resetPricePoolPerAsset() public asActor {
+    function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         AssetId assetId = hubRegistry.currency(vault.poolId());
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
-    function balanceSheet_resetPricePoolPerShare() public asActor {
+    function balanceSheet_resetPricePoolPerShare() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.resetPricePoolPerShare(vault.poolId(), vault.scId());
     }
 
-    function balanceSheet_revoke(uint128 shares) public asActor {
+    function balanceSheet_revoke(uint128 shares) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -98,12 +98,12 @@ abstract contract BalanceSheetTargets is
         revokedBalanceSheetShares[poolId][scId] += shares;
     }
 
-    function balanceSheet_transferSharesFrom(address to, uint256 amount) public asActor {
+    function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.transferSharesFrom(vault.poolId(), vault.scId(), _getActor(), _getRandomActor(uint256(uint160(to))), amount);
     }
 
-    function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public asActor {
+    function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.withdraw(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
     }
