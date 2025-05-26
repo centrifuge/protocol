@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
@@ -32,7 +31,6 @@ import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 uint64 constant POOL_ID = 42;
 uint32 constant SC_ID_INDEX = 1;
 ShareClassId constant SC_ID = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + SC_ID_INDEX));
-address constant POOL_CURRENCY = address(840);
 AssetId constant USDC = AssetId.wrap(69);
 AssetId constant OTHER_STABLE = AssetId.wrap(1337);
 uint8 constant DECIMALS_USDC = 6;
@@ -54,10 +52,6 @@ bytes32 constant SC_SECOND_SALT = bytes32("AnotherExampleSalt");
 uint32 constant STORAGE_INDEX_METRICS = 3;
 
 contract HubRegistryMock {
-    function currency(PoolId) external pure returns (AssetId) {
-        return AssetId.wrap(uint64(uint160(POOL_CURRENCY)));
-    }
-
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
     }
@@ -99,7 +93,6 @@ abstract contract ShareClassManagerBaseTest is Test {
         emit IShareClassManager.AddShareClass(poolId, scId, SC_ID_INDEX, SC_NAME, SC_SYMBOL, SC_SALT);
         shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
 
-        assertEq(IHubRegistry(hubRegistryMock).currency(poolId).addr(), POOL_CURRENCY);
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);
         assertEq(IHubRegistry(hubRegistryMock).decimals(OTHER_STABLE), DECIMALS_OTHER_STABLE);

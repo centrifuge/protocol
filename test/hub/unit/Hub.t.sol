@@ -4,11 +4,10 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -149,7 +148,7 @@ contract TestMainMethodsChecks is TestCommon {
             POOL_A,
             ShareClassId.wrap(0),
             AssetId.wrap(0),
-            IERC7726(address(0)),
+            IValuation(address(0)),
             AccountId.wrap(0),
             AccountId.wrap(0),
             AccountId.wrap(0),
@@ -158,14 +157,14 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.initializeLiability(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), AccountId.wrap(0), AccountId.wrap(0)
+            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)), AccountId.wrap(0), AccountId.wrap(0)
         );
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValue(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
+        hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
@@ -217,7 +216,7 @@ contract TestInitializeHolding is TestCommon {
             POOL_A,
             SC_A,
             ASSET_A,
-            IERC7726(address(1)),
+            IValuation(address(1)),
             AccountId.wrap(1),
             AccountId.wrap(1),
             AccountId.wrap(1),
@@ -234,11 +233,16 @@ contract TestInitializeLiability is TestCommon {
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(
-            hub.initializeLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
+            hub.initializeLiability.selector,
+            SC_A,
+            ASSET_A,
+            IValuation(address(1)),
+            AccountId.wrap(1),
+            AccountId.wrap(1)
         );
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
+        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }

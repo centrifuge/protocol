@@ -13,7 +13,6 @@ contract AssetIdTest is Test {
         assertEq(assetId.isNull(), false);
         assertEq(assetId.centrifugeId(), centrifugeId);
         assertEq(uint32(assetId.raw()), counter);
-        assertEq(assetId.addr(), address(uint160((uint128(centrifugeId) << 112) + counter)));
     }
 
     function testAssetIdIso(uint32 isoCode) public pure {
@@ -23,6 +22,5 @@ contract AssetIdTest is Test {
         assertEq(assetId.isNull(), false);
         assertEq(assetId.centrifugeId(), uint32(0));
         assertEq(uint32(assetId.raw()), isoCode);
-        assertEq(assetId.addr(), address(uint160(isoCode)));
     }
 }

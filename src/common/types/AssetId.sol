@@ -9,10 +9,6 @@ function isNull(AssetId assetId) pure returns (bool) {
     return AssetId.unwrap(assetId) == 0;
 }
 
-function addr(AssetId assetId) pure returns (address) {
-    return address(uint160(AssetId.unwrap(assetId)));
-}
-
 function raw(AssetId assetId) pure returns (uint128) {
     return AssetId.unwrap(assetId);
 }
@@ -33,4 +29,4 @@ function eq(AssetId a, AssetId b) pure returns (bool) {
     return a.raw() == b.raw();
 }
 
-using {isNull, addr, raw, centrifugeId, eq} for AssetId global;
+using {isNull, raw, centrifugeId, eq} for AssetId global;

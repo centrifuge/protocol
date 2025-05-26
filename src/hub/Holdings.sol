@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -38,7 +38,7 @@ contract Holdings is Auth, IHoldings {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation_,
+        IValuation valuation_,
         bool isLiability_,
         HoldingAccount[] memory accounts
     ) external auth {
@@ -72,7 +72,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation_) external auth {
+    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
 
         Holding storage holding_ = holding[poolId][scId][assetId];
@@ -132,9 +132,8 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        uint128 currentAmountValue = holding_.valuation.getQuote(
-            holding_.assetAmount, assetId.addr(), hubRegistry.currency(poolId).addr()
-        ).toUint128();
+        uint128 currentAmountValue =
+            holding_.valuation.getQuote(holding_.assetAmount, assetId, hubRegistry.currency(poolId));
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
         diffValue =
@@ -167,7 +166,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
-    function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IERC7726) {
+    function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IValuation) {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 

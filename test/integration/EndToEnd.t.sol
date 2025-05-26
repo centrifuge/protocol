@@ -7,7 +7,6 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
