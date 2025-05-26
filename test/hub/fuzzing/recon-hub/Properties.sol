@@ -51,10 +51,10 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The the sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
     // TODO: come back to this to check if accounting for case is correct
-    function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
+    function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
         address[] memory _actors = _getActors();
 
         for (uint256 i = 0; i < createdPools.length; i++) {
@@ -91,7 +91,7 @@ abstract contract Properties is BeforeAfter, Asserts {
                     // in this case, the totalPendingUserRedeem will be greater than the pendingRedeemCurrent for this epoch 
                     if(claimableAssetAmountPrevious > 0) {
                         // check that the pending redeem is >= the total pending user redeem
-                        gte(pendingRedeemCurrent, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+                        gte(totalPendingUserRedeem, pendingRedeemCurrent, "total pending user redeems is < pending redeem");
                     }
                 }
                 

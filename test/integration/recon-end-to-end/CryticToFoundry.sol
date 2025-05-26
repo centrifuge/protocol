@@ -219,9 +219,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_20 -vvv 
+    // forge test --match-test test_property_sum_pending_user_redeem_geq_total_pending_redeem_20 -vvv 
     // NOTE: if a user cancels after a redeem has been approved, the user's pending redeem amount is not updated
-    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_20() public {
+    function test_property_sum_pending_user_redeem_geq_total_pending_redeem_20() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
 
@@ -233,7 +233,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1,0,0);
 
-        property_total_pending_redeem_geq_sum_pending_user_redeem();
+        property_sum_pending_user_redeem_geq_total_pending_redeem();
 
     }
 
@@ -432,8 +432,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_total_pending_redeem_geq_sum_pending_user_redeem_12 -vvv 
-    function test_property_total_pending_redeem_geq_sum_pending_user_redeem_12() public {
+    // forge test --match-test test_property_sum_pending_user_redeem_geq_total_pending_redeem_12 -vvv 
+    function test_property_sum_pending_user_redeem_geq_total_pending_redeem_12() public {
 
         shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
 
@@ -441,7 +441,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_cancel_redeem_clamped(1,0,0);
 
-        property_total_pending_redeem_geq_sum_pending_user_redeem();
+        property_sum_pending_user_redeem_geq_total_pending_redeem();
 
     }
 

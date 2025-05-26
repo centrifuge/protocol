@@ -553,9 +553,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");
     }
 
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
-    function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
+    function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
         address[] memory _actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -577,15 +577,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
         
         // check that the pending redeem is >= the total pending user redeem
-        gte(pendingRedeem, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+        gte(totalPendingUserRedeem, pendingRedeem, "total pending user redeems is < pending redeem");
         // check that the pending redeem is >= the approved redeem
         gte(pendingRedeem, approvedShareAmount, "pending redeem is < approved redeem");
     }  
 
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..]
+    /// @dev Property: The sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
     // NOTE: previous implementation of the above property
-    // function property_total_pending_redeem_geq_sum_pending_user_redeem() public {
+    // function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
     //     address[] memory _actors = _getActors();
     //     IBaseVault vault = IBaseVault(_getVault());
     //     PoolId poolId = vault.poolId();
@@ -619,7 +619,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             
     //         if(payoutAssetAmountPrevious > 0) {
     //             // check that the pending redeem is >= the total pending user redeem
-    //             gte(pendingRedeemCurrent, totalPendingUserRedeem, "pending redeem is < total pending user redeems");
+    //             gte(totalPendingUserRedeem, pendingRedeemCurrent, "total pending user redeems is < pending redeem");
     //         }
     //     }
         
