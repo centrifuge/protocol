@@ -41,28 +41,12 @@ contract HubDeployer is CommonDeployer {
         bool isTests
     ) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
-        _deployHubRegistry(deployer); // && identityValuation
-        _deployAccounting(deployer); // && holdings && shareClassManager
+        _deployHubRegistry(deployer);
+        _deployAccounting(deployer);
         _deployHub(centrifugeId, adminSafe_, deployer, isTests);
-        _deployHubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
-        // hubRegistry = new HubRegistry(deployer);
-        // identityValuation = new IdentityValuation(hubRegistry, deployer);
-        // accounting = new Accounting(deployer);
-        // holdings = new Holdings(hubRegistry, deployer);
-        // shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
-        // hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
+        _deployHubHelpers(deployer);
     }
-    function _deployHubHelpers(Holdings holdings, Accounting accounting, HubRegistry hubRegistry, ShareClassManager shareClassManager, address deployer) internal {
-        hubHelpers = HubHelpers(
-            payable(
-                create3Factory.deploy(
-                    keccak256(abi.encodePacked("hub-helpers")),
-                    abi.encodePacked(type(HubHelpers).creationCode, abi.encode(holdings, accounting, hubRegistry, shareClassManager, deployer))
-                )
-            )
-        );
-        
+
     function _deployHubRegistry(address deployer) internal {
         Create3Factory create3Factory = Create3Factory(
             0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
@@ -170,6 +154,33 @@ contract HubDeployer is CommonDeployer {
         _poolsInitialConfig();
     }
 
+    function _deployHubHelpers(address deployer) internal {
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
+
+        hubHelpers = HubHelpers(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("hub-helpers")),
+                    abi.encodePacked(
+                        type(HubHelpers).creationCode,
+                        abi.encode(
+                            holdings,
+                            accounting,
+                            hubRegistry,
+                            shareClassManager,
+                            deployer
+                        )
+                    )
+                )
+            )
+        );
+
+        _hubHelpersRely();
+        _hubHelpersFile();
+    }
+
     function _poolsRegister() private {
         register("hubRegistry", address(hubRegistry));
         register("accounting", address(accounting));
@@ -177,6 +188,7 @@ contract HubDeployer is CommonDeployer {
         register("shareClassManager", address(shareClassManager));
         register("hub", address(hub));
         register("identityValuation", address(identityValuation));
+        register("hubHelpers", address(hubHelpers));
     }
 
     function _poolsRely() private {
@@ -187,7 +199,6 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(hub));
         gateway.rely(address(hub));
         messageDispatcher.rely(address(hub));
-        hubHelpers.rely(address(hub));
 
         // Rely hub helpers
         accounting.rely(address(hubHelpers));
@@ -205,6 +216,7 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(root));
         hub.rely(address(root));
         identityValuation.rely(address(root));
+        hubHelpers.rely(address(root));
     }
 
     function _poolsFile() private {
@@ -214,7 +226,13 @@ contract HubDeployer is CommonDeployer {
         hub.file("sender", address(messageDispatcher));
 
         guardian.file("hub", address(hub));
+    }
 
+    function _hubHelpersRely() private {
+        hubHelpers.rely(address(hub));
+    }
+
+    function _hubHelpersFile() private {
         hubHelpers.file("hub", address(hub));
     }
 
@@ -230,7 +248,7 @@ contract HubDeployer is CommonDeployer {
         holdings.deny(deployer);
         shareClassManager.deny(deployer);
         hub.deny(deployer);
-
+        hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
     }
 }

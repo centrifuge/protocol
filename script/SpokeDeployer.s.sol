@@ -5,6 +5,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Create3Factory} from "src/common/Create3Factory.sol";
 
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
@@ -51,59 +52,204 @@ contract SpokeDeployer is CommonDeployer {
     ) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(
-            address(root),
-            deployer
-        );
-        routerEscrow = new Escrow{
-            salt: keccak256(abi.encodePacked(SALT, "escrow2"))
-        }(deployer);
-        globalEscrow = new Escrow{
-            salt: keccak256(abi.encodePacked(SALT, "escrow3"))
-        }(deployer);
-        tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
-
-        asyncRequestManager = new AsyncRequestManager(
-            IEscrow(globalEscrow),
-            address(root),
-            deployer
-        );
-        syncRequestManager = new SyncRequestManager(
-            IEscrow(globalEscrow),
-            address(root),
-            deployer
-        );
-        asyncVaultFactory = new AsyncVaultFactory(
-            address(root),
-            asyncRequestManager,
-            deployer
-        );
-        syncDepositVaultFactory = new SyncDepositVaultFactory(
-            address(root),
-            syncRequestManager,
-            asyncRequestManager,
-            deployer
+        Create3Factory create3Factory = Create3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
         );
 
-        spoke = new Spoke(tokenFactory, deployer);
-        balanceSheet = new BalanceSheet(root, deployer);
-        vaultRouter = new VaultRouter(
-            address(routerEscrow),
-            gateway,
-            spoke,
-            messageDispatcher,
-            deployer
+        poolEscrowFactory = PoolEscrowFactory(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("pool-escrow-factory")),
+                    abi.encodePacked(
+                        type(PoolEscrowFactory).creationCode,
+                        abi.encode(address(root), deployer)
+                    )
+                )
+            )
+        );
+
+        routerEscrow = Escrow(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("router-escrow")),
+                    abi.encodePacked(
+                        type(Escrow).creationCode,
+                        abi.encode(deployer)
+                    )
+                )
+            )
+        );
+
+        globalEscrow = Escrow(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("global-escrow")),
+                    abi.encodePacked(
+                        type(Escrow).creationCode,
+                        abi.encode(deployer)
+                    )
+                )
+            )
+        );
+
+        tokenFactory = TokenFactory(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("token-factory")),
+                    abi.encodePacked(
+                        type(TokenFactory).creationCode,
+                        abi.encode(address(root), deployer)
+                    )
+                )
+            )
+        );
+
+        asyncRequestManager = AsyncRequestManager(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("async-request-manager")),
+                    abi.encodePacked(
+                        type(AsyncRequestManager).creationCode,
+                        abi.encode(
+                            IEscrow(globalEscrow),
+                            address(root),
+                            deployer
+                        )
+                    )
+                )
+            )
+        );
+
+        syncRequestManager = SyncRequestManager(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("sync-request-manager")),
+                    abi.encodePacked(
+                        type(SyncRequestManager).creationCode,
+                        abi.encode(
+                            IEscrow(globalEscrow),
+                            address(root),
+                            deployer
+                        )
+                    )
+                )
+            )
+        );
+
+        asyncVaultFactory = AsyncVaultFactory(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("async-vault-factory")),
+                    abi.encodePacked(
+                        type(AsyncVaultFactory).creationCode,
+                        abi.encode(address(root), asyncRequestManager, deployer)
+                    )
+                )
+            )
+        );
+
+        syncDepositVaultFactory = SyncDepositVaultFactory(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("sync-deposit-vault-factory")),
+                    abi.encodePacked(
+                        type(SyncDepositVaultFactory).creationCode,
+                        abi.encode(
+                            address(root),
+                            syncRequestManager,
+                            asyncRequestManager,
+                            deployer
+                        )
+                    )
+                )
+            )
+        );
+
+        spoke = Spoke(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("spoke")),
+                    abi.encodePacked(
+                        type(Spoke).creationCode,
+                        abi.encode(tokenFactory, deployer)
+                    )
+                )
+            )
+        );
+
+        balanceSheet = BalanceSheet(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("balance-sheet")),
+                    abi.encodePacked(
+                        type(BalanceSheet).creationCode,
+                        abi.encode(root, deployer)
+                    )
+                )
+            )
+        );
+
+        vaultRouter = VaultRouter(
+            payable(
+                create3Factory.deploy(
+                    keccak256(abi.encodePacked("vault-router")),
+                    abi.encodePacked(
+                        type(VaultRouter).creationCode,
+                        abi.encode(
+                            address(routerEscrow),
+                            gateway,
+                            spoke,
+                            messageDispatcher,
+                            deployer
+                        )
+                    )
+                )
+            )
         );
 
         // Hooks
         freezeOnlyHook = address(
-            new FreezeOnly{salt: SALT}(address(root), deployer)
+            FreezeOnly(
+                payable(
+                    create3Factory.deploy(
+                        keccak256(abi.encodePacked("freeze-only-hook")),
+                        abi.encodePacked(
+                            type(FreezeOnly).creationCode,
+                            abi.encode(address(root), deployer)
+                        )
+                    )
+                )
+            )
         );
+
         fullRestrictionsHook = address(
-            new FullRestrictions{salt: SALT}(address(root), deployer)
+            FullRestrictions(
+                payable(
+                    create3Factory.deploy(
+                        keccak256(abi.encodePacked("full-restrictions-hook")),
+                        abi.encodePacked(
+                            type(FullRestrictions).creationCode,
+                            abi.encode(address(root), deployer)
+                        )
+                    )
+                )
+            )
         );
+
         redemptionRestrictionsHook = address(
-            new RedemptionRestrictions{salt: SALT}(address(root), deployer)
+            RedemptionRestrictions(
+                payable(
+                    create3Factory.deploy(
+                        keccak256(
+                            abi.encodePacked("redemption-restrictions-hook")
+                        ),
+                        abi.encodePacked(
+                            type(RedemptionRestrictions).creationCode,
+                            abi.encode(address(root), deployer)
+                        )
+                    )
+                )
+            )
         );
 
         _spokeRegister();
