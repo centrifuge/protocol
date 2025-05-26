@@ -161,6 +161,13 @@ interface IShareClassManager {
         uint128 queuedUserAssetAmount,
         bool pendingCancellation
     );
+    event ForceCancelDepositRequest(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed depositAssetId,
+        bytes32 investor,
+        uint128 cancellingAmount
+    );
     event UpdateRedeemRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -172,8 +179,15 @@ interface IShareClassManager {
         uint128 queuedUserShareAmount,
         bool pendingCancellation
     );
-
+    event ForceCancelRedeemRequest(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed payoutAssetId,
+        bytes32 investor,
+        uint128 cancellingAmount
+    );
     /// Errors
+
     error EpochNotInSequence(uint32 providedEpoch, uint32 nowEpoch);
     error NoOrderFound();
     error InsufficientPending();
@@ -193,6 +207,8 @@ interface IShareClassManager {
     error EpochNotFound();
     error DecreaseMoreThanIssued();
     error CancellationQueued();
+    error CancellationInitializationRequired();
+    error ClaimingRequired();
 
     /// Functions
 
@@ -219,6 +235,17 @@ interface IShareClassManager {
         external
         returns (uint128 cancelledAssetAmount);
 
+    /// @notice Force cancels a pending deposit request.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
+    /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
+    /// @return cancelledAssetAmount The deposit amount which was previously pending and is now cancelled with force
+    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+        external
+        returns (uint128 cancelledAssetAmount);
+
     /// @notice Creates or updates a request to redeem (exchange) share class tokens for some asset.
     ///
     /// @param poolId Identifier of the pool
@@ -239,6 +266,18 @@ interface IShareClassManager {
     /// share class tokens
     /// @return cancelledShareAmount The redeem amount which was previously pending and is now cancelled
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        returns (uint128 cancelledShareAmount);
+
+    /// @notice Force cancels a pending redeem request.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
+    /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
+    /// share class tokens
+    /// @return cancelledShareAmount The redeem amount which was previously pending and is now cancelled with force
+    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 cancelledShareAmount);
 

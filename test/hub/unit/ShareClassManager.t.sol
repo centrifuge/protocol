@@ -930,6 +930,61 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
     }
+
+    function testForceCancelDepositRequestZeroPending() public {
+        shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        vm.expectEmit();
+        emit IShareClassManager.ForceCancelDepositRequest(poolId, scId, USDC, investor, 0);
+        uint128 cancelledAmount = shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
+        assertEq(
+            shareClass.cancelledDepositRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+        );
+
+        // Verify the investor can make new requests after force cancellation
+        shareClass.requestDeposit(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.pendingDeposit(scId, USDC), 1, "Should be able to make new deposits after force cancel");
+    }
+
+    function testForceCancelDepositRequestNonZeroPending(uint128 depositAmount, uint128 approvedAmount) public {
+        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC + 1, MAX_REQUEST_AMOUNT_USDC));
+        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_USDC, depositAmount - 1));
+        uint128 forceCancelAmount = depositAmount - approvedAmount;
+
+        // Set cancelledDepositRequestFlag to true
+        shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Submit a deposit request, which will be applied since pending is zero
+        shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC));
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1, 1));
+
+        // Claim deposit to enable force cancel
+        shareClass.claimDeposit(poolId, scId, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(forceCancelAmount, _nowDeposit(USDC)));
+
+        vm.expectEmit();
+        emit IShareClassManager.ForceCancelDepositRequest(poolId, scId, USDC, investor, forceCancelAmount);
+        uint128 cancelledAmount = shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Verify post force cancel cleanup
+        assertEq(cancelledAmount, forceCancelAmount, "Force cancelled mismatch");
+        assertEq(
+            shareClass.cancelledDepositRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+        );
+        assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 0));
+
+        // Verify the investor can make new requests after force cancellation
+        shareClass.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+        assertEq(
+            shareClass.pendingDeposit(scId, USDC),
+            depositAmount,
+            "Should be able to make new deposits after force cancel"
+        );
+    }
 }
 
 ///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
@@ -1417,6 +1472,60 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
         assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
         _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testForceCancelRedeemRequestZeroPending() public {
+        shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        vm.expectEmit();
+        emit IShareClassManager.ForceCancelRedeemRequest(poolId, scId, USDC, investor, 0);
+        uint128 cancelledAmount = shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+
+        assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
+        assertEq(
+            shareClass.cancelledRedeemRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+        );
+
+        // Verify the investor can make new requests after force cancellation
+        shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
+        assertEq(shareClass.pendingRedeem(scId, USDC), 1, "Should be able to make new redeems after force cancel");
+    }
+
+    function testForceCancelRedeemRequestNonZeroPending(uint128 redeemAmount, uint128 approvedAmount) public {
+        _mockTotalIssuance(MAX_REQUEST_AMOUNT_SHARES);
+        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES + 1, MAX_REQUEST_AMOUNT_SHARES));
+        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, redeemAmount - 1));
+        uint128 forceCancelAmount = redeemAmount - approvedAmount;
+
+        // Set cancelledRedeemRequestFlag to true
+        shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Submit a redeem request, which will be applied since pending is zero
+        shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedAmount, _pricePoolPerAsset(USDC));
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1, 1));
+
+        // Claim redeem to enable force cancel
+        shareClass.claimRedeem(poolId, scId, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(forceCancelAmount, _nowRedeem(USDC)));
+
+        vm.expectEmit();
+        emit IShareClassManager.ForceCancelRedeemRequest(poolId, scId, USDC, investor, forceCancelAmount);
+        uint128 cancelledAmount = shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Verify post force cancel cleanup
+        assertEq(cancelledAmount, forceCancelAmount, "Force cancelled mismatch");
+        assertEq(
+            shareClass.cancelledRedeemRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+        );
+        assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 0));
+
+        // Verify the investor can make new requests after force cancellation
+        shareClass.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        assertEq(
+            shareClass.pendingRedeem(scId, USDC), redeemAmount, "Should be able to make new redeems after force cancel"
+        );
     }
 }
 
@@ -2198,5 +2307,60 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
 
         vm.expectRevert(IShareClassManager.RevocationRequired.selector);
         shareClass.claimRedeem(poolId, scId, investor2, USDC);
+    }
+
+    function testForceCancelDepositRequestWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.forceCancelDepositRequest(poolId, wrongShareClassId, investor, USDC);
+    }
+
+    function testForceCancelDepositRequestCancellationNotInitialized() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.CancellationInitializationRequired.selector));
+        shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
+    }
+
+    function testForceCancelDepositRequestClaimingRequired() public {
+        shareClass.requestDeposit(poolId, scId, 100, investor, USDC);
+        shareClass.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), 50, _pricePoolPerAsset(USDC));
+
+        // Initialize cancellation flag
+        shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ClaimingRequired.selector));
+        shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Issuing should still lead to revert
+        shareClass.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ClaimingRequired.selector));
+        shareClass.forceCancelDepositRequest(poolId, scId, investor, USDC);
+    }
+
+    function testForceCancelRedeemRequestWrongShareClassId() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ShareClassNotFound.selector));
+        shareClass.forceCancelRedeemRequest(poolId, wrongShareClassId, investor, USDC);
+    }
+
+    function testForceCancelRedeemRequestCancellationNotInitialized() public {
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.CancellationInitializationRequired.selector));
+        shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+    }
+
+    function testForceCancelRedeemRequestClaimingRequired() public {
+        _mockTotalIssuance(1000);
+
+        // Request a redeem and approve it
+        shareClass.requestRedeem(poolId, scId, 100, investor, USDC);
+        shareClass.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 50, _pricePoolPerAsset(USDC));
+
+        // Initialize cancellation flag
+        shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ClaimingRequired.selector));
+        shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Revoking shares should still lead to revert
+        shareClass.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1));
+        vm.expectRevert(abi.encodeWithSelector(IShareClassManager.ClaimingRequired.selector));
+        shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
     }
 }
