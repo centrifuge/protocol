@@ -369,7 +369,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
-        returns (uint128 cancelledAmount)
+        returns (uint128 cancelledAssetAmount)
     {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(cancelledDepositRequestFlag[scId_][depositAssetId][investor], CancellationInitializationRequired());
@@ -378,21 +378,21 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage pendingOrder = depositRequest[scId_][depositAssetId][investor];
         require(!_claimingRequired(pendingOrder, nowDepositEpoch(scId_, depositAssetId)), ClaimingRequired());
 
-        cancelledAmount = pendingOrder.pending;
+        cancelledAssetAmount = pendingOrder.pending;
 
         // Clear storage
         pendingDeposit[scId_][depositAssetId] -= pendingOrder.pending;
         delete depositRequest[scId_][depositAssetId][investor];
         cancelledDepositRequestFlag[scId_][depositAssetId][investor] = false;
 
-        emit ForceCancelDepositRequest(poolId, scId_, depositAssetId, investor, cancelledAmount);
+        emit ForceCancelDepositRequest(poolId, scId_, depositAssetId, investor, cancelledAssetAmount);
     }
 
     /// @inheritdoc IShareClassManager
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
-        returns (uint128 cancelledAmount)
+        returns (uint128 cancelledShareAmount)
     {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(cancelledRedeemRequestFlag[scId_][payoutAssetId][investor], CancellationInitializationRequired());
@@ -401,14 +401,14 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage pendingOrder = redeemRequest[scId_][payoutAssetId][investor];
         require(!_claimingRequired(pendingOrder, nowRedeemEpoch(scId_, payoutAssetId)), ClaimingRequired());
 
-        cancelledAmount = pendingOrder.pending;
+        cancelledShareAmount = pendingOrder.pending;
 
         // Clear storage
         pendingRedeem[scId_][payoutAssetId] -= pendingOrder.pending;
         delete redeemRequest[scId_][payoutAssetId][investor];
         cancelledRedeemRequestFlag[scId_][payoutAssetId][investor] = false;
 
-        emit ForceCancelRedeemRequest(poolId, scId_, payoutAssetId, investor, cancelledAmount);
+        emit ForceCancelRedeemRequest(poolId, scId_, payoutAssetId, investor, cancelledShareAmount);
     }
 
     //----------------------------------------------------------------------------------------------
