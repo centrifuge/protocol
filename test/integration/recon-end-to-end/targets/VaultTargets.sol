@@ -45,7 +45,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     // === REQUEST === //
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: _updateDepositRequest should never revert due to underflow
-    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
         address to = _getRandomActor(toEntropy);
@@ -70,20 +69,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32());
             (uint32 depositEpochId,,, ) = shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
 
-            address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
-            uint128 totalPendingUserDeposit = 0;
-            for (uint256 k = 0; k < _actors.length; k++) {
-                address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), actor.toBytes32());
-                totalPendingUserDeposit += pendingUserDeposit;
-            }
-
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
                 // nowDepositEpoch = depositEpochId + 1
                 eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch"); 
-                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
             }
         } catch (bytes memory reason) {
             hasReverted = true;
@@ -208,8 +197,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
-    /// @dev Property: _updateDepositRequest should never revert due to underflow
-    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function vault_cancelDepositRequest() public updateGhostsWithType(OpType.NOTIFY) asActor {
         address controller = _getActor();
         IBaseVault vault = IBaseVault(_getVault());

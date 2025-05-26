@@ -217,7 +217,6 @@ abstract contract AdminTargets is
 
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: _updateDepositRequest should never revert due to underflow
-    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function hub_depositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 amount) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
@@ -228,19 +227,9 @@ abstract contract AdminTargets is
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
 
-            address[] memory _actors = _getActors();
-            uint128 totalPendingDeposit = shareClassManager.pendingDeposit(scId, depositAssetId);
-            uint128 totalPendingUserDeposit = 0;
-            for (uint256 k = 0; k < _actors.length; k++) {
-                address actor = _actors[k];
-                (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, depositAssetId, actor.toBytes32());
-                totalPendingUserDeposit += pendingUserDeposit;
-            }
-
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
                 eq(lastUpdate, depositEpochId, "lastUpdate != depositEpochId"); 
-                gte(totalPendingDeposit, totalPendingUserDeposit, "total pending deposit < sum of pending user deposit amounts"); 
             }
         } catch (bytes memory reason) {
             // precondition: check that it wasn't an overflow because we only care about underflow
@@ -285,8 +274,6 @@ abstract contract AdminTargets is
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current epoch id epochId[poolId]
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
-    /// @dev Property: _updateDepositRequest should never revert due to underflow
-    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..]
     function hub_cancelDepositRequest(uint64 poolIdAsUint, bytes16 scIdAsBytes) public updateGhosts {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);

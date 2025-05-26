@@ -2,13 +2,13 @@
 |----|--------------|---------------------|----------|
 | 1 | hub_depositRequest | after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch | |
 | 2 | hub_depositRequest | _updateDepositRequest should never revert due to underflow | |
-| 3 | hub_depositRequest | The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..] | |
+| 3 | hub_depositRequest | The sum of pending user deposit amounts depositRequest[..] is always >= the total pending deposit amount pendingDeposit[..] | |
 | 4 | vault_requestDeposit_clamped | After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch | |
 | 5 | vault_requestRedeem_clamped | after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch | |
 | 6 | vault_requestRedeem_clamped | after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero | |
 | 7 | vault_requestRedeem_clamped | cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert) | |
 | 8 | vault_requestRedeem_clamped | _updateDepositRequest should never revert due to underflow | |
-| 9 | vault_requestRedeem_clamped | The total pending deposit amount pendingDeposit[..] is always >= the sum of pending user deposit amounts depositRequest[..] | |
+| 9 | vault_requestRedeem_clamped | The sum of pending user deposit amounts depositRequest[..] is always >= the total pending deposit amount pendingDeposit[..] | |
 | 10 | vault_cancelDepositRequest | After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current nowRedeemEpoch | |
 | 11 | vault_cancelDepositRequest | After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero | |
 | 12 | vault_cancelDepositRequest | cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert) | |
@@ -48,9 +48,9 @@
 | 46 | property_actor_pending_and_queued_redemptions | escrow reserved must be >= holding | |
 | 47 | property_escrow_solvency | The price per share used in the entire system is ALWAYS provided by the admin | |
 | 48 | property_price_per_share_overall | The total pending asset amount pendingDeposit[..] is always >= the approved asset epochInvestAmounts[..].approvedAssetAmount | |
-| 49 | property_total_pending_and_approved | The total pending redeem amount pendingRedeem[..] is always >= the sum of pending user redeem amounts redeemRequest[..] | |
+| 49 | property_total_pending_and_approved | The the sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..] | |
 | 50 | property_total_pending_and_approved | The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount | |
-| 51 | property_total_pending_redeem_geq_sum_pending_user_redeem | The epoch of a pool epochId[poolId] can increase at most by one within the same transaction (i.e. multicall/execute) independent of the number of approvals | |
+| 51 | property_sum_pending_user_redeem_geq_total_pending_redeem | The epoch of a pool epochId[poolId] can increase at most by one within the same transaction (i.e. multicall/execute) independent of the number of approvals | |
 | 52 | property_epochId_can_increase_by_one_within_same_transaction | account.totalDebit and account.totalCredit is always less than uint128(type(int128).max) | |
 | 53 | property_account_totalDebit_and_totalCredit_leq_max_int128 | Any decrease in valuation should not result in an increase in accountValue | |
 | 54 | property_decrease_valuation_no_increase_in_accountValue | Value of Holdings == accountValue(Asset) | |
