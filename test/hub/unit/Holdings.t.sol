@@ -4,9 +4,9 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {d18} from "src/misc/types/D18.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -39,16 +39,13 @@ contract HubRegistryMock {
 
 contract TestCommon is Test {
     IHubRegistry immutable hubRegistry = IHubRegistry(address(new HubRegistryMock()));
-    IERC7726 immutable itemValuation = IERC7726(address(23));
-    IERC7726 immutable customValuation = IERC7726(address(42));
+    IValuation immutable itemValuation = IValuation(address(23));
     Holdings holdings = new Holdings(hubRegistry, address(this));
 
-    function mockGetQuote(IERC7726 valuation, uint128 baseAmount, uint128 quoteAmount) public {
+    function mockGetQuote(IValuation valuation, uint128 baseAmount, uint128 quoteAmount) public {
         vm.mockCall(
             address(valuation),
-            abi.encodeWithSelector(
-                IERC7726.getQuote.selector, uint256(baseAmount), ASSET_A.addr(), POOL_CURRENCY.addr()
-            ),
+            abi.encodeWithSelector(IValuation.getQuote.selector, uint256(baseAmount), ASSET_A, POOL_CURRENCY),
             abi.encode(uint256(quoteAmount))
         );
     }
@@ -64,7 +61,7 @@ contract TestInitialize is TestCommon {
         emit IHoldings.Initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, accounts);
 
-        (uint128 amount, uint128 amountValue, IERC7726 valuation, bool isLiability) =
+        (uint128 amount, uint128 amountValue, IValuation valuation, bool isLiability) =
             holdings.holding(POOL_A, SC_1, ASSET_A);
 
         assertEq(address(valuation), address(itemValuation));
@@ -84,7 +81,7 @@ contract TestInitialize is TestCommon {
 
     function testErrWrongValuation() public {
         vm.expectRevert(IHoldings.WrongValuation.selector);
-        holdings.initialize(POOL_A, SC_1, ASSET_A, IERC7726(address(0)), false, new HoldingAccount[](0));
+        holdings.initialize(POOL_A, SC_1, ASSET_A, IValuation(address(0)), false, new HoldingAccount[](0));
     }
 
     function testErrWrongShareClass() public {
@@ -110,7 +107,7 @@ contract TestIncrease is TestCommon {
         uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000);
         assertEq(value, 50_00);
 
-        (uint128 amount, uint128 amountValue, IERC7726 valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        (uint128 amount, uint128 amountValue, IValuation valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amount, 28_000_000);
         assertEq(amountValue, 250_00);
         assertEq(address(valuation), address(itemValuation)); // Does not change
@@ -136,7 +133,7 @@ contract TestDecrease is TestCommon {
 
         assertEq(value, 50_00);
 
-        (uint128 amount, uint128 amountValue, IERC7726 valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        (uint128 amount, uint128 amountValue, IValuation valuation,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amount, 12_000_000);
         assertEq(amountValue, 150_00);
         assertEq(address(valuation), address(itemValuation)); // Does not change
@@ -216,7 +213,7 @@ contract TestUpdate is TestCommon {
 }
 
 contract TestUpdateValuation is TestCommon {
-    IERC7726 immutable newValuation = IERC7726(address(42));
+    IValuation immutable newValuation = IValuation(address(42));
 
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
@@ -293,7 +290,7 @@ contract TestValuation is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
 
-        IERC7726 valuation = holdings.valuation(POOL_A, SC_1, ASSET_A);
+        IValuation valuation = holdings.valuation(POOL_A, SC_1, ASSET_A);
 
         assertEq(address(valuation), address(itemValuation));
     }

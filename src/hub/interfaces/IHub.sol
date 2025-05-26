@@ -2,8 +2,8 @@
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -276,7 +276,7 @@ interface IHub {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId assetAccount,
         AccountId equityAccount,
         AccountId gainAccount,
@@ -293,7 +293,7 @@ interface IHub {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable;
@@ -303,7 +303,7 @@ interface IHub {
 
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
         external
         payable;
 

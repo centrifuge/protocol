@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {D18} from "src/misc/types/D18.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -13,7 +13,7 @@ import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 struct Holding {
     uint128 assetAmount;
     uint128 assetAmountValue;
-    IERC7726 valuation; // Used for existence
+    IValuation valuation; // Used for existence
     bool isLiability;
 }
 
@@ -33,7 +33,7 @@ interface IHoldings {
         PoolId indexed,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         bool isLiability,
         HoldingAccount[] accounts
     );
@@ -65,7 +65,7 @@ interface IHoldings {
 
     /// @notice Emitted when a holding valuation is updated
     event UpdateValuation(
-        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IValuation valuation
     );
 
     /// @notice Emitted when an account is for a holding is set
@@ -104,7 +104,7 @@ interface IHoldings {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         bool isLiability,
         HoldingAccount[] memory accounts
     ) external;
@@ -129,7 +129,7 @@ interface IHoldings {
         returns (bool isPositive, uint128 diffValue);
 
     /// @notice Updates the valuation method used for this holding.
-    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation) external;
+    function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
     /// @notice Sets an account id for an specific kind
     function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
@@ -147,7 +147,7 @@ interface IHoldings {
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount);
 
     /// @notice Returns the valuation method used for this holding.
-    function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IERC7726);
+    function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IValuation);
 
     /// @notice Returns if the holding is a liability
     function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);

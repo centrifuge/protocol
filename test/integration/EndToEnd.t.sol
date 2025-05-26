@@ -7,7 +7,6 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
@@ -298,7 +297,7 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.mint(s.asyncRequestManager.maxMint(vault, INVESTOR_A), INVESTOR_A);
 
         // CHECKS
-        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
+        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks
@@ -319,7 +318,7 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.deposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A);
 
         // CHECKS
-        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID.addr(), USD_ID.addr());
+        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks
