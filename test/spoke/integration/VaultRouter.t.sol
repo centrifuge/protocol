@@ -14,7 +14,7 @@ import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
-import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
+import {IVaultRouter} from "src/spoke/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 

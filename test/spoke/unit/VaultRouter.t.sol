@@ -13,7 +13,7 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
-import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
+import {IVaultRouter} from "src/spoke/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
