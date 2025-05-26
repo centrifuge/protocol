@@ -17,7 +17,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
+import {BaseRequestManager} from "src/spoke/BaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spoke/interfaces/IBaseVaults.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
