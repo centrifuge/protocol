@@ -209,6 +209,25 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_sync(1e18, 1e18);
     }
 
+    function test_balanceSheet_deposit() public {
+        // Deploy new token, pool and share class with default decimals
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        // price needs to be set in valuation before calling updatePricePoolPerShare
+        transientValuation_setPrice_clamped(1e18);
+
+        hub_updatePricePerShare(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        // Set up test values
+        uint256 tokenId = 0; // For ERC20
+        uint128 depositAmount = 1e18;
+
+        asset_approve(address(balanceSheet), depositAmount);
+        // Call balanceSheet_deposit with test values
+        balanceSheet_deposit(tokenId, depositAmount);
+    }
+
     /// === REPRODUCERS === ///
 
     /// === Potential Issues === ///

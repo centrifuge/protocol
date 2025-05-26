@@ -32,6 +32,7 @@ import {AdminTargets} from "./targets/AdminTargets.sol";
 import {HubTargets} from "./targets/HubTargets.sol";
 import {ToggleTargets} from "./targets/ToggleTargets.sol";
 import {DoomsdayTargets} from "./targets/DoomsdayTargets.sol";
+import {BalanceSheetTargets} from "./targets/BalanceSheetTargets.sol";
 
 abstract contract TargetFunctions is
     BaseTargetFunctions,
@@ -42,6 +43,7 @@ abstract contract TargetFunctions is
     SpokeTargets,
     ManagerTargets,
     HubTargets,
+    BalanceSheetTargets,
     AdminTargets,
     ToggleTargets,
     DoomsdayTargets
