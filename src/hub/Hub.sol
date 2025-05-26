@@ -607,8 +607,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
-
         uint128 value = isIncrease
             ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
             : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
@@ -616,20 +614,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
-    }
 
-    /// @inheritdoc IHubGatewayHandler
-    function initiateTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount
-    ) external {
-        _auth();
-
-        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
     /// @inheritdoc IHubGatewayHandler
@@ -644,9 +630,23 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
-
         shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
+
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+    }
+
+    /// @inheritdoc IHubGatewayHandler
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
+        _auth();
+
+        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
     //----------------------------------------------------------------------------------------------

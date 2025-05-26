@@ -11,6 +11,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings, Holding, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
@@ -30,6 +32,7 @@ contract Holdings is Auth, IHoldings {
         uint64 nonce;
     }
 
+    mapping(PoolId => ISnapshotHook) public snapshotHook;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => Snapshot))) public snapshot;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
@@ -93,6 +96,13 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external auth {
+        snapshotHook[poolId] = hook;
+
+        emit SetSnapshotHook(poolId, hook);
+    }
+
+    /// @inheritdoc IHoldings
     function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
         external
         auth
@@ -104,6 +114,9 @@ contract Holdings is Auth, IHoldings {
         snapshot_.nonce++;
 
         emit SetSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
+
+        ISnapshotHook hook = snapshotHook[poolId];
+        if (address(hook) != address(0)) hook.onSnapshot(poolId, scId, centrifugeId);
     }
 
     //----------------------------------------------------------------------------------------------

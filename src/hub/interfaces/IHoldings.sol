@@ -8,6 +8,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 struct Holding {
     uint128 assetAmount;
@@ -54,19 +55,23 @@ interface IHoldings {
 
     /// @notice Emitted when the holding is updated
     event Update(
-        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
     );
 
     /// @notice Emitted when a holding valuation is updated
-    event UpdateValuation(PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation);
+    event UpdateValuation(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IERC7726 valuation
+    );
 
     /// @notice Emitted when an account is for a holding is set
     event SetAccountId(
-        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
 
+    event SetSnapshotHook(PoolId indexed poolId, ISnapshotHook hook);
+
     event SetSnapshot(
-        PoolId indexed, ShareClassId indexed scId, uint16 indexed centrifugeId, bool isSnapshot, uint64 nonce
+        PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, bool isSnapshot, uint64 nonce
     );
 
     /// @notice Item was not found for a required action.
@@ -125,6 +130,8 @@ interface IHoldings {
 
     function setSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bool isSnapshot, uint64 nonce)
         external;
+
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external;
 
     /// @notice Returns the value of this holding.
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value);

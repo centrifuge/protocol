@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
@@ -151,7 +151,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         );
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);

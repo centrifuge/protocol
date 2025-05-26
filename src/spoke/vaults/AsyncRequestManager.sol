@@ -28,7 +28,7 @@ import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/spoke/i
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Investment Manager
