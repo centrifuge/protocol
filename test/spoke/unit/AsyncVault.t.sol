@@ -9,8 +9,8 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment

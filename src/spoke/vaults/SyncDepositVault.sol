@@ -8,9 +8,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 
 /// @title  SyncDepositVault

@@ -17,12 +17,12 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IAsyncRequestManager, AsyncInvestmentState} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {IAsyncDepositManager} from "src/spoke/interfaces/investments/IAsyncDepositManager.sol";
-import {IDepositManager} from "src/spoke/interfaces/investments/IDepositManager.sol";
-import {IRedeemManager} from "src/spoke/interfaces/investments/IRedeemManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRequestManager, AsyncInvestmentState} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";

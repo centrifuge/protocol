@@ -16,7 +16,7 @@ import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.s
 import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;

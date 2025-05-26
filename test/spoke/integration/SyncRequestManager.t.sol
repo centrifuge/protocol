@@ -12,11 +12,11 @@ import {
     ISyncRequestManager,
     Prices,
     ISyncDepositValuation
-} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
+} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 
 import "test/spoke/BaseTest.sol";

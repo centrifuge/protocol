@@ -16,7 +16,7 @@ import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 

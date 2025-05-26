@@ -24,7 +24,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {ITokenFactory} from "src/spoke/interfaces/factories/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";

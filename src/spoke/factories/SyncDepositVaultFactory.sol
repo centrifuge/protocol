@@ -8,8 +8,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";

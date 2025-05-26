@@ -22,18 +22,18 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemVault, IBaseVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {
     ISyncRequestManager,
     Prices,
     ISyncDepositValuation
-} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
-import {IDepositManager} from "src/spoke/interfaces/investments/IDepositManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
+} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for

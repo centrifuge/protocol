@@ -9,7 +9,7 @@ import {IInvestmentManager} from "src/spoke/legacy/interfaces/IInvestmentManager
 import {ILegacyVaultAdapter} from "src/spoke/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/spoke/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter

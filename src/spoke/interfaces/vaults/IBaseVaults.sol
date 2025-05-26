@@ -25,8 +25,8 @@ import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 
 /// @notice Interface for the all vault contracts
 /// @dev Must be implemented by all vaults

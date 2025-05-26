@@ -17,9 +17,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IBaseVault, IAsyncRedeemVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
