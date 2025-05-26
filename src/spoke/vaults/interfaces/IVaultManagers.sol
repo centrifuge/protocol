@@ -8,7 +8,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 
-import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 

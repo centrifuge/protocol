@@ -19,7 +19,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
