@@ -22,7 +22,7 @@ import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
-import {AsyncVaultFactory} from "src/spoke/factories/AsyncVaultFactory.sol";
+import {AsyncVaultFactory} from "src/spoke/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
