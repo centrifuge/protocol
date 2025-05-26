@@ -161,7 +161,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         if (queueEnabled[poolId][scId]) {
             if (!shareQueue.isPositive) {
                 shareQueue.delta += shares;
-                shareQueue.isPositive = false;
             } else if (shareQueue.delta > shares) {
                 shareQueue.delta -= shares;
                 shareQueue.isPositive = true;
