@@ -55,29 +55,35 @@ abstract contract Properties is BeforeAfter, Asserts {
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the approved deposit amount epochInvestAmounts[..].approvedAssetAmount
     function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
         address[] memory _actors = _getActors();
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
-        uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
+        for (uint256 i = 0; i < createdPools.length; i++) {
+            PoolId poolId = createdPools[i];
+            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+            // skip the first share class because it's never assigned
+            for (uint32 j = 1; j < shareClassCount; j++) {
+                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+                AssetId assetId = hubRegistry.currency(poolId);
 
-        // get the pending and approved deposit amounts for the current epoch
-        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+                (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, assetId);
+                uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
 
-        uint128 totalPendingUserDeposit;
-        for (uint256 k = 0; k < _actors.length; k++) {
-            address actor = _actors[k];
+                // get the pending and approved deposit amounts for the current epoch
+                (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, depositEpochId);
 
-            (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, assetId, CastLib.toBytes32(actor));
-            totalPendingUserDeposit += pendingUserDeposit;
+                uint128 totalPendingUserDeposit = 0;
+                for (uint256 k = 0; k < _actors.length; k++) {
+                    address actor = _actors[k];
+
+                    (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, assetId, CastLib.toBytes32(actor));
+                    totalPendingUserDeposit += pendingUserDeposit;
+                }
+
+                // check that the pending deposit is >= the total pending user deposit
+                gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
+                // check that the pending deposit is >= the approved deposit
+                gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
+            }
         }
-
-        // check that the pending deposit is >= the total pending user deposit
-        gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
-        // check that the pending deposit is >= the approved deposit
-        gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
     }
 
     /// @dev Property: The the sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
