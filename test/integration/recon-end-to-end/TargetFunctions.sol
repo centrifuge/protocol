@@ -216,12 +216,29 @@ abstract contract TargetFunctions is
         vault_cancelDepositRequest();
     }
 
+    function shortcut_deposit_queue_cancel(uint64 pricePoolPerShare, uint128 priceValuation, uint256 depositAmount, uint128 approveAmount, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, depositAmount, toEntropy);
+
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        hub_approveDeposits(nowDepositEpoch, approveAmount);
+        hub_issueShares(nowDepositEpoch, navPerShare);
+
+        vault_cancelDepositRequest();
+    }
+
     function shortcut_deposit_cancel_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
         vault_cancelDepositRequest();
 
         vault_claimCancelDepositRequest(toEntropy);
+    }
+
+    function shortcut_queue_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 depositAmount, uint128 navPerShare, uint256 toEntropy, uint128 shares) public {
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, depositAmount, toEntropy);
+
+        uint32 redeemEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        shortcut_approve_and_revoke_shares(shares, redeemEpoch, navPerShare);
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {

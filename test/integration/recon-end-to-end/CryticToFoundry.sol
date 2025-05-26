@@ -146,6 +146,28 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deposit_and_cancel(1e18, 1e18, 1e18, 1e18, 0);
     }
 
+    function test_shortcut_deposit_and_cancel_notify() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        shortcut_request_deposit(1e18, 1e18, 1e18, 0);
+
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
+        hub_approveDeposits(nowDepositEpoch, 5e17);
+        hub_issueShares(nowDepositEpoch, 5e17);
+
+        vault_cancelDepositRequest();
+
+        hub_notifyDeposit(1);
+    }
+
+    function test_shortcut_deposit_queue_cancel() public {
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+
+        shortcut_deposit_queue_cancel(1e18, 1e18, 1e18, 5e17, 1e18, 0);
+       
+        hub_notifyDeposit(1);
+    }
+
     function test_shortcut_deposit_cancel_claim() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
@@ -291,6 +313,21 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_request_deposit(1126650826843,1,0,0);
 
         property_totalAssets_solvency();
+
+    }
+
+    // forge test --match-test test_property_total_issuance_soundness_10 -vvv 
+    function test_property_total_issuance_soundness_10() public {
+
+        shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
+
+        shortcut_deposit_and_claim(0,1,1,1,0);
+
+        hub_setQueue(0,true);
+
+        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1,0,0);
+
+        property_total_issuance_soundness();
 
     }
 
@@ -444,6 +481,5 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_total_pending_redeem_geq_sum_pending_user_redeem();
 
     }
-
 
 }
