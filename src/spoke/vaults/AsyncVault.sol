@@ -11,7 +11,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAsyncRedeemVault, IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {VaultKind} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {BaseVault} from "src/spoke/BaseVault.sol";
+import {BaseVault} from "src/spoke/vaults/BaseVaults.sol";
 import {BaseAsyncRedeemVault} from "src/spoke/vaults/BaseVaults.sol";
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
