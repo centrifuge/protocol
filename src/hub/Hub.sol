@@ -444,6 +444,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(
+            assetAccount != equityAccount && assetAccount != gainAccount && assetAccount != lossAccount,
+            IHub.InvalidAccountCombination()
+        );
+        require(
             accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
                 && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
             IAccounting.AccountDoesNotExist()
@@ -474,6 +478,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
         require(
             accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
             IAccounting.AccountDoesNotExist()
