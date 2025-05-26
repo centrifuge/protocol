@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 
 import {ShareToken} from "src/spoke/ShareToken.sol";
-import {ITokenFactory} from "src/spoke/interfaces/factories/ITokenFactory.sol";
+import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Share Token Factory

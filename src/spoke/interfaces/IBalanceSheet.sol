@@ -11,7 +11,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares

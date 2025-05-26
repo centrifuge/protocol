@@ -8,8 +8,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
-import {IBaseVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {IBaseVault, VaultKind} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

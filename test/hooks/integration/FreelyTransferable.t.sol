@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/spoke/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;

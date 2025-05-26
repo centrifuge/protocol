@@ -4,12 +4,12 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {ILegacyVault} from "src/spoke/legacy/interfaces/ILegacyVault.sol";
-import {IInvestmentManager} from "src/spoke/legacy/interfaces/IInvestmentManager.sol";
-import {ILegacyVaultAdapter} from "src/spoke/legacy/interfaces/ILegacyVaultAdapter.sol";
+import {ILegacyVault} from "src/spoke/vaults/legacy/interfaces/ILegacyVault.sol";
+import {IInvestmentManager} from "src/spoke/vaults/legacy/interfaces/IInvestmentManager.sol";
+import {ILegacyVaultAdapter} from "src/spoke/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
 import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/spoke/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter

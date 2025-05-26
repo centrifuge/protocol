@@ -14,12 +14,13 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault, IAsyncRedeemVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
@@ -27,7 +28,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     uint256 internal constant REQUEST_ID = 0;
 
     IRoot public immutable root;
-    /// @dev this naming MUST NEVER change - due to legacy v2 vaults
     IBaseRequestManager public manager;
 
     /// @inheritdoc IBaseVault

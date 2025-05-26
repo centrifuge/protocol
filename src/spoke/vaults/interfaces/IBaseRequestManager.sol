@@ -6,7 +6,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 
 interface IBaseRequestManager {
