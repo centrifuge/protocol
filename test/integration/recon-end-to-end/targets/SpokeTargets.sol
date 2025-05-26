@@ -122,7 +122,11 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Step 5 - link the vault
     function poolManager_linkVault(address vault) public  asAdmin {
-        spoke.linkVault(PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()), IBaseVault(vault));
+        IBaseVault vaultInstance = IBaseVault(_getVault());
+        PoolId poolId = vaultInstance.poolId();
+        ShareClassId scId = vaultInstance.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+        spoke.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 
     function poolManager_linkVault_clamped() public {

@@ -52,25 +52,27 @@ abstract contract HubTargets is
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier 
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        AssetId assetId = AssetId.wrap(_getAssetId());
         bytes32 investor = CastLib.toBytes32(_getActor());
-        uint256 investorSharesBefore = IShareToken(_getShareToken()).balanceOf(_getActor());
-        (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(scId, assetId, investor);
+        (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
         (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
-        hub.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
+        hub.notifyDeposit(
+            IBaseVault(_getVault()).poolId(), 
+            IBaseVault(_getVault()).scId(), 
+            hubRegistry.currency(IBaseVault(_getVault()).poolId()), 
+            investor, 
+            maxClaims
+        );
 
-        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
         (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, assetId);
+        (uint32 depositEpochId,,, )= shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
 
         // fulfillments are handled in the AsyncRequestManager
-        sumOfFullfilledDeposits[_getShareToken()] += (pendingBeforeARM - pendingAfterARM);
+        sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeARM - pendingAfterARM);
         // claims are handled in the ShareClassManager
         sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM);
-        depositProcessed[scId][assetId][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
+        depositProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {

@@ -244,8 +244,9 @@ abstract contract AdminTargets is
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
     function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
         AssetId payoutAssetId = hubRegistry.currency(poolId);
         uint256 sharesBefore = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         (uint128 totalIssuanceBefore,) = shareClassManager.metrics(scId);
@@ -259,7 +260,7 @@ abstract contract AdminTargets is
         (uint128 balanceSheetSharesAfter, ) = balanceSheet.queuedShares(poolId, scId);
 
         // NOTE: shares are burned on revoke 
-        executedRedemptions[IBaseVault(_getVault()).share()] += burnedShares;
+        executedRedemptions[vault.share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
 
         if(navPerShare > 0) {
