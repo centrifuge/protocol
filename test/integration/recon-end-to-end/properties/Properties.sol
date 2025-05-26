@@ -553,6 +553,35 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");
     }
 
+    /// @dev Property: The sum of pending user deposit amounts depositRequest[..] is always >= total pending deposit amount pendingDeposit[..]
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the approved deposit amount epochInvestAmounts[..].approvedAssetAmount
+    function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
+        address[] memory _actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
+        uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
+
+        // get the pending and approved deposit amounts for the current epoch
+        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+
+        uint128 totalPendingUserDeposit;
+        for (uint256 k = 0; k < _actors.length; k++) {
+            address actor = _actors[k];
+
+            (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, assetId, CastLib.toBytes32(actor));
+            totalPendingUserDeposit += pendingUserDeposit;
+        }
+
+        // check that the pending deposit is >= the total pending user deposit
+        gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
+        // check that the pending deposit is >= the approved deposit
+        gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
+    }
+
     /// @dev Property: The sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
     function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
@@ -581,51 +610,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // check that the pending redeem is >= the approved redeem
         gte(pendingRedeem, approvedShareAmount, "pending redeem is < approved redeem");
     }  
-
-    /// @dev Property: The sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
-    /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
-    // NOTE: previous implementation of the above property
-    // function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
-    //     address[] memory _actors = _getActors();
-    //     IBaseVault vault = IBaseVault(_getVault());
-    //     PoolId poolId = vault.poolId();
-    //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = hubRegistry.currency(poolId);
-
-    //     (uint32 redeemEpochId,,,) = shareClassManager.epochId(scId, assetId);
-    //     uint128 pendingRedeemCurrent = shareClassManager.pendingRedeem(scId, assetId);
-        
-    //     // get the pending and approved redeem amounts for the previous epoch
-    //     (, uint128 approvedShareAmountPrevious, uint128 payoutAssetAmountPrevious,,,) = shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId - 1);
-
-    //     // get the pending and approved redeem amounts for the current epoch
-    //     (, uint128 approvedShareAmountCurrent, uint128 payoutAssetAmountCurrent,,,) = shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId);
-
-    //     uint128 totalPendingUserRedeem = 0;
-    //     for (uint256 k = 0; k < _actors.length; k++) {
-    //         address actor = _actors[k];
-
-    //         (uint128 pendingUserRedeemCurrent,) = shareClassManager.redeemRequest(scId, assetId, CastLib.toBytes32(actor));
-    //         totalPendingUserRedeem += pendingUserRedeemCurrent;
-            
-    //         // pendingUserRedeem hasn't changed if the claimableAssetAmountPrevious is 0, so we can use it to calculate the claimableAssetAmount from the previous epoch 
-    //         // uint128 approvedShareAmountPrevious = pendingUserRedeemCurrent.mulDiv(approvedShareAmountPrevious, payoutAssetAmountPrevious).toUint128();
-    //         // console2.log("here properties 7");
-    //         // uint128 claimableAssetAmountPrevious = uint256(approvedShareAmountPrevious).mulDiv(
-    //         //     payoutAssetAmountPrevious, approvedShareAmountPrevious
-    //         // ).toUint128();
-    //         // account for the edge case where user claimed redemption in previous epoch but there was no claimable amount
-    //         // in this case, the totalPendingUserRedeem will be greater than the pendingRedeemCurrent for this epoch 
-            
-    //         if(payoutAssetAmountPrevious > 0) {
-    //             // check that the pending redeem is >= the total pending user redeem
-    //             gte(totalPendingUserRedeem, pendingRedeemCurrent, "total pending user redeems is < pending redeem");
-    //         }
-    //     }
-        
-    //     // check that the pending redeem is >= the approved redeem
-    //     gte(pendingRedeemCurrent, approvedShareAmountCurrent, "pending redeem is < approved redeem");
-    // }  
 
     /// @dev Property: The epoch of a pool epochId[poolId] can increase at most by one within the same transaction (i.e. multicall/execute) independent of the number of approvals
     function property_epochId_can_increase_by_one_within_same_transaction() public {

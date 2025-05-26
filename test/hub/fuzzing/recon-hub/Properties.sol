@@ -51,6 +51,35 @@ abstract contract Properties is BeforeAfter, Asserts {
         }
     }
 
+    /// @dev Property: The sum of pending user deposit amounts depositRequest[..] is always >= total pending deposit amount pendingDeposit[..]
+    /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the approved deposit amount epochInvestAmounts[..].approvedAssetAmount
+    function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
+        address[] memory _actors = _getActors();
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
+        uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
+
+        // get the pending and approved deposit amounts for the current epoch
+        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+
+        uint128 totalPendingUserDeposit;
+        for (uint256 k = 0; k < _actors.length; k++) {
+            address actor = _actors[k];
+
+            (uint128 pendingUserDeposit,) = shareClassManager.depositRequest(scId, assetId, CastLib.toBytes32(actor));
+            totalPendingUserDeposit += pendingUserDeposit;
+        }
+
+        // check that the pending deposit is >= the total pending user deposit
+        gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
+        // check that the pending deposit is >= the approved deposit
+        gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
+    }
+
     /// @dev Property: The the sum of pending user redeem amounts redeemRequest[..] is always >= total pending redeem amount pendingRedeem[..]
     /// @dev Property: The total pending redeem amount pendingRedeem[..] is always >= the approved redeem amount epochRedeemAmounts[..].approvedShareAmount
     // TODO: come back to this to check if accounting for case is correct
