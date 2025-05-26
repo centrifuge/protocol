@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console} from "forge-std/console.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
@@ -374,18 +373,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(cancelledDepositRequestFlag[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
-        // Block force cancellation as long as user has unclaimed epochs
-        UserOrder storage pendingOrder = depositRequest[scId_][depositAssetId][investor];
-        require(_canMutatePending(pendingOrder, nowDepositEpoch(scId_, depositAssetId)), ClaimingRequired());
+        uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
-        cancelledAssetAmount = pendingOrder.pending;
-
-        // Clear storage
-        pendingDeposit[scId_][depositAssetId] -= pendingOrder.pending;
-        delete depositRequest[scId_][depositAssetId][investor];
+        cancelledAssetAmount =
+            _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
         cancelledDepositRequestFlag[scId_][depositAssetId][investor] = false;
-
-        emit ForceCancelDepositRequest(poolId, scId_, depositAssetId, investor, cancelledAssetAmount);
     }
 
     /// @inheritdoc IShareClassManager
@@ -397,18 +389,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(cancelledRedeemRequestFlag[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
-        // Block force cancellation as long as user has unclaimed epochs
-        UserOrder storage pendingOrder = redeemRequest[scId_][payoutAssetId][investor];
-        require(_canMutatePending(pendingOrder, nowRedeemEpoch(scId_, payoutAssetId)), ClaimingRequired());
+        uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
-        cancelledShareAmount = pendingOrder.pending;
-
-        // Clear storage
-        pendingRedeem[scId_][payoutAssetId] -= pendingOrder.pending;
-        delete redeemRequest[scId_][payoutAssetId][investor];
+        cancelledShareAmount =
+            _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
         cancelledRedeemRequestFlag[scId_][payoutAssetId][investor] = false;
-
-        emit ForceCancelRedeemRequest(poolId, scId_, payoutAssetId, investor, cancelledShareAmount);
     }
 
     //----------------------------------------------------------------------------------------------

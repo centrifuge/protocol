@@ -164,13 +164,6 @@ interface IShareClassManager {
         uint128 queuedUserAssetAmount,
         bool pendingCancellation
     );
-    event ForceCancelDepositRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        AssetId indexed depositAssetId,
-        bytes32 investor,
-        uint128 cancellingAmount
-    );
     event UpdateRedeemRequest(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -182,15 +175,8 @@ interface IShareClassManager {
         uint128 queuedUserShareAmount,
         bool pendingCancellation
     );
-    event ForceCancelRedeemRequest(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        AssetId indexed payoutAssetId,
-        bytes32 investor,
-        uint128 cancellingAmount
-    );
-    /// Errors
 
+    /// Errors
     error EpochNotInSequence(uint32 providedEpoch, uint32 nowEpoch);
     error NoOrderFound();
     error InsufficientPending();
@@ -211,7 +197,6 @@ interface IShareClassManager {
     error DecreaseMoreThanIssued();
     error CancellationQueued();
     error CancellationInitializationRequired();
-    error ClaimingRequired();
 
     /// Functions
 

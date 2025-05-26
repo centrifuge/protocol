@@ -391,7 +391,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         uint128 cancelledAssetAmount =
             shareClassManager.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
 
-        sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledAssetAmount > 0) {
+            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
+        }
     }
 
     /// @inheritdoc IHub
@@ -404,7 +407,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         uint128 cancelledShareAmount = shareClassManager.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
-        sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledShareAmount > 0) {
+            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
+        }
     }
 
     /// @inheritdoc IHub
