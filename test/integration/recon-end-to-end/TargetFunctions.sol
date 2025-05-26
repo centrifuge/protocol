@@ -97,8 +97,7 @@ abstract contract TargetFunctions is
 
         // NOTE END TEMPORARY
 
-        /// @audit NOTE: This works because we only deploy once!!
-        decimals = decimals % RECON_MODULO_DECIMALS;
+        decimals = uint8(between(decimals, 2, 24));
 
         // 1. Deploy new token and register it as an asset
         _newAsset(decimals);

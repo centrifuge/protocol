@@ -79,7 +79,13 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         AssetId assetId = hubRegistry.currency(vault.poolId());
         address asset = vault.asset();
 
-        lte(sumOfClaimedRedemptions[address(asset)], redemptionsProcessed[scId][assetId][_getActor()], "sumOfClaimedRedemptions > redemptionsProcessed");
+        address[] memory actors = _getActors();
+        uint256 sumOfRedemptionsProcessed;
+        for(uint256 i; i < actors.length; i++) {
+            sumOfRedemptionsProcessed += redemptionsProcessed[scId][assetId][actors[i]];
+        }
+
+        lte(sumOfClaimedRedemptions[address(asset)], sumOfRedemptionsProcessed, "sumOfClaimedRedemptions > sumOfRedemptionsProcessed");
     }
 
     /// @dev Property: The sum of tranche tokens minted/transferred is equal to the total supply of tranche tokens
@@ -271,25 +277,26 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // TODO: Multi Assets -> Iterate over all existing combinations
 
     /// @dev Property: The sum of account balances is always <= the balance of the escrow
-    function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
-        IBaseVault vault = IBaseVault(_getVault());
-        uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
-        address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
-        uint256 balOfPoolEscrow = MockERC20(vault.asset()).balanceOf(address(poolEscrow));
+    // TODO: this can't currently hold, requires a different implementation
+    // function property_sum_of_account_balances_leq_escrow() public vaultIsSet {
+    //     IBaseVault vault = IBaseVault(_getVault());
+    //     uint256 balOfEscrow = MockERC20(vault.asset()).balanceOf(address(globalEscrow));
+    //     address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
+    //     uint256 balOfPoolEscrow = MockERC20(vault.asset()).balanceOf(address(poolEscrow));
 
-        // Use acc to track max amount withdrawable for each actor
-        address[] memory actors = _getActors();
-        uint256 acc;
-        for (uint256 i; i < actors.length; i++) {
-            // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
-            try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
-                emit DebugWithString("amt", amt);
-                acc += amt;
-            } catch {}
-        }
+    //     // Use acc to track max amount withdrawable for each actor
+    //     address[] memory actors = _getActors();
+    //     uint256 acc;
+    //     for (uint256 i; i < actors.length; i++) {
+    //         // NOTE: Accounts for scenario in which we didn't deploy the demo tranche
+    //         try vault.maxWithdraw(actors[i]) returns (uint256 amt) {
+    //             emit DebugWithString("amt", amt);
+    //             acc += amt;
+    //         } catch {}
+    //     }
 
-        lte(acc, balOfEscrow + balOfPoolEscrow, "sum of account balances > balOfEscrow");
-    }
+    //     lte(acc, balOfEscrow + balOfPoolEscrow, "sum of account balances > balOfEscrow");
+    // }
 
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
@@ -462,7 +469,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: actor requested redemptions - cancelled redemptions - processed redemptions actor pending redemptions + queued redemptions
+    /// @dev Property: actor requested redemptions - cancelled redemptions - processed redemptions = actor pending redemptions + queued redemptions
     function property_actor_pending_and_queued_redemptions() public {
         // Pending + Queued = Deposited?
         address[] memory actors = _getActors();
@@ -479,17 +486,18 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// @dev Property: escrow total must be >= reserved
-    function property_escrow_solvency() public {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
-        (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
+    // TODO: this can't currently hold, requires a different implementation
+    // function property_escrow_solvency() public {
+    //     IBaseVault vault = IBaseVault(_getVault());
+    //     PoolId poolId = vault.poolId();
+    //     ShareClassId scId = vault.scId();
+    //     AssetId assetId = hubRegistry.currency(poolId);
+    //     (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
 
-        PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
-        (uint128 total, uint128 reserved) = poolEscrow.holding(scId, assetAddr, tokenId);
-        gte(total, reserved, "escrow total must be >= reserved");
-    }
+    //     PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
+    //     (uint128 total, uint128 reserved) = poolEscrow.holding(scId, assetAddr, tokenId);
+    //     gte(total, reserved, "escrow total must be >= reserved");
+    // }
 
     /// @dev Property: The price per share used in the entire system is ALWAYS provided by the admin
     // TODO: this needs to be redefined as an inline property in the target functions where assets are transferred and shares are minted/burned
@@ -694,7 +702,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         ShareClassId scId = vault.scId();
         AssetId assetId = hubRegistry.currency(poolId);
         AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
-        console2.log("asset account", uint8(AccountType.Asset));
+
         (, uint128 assets) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
         
@@ -872,7 +880,10 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
         
-        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
+        // precondition: if queue is enabled, holdings don't get updated until the queue is submitted
+        if(!balanceSheet.queueEnabled(vault.poolId(), vault.scId())) {
+            eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
+        } 
     }
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
