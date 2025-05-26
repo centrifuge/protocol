@@ -20,8 +20,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
-import {IHub, AccountType, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 /// @title  Hub
@@ -74,6 +74,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         if (what == "sender") sender = IPoolMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
@@ -422,10 +423,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
 
-        shareClassManager.updatePricePerShare(poolId, scId, navPoolPerShare);
+        shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
     }
 
     /// @inheritdoc IHub
@@ -442,6 +443,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(
+            assetAccount != equityAccount && assetAccount != gainAccount && assetAccount != lossAccount,
+            IHub.InvalidAccountCombination()
+        );
         require(
             accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
                 && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
@@ -473,6 +478,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
         require(
             accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
             IAccounting.AccountDoesNotExist()

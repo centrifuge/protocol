@@ -155,7 +155,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         require(maxMint(vault_, owner) >= shares, ExceedsMaxMint());
         assets = previewMint(vault_, owner, shares);
 
-        _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
+        _issueShares(vault_, shares.toUint128(), receiver, assets.toUint128());
     }
 
     /// @inheritdoc IDepositManager
@@ -167,7 +167,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         require(maxDeposit(vault_, owner) >= assets, ExceedsMaxDeposit());
         shares = previewDeposit(vault_, owner, assets);
 
-        _issueShares(vault_, shares.toUint128(), receiver, owner, assets.toUint128());
+        _issueShares(vault_, shares.toUint128(), receiver, assets.toUint128());
     }
 
     //----------------------------------------------------------------------------------------------
@@ -255,14 +255,12 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
     /// @dev Issues shares to the receiver and instruct the balance sheet
     //       to react on the issuance and the updated holding.
-    function _issueShares(IBaseVault vault_, uint128 shares, address receiver, address, /* owner */ uint128 assets)
-        internal
-    {
+    function _issueShares(IBaseVault vault_, uint128 shares, address receiver, uint128 assets) internal {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
-        balanceSheet.overridePricePoolPerShare(poolId, scId, prices(poolId, scId, vaultDetails.assetId).poolPerShare);
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
         balanceSheet.issue(poolId, scId, receiver, shares);
         balanceSheet.resetPricePoolPerShare(poolId, scId);
 

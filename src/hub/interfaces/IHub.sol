@@ -72,6 +72,9 @@ interface IHub {
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
 
+    /// @notice Dispatched when an invalid combination of account IDs is passed.
+    error InvalidAccountCombination();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -248,7 +251,7 @@ interface IHub {
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will register the different accounts used for holdings.
