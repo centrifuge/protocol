@@ -74,6 +74,9 @@ interface IHub {
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
 
+    /// @notice Dispatched when an invalid combination of account IDs is passed.
+    error InvalidAccountCombination();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
