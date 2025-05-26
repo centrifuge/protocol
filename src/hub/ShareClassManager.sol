@@ -376,7 +376,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // Block force cancellation as long as user has unclaimed epochs
         UserOrder storage pendingOrder = depositRequest[scId_][depositAssetId][investor];
-        require(!_claimingRequired(pendingOrder, nowDepositEpoch(scId_, depositAssetId)), ClaimingRequired());
+        require(_canMutatePending(pendingOrder, nowDepositEpoch(scId_, depositAssetId)), ClaimingRequired());
 
         cancelledAssetAmount = pendingOrder.pending;
 
@@ -399,7 +399,7 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         // Block force cancellation as long as user has unclaimed epochs
         UserOrder storage pendingOrder = redeemRequest[scId_][payoutAssetId][investor];
-        require(!_claimingRequired(pendingOrder, nowRedeemEpoch(scId_, payoutAssetId)), ClaimingRequired());
+        require(_canMutatePending(pendingOrder, nowRedeemEpoch(scId_, payoutAssetId)), ClaimingRequired());
 
         cancelledShareAmount = pendingOrder.pending;
 
@@ -767,7 +767,7 @@ contract ShareClassManager is Auth, IShareClassManager {
             requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
 
         // Short circuit if user can mutate pending, i.e. last update happened after latest approval or is first update
-        if (!_claimingRequired(userOrder, currentEpoch)) {
+        if (_canMutatePending(userOrder, currentEpoch)) {
             return false;
         }
 
@@ -867,7 +867,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         );
     }
 
-    function _claimingRequired(UserOrder memory userOrder, uint32 currentEpoch) private pure returns (bool) {
-        return currentEpoch > 1 && userOrder.pending > 0 && userOrder.lastUpdate < currentEpoch;
+    /// @dev A user cannot mutate their pending amount at all times because it affects the total pending amount. It is
+    /// restricted to the following three conditions:
+    ///     1. It's the first epoch (currentEpoch <= 1), which implies userOrder.lastUpdate == 0
+    ///     2. User has no pending amount (userOrder.pending == 0)
+    ///     3. User's last update is not behind the current epoch (userOrder.lastUpdate >= currentEpoch)
+    function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) private pure returns (bool) {
+        return currentEpoch <= 1 || userOrder.pending == 0 || userOrder.lastUpdate >= currentEpoch;
     }
 }
