@@ -344,9 +344,13 @@ contract ShareClassManager is Auth, IShareClassManager {
         require(exists(poolId, scId_), ShareClassNotFound());
         require(isIssuance || issuance[scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
 
-        uint128 newIssuance = isIssuance ? metrics[scId_].totalIssuance + amount : metrics[scId_].totalIssuance - amount;
-        metrics[scId_].totalIssuance = newIssuance;
-        issuance[scId_][centrifugeId] = newIssuance;
+        uint128 newTotalIssuance =
+            isIssuance ? metrics[scId_].totalIssuance + amount : metrics[scId_].totalIssuance - amount;
+        metrics[scId_].totalIssuance = newTotalIssuance;
+
+        uint128 newIssuancePerNetwork =
+            isIssuance ? issuance[scId_][centrifugeId] + amount : issuance[scId_][centrifugeId] - amount;
+        issuance[scId_][centrifugeId] = newIssuancePerNetwork;
 
         if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
         else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
