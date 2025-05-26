@@ -28,7 +28,7 @@ import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol"
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
@@ -258,7 +258,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         IShareToken shareToken_ = shareToken(poolId, scId);
         address hook = shareToken_.hook();
         require(hook != address(0), InvalidHook());
-        IHook(hook).updateRestriction(address(shareToken_), update_);
+        ITransferHook(hook).updateRestriction(address(shareToken_), update_);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -560,7 +560,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
 
     function _isValidHook(address hook) internal view returns (bool) {
         (bool success, bytes memory data) =
-            hook.staticcall(abi.encodeWithSelector(IERC165.supportsInterface.selector, type(IHook).interfaceId));
+            hook.staticcall(abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId));
 
         return success && data.length == 32 && abi.decode(data, (bool));
     }

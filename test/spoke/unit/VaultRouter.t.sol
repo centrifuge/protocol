@@ -99,6 +99,8 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
 
+        balanceSheet.setQueue(vault.poolId(), vault.scId(), false);
+
         erc20.approve(address(vault_), amount);
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vaultRouter.deposit{value: gas}(vault, amount, self, self);

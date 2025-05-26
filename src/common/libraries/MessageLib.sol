@@ -44,8 +44,7 @@ enum MessageType {
     UpdateShares,
     TriggerIssueShares,
     TriggerSubmitQueuedShares,
-    TriggerSubmitQueuedAssets,
-    SetQueue
+    TriggerSubmitQueuedAssets
 }
 
 enum UpdateRestrictionType {
@@ -109,12 +108,11 @@ library MessageLib {
         (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
         (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
         (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
-        (82  << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (50  << uint8(MessageType.UpdateShares) * 8) +
+        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (59  << uint8(MessageType.UpdateShares) * 8) +
         (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25 << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
-        (41 << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
-        (26 << uint8(MessageType.SetQueue) * 8);
+        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
+        (41  << uint8(MessageType.TriggerSubmitQueuedAssets) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -141,8 +139,8 @@ library MessageLib {
     function messagePoolId(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        // All messages from NotifyPool to SetQueue contains a PoolId in position 1.
-        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.SetQueue)) {
+        // All messages from NotifyPool to TriggerSubmitQueuedAssets contains a PoolId in position 1.
+        if (kind >= uint8(MessageType.NotifyPool) && kind <= uint8(MessageType.TriggerSubmitQueuedAssets)) {
             return PoolId.wrap(message.toUint64(1));
         } else {
             return PoolId.wrap(0);
@@ -937,7 +935,9 @@ library MessageLib {
         uint128 amount;
         uint128 pricePerUnit;
         uint64 timestamp;
-        bool isIncrease; // Signals whether this is an increase or a decrease
+        bool isIncrease;
+        bool isSnapshot;
+        uint64 nonce;
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
@@ -950,7 +950,9 @@ library MessageLib {
             amount: data.toUint128(41),
             pricePerUnit: data.toUint128(57),
             timestamp: data.toUint64(73),
-            isIncrease: data.toBool(81)
+            isIncrease: data.toBool(81),
+            isSnapshot: data.toBool(82),
+            nonce: data.toUint64(83)
         });
     }
 
@@ -963,7 +965,9 @@ library MessageLib {
             t.amount,
             t.pricePerUnit,
             t.timestamp,
-            t.isIncrease
+            t.isIncrease,
+            t.isSnapshot,
+            t.nonce
         );
     }
 
@@ -977,6 +981,8 @@ library MessageLib {
         uint128 shares;
         uint64 timestamp;
         bool isIssuance;
+        bool isSnapshot;
+        uint64 nonce;
     }
 
     function deserializeUpdateShares(bytes memory data) internal pure returns (UpdateShares memory) {
@@ -987,12 +993,16 @@ library MessageLib {
             scId: data.toBytes16(9),
             shares: data.toUint128(25),
             timestamp: data.toUint64(41),
-            isIssuance: data.toBool(49)
+            isIssuance: data.toBool(49),
+            isSnapshot: data.toBool(50),
+            nonce: data.toUint64(51)
         });
     }
 
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance);
+        return abi.encodePacked(
+            MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance, t.isSnapshot, t.nonce
+        );
     }
 
     //---------------------------------------
@@ -1153,24 +1163,5 @@ library MessageLib {
 
     function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.TriggerSubmitQueuedAssets, t.poolId, t.scId, t.assetId);
-    }
-
-    //---------------------------------------
-    //    SetQueue
-    //---------------------------------------
-
-    struct SetQueue {
-        uint64 poolId;
-        bytes16 scId;
-        bool enabled;
-    }
-
-    function deserializeSetQueue(bytes memory data) internal pure returns (SetQueue memory) {
-        require(messageType(data) == MessageType.SetQueue, UnknownMessageType());
-        return SetQueue({poolId: data.toUint64(1), scId: data.toBytes16(9), enabled: data.toBool(25)});
-    }
-
-    function serialize(SetQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetQueue, t.poolId, t.scId, t.enabled);
     }
 }

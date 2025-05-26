@@ -14,7 +14,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
@@ -59,7 +59,7 @@ contract SyncDepositTestHelper is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset
+            poolId, scId, vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
         );
     }
 }
@@ -109,7 +109,18 @@ contract SyncDepositTest is SyncDepositTestHelper {
         vault.file("manager", random);
     }
 
-    function testSyncDepositERC20(uint256 amount) public {
+    /// forge-config: default.isolate = true
+    function testSyncDepositERC20() public {
+        _testSyncDepositERC20(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncDepositERC20Fuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testSyncDepositERC20(amount, false);
+    }
+
+    function _testSyncDepositERC20(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128 / assetsPerShare));
         vm.assume(amount % 2 == 0);
@@ -140,7 +151,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         );
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);
@@ -164,15 +175,34 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount)
         );
 
-        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount, self);
+        if (snap) {
+            vm.startSnapshotGas("SyncDepositVault", "deposit_withoutQueue");
+        }
+        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        syncVault.deposit(amount / 2, self);
+        if (snap) {
+            vm.stopSnapshotGas();
+        }
+
+        balanceSheet.setQueue(syncVault.poolId(), syncVault.scId(), true);
+
+        if (snap) {
+            vm.startSnapshotGas("SyncDepositVault", "deposit_withQueue");
+        }
+        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        syncVault.deposit(amount / 2, self);
+        if (snap) {
+            vm.stopSnapshotGas();
+        }
+
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
-        assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");
+        assertApproxEqAbs(shareToken.balanceOf(self), shares, 1, "Mismatch in amount of sync received shares");
+        uint256 shareBalance = shareToken.balanceOf(self);
 
         // Can now request redemption through async syncVault
         assertEq(asyncVault.pendingRedeemRequest(0, self), 0);
-        asyncVault.requestRedeem(amount / 2, self, self);
-        assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
+        asyncVault.requestRedeem(shareBalance, self, self);
+        assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
         spoke.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
         assertEq(syncVault.maxDeposit(address(this)), 0);

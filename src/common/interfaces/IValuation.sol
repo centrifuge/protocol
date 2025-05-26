@@ -3,8 +3,7 @@ pragma solidity >=0.5.0;
 
 import {AssetId} from "src/common/types/AssetId.sol";
 
-/// Based on [ERC-7726](https://eips.ethereum.org/EIPS/eip-7726): Common Quote Oracle, but for ERC6909 usage in our
-/// protocol
+/// Based on [ERC-7726](https://eips.ethereum.org/EIPS/eip-7726): Common Quote Oracle, but adapted for ERC6909.
 /// Interface for asset conversions.
 interface IValuation {
     /// @notice Returns the value of baseAmount of base in quote terms, e.g. 10 ETH (base) in USDC (quote).

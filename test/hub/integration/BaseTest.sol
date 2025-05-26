@@ -34,6 +34,7 @@ contract BaseTest is HubDeployer, Test {
     string constant SC_SYMBOL = "ExampleSymbol";
     bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
+    bool constant IS_SNAPSHOT = true;
 
     address immutable ADMIN = address(adminSafe);
     address immutable FM = makeAddr("FM");

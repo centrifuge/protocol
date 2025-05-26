@@ -35,12 +35,15 @@ interface IHubGatewayHandler {
 
     /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external;
 
     /// @notice Forward an initiated share transfer to the destination chain.
@@ -52,11 +55,16 @@ interface IHubGatewayHandler {
         uint128 amount
     ) external;
 
-    /// @notice Increases the total issuance of shares by request from vaults.
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
-
-    /// @notice Decreases the total issuance of shares by request from vaults.
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    /// @notice Updates the total issuance of shares by request from vaults.
+    function updateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external;
 }
 
 /// -----------------------------------------------------

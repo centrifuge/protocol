@@ -266,7 +266,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
-        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
+        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
     }
 
     function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IBaseVault vault_)

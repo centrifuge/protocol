@@ -12,6 +12,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
@@ -70,13 +72,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
+        hub.updateHoldingAmount(
+            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
+        hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.stopPrank();
     }
@@ -109,6 +110,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHubManager(POOL_A, address(0), false);
@@ -188,7 +192,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.triggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.setQueue(POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

@@ -25,7 +25,7 @@ address constant ESCROW_HOOK_ID = address(uint160(uint8(0xce)));
 ///           Redeem request:       address(user)   -> ESCROW_HOOK_ID
 ///           Redeem claim:         address(user)   -> address(0)
 ///           Cross-chain transfer: address(user)   -> address(uint160(chainId))
-interface IHook is IERC165 {
+interface ITransferHook is IERC165 {
     // --- Errors ---
     error TransferBlocked();
     error InvalidUpdate();
