@@ -31,7 +31,8 @@ contract HubDeployer is CommonDeployer {
     IdentityValuation public identityValuation;
 
     // Data
-    AssetId public immutable USD = newAssetId(840);
+    uint8 constant ISO4217_DECIMALS = 18;
+    AssetId public immutable USD_ID = newAssetId(840);
 
     function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
@@ -99,7 +100,7 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _poolsInitialConfig() private {
-        hubRegistry.registerAsset(USD, 18);
+        hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
     }
 
     function removeHubDeployerAccess(address deployer) public {
