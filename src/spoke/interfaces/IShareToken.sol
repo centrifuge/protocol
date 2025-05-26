@@ -40,7 +40,7 @@ interface IShareToken is IERC20Metadata, IERC7575Share, IERC1404 {
 
     // --- Administration ---
     /// @notice returns the hook that transfers perform callbacks to
-    /// @dev    MUST comply to `IHook` interface
+    /// @dev    MUST comply to `ITransferHook` interface
     function hook() external view returns (address);
 
     /// @notice Updates a contract parameter

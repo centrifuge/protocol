@@ -170,7 +170,7 @@ contract TestCases is BaseTest {
         uint128 poolDecimals = (10 ** hubRegistry.decimals(USD_ID.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
@@ -192,7 +192,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
@@ -222,12 +222,12 @@ contract TestCases is BaseTest {
     function testUpdateShares() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
 
-        cv.updateShares(poolId, scId, 100, true);
+        cv.updateShares(poolId, scId, 100, true, IS_SNAPSHOT, 0);
 
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance, 100);
 
-        cv.updateShares(poolId, scId, 45, false);
+        cv.updateShares(poolId, scId, 45, false, IS_SNAPSHOT, 1);
 
         (uint128 totalIssuance2,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance2, 55);
