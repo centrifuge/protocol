@@ -10,7 +10,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IAsyncRedeemVault, IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
-import {VaultKind} from "src/spoke/interfaces/IBaseVault.sol";
+import {VaultKind} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {BaseVault} from "src/spoke/BaseVault.sol";
 import {BaseAsyncRedeemVault} from "src/spoke/vaults/BaseVaults.sol";
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";

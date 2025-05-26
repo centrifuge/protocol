@@ -38,7 +38,7 @@ import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {AsyncVaultFactory} from "src/spoke/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/spoke/vaults/factories/SyncDepositVaultFactory.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 
 import {FullDeployer, HubDeployer, SpokeDeployer} from "script/FullDeployer.s.sol";

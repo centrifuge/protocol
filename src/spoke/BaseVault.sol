@@ -14,7 +14,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/IBaseRequestManager.sol";

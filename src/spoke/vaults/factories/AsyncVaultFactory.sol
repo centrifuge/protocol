@@ -11,7 +11,7 @@ import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
