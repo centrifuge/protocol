@@ -7,9 +7,7 @@ import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -59,7 +57,7 @@ contract VaultRouterTest is BaseTest {
         uint256 preBalance = address(gateway).balance;
         uint256 gas = DEFAULT_GAS + GAS_BUFFER;
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         erc20.approve(vault_, amount);
 

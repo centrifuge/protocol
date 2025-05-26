@@ -7,8 +7,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -19,7 +18,6 @@ import {IHook} from "src/common/interfaces/IHook.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {ISyncRequestManager} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
 import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
 import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
 
@@ -150,7 +148,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - user did not give asset allowance to syncVault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         syncVault.deposit(amount, self);
         erc20.approve(address(syncVault), amount);
 

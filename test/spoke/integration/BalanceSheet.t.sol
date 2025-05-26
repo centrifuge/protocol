@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import "test/spoke/BaseTest.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
@@ -135,7 +135,7 @@ contract BalanceSheetTest is BaseTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         erc20.mint(address(this), defaultAmount);
