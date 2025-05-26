@@ -15,6 +15,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 ///         the snapshot hook reads state from the accounting layer, the accounts of holdings and liabilities
 ///         should be set up per network, to not mingle in sync and out of sync state.
 interface ISnapshotHook {
-    /// @notice Callback on snapshot.
-    function onSnapshot(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+    /// @notice Callback when there is a sync snapshot.
+    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
 }

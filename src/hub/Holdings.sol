@@ -113,7 +113,7 @@ contract Holdings is Auth, IHoldings {
         if (!isSnapshot) return;
 
         ISnapshotHook hook = snapshotHook[poolId];
-        if (address(hook) != address(0)) hook.onSnapshot(poolId, scId, centrifugeId);
+        if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
     }
 
     //----------------------------------------------------------------------------------------------
