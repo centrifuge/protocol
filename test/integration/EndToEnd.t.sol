@@ -348,19 +348,17 @@ contract EndToEndUseCases is EndToEndUtils {
 
     /// forge-config: default.isolate = true
     function testAsyncRedeem(bool sameChain, bool afterAsyncDeposit) public {
-        IBaseRequestManager vaultManager;
         if (afterAsyncDeposit) {
             testAsyncDeposit(sameChain);
-            vaultManager = s.asyncRequestManager;
         } else {
             testSyncDeposit(sameChain);
-            vaultManager = s.syncRequestManager;
         }
 
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s.centrifugeId, updateRestrictionMemberMsg(INVESTOR_A));
 
-        IAsyncRedeemVault vault = IAsyncRedeemVault(address(vaultManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
+        IAsyncRedeemVault vault =
+            IAsyncRedeemVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
