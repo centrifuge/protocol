@@ -73,8 +73,10 @@ interface IHoldings {
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
     );
 
+    /// @notice Emitted when an snapshot hook for a pool ID is set
     event SetSnapshotHook(PoolId indexed poolId, ISnapshotHook hook);
 
+    /// @notice Emitted when the snapshot state is updated
     event SetSnapshot(
         PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, bool isSnapshot, uint64 nonce
     );

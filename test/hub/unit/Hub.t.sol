@@ -8,11 +8,12 @@ import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
@@ -109,6 +110,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHubManager(POOL_A, address(0), false);

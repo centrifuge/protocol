@@ -16,6 +16,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -261,6 +262,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         hubRegistry.setMetadata(poolId, metadata);
+    }
+
+    /// @inheritdoc IHub
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
+        _isManager(poolId);
+
+        holdings.setSnapshotHook(poolId, hook);
     }
 
     /// @inheritdoc IHub

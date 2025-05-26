@@ -465,7 +465,10 @@ interface IShareClassManager {
     /// @return pricePoolPerShare The amount of pool units per unit share
     function metrics(ShareClassId scId) external view returns (uint128 totalIssuance, D18 pricePoolPerShare);
 
-    /// @notice Exposes issuance of a share class on a specific network
+    /// @notice Exposes issuance of a share class on a given network
+    ///
+    /// @param scId Identifier of the share class
+    /// @param centrifugeId Identifier of the chain
     function issuance(ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
 
     /// @notice Determines the next share class id for the given pool.
