@@ -22,6 +22,11 @@ struct HoldingAccount {
     uint8 kind;
 }
 
+struct Snapshot {
+    bool isSnapshot;
+    uint64 nonce;
+}
+
 interface IHoldings {
     /// @notice Emitted when a holding is initialized
     event Initialize(
