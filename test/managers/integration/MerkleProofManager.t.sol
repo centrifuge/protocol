@@ -59,7 +59,10 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         spoke.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateRestrictionMessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: address(this).toBytes32(),
+                validUntil: MAX_UINT64
+            }).serialize()
         );
 
         manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet);
@@ -134,8 +137,10 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
-            )
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: tree[tree.length - 1][0]
+            }).serialize()
         );
 
         // Generate proof for execution
@@ -195,8 +200,10 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
-            )
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: tree[tree.length - 1][0]
+            }).serialize()
         );
 
         // Generate proof for execution
@@ -267,8 +274,10 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
-            )
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: tree[tree.length - 1][0]
+            }).serialize()
         );
 
         // Generate proof for execution
@@ -343,8 +352,10 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
-            )
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: tree[tree.length - 1][0]
+            }).serialize()
         );
 
         // Generate proof for execution
@@ -442,8 +453,10 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
-            )
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: tree[tree.length - 1][0]
+            }).serialize()
         );
 
         // Generate proof for execution
