@@ -5,12 +5,12 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {Price} from "src/spoke/types/Price.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -30,41 +30,6 @@ struct ShareClassDetails {
     /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
 }
-
-/// @dev Price struct that contains a price, the timestamp at which it was computed and the max age of the price.
-struct Price {
-    uint128 price;
-    uint64 computedAt;
-    uint64 maxAge;
-}
-
-/// @dev Checks if a price is valid. Returns false if price is 0 or computedAt is 0. Otherwise checks for block
-/// timestamp <= computedAt + maxAge
-function isValid(Price memory price) view returns (bool) {
-    if (price.computedAt != 0 && price.price != 0) {
-        return block.timestamp <= price.validUntil();
-    } else {
-        return false;
-    }
-}
-
-/// @dev Computes the timestamp until the price is valid. Saturates at uint64.MAX.
-function validUntil(Price memory price) pure returns (uint64) {
-    unchecked {
-        uint64 validUntil_ = price.computedAt + price.maxAge;
-        if (validUntil_ < price.computedAt) {
-            return type(uint64).max;
-        }
-        return validUntil_;
-    }
-}
-
-/// @dev Retrieves the price as an D18 from the struct
-function asPrice(Price memory price) pure returns (D18) {
-    return d18(price.price);
-}
-
-using {isValid, asPrice, validUntil} for Price global;
 
 struct VaultDetails {
     /// @dev AssetId of the asset
