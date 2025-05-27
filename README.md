@@ -36,7 +36,7 @@ Centrifuge V3 operates on a hub-and-spoke model. Each pool chooses a single hub 
 │  ├── common
 │  ├── hub
 │  ├── spoke
-│  │  └──vaults
+│  ├── vaults
 │  └── hooks
 ├── test
 ├── foundry.toml
@@ -50,8 +50,8 @@ Centrifuge V3 operates on a hub-and-spoke model. Each pool chooses a single hub 
   - `common` common code to `hub` and `spoke`
   - `hub` code related to Centrifuge Hub
   - `spoke` code related to Centrifuge Spoke
-    - `vaults` extension of Centrifuge Spoke, for ERC-4626 and ERC-7540 vaults
-  - `hooks` hooks on top of Centrifuge Spoke, for implementing transfer restrictions
+  - `vaults` extension of Centrifuge Spoke, for ERC-4626 and ERC-7540 vaults
+  - `hooks` extension of Centrifuge Spoke, for implementing transfer hooks
 - `test` cotains all tests: unitary test, integration test per module, and end-to-end integration tests
 
 
