@@ -1,6 +1,10 @@
 @startuml
 hide empty members
 
+package spoke {
+    interface IVaultManager
+}
+
 interface IBaseRequestManager
 
 interface IDepositManager
@@ -13,6 +17,7 @@ interface IAsyncRedeemManager
 interface IAsyncRequestManager
 interface ISyncRequestManager
 
+IBaseRequestManager -up-|> IVaultManager
 IDepositManager -up-|> IBaseRequestManager
 IRedeemManager -up-|> IBaseRequestManager
 

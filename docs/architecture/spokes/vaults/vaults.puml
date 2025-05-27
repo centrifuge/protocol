@@ -1,21 +1,17 @@
 @startuml
 hide empty members
 
+package spoke {
+    interface IVault
+}
+
 interface IBaseVault
 interface IAsyncRedeemVault
 interface IAsyncVault
 
-package misc {
-    interface IRecoverable
-}
-
-IBaseVault -up-|> IRecoverable
+IBaseVault -up-|> IVault
 IAsyncRedeemVault -up-|> IBaseVault
 IAsyncVault -up-|> IAsyncRedeemVault
-
-package misc {
-    abstract Recoverable
-}
 
 abstract BaseVault
 abstract BaseAsyncRedeemVault
@@ -23,14 +19,12 @@ abstract BaseSyncDepositVault
 class AsyncVault
 class SyncDepositVault
 
-BaseVault -up-|> Recoverable
 BaseAsyncRedeemVault -up-|> BaseVault
 BaseSyncDepositVault -up-|> BaseVault
 AsyncVault -up-|> BaseAsyncRedeemVault
 SyncDepositVault -up-|> BaseAsyncRedeemVault
 SyncDepositVault -up-|> BaseSyncDepositVault
 
-Recoverable -up-|> IRecoverable
 BaseVault -up-|> IBaseVault
 BaseAsyncRedeemVault -up-|> IAsyncRedeemVault
 AsyncVault -up-|> IAsyncVault

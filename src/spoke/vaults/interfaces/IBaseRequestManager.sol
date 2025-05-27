@@ -6,10 +6,11 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 
-interface IBaseRequestManager {
+interface IBaseRequestManager is IVaultManager {
     // --- Events ---
     event File(bytes32 indexed what, address data);
 
@@ -43,16 +44,4 @@ interface IBaseRequestManager {
 
     /// @notice Escrow per pool. Funds are associated to a specific pool
     function poolEscrow(PoolId poolId) external view returns (IPoolEscrow);
-
-    /// @notice Adds new vault for `poolId`, `scId` and `asset`.
-    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
-
-    /// @notice Removes `vault` from `who`'s authorized callers
-    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault, address asset, AssetId assetId) external;
-
-    /// @notice Returns the address of the vault for a given pool, share class and asset
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (IBaseVault vault);
 }

@@ -90,7 +90,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
     //----------------------------------------------------------------------------------------------
 
     function escrow() public view returns (address) {
-        return address(manager.globalEscrow());
+        return address(baseManager.globalEscrow());
     }
 
     /// @inheritdoc IInvestmentManager
@@ -155,7 +155,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
 
     /// @inheritdoc IInvestmentManager
     function priceLastUpdated(address /* vault */ ) public view returns (uint64 lastUpdated) {
-        lastUpdated = manager.priceLastUpdated(this);
+        lastUpdated = baseManager.priceLastUpdated(this);
     }
 
     //----------------------------------------------------------------------------------------------

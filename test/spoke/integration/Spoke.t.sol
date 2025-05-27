@@ -16,13 +16,13 @@ import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestriction
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;
@@ -592,7 +592,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertEq(spoke.shareToken(poolId, scId).vault(asset), address(0));
 
         // Deploy and link new vault
-        IBaseVault newVault = spoke.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
+        IVault newVault = spoke.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
         assert(oldVault_ != address(newVault));
         spoke.linkVault(poolId, scId, AssetId.wrap(assetId), newVault);
         assertEq(spoke.shareToken(poolId, scId).vault(asset), address(newVault));
@@ -769,7 +769,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         emit ISpoke.DeployVault(
             poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)), VaultKind.Async
         );
-        IBaseVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
     }
@@ -786,7 +786,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         address asset = address(erc20);
 
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
-        IBaseVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
+        IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         vm.expectEmit(true, true, true, false);
         emit ISpoke.LinkVault(poolId, scId, asset, erc20TokenId, vault);
