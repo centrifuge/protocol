@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IBaseValuation} from "src/misc/interfaces/IBaseValuation.sol";
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-
 import {Auth} from "src/misc/Auth.sol";
+
+import {IBaseValuation} from "src/common/interfaces/IBaseValuation.sol";
+import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 abstract contract BaseValuation is Auth, IBaseValuation {
     /// @notice ERC6909 dependency.
@@ -23,7 +24,7 @@ abstract contract BaseValuation is Auth, IBaseValuation {
     }
 
     /// @notice Obtain the correct decimals given an asset address
-    function _getDecimals(address asset) internal view returns (uint8) {
-        return erc6909.decimals(uint160(asset));
+    function _getDecimals(AssetId asset) internal view returns (uint8) {
+        return erc6909.decimals(asset.raw());
     }
 }

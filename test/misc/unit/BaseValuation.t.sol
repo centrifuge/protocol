@@ -6,14 +6,16 @@ import "forge-std/Test.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IBaseValuation} from "src/misc/interfaces/IBaseValuation.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-import {BaseValuation} from "src/misc/BaseValuation.sol";
+
+import {IBaseValuation} from "src/common/interfaces/IBaseValuation.sol";
+import {BaseValuation} from "src/common/BaseValuation.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 contract BaseValuationImpl is BaseValuation {
     constructor(IERC6909Decimals assetRegistry, address deployer) BaseValuation(assetRegistry, deployer) {}
 
-    function getQuote(uint256 baseAmount, address base, address quote) external view returns (uint256 quoteAmount) {}
+    function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {}
 }
 
 contract TestFile is Test {

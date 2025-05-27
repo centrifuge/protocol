@@ -6,18 +6,27 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
-struct QueueAmount {
-    // Issuances of shares / deposits of assets
-    uint128 increase;
-    // Revocations of shares / withdraws of assets
-    uint128 decrease;
+struct ShareQueueAmount {
+    // Net queued shares
+    uint128 delta;
+    // Whether the net queued shares lead to an issuance or revocation
+    bool isPositive;
+    // Number of queued asset IDs for this share class
+    uint32 queuedAssetCounter;
+    // Nonce for share + asset messages to the hub
+    uint64 nonce;
+}
+
+struct AssetQueueAmount {
+    uint128 deposits;
+    uint128 withdrawals;
 }
 
 interface IBalanceSheet {
@@ -38,7 +47,6 @@ interface IBalanceSheet {
         ShareClassId indexed scId,
         address asset,
         uint256 tokenId,
-        address provider,
         uint128 amount,
         D18 pricePoolPerAsset
     );
@@ -51,15 +59,15 @@ interface IBalanceSheet {
 
     function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
-    function sender() external view returns (IVaultMessageSender);
+    function sender() external view returns (ISpokeMessageSender);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
-    function queueEnabled(PoolId poolId, ShareClassId scId) external view returns (bool);
+    function queueDisabled(PoolId poolId, ShareClassId scId) external view returns (bool);
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint128 increase, uint128 decrease);
+        returns (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce);
     function queuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
@@ -75,14 +83,7 @@ interface IBalanceSheet {
     /// @dev    Must be followed by a transfer of the equivalent amount of assets to `IBalanceSheet.escrow(poolId)`
     ///         This function is mostly useful to keep higher level integrations CEI adherent.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.
-    function noteDeposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address provider,
-        uint128 amount
-    ) external;
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
     /// @notice Withdraw assets from the escrow of the pool.
     /// @param  tokenId SHOULD be 0 if depositing ERC20 assets. ERC6909 assets with tokenId=0 are not supported.

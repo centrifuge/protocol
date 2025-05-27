@@ -32,7 +32,7 @@ interface IRootMessageSender {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender is ILocalCentrifugeId {
+interface IHubMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external;
 
@@ -154,7 +154,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
     function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Creates and send the message
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external;
+    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
@@ -164,10 +164,16 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 receiver,
         uint128 amount
     ) external;
+
+    /// @notice Creates and send the message
+    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external;
+
+    /// @notice Creates and send the message
+    function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender is ILocalCentrifugeId {
+interface ISpokeMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
         uint16 centrifugeId,
@@ -201,9 +207,18 @@ interface IVaultMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external;
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shares,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external;
 }

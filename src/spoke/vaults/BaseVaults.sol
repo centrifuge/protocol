@@ -14,21 +14,23 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault, IAsyncRedeemVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
     uint256 internal constant REQUEST_ID = 0;
 
     IRoot public immutable root;
-    /// @dev this naming MUST NEVER change - due to legacy v2 vaults
-    IBaseRequestManager public manager;
+    IBaseRequestManager public baseManager;
 
     /// @inheritdoc IBaseVault
     PoolId public immutable poolId;
@@ -70,7 +72,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
         share = address(token_);
         _shareDecimals = IERC20Metadata(share).decimals();
         root = IRoot(root_);
-        manager = IBaseRequestManager(manager_);
+        baseManager = IBaseRequestManager(manager_);
 
         nameHash = keccak256(bytes("Centrifuge"));
         versionHash = keccak256(bytes("1"));
@@ -83,7 +85,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external virtual auth {
-        if (what == "manager") manager = IBaseRequestManager(data);
+        if (what == "manager") baseManager = IBaseRequestManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -171,19 +173,24 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
-        shares = manager.convertToShares(this, assets);
+        shares = baseManager.convertToShares(this, assets);
     }
 
     /// @inheritdoc IERC7575
     /// @notice     The calculation is based on the token price from the most recent epoch retrieved from Centrifuge.
     ///             The actual conversion MAY change between order submission and execution.
     function convertToAssets(uint256 shares) public view returns (uint256 assets) {
-        assets = manager.convertToAssets(this, shares);
+        assets = baseManager.convertToAssets(this, shares);
     }
 
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IVault
+    function manager() public view returns (IVaultManager) {
+        return baseManager;
+    }
 
     /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
     function pricePerShare() external view returns (uint256) {
@@ -192,7 +199,7 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
 
     /// @notice Returns timestamp of the last share price update.
     function priceLastUpdated() external view returns (uint64) {
-        return manager.priceLastUpdated(this);
+        return baseManager.priceLastUpdated(this);
     }
 
     /// @inheritdoc IERC7714
@@ -218,7 +225,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external virtual override auth {
-        if (what == "manager") manager = IBaseRequestManager(data);
+        if (what == "manager") baseManager = IBaseRequestManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -237,7 +244,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
-        IShareToken(share).authTransferFrom(sender, owner, address(manager.globalEscrow()), shares);
+        IShareToken(share).authTransferFrom(sender, owner, address(baseManager.globalEscrow()), shares);
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -379,7 +386,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         shares = syncDepositManager.deposit(this, assets, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
         // happen before depositing in the manager
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(manager.poolEscrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 
@@ -397,7 +404,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
     function mint(uint256 shares, address receiver) public returns (uint256 assets) {
         assets = syncDepositManager.mint(this, shares, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call
-        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(manager.poolEscrow(poolId)), assets);
+        SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
         emit Deposit(receiver, msg.sender, assets, shares);
     }
 

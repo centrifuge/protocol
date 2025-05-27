@@ -6,12 +6,13 @@ import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {BaseVault, BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
+import {BaseVault} from "src/spoke/vaults/BaseVaults.sol";
+import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {ISyncDepositManager} from "src/spoke/interfaces/investments/ISyncDepositManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
-import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
@@ -39,7 +40,7 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(BaseAsyncRedeemVault, BaseVault) auth {
-        if (what == "manager") manager = IBaseRequestManager(data);
+        if (what == "manager") baseManager = IBaseRequestManager(data);
         else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
         else if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
         else revert FileUnrecognizedParam();

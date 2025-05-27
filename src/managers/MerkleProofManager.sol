@@ -6,7 +6,7 @@ import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
@@ -39,9 +39,10 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         require(poolId == poolId_, InvalidPoolId());
         require(msg.sender == spoke, NotAuthorized());
 
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
         if (kind == uint8(UpdateContractType.Policy)) {
-            MessageLib.UpdateContractPolicy memory m = MessageLib.deserializeUpdateContractPolicy(payload);
+            UpdateContractMessageLib.UpdateContractPolicy memory m =
+                UpdateContractMessageLib.deserializeUpdateContractPolicy(payload);
             address strategist = m.who.toAddress();
 
             bytes32 oldRoot = policy[strategist];

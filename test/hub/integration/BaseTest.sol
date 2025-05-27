@@ -7,8 +7,8 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -34,6 +34,7 @@ contract BaseTest is HubDeployer, Test {
     string constant SC_SYMBOL = "ExampleSymbol";
     bytes32 constant SC_SALT = bytes32("ExampleSalt");
     bytes32 constant SC_HOOK = bytes32("ExampleHookData");
+    bool constant IS_SNAPSHOT = true;
 
     address immutable ADMIN = address(adminSafe);
     address immutable FM = makeAddr("FM");

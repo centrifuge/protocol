@@ -8,9 +8,9 @@ import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {IHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
@@ -25,9 +25,9 @@ import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 ///
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
+contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
     using BitmapLib for *;
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
     using CastLib for bytes32;
 
@@ -44,17 +44,17 @@ contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
     // Callback from share token
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHook
+    /// @inheritdoc ITransferHook
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         external
         virtual
         returns (bytes4)
     {
         require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());
-        return IHook.onERC20Transfer.selector;
+        return ITransferHook.onERC20Transfer.selector;
     }
 
-    /// @inheritdoc IHook
+    /// @inheritdoc ITransferHook
     function onERC20AuthTransfer(
         address, /* sender */
         address, /* from */
@@ -62,10 +62,10 @@ contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
         uint256, /* value */
         HookData calldata /* hookData */
     ) external pure returns (bytes4) {
-        return IHook.onERC20AuthTransfer.selector;
+        return ITransferHook.onERC20AuthTransfer.selector;
     }
 
-    /// @inheritdoc IHook
+    /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
         public
         view
@@ -100,18 +100,19 @@ contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
     // Restriction updates
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IHook
+    /// @inheritdoc ITransferHook
     function updateRestriction(address token, bytes memory payload) external auth {
         UpdateRestrictionType updateId = payload.updateRestrictionType();
 
         if (updateId == UpdateRestrictionType.Member) {
-            MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
+            UpdateRestrictionMessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
             updateMember(token, m.user.toAddress(), m.validUntil);
         } else if (updateId == UpdateRestrictionType.Freeze) {
-            MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
+            UpdateRestrictionMessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
             freeze(token, m.user.toAddress());
         } else if (updateId == UpdateRestrictionType.Unfreeze) {
-            MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
+            UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze memory m =
+                payload.deserializeUpdateRestrictionUnfreeze();
             unfreeze(token, m.user.toAddress());
         } else {
             revert InvalidUpdate();
@@ -166,6 +167,6 @@ contract RedemptionRestrictions is Auth, IMemberlist, IFreezable, IHook {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return interfaceId == type(IHook).interfaceId || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(ITransferHook).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 }

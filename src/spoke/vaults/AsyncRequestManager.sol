@@ -8,7 +8,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -17,18 +17,19 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IAsyncRequestManager, AsyncInvestmentState} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {IAsyncRedeemManager} from "src/spoke/interfaces/investments/IAsyncRedeemManager.sol";
-import {IAsyncDepositManager} from "src/spoke/interfaces/investments/IAsyncDepositManager.sol";
-import {IDepositManager} from "src/spoke/interfaces/investments/IDepositManager.sol";
-import {IRedeemManager} from "src/spoke/interfaces/investments/IRedeemManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IAsyncRequestManager, AsyncInvestmentState} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault, IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Investment Manager
@@ -40,7 +41,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -54,7 +55,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
@@ -79,7 +80,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(spoke.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(_canTransfer(vault_, address(0), controller, convertToShares(vault_, assets_)), TransferNotAllowed());
 
@@ -105,7 +106,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(spoke.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(
             _canTransfer(vault_, owner, ESCROW_HOOK_ID, shares)
@@ -166,7 +167,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         // Note deposit and transfer from global escrow into the pool escrow,
         // to make assets available for managers of the balance sheet
         balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
-        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
         balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));

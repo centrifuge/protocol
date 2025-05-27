@@ -5,7 +5,6 @@ import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -14,11 +13,12 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
-import {IBaseVault, VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     using MathLib for uint256;
@@ -48,26 +48,26 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         emit File(what, data);
     }
 
-    /// @inheritdoc IBaseRequestManager
-    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
+    /// @inheritdoc IVaultManager
+    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
         public
         virtual
         auth
     {
-        require(vault_.asset() == asset_, AssetMismatch());
+        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
 
         vault[poolId][scId][assetId] = IBaseVault(address(vault_));
         rely(address(vault_));
     }
 
-    /// @inheritdoc IBaseRequestManager
-    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
+    /// @inheritdoc IVaultManager
+    function removeVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
         public
         virtual
         auth
     {
-        require(vault_.asset() == asset_, AssetMismatch());
+        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
         require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
@@ -117,8 +117,8 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         return poolEscrowProvider.escrow(poolId);
     }
 
-    /// @inheritdoc IBaseRequestManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IBaseVault) {
+    /// @inheritdoc IVaultManager
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IVault) {
         return vault[poolId][scId][assetId];
     }
 

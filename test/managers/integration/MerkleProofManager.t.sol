@@ -6,7 +6,8 @@ import {IAuth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
@@ -19,7 +20,7 @@ import {IMerkleProofManager, IERC7751} from "src/managers/interfaces/IMerkleProo
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
 
     uint128 defaultAmount;
     D18 defaultPricePoolPerShare;
@@ -58,7 +59,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         spoke.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
         );
 
         manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet);
@@ -95,7 +96,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
 
 contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateContractMessageLib for *;
 
     function testNotStrategist() public {
         Call[] memory calls = new Call[](0);
@@ -133,7 +134,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
             )
         );
 
@@ -194,7 +195,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
             )
         );
 
@@ -266,7 +267,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
             )
         );
 
@@ -342,7 +343,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
             )
         );
 
@@ -389,7 +390,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
 
 contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateContractMessageLib for *;
 
     function testExecute(uint128 withdrawAmount, uint128 depositAmount) public {
         withdrawAmount = uint128(bound(withdrawAmount, 0, type(uint128).max / 2));
@@ -441,7 +442,7 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: tree[tree.length - 1][0]}).serialize(
             )
         );
 

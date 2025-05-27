@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/spoke/BaseTest.sol";
-import {IHook} from "src/common/interfaces/IHook.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
-import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -62,7 +61,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
@@ -347,10 +346,10 @@ contract DepositTest is BaseTest {
         assertEq(shareToken.balanceOf(address(globalEscrow)), shares);
 
         // deposit 1/2 funds to receiver
-        vm.expectRevert(SafeTransferLib.SafeTransferFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vault.deposit(amount / 2, receiver, self); // mint half the amount
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vault.mint(amount / 2, receiver); // mint half the amount
 
         // add receiver number

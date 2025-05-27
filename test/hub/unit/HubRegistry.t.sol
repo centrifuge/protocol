@@ -136,7 +136,7 @@ contract HubRegistryTest is Test {
         assertEq(address(registry.dependency(what)), address(dependency));
     }
 
-    function testUpdateCurrency(AssetId currency) public nonZero(currency.addr()) {
+    function testUpdateCurrency(AssetId currency) public nonZero(address(uint160(currency.raw()))) {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
