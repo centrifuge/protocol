@@ -252,6 +252,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(computedAt >= shareClass.pricePoolPerShare.computedAt, CannotSetOlderPrice());
 
+        // Disable expiration of the price
+        if (shareClass.pricePoolPerShare.computedAt == 0) {
+            shareClass.pricePoolPerShare.maxAge = type(uint64).max;
+        }
+
         shareClass.pricePoolPerShare = Price(price, computedAt, shareClass.pricePoolPerShare.maxAge);
         emit PriceUpdate(poolId, scId, price, computedAt);
     }

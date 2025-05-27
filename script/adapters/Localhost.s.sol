@@ -174,7 +174,6 @@ contract LocalhostDeployer is FullDeployer {
             poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
         );
 
-        hub.setMaxSharePriceAge(centrifugeId, poolId, scId, type(uint64).max);
         hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
