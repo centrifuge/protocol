@@ -5,7 +5,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Create3Factory} from "src/common/Create3Factory.sol";
 
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
@@ -25,6 +24,7 @@ import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {ICreateX} from "script/interfaces/ICreateX.sol";
 
 contract SpokeDeployer is CommonDeployer {
     BalanceSheet public balanceSheet;
@@ -50,13 +50,19 @@ contract SpokeDeployer is CommonDeployer {
         address deployer,
         bool isTests
     ) public {
-        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
+        deploySpoke(centrifugeId, adminSafe_, deployer, isTests);
 
         Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
+    function _deploySpoke(
+        uint16 centrifugeId,
+        ISafe adminSafe_,
+        address deployer,
+        bool isTests
+    ) internal {
         poolEscrowFactory = PoolEscrowFactory(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("pool-escrow-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(PoolEscrowFactory).creationCode,
@@ -68,7 +74,7 @@ contract SpokeDeployer is CommonDeployer {
 
         routerEscrow = Escrow(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("escrow", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Escrow).creationCode,
@@ -80,7 +86,7 @@ contract SpokeDeployer is CommonDeployer {
 
         globalEscrow = Escrow(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("escrow", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Escrow).creationCode,
@@ -92,7 +98,7 @@ contract SpokeDeployer is CommonDeployer {
 
         tokenFactory = TokenFactory(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("token-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(TokenFactory).creationCode,
@@ -104,7 +110,7 @@ contract SpokeDeployer is CommonDeployer {
 
         asyncRequestManager = AsyncRequestManager(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt(
                         "async-request-manager",
                         deployer,
@@ -124,7 +130,7 @@ contract SpokeDeployer is CommonDeployer {
 
         syncRequestManager = SyncRequestManager(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt(
                         "sync-request-manager",
                         deployer,
@@ -144,7 +150,7 @@ contract SpokeDeployer is CommonDeployer {
 
         asyncVaultFactory = AsyncVaultFactory(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("async-vault-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(AsyncVaultFactory).creationCode,
@@ -156,7 +162,7 @@ contract SpokeDeployer is CommonDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt(
                         "sync-deposit-vault-factory",
                         deployer,
@@ -177,7 +183,7 @@ contract SpokeDeployer is CommonDeployer {
 
         spoke = Spoke(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("spoke", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Spoke).creationCode,
@@ -189,7 +195,7 @@ contract SpokeDeployer is CommonDeployer {
 
         balanceSheet = BalanceSheet(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("balance-sheet", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(BalanceSheet).creationCode,
@@ -201,7 +207,7 @@ contract SpokeDeployer is CommonDeployer {
 
         vaultRouter = VaultRouter(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("vault-router", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(VaultRouter).creationCode,
@@ -221,7 +227,7 @@ contract SpokeDeployer is CommonDeployer {
         freezeOnlyHook = address(
             FreezeOnly(
                 payable(
-                    create3Factory.deploy(
+                    ICreateX(CREATE3_FACTORY).deploy(
                         computeSalt(
                             "freeze-only-hook",
                             deployer,
@@ -239,7 +245,7 @@ contract SpokeDeployer is CommonDeployer {
         fullRestrictionsHook = address(
             FullRestrictions(
                 payable(
-                    create3Factory.deploy(
+                    ICreateX(CREATE3_FACTORY).deploy(
                         computeSalt(
                             "full-restrictions-hook",
                             deployer,
@@ -257,7 +263,7 @@ contract SpokeDeployer is CommonDeployer {
         redemptionRestrictionsHook = address(
             RedemptionRestrictions(
                 payable(
-                    create3Factory.deploy(
+                    ICreateX(CREATE3_FACTORY).deploy(
                         computeSalt(
                             "redemption-restrictions-hook",
                             deployer,

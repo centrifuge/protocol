@@ -6,7 +6,6 @@ import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {Root} from "src/common/Root.sol";
-import {Create3Factory} from "src/common/Create3Factory.sol";
 
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
@@ -18,6 +17,7 @@ import {HubHelpers} from "src/hub/HubHelpers.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {ICreateX} from "script/interfaces/ICreateX.sol";
 
 contract HubDeployer is CommonDeployer {
     // Main contracts
@@ -48,11 +48,9 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployHubRegistry(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
-
         hubRegistry = HubRegistry(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("hub-registry", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(HubRegistry).creationCode,
@@ -64,7 +62,7 @@ contract HubDeployer is CommonDeployer {
 
         identityValuation = IdentityValuation(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("identity-valuation", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(IdentityValuation).creationCode,
@@ -76,11 +74,9 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployAccounting(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
-
         accounting = Accounting(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("accounting", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Accounting).creationCode,
@@ -92,7 +88,7 @@ contract HubDeployer is CommonDeployer {
 
         holdings = Holdings(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("holdings", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Holdings).creationCode,
@@ -104,7 +100,7 @@ contract HubDeployer is CommonDeployer {
 
         shareClassManager = ShareClassManager(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("share-class-manager", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(ShareClassManager).creationCode,
@@ -121,11 +117,9 @@ contract HubDeployer is CommonDeployer {
         address deployer,
         bool isTests
     ) internal {
-        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
-
         hub = Hub(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("hub", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Hub).creationCode,
@@ -149,11 +143,9 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployHubHelpers(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
-
         hubHelpers = HubHelpers(
             payable(
-                create3Factory.deploy(
+                ICreateX(CREATE3_FACTORY).deploy(
                     computeSalt("hub-helpers", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(HubHelpers).creationCode,
