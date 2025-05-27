@@ -261,25 +261,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testUpdateContractValuation(bytes32 valuation) public pure {
-        MessageLib.UpdateContractValuation memory a = MessageLib.UpdateContractValuation({valuation: valuation});
-        MessageLib.UpdateContractValuation memory b = MessageLib.deserializeUpdateContractValuation(a.serialize());
-
-        assertEq(a.valuation, b.valuation);
-        // This message is a submessage and has not static message length defined
-    }
-
-    function testUpdateContractSyncDepositMaxReserve(uint128 assetId, uint128 maxReserve) public pure {
-        MessageLib.UpdateContractSyncDepositMaxReserve memory a =
-            MessageLib.UpdateContractSyncDepositMaxReserve({assetId: assetId, maxReserve: maxReserve});
-        MessageLib.UpdateContractSyncDepositMaxReserve memory b =
-            MessageLib.deserializeUpdateContractSyncDepositMaxReserve(a.serialize());
-
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.maxReserve, b.maxReserve);
-        // This message is a submessage and has not static message length defined
-    }
-
     function testUpdateVault(uint64 poolId, bytes16 scId, bytes32 vaultOrFactory, uint128 assetId, uint8 kind)
         public
         pure

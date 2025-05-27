@@ -9,6 +9,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -26,6 +27,7 @@ contract MockCentrifugeChain is Test {
     using CastLib for *;
     using MessageLib for *;
     using UpdateRestrictionMessageLib for *;
+    using UpdateContractMessageLib for *;
 
     IAdapter[] public adapters;
     Spoke public spoke;
@@ -79,7 +81,7 @@ contract MockCentrifugeChain is Test {
                 poolId: poolId,
                 scId: scId,
                 target: bytes32(bytes20(address(syncRequestManager))),
-                payload: MessageLib.UpdateContractSyncDepositMaxReserve({
+                payload: UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
                     assetId: vaultDetails.assetId.raw(),
                     maxReserve: maxReserve
                 }).serialize()

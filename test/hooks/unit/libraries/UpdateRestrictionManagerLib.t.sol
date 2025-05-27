@@ -22,8 +22,6 @@ contract TestUpdateRestrictionMessageLibIdentities is Test {
 
         assertEq(aa.user, bb.user);
         assertEq(aa.validUntil, bb.validUntil);
-
-        // This message is a submessage and has not static message length defined
     }
 
     function testUpdateRestrictionFreeze(bytes32 user) public pure {
@@ -33,8 +31,6 @@ contract TestUpdateRestrictionMessageLibIdentities is Test {
             UpdateRestrictionMessageLib.deserializeUpdateRestrictionFreeze(aa.serialize());
 
         assertEq(aa.user, bb.user);
-
-        // This message is a submessage and has not static message length defined
     }
 
     function testUpdateRestrictionUnfreeze(bytes32 user) public pure {
@@ -44,7 +40,5 @@ contract TestUpdateRestrictionMessageLibIdentities is Test {
             UpdateRestrictionMessageLib.deserializeUpdateRestrictionUnfreeze(aa.serialize());
 
         assertEq(aa.user, bb.user);
-
-        // This message is a submessage and has not static message length defined
     }
 }
