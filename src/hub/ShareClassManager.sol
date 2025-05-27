@@ -587,7 +587,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         return _maxClaims(redeemRequest[scId_][payoutAssetId][investor], epochId[scId_][payoutAssetId].redeem);
     }
 
-    function _maxClaims(UserOrder memory userOrder, uint32 lastEpoch) private pure returns (uint32) {
+    function _maxClaims(UserOrder memory userOrder, uint32 lastEpoch) internal pure returns (uint32) {
         // User order either not set or not processed
         if (userOrder.pending == 0 || userOrder.lastUpdate > lastEpoch) {
             return 0;
@@ -853,7 +853,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     ///         1. It's the first epoch (currentEpoch <= 1), which implies userOrder.lastUpdate == 0
     ///         2. User has no pending amount (userOrder.pending == 0)
     ///         3. User's last update is not behind the current epoch (userOrder.lastUpdate >= currentEpoch)
-    function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) private pure returns (bool) {
+    function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) internal pure returns (bool) {
         return currentEpoch <= 1 || userOrder.pending == 0 || userOrder.lastUpdate >= currentEpoch;
     }
 }
