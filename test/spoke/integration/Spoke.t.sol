@@ -17,7 +17,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 

@@ -32,13 +32,14 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
 import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
-import {AsyncVaultFactory} from "src/spoke/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/spoke/factories/SyncDepositVaultFactory.sol";
-import {IBaseVault, IAsyncRedeemVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {AsyncVaultFactory} from "src/spoke/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/spoke/vaults/factories/SyncDepositVaultFactory.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 
 import {FullDeployer, HubDeployer, SpokeDeployer} from "script/FullDeployer.s.sol";
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -297,7 +298,7 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.mint(s.asyncRequestManager.maxMint(vault, INVESTOR_A), INVESTOR_A);
 
         // CHECKS
-        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
+        uint128 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks
@@ -318,7 +319,7 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.deposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A);
 
         // CHECKS
-        uint256 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
+        uint128 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks

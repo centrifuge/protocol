@@ -5,7 +5,7 @@ import {Auth} from "src/misc/Auth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/spoke/interfaces/factories/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {PoolEscrow} from "src/spoke/Escrow.sol";
 
