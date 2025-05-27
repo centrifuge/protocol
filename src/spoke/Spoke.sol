@@ -16,7 +16,7 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -28,15 +28,15 @@ import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManag
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist,
 ///         as well as managing allowed pool currencies, and incoming and outgoing transfers.
-contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContract, ISpokeGatewayHandler {
+contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGatewayHandler {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
@@ -47,7 +47,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
 
     IGateway public gateway;
     ITokenFactory public tokenFactory;
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
 
     uint64 internal _assetCounter;
@@ -75,7 +75,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
 
     /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
@@ -254,22 +254,18 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update_) public auth {
+    function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
         address hook = shareToken_.hook();
         require(hook != address(0), InvalidHook());
-        ITransferHook(hook).updateRestriction(address(shareToken_), update_);
+        ITransferHook(hook).updateRestriction(address(shareToken_), update);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update_) public auth {
-        if (target == address(this)) {
-            update(poolId, scId, update_);
-        } else {
-            IUpdateContract(target).update(poolId, scId, update_);
-        }
+    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) public auth {
+        IUpdateContract(target).update(poolId, scId, update);
 
-        emit UpdateContract(poolId, scId, target, update_);
+        emit UpdateContract(poolId, scId, target, update);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -314,33 +310,20 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, IUpdateContra
         }
     }
 
-    /// @inheritdoc IUpdateContract
-    /// @notice The pool manager either deploys the vault if a factory address is provided
-    ///         or it simply links/unlinks the vault.
-    function update(PoolId poolId, ShareClassId scId, bytes memory payload) public auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external auth {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        require(assetId.raw() != 0, UnknownAsset());
 
-        if (kind == uint8(UpdateContractType.MaxAssetPriceAge)) {
-            MessageLib.UpdateContractMaxAssetPriceAge memory m =
-                MessageLib.deserializeUpdateContractMaxAssetPriceAge(payload);
+        (address asset, uint256 tokenId) = idToAsset(assetId);
+        shareClass.pricePoolPerAsset[asset][tokenId].maxAge = maxPriceAge;
+        emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, maxPriceAge);
+    }
 
-            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-            require(m.assetId != 0, UnknownAsset());
+    function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external auth {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-            (address asset, uint256 tokenId) = idToAsset(AssetId.wrap(m.assetId));
-            shareClass.pricePoolPerAsset[asset][tokenId].maxAge = m.maxPriceAge;
-            emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, m.maxPriceAge);
-        } else if (kind == uint8(UpdateContractType.MaxSharePriceAge)) {
-            MessageLib.UpdateContractMaxSharePriceAge memory m =
-                MessageLib.deserializeUpdateContractMaxSharePriceAge(payload);
-
-            ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
-            shareClass.pricePoolPerShare.maxAge = m.maxPriceAge;
-            emit UpdateMaxSharePriceAge(poolId, scId, m.maxPriceAge);
-        } else {
-            revert UnknownUpdateContractType();
-        }
+        shareClass.pricePoolPerShare.maxAge = maxPriceAge;
+        emit UpdateMaxSharePriceAge(poolId, scId, maxPriceAge);
     }
 
     /// @inheritdoc ISpoke

@@ -154,6 +154,19 @@ interface ISpokeGatewayHandler {
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+
+    /// @notice Updates the max price age of an asset
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  maxPriceAge new max price age value
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external;
+
+    /// @notice Updates the max price age of a share
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  maxPriceAge new max price age value
+    function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 }
 
 /// @notice Interface for Vaults methods related to async investments called by messages

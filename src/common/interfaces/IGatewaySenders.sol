@@ -32,7 +32,7 @@ interface IRootMessageSender {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender is ILocalCentrifugeId {
+interface IHubMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external;
 
@@ -164,10 +164,16 @@ interface IPoolMessageSender is ILocalCentrifugeId {
         bytes32 receiver,
         uint128 amount
     ) external;
+
+    /// @notice Creates and send the message
+    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external;
+
+    /// @notice Creates and send the message
+    function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender is ILocalCentrifugeId {
+interface ISpokeMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
         uint16 centrifugeId,
