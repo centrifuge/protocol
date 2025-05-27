@@ -196,6 +196,7 @@ interface IShareClassManager {
     error EpochNotFound();
     error DecreaseMoreThanIssued();
     error CancellationQueued();
+    error CancellationInitializationRequired();
 
     /// Functions
 
@@ -222,6 +223,20 @@ interface IShareClassManager {
         external
         returns (uint128 cancelledAssetAmount);
 
+    /// @notice Force cancels a pending deposit request.
+    /// Only allowed if the user has cancelled a request at least once before. This is to protect against cancelling a
+    /// request of a smart contract user that does not support the cancellation interface, and would thus be unable to
+    /// claim back the cancelled assets.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
+    /// @param depositAssetId Identifier of the asset which the investor used for their deposit request
+    /// @return cancelledAssetAmount The deposit amount which was previously pending and is now cancelled with force
+    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+        external
+        returns (uint128 cancelledAssetAmount);
+
     /// @notice Creates or updates a request to redeem (exchange) share class tokens for some asset.
     ///
     /// @param poolId Identifier of the pool
@@ -242,6 +257,21 @@ interface IShareClassManager {
     /// share class tokens
     /// @return cancelledShareAmount The redeem amount which was previously pending and is now cancelled
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        returns (uint128 cancelledShareAmount);
+
+    /// @notice Force cancels a pending redeem request.
+    /// Only allowed if the user has cancelled a request at least once before. This is to protect against cancelling a
+    /// request of a smart contract user that does not support the cancellation interface, and would thus be unable to
+    /// claim back the cancelled share class tokens.
+    ///
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @param investor Centrifuge Vault address of the entity which is cancelling
+    /// @param payoutAssetId Identifier of the asset which the investor eventually receives back for their redeemed
+    /// share class tokens
+    /// @return cancelledShareAmount The redeem amount which was previously pending and is now cancelled with force
+    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         returns (uint128 cancelledShareAmount);
 

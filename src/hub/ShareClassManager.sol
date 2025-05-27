@@ -64,6 +64,12 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => QueuedOrder queued)))
         public queuedDepositRequest;
 
+    // Force cancel request safeguards
+    mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => bool cancelled))) public
+        allowForceDepositCancel;
+    mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => bool cancelled))) public
+        allowForceRedeemCancel;
+
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
     }
@@ -111,6 +117,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
+        allowForceDepositCancel[scId_][depositAssetId][investor] = true;
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
@@ -135,6 +142,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
+        allowForceRedeemCancel[scId_][payoutAssetId][investor] = true;
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
@@ -356,6 +364,34 @@ contract ShareClassManager is Auth, IShareClassManager {
         else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
     }
 
+    /// @inheritdoc IShareClassManager
+    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
+        external
+        auth
+        returns (uint128 cancelledAssetAmount)
+    {
+        require(exists(poolId, scId_), ShareClassNotFound());
+        require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
+
+        uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
+
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
+    }
+
+    /// @inheritdoc IShareClassManager
+    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
+        external
+        auth
+        returns (uint128 cancelledShareAmount)
+    {
+        require(exists(poolId, scId_), ShareClassNotFound());
+        require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
+
+        uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
+
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Claiming methods
     //----------------------------------------------------------------------------------------------
@@ -386,7 +422,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of minted share class
         // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
         // have an excess of a share class tokens which cannot be claimed by anyone.
-        // This excess is at most n-1 share tokens for an epoch with n claimable users.
         if (paymentAssetAmount > 0) {
             uint256 paymentPoolAmount = PricingLib.convertWithPrice(
                 paymentAssetAmount,
@@ -452,10 +487,9 @@ contract ShareClassManager is Auth, IShareClassManager {
             ? 0
             : userOrder.pending.mulDiv(epochAmounts.approvedShareAmount, epochAmounts.pendingShareAmount).toUint128();
 
-        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of minted share class
-        // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
-        // have an excess of a share class tokens which cannot be claimed by anyone.
-        // This excess is at most n-1 share tokens for an epoch with n claimable users.
+        // NOTE: Due to precision loss, the sum of claimable user amounts is leq than the amount of payout asset
+        // corresponding to the approved share class (instead of equality). I.e., it is possible for an epoch to
+        // have an excess of payout assets which cannot be claimed by anyone.
         if (paymentShareAmount > 0) {
             payoutAssetAmount = PricingLib.shareToAssetAmount(
                 paymentShareAmount,
@@ -553,7 +587,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         return _maxClaims(redeemRequest[scId_][payoutAssetId][investor], epochId[scId_][payoutAssetId].redeem);
     }
 
-    function _maxClaims(UserOrder memory userOrder, uint32 lastEpoch) private pure returns (uint32) {
+    function _maxClaims(UserOrder memory userOrder, uint32 lastEpoch) internal pure returns (uint32) {
         // User order either not set or not processed
         if (userOrder.pending == 0 || userOrder.lastUpdate > lastEpoch) {
             return 0;
@@ -566,7 +600,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) private {
+    function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) internal {
         uint256 nameLen = bytes(name).length;
         require(nameLen > 0 && nameLen <= 128, InvalidMetadataName());
 
@@ -598,7 +632,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         RequestType requestType
-    ) private returns (uint128 cancelledAmount) {
+    ) internal returns (uint128 cancelledAmount) {
         QueuedOrder storage queued = requestType == RequestType.Deposit
             ? queuedDepositRequest[scId_][assetId][investor]
             : queuedRedeemRequest[scId_][assetId][investor];
@@ -659,7 +693,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         bytes32 investor,
         AssetId assetId,
         RequestType requestType
-    ) private returns (uint128 cancelledAmount) {
+    ) internal returns (uint128 cancelledAmount) {
         UserOrder storage userOrder = requestType == RequestType.Deposit
             ? depositRequest[scId_][assetId][investor]
             : redeemRequest[scId_][assetId][investor];
@@ -709,13 +743,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage userOrder,
         QueuedOrder storage queued,
         RequestType requestType
-    ) private returns (bool skipPendingUpdate) {
-        uint32 lastEpoch =
-            requestType == RequestType.Deposit ? epochId[scId_][assetId].deposit : epochId[scId_][assetId].redeem;
-        uint32 currentEpoch = lastEpoch + 1;
+    ) internal returns (bool skipPendingUpdate) {
+        uint32 currentEpoch =
+            requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
 
         // Short circuit if user can mutate pending, i.e. last update happened after latest approval or is first update
-        if (userOrder.lastUpdate == currentEpoch || userOrder.pending == 0 || lastEpoch == 0) {
+        if (_canMutatePending(userOrder, currentEpoch)) {
             return false;
         }
 
@@ -770,7 +803,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         QueuedOrder memory queued
-    ) private {
+    ) internal {
         uint128 pendingTotal = pendingDeposit[scId_][assetId];
         pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingDeposit[scId_][assetId] = pendingTotal;
@@ -797,7 +830,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         QueuedOrder memory queued
-    ) private {
+    ) internal {
         uint128 pendingTotal = pendingRedeem[scId_][assetId];
         pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingRedeem[scId_][assetId] = pendingTotal;
@@ -813,5 +846,14 @@ contract ShareClassManager is Auth, IShareClassManager {
             queued.amount,
             queued.isCancelling
         );
+    }
+
+    /// @dev A user cannot mutate their pending amount at all times because it affects the total pending amount. It is
+    ///     restricted to the following three conditions:
+    ///         1. It's the first epoch (currentEpoch <= 1), which implies userOrder.lastUpdate == 0
+    ///         2. User has no pending amount (userOrder.pending == 0)
+    ///         3. User's last update is not behind the current epoch (userOrder.lastUpdate >= currentEpoch)
+    function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) internal pure returns (bool) {
+        return currentEpoch <= 1 || userOrder.pending == 0 || userOrder.lastUpdate >= currentEpoch;
     }
 }
