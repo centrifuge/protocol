@@ -16,6 +16,17 @@ enum MessageType {
     CancelUpgrade,
     RecoverTokens,
     RegisterAsset,
+    _Placeholder5,
+    _Placeholder6,
+    _Placeholder7,
+    _Placeholder8,
+    _Placeholder9,
+    _Placeholder10,
+    _Placeholder11,
+    _Placeholder12,
+    _Placeholder13,
+    _Placeholder14,
+    _Placeholder15,
     // -- Pool dependent messages
     NotifyPool,
     NotifyShareClass,
@@ -85,6 +96,17 @@ library MessageLib {
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
+        (0   << uint8(MessageType._Placeholder5) * 8) +
+        (0   << uint8(MessageType._Placeholder6) * 8) +
+        (0   << uint8(MessageType._Placeholder7) * 8) +
+        (0   << uint8(MessageType._Placeholder8) * 8) +
+        (0   << uint8(MessageType._Placeholder9) * 8) +
+        (0   << uint8(MessageType._Placeholder10) * 8) +
+        (0   << uint8(MessageType._Placeholder11) * 8) +
+        (0   << uint8(MessageType._Placeholder12) * 8) +
+        (0   << uint8(MessageType._Placeholder13) * 8) +
+        (0   << uint8(MessageType._Placeholder14) * 8) +
+        (0   << uint8(MessageType._Placeholder15) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
@@ -100,22 +122,22 @@ library MessageLib {
         (73  << uint8(MessageType.ApprovedDeposits) * 8) +
         (57  << uint8(MessageType.IssuedShares) * 8) +
         (89  << uint8(MessageType.RevokedShares) * 8) +
-        (89  << uint8(MessageType.DepositRequest) * 8) +
-        (89  << uint8(MessageType.RedeemRequest) * 8) +
-        (73  << uint8(MessageType.CancelDepositRequest) * 8) +
-        (73  << uint8(MessageType.CancelRedeemRequest) * 8) +
-        (121 << uint8(MessageType.FulfilledDepositRequest) * 8) +
-        (121 << uint8(MessageType.FulfilledRedeemRequest) * 8) +
-        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
-        (59  << uint8(MessageType.UpdateShares) * 8) +
-        (73  << uint8(MessageType.TriggerIssueShares) * 8) +
-        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8) +
-        (41  << uint8(MessageType.TriggerSubmitQueuedAssets) * 8) +
-        (49  << uint8(MessageType.MaxAssetPriceAge) * 8);
+        (89  << uint8(MessageType.DepositRequest) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
-        (33 << (uint8(MessageType.MaxSharePriceAge) - 32) * 8);
+        (89  << (uint8(MessageType.RedeemRequest) - 32) * 8) +
+        (73  << (uint8(MessageType.CancelDepositRequest) - 32) * 8) +
+        (73  << (uint8(MessageType.CancelRedeemRequest) - 32) * 8) +
+        (121 << (uint8(MessageType.FulfilledDepositRequest) - 32) * 8) +
+        (121 << (uint8(MessageType.FulfilledRedeemRequest) - 32) * 8) +
+        (91  << (uint8(MessageType.UpdateHoldingAmount) - 32) * 8) +
+        (59  << (uint8(MessageType.UpdateShares) - 32) * 8) +
+        (73  << (uint8(MessageType.TriggerIssueShares) - 32) * 8) +
+        (25  << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
+        (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
+        (49  << (uint8(MessageType.MaxAssetPriceAge) - 32) * 8) +
+        (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
