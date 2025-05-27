@@ -12,7 +12,7 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -40,7 +40,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     IRoot public immutable root;
 
     ISpoke public spoke;
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
 
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -66,7 +66,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
-        else if (what == "sender") sender = IVaultMessageSender(data);
+        else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
 

@@ -237,6 +237,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
+        } else if (kind == MessageType.MaxAssetPriceAge) {
+            MessageLib.MaxAssetPriceAge memory m = message.deserializeMaxAssetPriceAge();
+            spoke.setMaxAssetPriceAge(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.maxPriceAge
+            );
+        } else if (kind == MessageType.MaxSharePriceAge) {
+            MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
+            spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else {
             revert InvalidMessage(uint8(kind));
         }

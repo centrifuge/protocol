@@ -6,7 +6,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -54,6 +54,10 @@ interface IHub {
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
     );
+    event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
+    event SetMaxSharePriceAge(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
+    );
     event ForwardTransferShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
@@ -81,7 +85,7 @@ interface IHub {
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
     function hubRegistry() external view returns (IHubRegistry);
-    function sender() external view returns (IPoolMessageSender);
+    function sender() external view returns (IHubMessageSender);
     function shareClassManager() external view returns (IShareClassManager);
 
     /// @notice Updates a contract parameter.
@@ -126,6 +130,23 @@ interface IHub {
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+
+    /// @notice Set the max price age per asset of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        payable;
+
+    /// @notice Set the max price age per share of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
