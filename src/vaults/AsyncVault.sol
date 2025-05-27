@@ -9,11 +9,11 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncRedeemVault, IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRedeemVault, IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {BaseVault} from "src/spoke/vaults/BaseVaults.sol";
-import {BaseAsyncRedeemVault} from "src/spoke/vaults/BaseVaults.sol";
-import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {BaseVault} from "src/vaults/BaseVaults.sol";
+import {BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault

@@ -9,10 +9,10 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import "test/spoke/BaseTest.sol";
 

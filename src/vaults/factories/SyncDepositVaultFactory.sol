@@ -6,22 +6,29 @@ import {Auth} from "src/misc/Auth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-/// @title  ERC7540 Vault Factory
+/// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
-contract AsyncVaultFactory is Auth, IVaultFactory {
+contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    IAsyncRequestManager public immutable asyncRequestManager;
+    ISyncDepositManager public immutable syncDepositManager;
+    IAsyncRedeemManager public immutable asyncRedeemManager;
 
-    constructor(address root_, IAsyncRequestManager asyncRequestManager_, address deployer) Auth(deployer) {
+    constructor(
+        address root_,
+        ISyncDepositManager syncDepositManager_,
+        IAsyncRedeemManager asyncRedeemManager_,
+        address deployer
+    ) Auth(deployer) {
         root = root_;
-        asyncRequestManager = asyncRequestManager_;
+        syncDepositManager = syncDepositManager_;
+        asyncRedeemManager = asyncRedeemManager_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -34,10 +41,13 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address[] calldata wards_
     ) public auth returns (IBaseVault) {
         require(tokenId == 0, UnsupportedTokenId());
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequestManager);
+        SyncDepositVault vault =
+            new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
 
         vault.rely(root);
-        vault.rely(address(asyncRequestManager));
+        vault.rely(address(syncDepositManager));
+        vault.rely(address(asyncRedeemManager));
+
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
             vault.rely(wards_[i]);

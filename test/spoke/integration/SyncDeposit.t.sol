@@ -16,11 +16,11 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
-import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {
