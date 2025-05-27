@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "forge-std/interfaces/IERC165.sol";
-import {IERC7540Redeem} from "src/misc/interfaces/IERC7540.sol";
-
 import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 
 import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
@@ -18,7 +14,6 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
@@ -281,7 +276,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         view
         returns (uint128 maxDeposit_)
     {
-        if (!spoke.isLinked(poolId, scId, asset, vault_)) return 0;
+        if (!spoke.isLinked(vault_)) return 0;
 
         uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
