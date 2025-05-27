@@ -19,7 +19,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";

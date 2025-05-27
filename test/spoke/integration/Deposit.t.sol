@@ -11,10 +11,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/spoke/BaseTest.sol";
-import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

@@ -10,8 +10,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IAsyncRequestManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

@@ -14,13 +14,13 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";

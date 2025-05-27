@@ -15,9 +15,9 @@ import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
-import {SyncRequestManager} from "src/spoke/vaults/SyncRequestManager.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 interface AdapterLike {
     function execute(bytes memory _message) external;
