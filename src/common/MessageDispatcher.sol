@@ -452,7 +452,44 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IPoolMessageSender
     function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        // Forced to be to the same chain
         balanceSheet.setQueue(poolId, scId, enabled);
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        auth
+    {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.MaxAssetPriceAge({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    maxPriceAge: maxPriceAge
+                }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IPoolMessageSender
+    function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spoke.setMaxSharePriceAge(poolId, scId, maxPriceAge);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.MaxSharePriceAge({poolId: poolId.raw(), scId: scId.raw(), maxPriceAge: maxPriceAge})
+                    .serialize()
+            );
+        }
     }
 
     /// @inheritdoc IRootMessageSender
