@@ -20,6 +20,8 @@ import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
+import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -133,10 +135,12 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        IBaseVault asyncVault_ =
+        IVault asyncVault_ =
             syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        AsyncVault asyncVault = AsyncVault(address(asyncVault_));
+        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
+
+        assertEq(address(syncVault), address(asyncVault));
 
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);

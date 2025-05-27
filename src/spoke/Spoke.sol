@@ -23,7 +23,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
@@ -32,6 +32,7 @@ import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {AssetIdKey, Pool, ShareClassDetails, Price, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist,
@@ -55,7 +56,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     mapping(PoolId poolId => Pool) public pools;
     mapping(IVaultFactory factory => bool) public vaultFactory;
 
-    mapping(IBaseVault => VaultDetails) internal _vaultDetails;
+    mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
@@ -291,10 +292,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         if (kind == VaultUpdateKind.DeployAndLink) {
             IVaultFactory factory = IVaultFactory(vaultOrFactory);
 
-            IBaseVault vault = deployVault(poolId, scId, assetId, factory);
+            IVault vault = deployVault(poolId, scId, assetId, factory);
             linkVault(poolId, scId, assetId, vault);
         } else {
-            IBaseVault vault = IBaseVault(vaultOrFactory);
+            IVault vault = IVault(vaultOrFactory);
 
             // Needed as safeguard against non-validated vaults
             // I.e. we only accept vaults that have been deployed by the pool manager
@@ -327,33 +328,33 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpoke
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseRequestManager manager = vault.manager();
-        manager.addVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IVaultManager manager = vault.manager();
+        manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
         _vaultDetails[vault].isLinked = true;
 
         IAuth(address(shareClass.shareToken)).rely(address(vault));
-        shareClass.shareToken.updateVault(vault.asset(), address(vault));
+        shareClass.shareToken.updateVault(assetIdKey.asset, address(vault));
 
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
 
     /// @inheritdoc ISpoke
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IBaseVault vault) public auth {
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
 
-        IBaseRequestManager manager = vault.manager();
-        manager.removeVault(poolId, scId, vault, assetIdKey.asset, assetId);
+        IVaultManager manager = vault.manager();
+        manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
         _vaultDetails[vault].isLinked = false;
 
         IAuth(address(shareClass.shareToken)).deny(address(vault));
-        shareClass.shareToken.updateVault(vault.asset(), address(0));
+        shareClass.shareToken.updateVault(assetIdKey.asset, address(0));
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
@@ -362,13 +363,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         public
         auth
-        returns (IBaseVault)
+        returns (IVault)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(vaultFactory[factory], InvalidFactory());
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        IBaseVault vault = IVaultFactory(factory).newVault(
+        IVault vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
 
@@ -384,7 +385,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         address asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IBaseVault vault
+        IVault vault
     ) public auth {
         _vaultDetails[vault] = VaultDetails(assetId, asset, tokenId, false);
         emit DeployVault(poolId, scId, asset, tokenId, factory, vault, vault.vaultKind());
@@ -407,13 +408,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpoke
-    function vaultDetails(IBaseVault vault) public view returns (VaultDetails memory details) {
+    function vaultDetails(IVault vault) public view returns (VaultDetails memory details) {
         details = _vaultDetails[vault];
         require(details.asset != address(0), UnknownVault());
     }
 
     /// @inheritdoc ISpoke
-    function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ IBaseVault vault)
+    function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ IVault vault)
         public
         view
         returns (bool)

@@ -19,7 +19,8 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
 import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IBaseVault, VaultKind} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
@@ -31,6 +32,8 @@ import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 /// @title  Sync Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -88,41 +91,44 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         }
     }
 
-    /// @inheritdoc IBaseRequestManager
-    function addVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
+    /// @inheritdoc IVaultManager
+    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256 tokenId)
         public
-        override(BaseRequestManager, IBaseRequestManager)
+        override(BaseRequestManager, IVaultManager)
         auth
     {
-        super.addVault(poolId, scId, vault_, asset_, assetId);
+        super.addVault(poolId, scId, assetId, vault_, asset_, tokenId);
 
-        (, uint256 tokenId) = spoke.idToAsset(assetId);
-        setMaxReserve(poolId, scId, asset_, tokenId, type(uint128).max);
+        (, uint256 tokenId_) = spoke.idToAsset(assetId);
+        setMaxReserve(poolId, scId, asset_, tokenId_, type(uint128).max);
 
         VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
             IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
             require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
-            asyncRequestManager.addVault(poolId, scId, vault_, asset_, assetId);
+            asyncRequestManager.addVault(poolId, scId, assetId, vault_, asset_, tokenId);
         }
     }
 
-    /// @inheritdoc IBaseRequestManager
-    function removeVault(PoolId poolId, ShareClassId scId, IBaseVault vault_, address asset_, AssetId assetId)
-        public
-        override(BaseRequestManager, IBaseRequestManager)
-        auth
-    {
-        super.removeVault(poolId, scId, vault_, asset_, assetId);
+    /// @inheritdoc IVaultManager
+    function removeVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        IVault vault_,
+        address asset_,
+        uint256 tokenId
+    ) public override(BaseRequestManager, IVaultManager) auth {
+        super.removeVault(poolId, scId, assetId, vault_, asset_, tokenId);
 
-        (, uint256 tokenId) = spoke.idToAsset(assetId);
-        delete maxReserve[poolId][scId][asset_][tokenId];
+        (, uint256 tokenId_) = spoke.idToAsset(assetId);
+        delete maxReserve[poolId][scId][asset_][tokenId_];
 
         VaultKind vaultKind_ = vault_.vaultKind();
         if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
             IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
             require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
-            asyncRequestManager.removeVault(poolId, scId, vault_, asset_, assetId);
+            asyncRequestManager.removeVault(poolId, scId, assetId, vault_, asset_, tokenId);
         }
     }
 

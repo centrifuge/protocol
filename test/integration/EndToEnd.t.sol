@@ -316,7 +316,7 @@ contract EndToEndUseCases is EndToEndUtils {
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink);
 
-        IBaseVault vault = s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID);
+        IBaseVault vault = IBaseVault(address(s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, USDC_ID)));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), INVESTOR_A_USDC_AMOUNT);

@@ -124,13 +124,13 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(assetId_);
 
-        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
+        syncRequestManager.removeVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
 
         vm.prank(address(root));
         vault.file("asyncRedeemManager", address(0));
 
         vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
-        syncRequestManager.addVault(poolId, scId, vault, vaultDetails.asset, assetId);
+        syncRequestManager.addVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
     }
 
     function testRemoveVaultEmptySecondaryManager() public {
@@ -144,7 +144,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         vault.file("asyncRedeemManager", address(0));
 
         vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
-        syncRequestManager.removeVault(poolId, scId, vault, vaultDetails.asset, assetId);
+        syncRequestManager.removeVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
     }
 }
 
@@ -157,14 +157,14 @@ contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
     function testAddVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
         syncRequestManager.addVault(
-            PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
+            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IBaseVault(address(0)), address(0), 0
         );
     }
 
     function testRemoveVaultUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
         syncRequestManager.removeVault(
-            PoolId.wrap(0), ShareClassId.wrap(0), IBaseVault(address(0)), address(0), AssetId.wrap(0)
+            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IBaseVault(address(0)), address(0), 0
         );
     }
 
