@@ -600,7 +600,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) private {
+    function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) internal {
         uint256 nameLen = bytes(name).length;
         require(nameLen > 0 && nameLen <= 128, InvalidMetadataName());
 
@@ -632,7 +632,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         RequestType requestType
-    ) private returns (uint128 cancelledAmount) {
+    ) internal returns (uint128 cancelledAmount) {
         QueuedOrder storage queued = requestType == RequestType.Deposit
             ? queuedDepositRequest[scId_][assetId][investor]
             : queuedRedeemRequest[scId_][assetId][investor];
@@ -693,7 +693,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         bytes32 investor,
         AssetId assetId,
         RequestType requestType
-    ) private returns (uint128 cancelledAmount) {
+    ) internal returns (uint128 cancelledAmount) {
         UserOrder storage userOrder = requestType == RequestType.Deposit
             ? depositRequest[scId_][assetId][investor]
             : redeemRequest[scId_][assetId][investor];
@@ -743,7 +743,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         UserOrder storage userOrder,
         QueuedOrder storage queued,
         RequestType requestType
-    ) private returns (bool skipPendingUpdate) {
+    ) internal returns (bool skipPendingUpdate) {
         uint32 currentEpoch =
             requestType == RequestType.Deposit ? nowDepositEpoch(scId_, assetId) : nowRedeemEpoch(scId_, assetId);
 
@@ -803,7 +803,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         QueuedOrder memory queued
-    ) private {
+    ) internal {
         uint128 pendingTotal = pendingDeposit[scId_][assetId];
         pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingDeposit[scId_][assetId] = pendingTotal;
@@ -830,7 +830,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         AssetId assetId,
         UserOrder storage userOrder,
         QueuedOrder memory queued
-    ) private {
+    ) internal {
         uint128 pendingTotal = pendingRedeem[scId_][assetId];
         pendingTotal = isIncrement ? pendingTotal + amount : pendingTotal - amount;
         pendingRedeem[scId_][assetId] = pendingTotal;
