@@ -5,7 +5,6 @@ import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -18,7 +17,6 @@ import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManag
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
