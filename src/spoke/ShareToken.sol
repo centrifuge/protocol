@@ -56,7 +56,9 @@ contract ShareToken is ERC20, IShareToken {
 
     /// @inheritdoc IShareToken
     function updateVault(address asset, uint256 tokenId, address vault_) public auth {
-        require(tokenId == 0, "unsupported");
+        if (tokenId != 0) {
+            revert();
+        }
 
         vault[asset] = vault_;
         emit VaultUpdate(asset, vault_);
