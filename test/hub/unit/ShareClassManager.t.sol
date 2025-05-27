@@ -918,7 +918,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
 
         assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
         assertEq(
-            shareClass.cancelledDepositRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+            shareClass.allowForceDepositCancel(scId, USDC, investor), true, "Cancellation flag should not be reset"
         );
 
         // Verify the investor can make new requests after force cancellation
@@ -931,7 +931,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_USDC, depositAmount - 1));
         uint128 queuedCancelAmount = depositAmount - approvedAmount;
 
-        // Set cancelledDepositRequestFlag to true
+        // Set allowForceDepositCancel to true
         shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
         // Submit a deposit request, which will be applied since pending is zero
@@ -948,7 +948,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         // Verify post force cancel cleanup pre claiming
         assertEq(forceCancelAmount, 0, "Cancellation was queued");
         assertEq(
-            shareClass.cancelledDepositRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+            shareClass.allowForceDepositCancel(scId, USDC, investor), true, "Cancellation flag should not be reset"
         );
 
         // Claim to trigger cancellation
@@ -971,7 +971,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
     function testForceCancelDepositRequestImmediate(uint128 depositAmount) public {
         depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
 
-        // Set cancelledDepositRequestFlag to true (initialize cancellation)
+        // Set allowForceDepositCancel to true (initialize cancellation)
         shareClass.cancelDepositRequest(poolId, scId, investor, USDC);
 
         // Submit a deposit request, which will be applied since pending is zero
@@ -985,7 +985,7 @@ contract ShareClassManagerDepositsNonTransientTest is ShareClassManagerBaseTest 
         // Verify cancellation was immediate and not queued
         assertEq(cancelledAmount, depositAmount, "Cancellation should be immediate with full amount");
         assertEq(
-            shareClass.cancelledDepositRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
+            shareClass.allowForceDepositCancel(scId, USDC, investor), true, "Cancellation flag should not be reset"
         );
         assertEq(shareClass.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
@@ -1459,9 +1459,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         uint128 cancelledAmount = shareClass.forceCancelRedeemRequest(poolId, scId, investor, USDC);
 
         assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
-        assertEq(
-            shareClass.cancelledRedeemRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
-        );
+        assertEq(shareClass.allowForceRedeemCancel(scId, USDC, investor), true, "Cancellation flag should not be reset");
 
         // Verify the investor can make new requests after force cancellation
         shareClass.requestRedeem(poolId, scId, 1, investor, USDC);
@@ -1473,7 +1471,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
         approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, redeemAmount - 1));
         uint128 queuedCancelAmount = redeemAmount - approvedAmount;
 
-        // Set cancelledRedeemRequestFlag to true
+        // Set allowForceRedeemCancel to true
         shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Submit a redeem request, which will be applied since pending is zero
@@ -1489,9 +1487,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
 
         // Verify post force cancel cleanup pre claiming
         assertEq(forceCancelAmount, 0, "Cancellation was queued");
-        assertEq(
-            shareClass.cancelledRedeemRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
-        );
+        assertEq(shareClass.allowForceRedeemCancel(scId, USDC, investor), true, "Cancellation flag should not be reset");
 
         // Claim to trigger cancellation
         (uint128 redeemPayout, uint128 redeemPayment, uint128 cancelledRedeem, bool canClaimAgain) =
@@ -1513,7 +1509,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
     function testForceCancelRedeemRequestImmediate(uint128 redeemAmount) public {
         redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
 
-        // Set cancelledRedeemRequestFlag to true (initialize cancellation)
+        // Set allowForceRedeemCancel to true (initialize cancellation)
         shareClass.cancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Submit a redeem request, which will be applied since pending is zero
@@ -1526,9 +1522,7 @@ contract ShareClassManagerRedeemsNonTransientTest is ShareClassManagerBaseTest {
 
         // Verify cancellation was immediate and not queued
         assertEq(cancelledAmount, redeemAmount, "Cancellation should be immediate with full amount");
-        assertEq(
-            shareClass.cancelledRedeemRequestFlag(scId, USDC, investor), false, "Cancellation flag should be reset"
-        );
+        assertEq(shareClass.allowForceRedeemCancel(scId, USDC, investor), true, "Cancellation flag should not be reset");
         assertEq(shareClass.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
 

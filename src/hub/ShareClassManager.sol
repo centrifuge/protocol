@@ -66,9 +66,9 @@ contract ShareClassManager is Auth, IShareClassManager {
 
     // Force cancel request safeguards
     mapping(ShareClassId scId => mapping(AssetId depositAssetId => mapping(bytes32 investor => bool cancelled))) public
-        cancelledDepositRequestFlag;
+        allowForceDepositCancel;
     mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => bool cancelled))) public
-        cancelledRedeemRequestFlag;
+        allowForceRedeemCancel;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
@@ -117,7 +117,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        cancelledDepositRequestFlag[scId_][depositAssetId][investor] = true;
+        allowForceDepositCancel[scId_][depositAssetId][investor] = true;
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
@@ -142,7 +142,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        cancelledRedeemRequestFlag[scId_][payoutAssetId][investor] = true;
+        allowForceRedeemCancel[scId_][payoutAssetId][investor] = true;
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
@@ -371,13 +371,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         returns (uint128 cancelledAssetAmount)
     {
         require(exists(poolId, scId_), ShareClassNotFound());
-        require(cancelledDepositRequestFlag[scId_][depositAssetId][investor], CancellationInitializationRequired());
+        require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
-        cancelledAssetAmount =
-            _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
-        cancelledDepositRequestFlag[scId_][depositAssetId][investor] = false;
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
     }
 
     /// @inheritdoc IShareClassManager
@@ -387,13 +385,11 @@ contract ShareClassManager is Auth, IShareClassManager {
         returns (uint128 cancelledShareAmount)
     {
         require(exists(poolId, scId_), ShareClassNotFound());
-        require(cancelledRedeemRequestFlag[scId_][payoutAssetId][investor], CancellationInitializationRequired());
+        require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
-        cancelledShareAmount =
-            _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
-        cancelledRedeemRequestFlag[scId_][payoutAssetId][investor] = false;
+        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
     }
 
     //----------------------------------------------------------------------------------------------
