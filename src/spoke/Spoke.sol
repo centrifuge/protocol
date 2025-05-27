@@ -181,17 +181,15 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes32 salt,
         address hook
     ) public auth {
+        require(isPoolActive(poolId), InvalidPool());
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
-        require(isPoolActive(poolId), InvalidPool());
-
         require(address(pools[poolId].shareClasses[scId].shareToken) == address(0), ShareClassAlreadyRegistered());
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), InvalidHook());
 
         IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt);
-
         if (hook != address(0)) shareToken_.file("hook", hook);
         linkToken(poolId, scId, shareToken_);
     }
@@ -208,7 +206,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         auth
     {
         IShareToken shareToken_ = shareToken(poolId, scId);
-
         require(
             keccak256(bytes(shareToken_.name())) != keccak256(bytes(name))
                 || keccak256(bytes(shareToken_.symbol())) != keccak256(bytes(symbol)),
@@ -253,7 +250,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
         require(computedAt >= shareClass.pricePoolPerShare.computedAt, CannotSetOlderPrice());
 
         shareClass.pricePoolPerShare = Price(price, computedAt, shareClass.pricePoolPerShare.maxAge);
@@ -268,9 +264,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         uint128 poolPerAsset_,
         uint64 computedAt
     ) public auth {
-        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
         (address asset, uint256 tokenId) = idToAsset(assetId);
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
@@ -278,15 +273,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         if (poolPerAsset.computedAt == 0) {
             poolPerAsset.maxAge = type(uint64).max;
         }
+
         poolPerAsset.price = poolPerAsset_;
         poolPerAsset.computedAt = computedAt;
-
         emit PriceUpdate(poolId, scId, asset, tokenId, poolPerAsset_, computedAt);
     }
 
     function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
         shareClass.pricePoolPerShare.maxAge = maxPriceAge;
         emit UpdateMaxSharePriceAge(poolId, scId, maxPriceAge);
     }
@@ -313,9 +307,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         VaultUpdateKind kind
     ) external auth {
         if (kind == VaultUpdateKind.DeployAndLink) {
-            IVaultFactory factory = IVaultFactory(vaultOrFactory);
-
-            IVault vault = deployVault(poolId, scId, assetId, factory);
+            IVault vault = deployVault(poolId, scId, assetId, IVaultFactory(vaultOrFactory));
             linkVault(poolId, scId, assetId, vault);
         } else {
             IVault vault = IVault(vaultOrFactory);
@@ -324,13 +316,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
             // I.e. we only accept vaults that have been deployed by the pool manager
             require(_vaultDetails[vault].asset != address(0), UnknownVault());
 
-            if (kind == VaultUpdateKind.Link) {
-                linkVault(poolId, scId, assetId, vault);
-            } else if (kind == VaultUpdateKind.Unlink) {
-                unlinkVault(poolId, scId, assetId, vault);
-            } else {
-                revert MalformedVaultUpdateMessage();
-            }
+            if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
+            else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
+            else revert MalformedVaultUpdateMessage();
         }
     }
 
@@ -347,8 +335,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         IVault vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
-
         registerVault(poolId, scId, assetId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+
         return vault;
     }
 
@@ -368,15 +356,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
+        IVaultManager manager = vault.manager();
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-
-        IVaultManager manager = vault.manager();
-        manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
         _vaultDetails[vault].isLinked = true;
-
         IAuth(address(shareClass.shareToken)).rely(address(vault));
+        manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         if (assetIdKey.tokenId == 0) {
             shareClass.shareToken.updateVault(assetIdKey.asset, address(vault));
@@ -387,15 +373,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
+        IVaultManager manager = vault.manager();
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-
-        IVaultManager manager = vault.manager();
-        manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
         _vaultDetails[vault].isLinked = false;
-
         IAuth(address(shareClass.shareToken)).deny(address(vault));
+        manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         if (assetIdKey.tokenId == 0) {
             shareClass.shareToken.updateVault(assetIdKey.asset, address(0));
@@ -440,14 +424,12 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         returns (D18 price)
     {
         (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
-
         price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
     }
 
     /// @inheritdoc ISpoke
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
         if (checkValidity) {
             require(shareClass.pricePoolPerShare.isValid(), InvalidPrice());
         }
@@ -462,7 +444,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         returns (D18 price)
     {
         (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
-
         if (checkValidity) {
             require(poolPerAsset.isValid(), InvalidPrice());
         }
