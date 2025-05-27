@@ -133,7 +133,7 @@ abstract contract Setup is
     bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
     bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
     bool internal IS_DEBIT_NORMAL = true;
-    uint32 internal MAX_CLAIMS = type(uint32).max;
+    uint32 internal MAX_CLAIMS = 20;
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;

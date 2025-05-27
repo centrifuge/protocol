@@ -349,28 +349,6 @@ contract CryticToFoundry is CryticSanity {
 
 
     /// === Categorized Issues === ///
-
-    // forge test --match-test test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_6 -vvv 
-    // NOTE: needs to be categorized to determine if a difference > 1 for sumRedeemAssets - totalPayoutAssetAmount is an issue
-    // NOTE: not sure why the 1 wei check was added in the first place
-    function test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_6() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,185317667447509018176949896872386463160691809537469,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,1,1,0);
-
-        shortcut_queue_redemption(1,0,0);
-
-        vault_requestRedeem_clamped(1,1);
-
-        shortcut_queue_redemption(1,0,280028406408398638308271608078347);
-
-        hub_addShareClass(1);
-
-        property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount();
-
-    }
-
     // forge test --match-test test_property_escrow_share_balance_8 -vvv 
     // NOTE: looks like an issue with ghost tracking
     function test_property_escrow_share_balance_8() public {
