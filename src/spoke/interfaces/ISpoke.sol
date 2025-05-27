@@ -265,14 +265,11 @@ interface ISpoke {
     /// @return details The details of the vault including the underlying asset address, token id, asset id
     function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
 
-    /// @notice Checks whether a given asset-vault pair is eligible for investing into a share class of a pool
+    /// @notice Checks whether a given vault is eligible for investing into a share class of a pool
     ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param asset The address of the asset
     /// @param vault The address of the vault
     /// @return bool Whether vault is to a share class
-    function isLinked(PoolId poolId, ShareClassId scId, address asset, IVault vault) external view returns (bool);
+    function isLinked(IVault vault) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool, share class, asset, and asset id. The provided price is
     /// defined as ASSET_UNIT/SHARE_UNIT.

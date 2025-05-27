@@ -276,7 +276,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         view
         returns (uint128 maxDeposit_)
     {
-        if (!spoke.isLinked(poolId, scId, asset, vault_)) return 0;
+        if (!spoke.isLinked(vault_)) return 0;
 
         uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];

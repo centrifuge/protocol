@@ -80,7 +80,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(spoke.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(_canTransfer(vault_, address(0), controller, convertToShares(vault_, assets_)), TransferNotAllowed());
 
@@ -106,7 +106,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(spoke.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(
             _canTransfer(vault_, owner, ESCROW_HOOK_ID, shares)

@@ -494,11 +494,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpoke
-    function isLinked(PoolId, /* poolId */ ShareClassId, /* scId */ address, /* asset */ IVault vault)
-        public
-        view
-        returns (bool)
-    {
+    function isLinked(IVault vault) public view returns (bool) {
         return _vaultDetails[vault].isLinked;
     }
 
