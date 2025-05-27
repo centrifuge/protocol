@@ -214,6 +214,7 @@ interface IHub {
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
         payable;
+
     /// @notice Tells the BalanceSheet to issue/revoke shares.
     function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
         external

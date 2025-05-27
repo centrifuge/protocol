@@ -224,9 +224,9 @@ interface IShareClassManager {
         returns (uint128 cancelledAssetAmount);
 
     /// @notice Force cancels a pending deposit request.
-    ///                Only allowed if the user has cancelled a request at least once before. This is to protect against
-    ///                cancelling a request of a smart contract user that does not support the cancellation interface,
-    ///                and would thus be unable to claim the assets.
+    /// Only allowed if the user has cancelled a request at least once before. This is to protect against cancelling a
+    /// request of a smart contract user that does not support the cancellation interface, and would thus be unable to
+    /// claim back the cancelled assets.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
@@ -261,9 +261,9 @@ interface IShareClassManager {
         returns (uint128 cancelledShareAmount);
 
     /// @notice Force cancels a pending redeem request.
-    ///                Only allowed if the user has cancelled a request at least once before. This is to protect against
-    ///                cancelling a request of a smart contract user that does not support the cancellation interface,
-    ///                and would thus be unable to claim the shares.
+    /// Only allowed if the user has cancelled a request at least once before. This is to protect against cancelling a
+    /// request of a smart contract user that does not support the cancellation interface, and would thus be unable to
+    /// claim back the cancelled share class tokens.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
