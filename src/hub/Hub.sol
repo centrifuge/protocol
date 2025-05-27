@@ -214,6 +214,30 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+        sender.sendMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+    }
+
+    /// @inheritdoc IHub
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
+        sender.sendMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
+    }
+
+    /// @inheritdoc IHub
     function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
         public
         payable

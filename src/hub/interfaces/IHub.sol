@@ -54,6 +54,10 @@ interface IHub {
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
     );
+    event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
+    event SetMaxSharePriceAge(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
+    );
     event ForwardTransferShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
@@ -126,6 +130,23 @@ interface IHub {
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+
+    /// @notice Set the max price age per asset of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        payable;
+
+    /// @notice Set the max price age per share of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        payable;
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
