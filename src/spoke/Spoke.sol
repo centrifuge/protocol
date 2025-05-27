@@ -254,18 +254,18 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update_) public auth {
+    function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) public auth {
         IShareToken shareToken_ = shareToken(poolId, scId);
         address hook = shareToken_.hook();
         require(hook != address(0), InvalidHook());
-        ITransferHook(hook).updateRestriction(address(shareToken_), update_);
+        ITransferHook(hook).updateRestriction(address(shareToken_), update);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update_) public auth {
-        IUpdateContract(target).update(poolId, scId, update_);
+    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) public auth {
+        IUpdateContract(target).update(poolId, scId, update);
 
-        emit UpdateContract(poolId, scId, target, update_);
+        emit UpdateContract(poolId, scId, target, update);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
