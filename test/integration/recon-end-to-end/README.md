@@ -27,6 +27,8 @@ For info on the general structure of the test suite, refer to the section of the
 
 This tester connects the Vaults and Hub sides of the system via the `MockMessageDispatcher` (which simulates the functionality of the `MessageDispatcher` but removes any cross-chain message sending) allowing full testing of the logic by the fuzzer end-to-end. 
 
+The primary contracts with target functions exposed in this tester are `AsyncVault`, `SyncDepositVault`, `Spoke`, `ShareToken`, `RestrictedTransfers`, `Hub`, `BalanceSheet` and `SyncRequestManager`.
+
 > Note: cross-chain interactions are not tested. 
 
 The core system components are deployed in the `Setup` contract but to introduce additional randomness and test all possible configurations the `TargetFunctions::shortcut_deployNewTokenPoolAndShare` is used to deploy an instance of the pool, shareClass, `ShareToken` and a `SyncDepositVault` or `AsyncVault`.
