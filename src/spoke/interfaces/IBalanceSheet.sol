@@ -6,7 +6,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
@@ -59,7 +59,7 @@ interface IBalanceSheet {
 
     function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
-    function sender() external view returns (IVaultMessageSender);
+    function sender() external view returns (ISpokeMessageSender);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);

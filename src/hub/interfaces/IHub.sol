@@ -6,7 +6,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -85,7 +85,7 @@ interface IHub {
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
     function hubRegistry() external view returns (IHubRegistry);
-    function sender() external view returns (IPoolMessageSender);
+    function sender() external view returns (IHubMessageSender);
     function shareClassManager() external view returns (IShareClassManager);
 
     /// @notice Updates a contract parameter.

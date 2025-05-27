@@ -32,7 +32,7 @@ interface IRootMessageSender {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IPoolMessageSender is ILocalCentrifugeId {
+interface IHubMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external;
 
@@ -173,7 +173,7 @@ interface IPoolMessageSender is ILocalCentrifugeId {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IVaultMessageSender is ILocalCentrifugeId {
+interface ISpokeMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
         uint16 centrifugeId,

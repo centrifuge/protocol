@@ -10,7 +10,7 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -39,7 +39,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     IHoldings public holdings;
     IHubHelpers public hubHelpers;
     IAccounting public accounting;
-    IPoolMessageSender public sender;
+    IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
 
     constructor(
@@ -73,7 +73,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function file(bytes32 what, address data) external {
         _auth();
 
-        if (what == "sender") sender = IPoolMessageSender(data);
+        if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "accounting") accounting = IAccounting(data);

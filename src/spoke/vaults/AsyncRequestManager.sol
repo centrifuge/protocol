@@ -8,7 +8,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -41,7 +41,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -55,7 +55,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);

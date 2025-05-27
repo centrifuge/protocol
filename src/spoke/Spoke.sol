@@ -16,7 +16,7 @@ import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -47,7 +47,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     IGateway public gateway;
     ITokenFactory public tokenFactory;
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
 
     uint64 internal _assetCounter;
@@ -75,7 +75,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = IVaultMessageSender(data);
+        if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
