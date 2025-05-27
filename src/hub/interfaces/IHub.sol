@@ -2,16 +2,18 @@
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -46,8 +48,18 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
+    event UpdateVault(
+        PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
+    );
     event UpdateContract(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
+    );
+    event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
+    event SetMaxSharePriceAge(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
+    );
+    event ForwardTransferShares(
+        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
 
     /// @notice Emitted when a call to `file()` was performed.
@@ -66,11 +78,14 @@ interface IHub {
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
 
+    /// @notice Dispatched when an invalid combination of account IDs is passed.
+    error InvalidAccountCombination();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
     function hubRegistry() external view returns (IHubRegistry);
-    function sender() external view returns (IPoolMessageSender);
+    function sender() external view returns (IHubMessageSender);
     function shareClassManager() external view returns (IShareClassManager);
 
     /// @notice Updates a contract parameter.
@@ -116,16 +131,41 @@ interface IHub {
     /// @param assetId Identifier of the asset
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
+    /// @notice Set the max price age per asset of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        payable;
+
+    /// @notice Set the max price age per share of a share class
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  maxPriceAge timestamp until the price become invalid
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        payable;
+
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
+
+    /// @notice Set snapshot hook for a pool
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable;
 
     /// @notice Update name & symbol of share class
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
         external
         payable;
 
-    /// @notice Allow/disallow an account to interact as pool manager
-    function updateManager(PoolId poolId, address who, bool canManage) external payable;
+    /// @notice Allow/disallow an account to interact as hub manager this pool
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
+
+    /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        payable;
 
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
@@ -186,6 +226,16 @@ interface IHub {
         D18 navPoolPerShare
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
+    /// @notice Force cancels a pending deposit request.
+    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+        external
+        payable;
+
+    /// @notice Force cancels a pending redeem request.
+    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        payable;
+
     /// @notice Tells the BalanceSheet to issue/revoke shares.
     function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
         external
@@ -199,7 +249,9 @@ interface IHub {
     function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
     /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external payable;
+    /// @dev    Can only be disabled on the local chain. On remote chains, queuing is enforced to reduce
+    ///         issues with asynchronous updates of the state.
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external payable;
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -207,6 +259,20 @@ interface IHub {
     function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable;
+
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable;
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
@@ -223,7 +289,7 @@ interface IHub {
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     /// It will register the different accounts used for holdings.
@@ -241,7 +307,7 @@ interface IHub {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId assetAccount,
         AccountId equityAccount,
         AccountId gainAccount,
@@ -258,7 +324,7 @@ interface IHub {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable;
@@ -268,7 +334,7 @@ interface IHub {
 
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
         external
         payable;
 

@@ -4,21 +4,22 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {Hub} from "src/hub/Hub.sol";
 
 contract TestCommon is Test {
@@ -30,12 +31,13 @@ contract TestCommon is Test {
     JournalEntry[] EMPTY;
 
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
+    IHubHelpers immutable hubHelpers = IHubHelpers(makeAddr("HubHelpers"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    Hub hub = new Hub(scm, hubRegistry, accounting, holdings, gateway, address(this));
+    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, scm, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -70,13 +72,12 @@ contract TestMainMethodsChecks is TestCommon {
         hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.updateHoldingAmount(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false);
+        hub.updateHoldingAmount(
+            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.increaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.decreaseShareIssuance(PoolId.wrap(0), ShareClassId.wrap(0), 0);
+        hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.stopPrank();
     }
@@ -108,10 +109,22 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setMaxSharePriceAge(0, POOL_A, ShareClassId.wrap(0), 0);
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateManager(POOL_A, address(0), false);
+        hub.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateHubManager(POOL_A, address(0), false);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateBalanceSheetManager(0, POOL_A, bytes32(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -129,20 +142,29 @@ contract TestMainMethodsChecks is TestCommon {
         hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.forceCancelDepositRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.forceCancelRedeemRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updatePricePerShare(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
+        hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.initializeHolding(
             POOL_A,
             ShareClassId.wrap(0),
             AssetId.wrap(0),
-            IERC7726(address(0)),
+            IValuation(address(0)),
             AccountId.wrap(0),
             AccountId.wrap(0),
             AccountId.wrap(0),
@@ -151,14 +173,14 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.initializeLiability(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)), AccountId.wrap(0), AccountId.wrap(0)
+            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)), AccountId.wrap(0), AccountId.wrap(0)
         );
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValue(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IERC7726(address(0)));
+        hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
@@ -182,7 +204,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.triggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setQueue(0, POOL_A, ShareClassId.wrap(0), true);
+        hub.setQueue(POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }
@@ -210,7 +232,7 @@ contract TestInitializeHolding is TestCommon {
             POOL_A,
             SC_A,
             ASSET_A,
-            IERC7726(address(1)),
+            IValuation(address(1)),
             AccountId.wrap(1),
             AccountId.wrap(1),
             AccountId.wrap(1),
@@ -227,11 +249,16 @@ contract TestInitializeLiability is TestCommon {
 
         bytes[] memory cs = new bytes[](1);
         cs[0] = abi.encodeWithSelector(
-            hub.initializeLiability.selector, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1)
+            hub.initializeLiability.selector,
+            SC_A,
+            ASSET_A,
+            IValuation(address(1)),
+            AccountId.wrap(1),
+            AccountId.wrap(1)
         );
 
         vm.prank(ADMIN);
         vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IERC7726(address(1)), AccountId.wrap(1), AccountId.wrap(1));
+        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }

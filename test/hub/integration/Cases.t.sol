@@ -17,7 +17,7 @@ contract TestCases is BaseTest {
 
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
-        guardian.createPool(poolId, FM, USD);
+        guardian.createPool(poolId, FM, USD_ID);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -47,17 +47,7 @@ contract TestCases is BaseTest {
                 LOSS_ACCOUNT
             );
         }
-        hub.updateContract{value: GAS}(
-            poolId,
-            scId,
-            CHAIN_CV,
-            bytes32("target"),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32("factory"),
-                assetId: USDC_C2.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
+        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -71,14 +61,12 @@ contract TestCases is BaseTest {
         assertEq(m1.salt, SC_SALT);
         assertEq(m1.hook, SC_HOOK);
 
-        MessageLib.UpdateContract memory m2 = MessageLib.deserializeUpdateContract(cv.popMessage());
+        MessageLib.UpdateVault memory m2 = MessageLib.deserializeUpdateVault(cv.popMessage());
+        assertEq(m2.poolId, poolId.raw());
         assertEq(m2.scId, scId.raw());
-        assertEq(m2.target, bytes32("target"));
-
-        MessageLib.UpdateContractVaultUpdate memory m3 = MessageLib.deserializeUpdateContractVaultUpdate(m2.payload);
-        assertEq(m3.assetId, USDC_C2.raw());
-        assertEq(m3.vaultOrFactory, bytes32("factory"));
-        assertEq(m3.kind, uint8(VaultUpdateKind.DeployAndLink));
+        assertEq(m2.assetId, USDC_C2.raw());
+        assertEq(m2.vaultOrFactory, bytes32("factory"));
+        assertEq(m2.kind, uint8(VaultUpdateKind.DeployAndLink));
     }
 
     /// forge-config: default.isolate = true
@@ -94,6 +82,9 @@ contract TestCases is BaseTest {
         hub.issueShares{value: GAS}(
             poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE
         );
+
+        // Queue cancellation request which is fulfilled when claiming
+        cv.cancelDepositRequest(poolId, scId, USDC_C2, INVESTOR);
 
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
@@ -117,9 +108,9 @@ contract TestCases is BaseTest {
         assertEq(m2.scId, scId.raw());
         assertEq(m2.investor, INVESTOR);
         assertEq(m2.assetId, USDC_C2.raw());
-        assertEq(m2.assetAmount, APPROVED_INVESTOR_AMOUNT);
+        assertEq(m2.fulfilledAssetAmount, APPROVED_INVESTOR_AMOUNT);
         assertEq(
-            m2.shareAmount,
+            m2.fulfilledShareAmount,
             PricingLib.convertWithPrice(
                 APPROVED_INVESTOR_AMOUNT,
                 hubRegistry.decimals(USDC_C2),
@@ -127,6 +118,7 @@ contract TestCases is BaseTest {
                 NAV_PER_SHARE.reciprocal()
             ).toUint128()
         );
+        assertEq(m2.cancelledAssetAmount, INVESTOR_AMOUNT - APPROVED_INVESTOR_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
@@ -147,6 +139,9 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
         );
 
+        // Queue cancellation request which is fulfilled when claiming
+        cv.cancelRedeemRequest(poolId, scId, USDC_C2, INVESTOR);
+
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
         hub.notifyRedeem{value: GAS}(
@@ -164,17 +159,18 @@ contract TestCases is BaseTest {
         assertEq(m1.scId, scId.raw());
         assertEq(m1.investor, INVESTOR);
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.assetAmount, revokedAssetAmount);
-        assertEq(m1.shareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.fulfilledAssetAmount, revokedAssetAmount);
+        assertEq(m1.fulfilledShareAmount, APPROVED_SHARE_AMOUNT);
+        assertEq(m1.cancelledShareAmount, SHARE_AMOUNT - APPROVED_SHARE_AMOUNT);
     }
 
     /// forge-config: default.isolate = true
     function testUpdateHolding() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
-        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD.raw())).toUint128();
+        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD_ID.raw())).toUint128();
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_C2.raw())).toUint128();
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 1000 * assetDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 1000 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 1000 * poolDecimals);
@@ -184,7 +180,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
         MockValuation valuation = new MockValuation(hubRegistry);
-        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(1, 1));
+        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
         hub.initializeHolding(
             poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
@@ -196,7 +192,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false);
+        cv.updateHoldingAmount(poolId, scId, USDC_C2, 600 * assetDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, USDC_C2), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_C2), 400 * poolDecimals);
@@ -205,7 +201,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(11, 10));
+        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(11, 10));
         hub.updateHoldingValue(poolId, scId, USDC_C2);
 
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 440 * poolDecimals);
@@ -213,7 +209,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 40 * poolDecimals);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        valuation.setPrice(USDC_C2.addr(), hubRegistry.currency(poolId).addr(), d18(8, 10));
+        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(8, 10));
         hub.updateHoldingValue(poolId, scId, USDC_C2);
 
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 320 * poolDecimals);
@@ -226,12 +222,12 @@ contract TestCases is BaseTest {
     function testUpdateShares() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(true);
 
-        cv.updateShares(poolId, scId, 100, true);
+        cv.updateShares(poolId, scId, 100, true, IS_SNAPSHOT, 0);
 
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance, 100);
 
-        cv.updateShares(poolId, scId, 45, false);
+        cv.updateShares(poolId, scId, 45, false, IS_SNAPSHOT, 1);
 
         (uint128 totalIssuance2,) = shareClassManager.metrics(scId);
         assertEq(totalIssuance2, 55);
@@ -245,10 +241,10 @@ contract TestCases is BaseTest {
         D18 poolPerEurPrice = d18(4, 1);
         AssetId poolCurrency = hubRegistry.currency(poolId);
 
-        valuation.setPrice(EUR_STABLE_C2.addr(), poolCurrency.addr(), poolPerEurPrice);
+        valuation.setPrice(EUR_STABLE_C2, poolCurrency, poolPerEurPrice);
 
         vm.startPrank(FM);
-        hub.updatePricePerShare(poolId, scId, sharePrice);
+        hub.updateSharePrice(poolId, scId, sharePrice);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
         hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
         hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV);
