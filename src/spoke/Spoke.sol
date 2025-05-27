@@ -420,16 +420,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpoke
-    function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
-        public
-        view
-        returns (D18 price)
-    {
-        (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
-        price = PricingLib.priceAssetPerShare(poolPerShare.asPrice(), poolPerAsset.asPrice());
-    }
-
-    /// @inheritdoc ISpoke
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         if (checkValidity) {

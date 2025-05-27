@@ -271,23 +271,6 @@ interface ISpoke {
     /// @return bool Whether vault is to a share class
     function isLinked(IVault vault) external view returns (bool);
 
-    /// @notice Returns the price per share for a given pool, share class, asset, and asset id. The provided price is
-    /// defined as ASSET_UNIT/SHARE_UNIT.
-    /// @dev Conditionally checks if price is valid.
-    ///
-    /// @dev NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
-    /// conversion relying on pricePoolPerShare and pricePoolPerAsset. See PricingLib for more information.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know the ASSET_UNIT/SHARE_UNIT price
-    /// @param checkValidity Whether to check if the price is valid
-    /// @return price The asset price per share
-    function priceAssetPerShare(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
-        external
-        view
-        returns (D18 price);
-
     /// @notice Returns the price per share for a given pool and share class. The Provided price is defined as
     /// POOL_UNIT/SHARE_UNIT.
     /// @dev Conditionally checks if price is valid.

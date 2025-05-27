@@ -542,9 +542,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
 
         spoke.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
 
-        vm.expectRevert(ISpoke.InvalidPrice.selector);
-        spoke.priceAssetPerShare(poolId, scId, assetId, true);
-
         // Allows us to go back in time later
         vm.warp(block.timestamp + 1 days);
 
@@ -556,20 +553,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
 
         spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-        D18 latestPrice = spoke.priceAssetPerShare(poolId, scId, assetId, false);
-        assertEq(latestPrice.raw(), price);
 
         vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
         spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
-
-        // NOTE: We have no maxAge set, so price is invalid after timestamp of block increases
-        vm.warp(block.timestamp + 1);
-        vm.expectRevert(ISpoke.InvalidPrice.selector);
-        spoke.priceAssetPerShare(poolId, scId, assetId, true);
-
-        // NOTE: Unchecked version will work
-        latestPrice = spoke.priceAssetPerShare(poolId, scId, assetId, false);
-        assertEq(latestPrice.raw(), price);
     }
 
     function testVaultMigration() public {
