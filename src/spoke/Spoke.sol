@@ -338,7 +338,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         _vaultDetails[vault].isLinked = true;
 
         IAuth(address(shareClass.shareToken)).rely(address(vault));
-        shareClass.shareToken.updateVault(assetIdKey.asset, address(vault));
+        shareClass.shareToken.updateVault(assetIdKey.asset, assetIdKey.tokenId, address(vault));
 
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
@@ -354,7 +354,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         _vaultDetails[vault].isLinked = false;
 
         IAuth(address(shareClass.shareToken)).deny(address(vault));
-        shareClass.shareToken.updateVault(assetIdKey.asset, address(0));
+        shareClass.shareToken.updateVault(assetIdKey.asset, assetIdKey.tokenId, address(0));
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
     }
