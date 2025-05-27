@@ -54,9 +54,6 @@ interface IShareToken is IERC20Metadata, IERC7575Share, IERC1404 {
     /// @notice updates the vault for a given `asset`
     function updateVault(address asset, address vault_) external;
 
-    /// @notice updates the vault for a given `asset` and `tokenId`
-    function updateVault(address asset, uint256 tokenId, address vault_) external;
-
     // --- ERC20 overrides ---
     /// @notice returns the 16 byte hook data of the given `user`.
     /// @dev    Stored in the 128 most significant bits of the user balance
