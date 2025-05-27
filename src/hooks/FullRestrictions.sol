@@ -7,7 +7,7 @@ import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
-import {UpdateRestrictionType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
@@ -26,7 +26,7 @@ import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 ///         the last bit is used to denote whether the account is frozen.
 contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
     using BitmapLib for *;
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
     using CastLib for bytes32;
 
@@ -103,13 +103,14 @@ contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
         UpdateRestrictionType updateId = payload.updateRestrictionType();
 
         if (updateId == UpdateRestrictionType.Member) {
-            MessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
+            UpdateRestrictionMessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
             updateMember(token, m.user.toAddress(), m.validUntil);
         } else if (updateId == UpdateRestrictionType.Freeze) {
-            MessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
+            UpdateRestrictionMessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
             freeze(token, m.user.toAddress());
         } else if (updateId == UpdateRestrictionType.Unfreeze) {
-            MessageLib.UpdateRestrictionUnfreeze memory m = payload.deserializeUpdateRestrictionUnfreeze();
+            UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze memory m =
+                payload.deserializeUpdateRestrictionUnfreeze();
             unfreeze(token, m.user.toAddress());
         } else {
             revert InvalidUpdate();

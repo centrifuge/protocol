@@ -11,7 +11,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -38,7 +38,7 @@ import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.so
 contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     using MathLib for *;
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateContractMessageLib for *;
     using BytesLib for bytes;
 
     IBalanceSheet public balanceSheet;
@@ -66,17 +66,18 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
 
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.Valuation)) {
-            MessageLib.UpdateContractValuation memory m = MessageLib.deserializeUpdateContractValuation(payload);
+            UpdateContractMessageLib.UpdateContractValuation memory m =
+                UpdateContractMessageLib.deserializeUpdateContractValuation(payload);
 
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
             setValuation(poolId, scId, m.valuation.toAddress());
         } else if (kind == uint8(UpdateContractType.SyncDepositMaxReserve)) {
-            MessageLib.UpdateContractSyncDepositMaxReserve memory m =
-                MessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
+            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve memory m =
+                UpdateContractMessageLib.deserializeUpdateContractSyncDepositMaxReserve(payload);
 
             require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
             (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(m.assetId));

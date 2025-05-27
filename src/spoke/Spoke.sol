@@ -13,7 +13,7 @@ import {Recoverable} from "src/misc/Recoverable.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
 
-import {VaultUpdateKind, MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
