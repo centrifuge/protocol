@@ -12,6 +12,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -74,6 +75,7 @@ contract SpokeTestHelper is BaseTest {
 
 contract SpokeTest is BaseTest, SpokeTestHelper {
     using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
     using CastLib for *;
 
     // Deployment
@@ -240,7 +242,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
 
         spoke.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
@@ -249,8 +251,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
-            )
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(
+                address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max
+            ).serialize()
         );
 
         // fails for invalid share class token
@@ -286,7 +289,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         vm.expectRevert(ITransferHook.TransferBlocked.selector);
         spoke.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
         spoke.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
+            poolId,
+            scId,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
 
         vm.expectRevert(ISpoke.UnknownToken.selector);
@@ -309,12 +314,12 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
@@ -326,8 +331,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
-            )
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(
+                address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max
+            ).serialize()
         );
 
         // fails for invalid share class token
@@ -362,11 +368,13 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             PoolId.wrap(100),
             ShareClassId.wrap(bytes16(bytes("100"))),
-            MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         ); // use random poolId & shareId
 
         spoke.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
+            poolId,
+            scId,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
     }
@@ -382,34 +390,48 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
 
         vm.expectRevert(ISpoke.UnknownToken.selector);
         spoke.updateRestriction(
-            PoolId.wrap(poolId.raw() + 1), scId, MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
+            PoolId.wrap(poolId.raw() + 1),
+            scId,
+            UpdateRestrictionMessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
         );
 
         vm.expectRevert(ISpoke.UnknownToken.selector);
         spoke.updateRestriction(
             PoolId.wrap(poolId.raw() + 1),
             scId,
-            MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
         );
 
         spoke.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
+            poolId,
+            scId,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
         );
         spoke.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionMember(secondUser.toBytes32(), validUntil).serialize()
+            poolId,
+            scId,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(secondUser.toBytes32(), validUntil).serialize()
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize());
+        spoke.updateRestriction(
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
+        );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize());
+        spoke.updateRestriction(
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
+        );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(secondUser.toBytes32()).serialize());
+        spoke.updateRestriction(
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(secondUser.toBytes32()).serialize()
+        );
         assertFalse(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
 
-        spoke.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionUnfreeze(secondUser.toBytes32()).serialize());
+        spoke.updateRestriction(
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(secondUser.toBytes32()).serialize()
+        );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
     }
 
@@ -475,7 +497,8 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         ShareClassId scId = vault.scId();
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
-        bytes memory update = MessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
+        bytes memory update =
+            UpdateRestrictionMessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
 
         vm.expectRevert(ISpoke.UnknownToken.selector);
         spoke.updateRestriction(PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), update);
@@ -588,12 +611,12 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
         );
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
         );
 
         assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
@@ -607,7 +630,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        spoke.updateRestriction(poolId, scId, MessageLib.UpdateRestrictionFreeze(address(this).toBytes32()).serialize());
+        spoke.updateRestriction(
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(address(this).toBytes32()).serialize()
+        );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
@@ -616,8 +641,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
-            MessageLib.UpdateRestrictionMember(address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max).serialize(
-            )
+            UpdateRestrictionMessageLib.UpdateRestrictionMember(
+                address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max
+            ).serialize()
         );
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
@@ -625,7 +651,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         spoke.updateRestriction(
-            poolId, scId, MessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
+            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
         spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);

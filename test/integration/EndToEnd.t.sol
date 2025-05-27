@@ -19,6 +19,7 @@ import {Guardian} from "src/common/Guardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {Hub} from "src/hub/Hub.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
@@ -219,10 +220,13 @@ contract EndToEndDeployment is Test {
 /// Common and generic utilities ready to be used in different tests
 contract EndToEndUtils is EndToEndDeployment {
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
 
     function updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
-        return MessageLib.UpdateRestrictionMember({user: addr.toBytes32(), validUntil: type(uint64).max}).serialize();
+        return UpdateRestrictionMessageLib.UpdateRestrictionMember({
+            user: addr.toBytes32(),
+            validUntil: type(uint64).max
+        }).serialize();
     }
 }
 

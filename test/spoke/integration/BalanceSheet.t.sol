@@ -7,7 +7,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -16,7 +16,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 
 contract BalanceSheetTest is BaseTest {
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
     using CastLib for *;
 
     uint128 defaultAmount;
@@ -52,7 +52,10 @@ contract BalanceSheetTest is BaseTest {
         spoke.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
-            MessageLib.UpdateRestrictionMember({user: address(this).toBytes32(), validUntil: MAX_UINT64}).serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: address(this).toBytes32(),
+                validUntil: MAX_UINT64
+            }).serialize()
         );
     }
 

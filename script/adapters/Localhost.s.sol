@@ -11,7 +11,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
@@ -22,7 +23,7 @@ import {FullDeployer} from "script/FullDeployer.s.sol";
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
     using CastLib for *;
-    using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
 
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
@@ -122,8 +123,10 @@ contract LocalhostDeployer is FullDeployer {
             poolId,
             scId,
             centrifugeId,
-            MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
-                .serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(msg.sender)),
+                validUntil: type(uint64).max
+            }).serialize()
         );
 
         // Submit redeem request

@@ -8,6 +8,7 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -24,6 +25,7 @@ interface AdapterLike {
 contract MockCentrifugeChain is Test {
     using CastLib for *;
     using MessageLib for *;
+    using UpdateRestrictionMessageLib for *;
 
     IAdapter[] public adapters;
     Spoke public spoke;
@@ -147,7 +149,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: scId,
-                payload: MessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil).serialize()
+                payload: UpdateRestrictionMessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil).serialize()
             }).serialize()
         );
     }
@@ -203,7 +205,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: scId,
-                payload: MessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
+                payload: UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
             }).serialize()
         );
     }
@@ -213,7 +215,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateRestriction({
                 poolId: poolId,
                 scId: scId,
-                payload: MessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
+                payload: UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
             }).serialize()
         );
     }

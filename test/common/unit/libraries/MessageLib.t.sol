@@ -243,35 +243,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testUpdateRestrictionMember(bytes32 user, uint64 validUntil) public pure {
-        MessageLib.UpdateRestrictionMember memory aa =
-            MessageLib.UpdateRestrictionMember({user: user, validUntil: validUntil});
-        MessageLib.UpdateRestrictionMember memory bb = MessageLib.deserializeUpdateRestrictionMember(aa.serialize());
-
-        assertEq(aa.user, bb.user);
-        assertEq(aa.validUntil, bb.validUntil);
-
-        // This message is a submessage and has not static message length defined
-    }
-
-    function testUpdateRestrictionFreeze(bytes32 user) public pure {
-        MessageLib.UpdateRestrictionFreeze memory aa = MessageLib.UpdateRestrictionFreeze({user: user});
-        MessageLib.UpdateRestrictionFreeze memory bb = MessageLib.deserializeUpdateRestrictionFreeze(aa.serialize());
-
-        assertEq(aa.user, bb.user);
-
-        // This message is a submessage and has not static message length defined
-    }
-
-    function testUpdateRestrictionUnfreeze(bytes32 user) public pure {
-        MessageLib.UpdateRestrictionUnfreeze memory aa = MessageLib.UpdateRestrictionUnfreeze({user: user});
-        MessageLib.UpdateRestrictionUnfreeze memory bb = MessageLib.deserializeUpdateRestrictionUnfreeze(aa.serialize());
-
-        assertEq(aa.user, bb.user);
-
-        // This message is a submessage and has not static message length defined
-    }
-
     function testUpdateContract(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
         MessageLib.UpdateContract memory a =
             MessageLib.UpdateContract({poolId: poolId, scId: scId, target: target, payload: payload});
