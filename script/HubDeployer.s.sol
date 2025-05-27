@@ -48,14 +48,12 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployHubRegistry(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         hubRegistry = HubRegistry(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("hub-registry")),
+                    computeSalt("hub-registry", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(HubRegistry).creationCode,
                         abi.encode(deployer)
@@ -67,7 +65,7 @@ contract HubDeployer is CommonDeployer {
         identityValuation = IdentityValuation(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("identity-valuation")),
+                    computeSalt("identity-valuation", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(IdentityValuation).creationCode,
                         abi.encode(hubRegistry, deployer)
@@ -78,14 +76,12 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployAccounting(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         accounting = Accounting(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("accounting")),
+                    computeSalt("accounting", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Accounting).creationCode,
                         abi.encode(deployer)
@@ -97,7 +93,7 @@ contract HubDeployer is CommonDeployer {
         holdings = Holdings(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("holdings")),
+                    computeSalt("holdings", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Holdings).creationCode,
                         abi.encode(hubRegistry, deployer)
@@ -109,7 +105,7 @@ contract HubDeployer is CommonDeployer {
         shareClassManager = ShareClassManager(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("share-class-manager")),
+                    computeSalt("share-class-manager", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(ShareClassManager).creationCode,
                         abi.encode(hubRegistry, deployer)
@@ -125,14 +121,12 @@ contract HubDeployer is CommonDeployer {
         address deployer,
         bool isTests
     ) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         hub = Hub(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("hub")),
+                    computeSalt("hub", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(Hub).creationCode,
                         abi.encode(
@@ -155,14 +149,12 @@ contract HubDeployer is CommonDeployer {
     }
 
     function _deployHubHelpers(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         hubHelpers = HubHelpers(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("hub-helpers")),
+                    computeSalt("hub-helpers", deployer, HUB_VERSION),
                     abi.encodePacked(
                         type(HubHelpers).creationCode,
                         abi.encode(

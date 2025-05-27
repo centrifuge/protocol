@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 /// @title Create3Factory
-/// @notice Interface for the official CREATE3 factory deployed by zeframlou
-/// @dev Using the official factory deployed at 0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+/// @notice Interface for the official CreateX factory deployed by pcaversaccio
+/// @dev Using the official factory deployed at 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed
 interface Create3Factory {
     /// @notice Deploys a contract using CREATE3
     /// @param salt The salt for deterministic deployment

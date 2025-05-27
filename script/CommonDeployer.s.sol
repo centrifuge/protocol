@@ -27,6 +27,14 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     uint128 constant FALLBACK_MSG_COST = uint128(0.02 ether); // in Weight
     uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000 ether); // 10M in Weight
+    address constant CREATE3_FACTORY =
+        0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed;
+    // CreateX contract:https://github.com/pcaversaccio/createx?tab=readme-ov-file#createx-deployments
+
+    // Version constants for different components
+    string constant CORE_VERSION = "1.0.0";
+    string constant HUB_VERSION = "1.0.0";
+    string constant SPOKE_VERSION = "1.0.0";
 
     IAdapter[] adapters;
 
@@ -39,6 +47,39 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MultiAdapter public multiAdapter;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
+
+    /// @notice Computes a deterministic salt for contract deployment
+    /// @param name The name of the contract to deploy
+    /// @param deployer The address of the authorized deployer
+    /// @param version The semantic version of the contract (e.g., "1.0.0")
+    /// @return salt The computed salt for deterministic deployment
+    function computeSalt(
+        string memory name,
+        address deployer,
+        string memory version
+    ) internal pure returns (bytes32 salt) {
+        // First 20 bytes: permissioned deploy protection (msg.sender)
+        // 21st byte: cross-chain redeploy protection (0x01)
+        // Last 11 bytes: entropy from name and version
+        bytes memory entropy = abi.encodePacked(
+            "centrifuge-v3", // namespace to avoid collisions
+            name,
+            version
+        );
+
+        // Create salt with the pattern:
+        // - First 20 bytes: deployer address
+        // - 21st byte: 0x01 for cross-chain protection
+        // - Last 11 bytes: keccak256 of entropy (truncated to 11 bytes)
+        // Docs: https://github.com/pcaversaccio/createx?tab=readme-ov-file#permissioned-deploy-protection-and-cross-chain-redeploy-protection
+        salt = bytes32(
+            abi.encodePacked(
+                deployer, // 20 bytes
+                bytes1(0x00), // 1 byte for cross-chain protection
+                bytes11(keccak256(entropy)) // 11 bytes of entropy
+            )
+        );
+    }
 
     function deployCommon(
         uint16 centrifugeId,
@@ -92,14 +133,22 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _deployCore(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
+
+        // Use special PROXY_SALT for root to prevent accidental redeployment
+        // Replace the first 20 bytes with the deployer's address
+        bytes32 proxySalt = bytes32(
+            abi.encodePacked(
+                deployer, // 20 bytes - deployer address
+                bytes1(0x00), // 1 byte for cross-chain protection
+                bytes11(keccak256(abi.encodePacked("PROXY", "1.0.0"))) // 11 bytes of entropy
+            )
         );
 
         root = Root(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("root")),
+                    proxySalt,
                     abi.encodePacked(
                         type(Root).creationCode,
                         abi.encode(DELAY, deployer)
@@ -111,7 +160,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         tokenRecoverer = TokenRecoverer(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("token-recoverer")),
+                    computeSalt("token-recoverer", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(TokenRecoverer).creationCode,
                         abi.encode(address(root), deployer)
@@ -123,7 +172,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = MessageProcessor(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("message-processor")),
+                    computeSalt("message-processor", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(MessageProcessor).creationCode,
                         abi.encode(
@@ -138,9 +187,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _deployServices(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         uint128 messageGasLimit = uint128(
             vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST)
@@ -152,7 +199,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gasService = GasService(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("gas-service")),
+                    computeSalt("gas-service", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(GasService).creationCode,
                         abi.encode(maxBatchSize, messageGasLimit)
@@ -166,14 +213,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         uint16 centrifugeId,
         address deployer
     ) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         gateway = Gateway(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("gateway")),
+                    computeSalt("gateway", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(Gateway).creationCode,
                         abi.encode(
@@ -190,7 +235,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageDispatcher = MessageDispatcher(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("message-dispatcher")),
+                    computeSalt("message-dispatcher", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(MessageDispatcher).creationCode,
                         abi.encode(
@@ -207,14 +252,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _deployGuardian(address deployer) internal {
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         guardian = Guardian(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("guardian")),
+                    computeSalt("guardian", deployer, CORE_VERSION),
                     abi.encodePacked(
                         type(Guardian).creationCode,
                         abi.encode(

@@ -52,14 +52,12 @@ contract SpokeDeployer is CommonDeployer {
     ) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
-        Create3Factory create3Factory = Create3Factory(
-            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
-        );
+        Create3Factory create3Factory = Create3Factory(CREATE3_FACTORY);
 
         poolEscrowFactory = PoolEscrowFactory(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("pool-escrow-factory")),
+                    computeSalt("pool-escrow-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(PoolEscrowFactory).creationCode,
                         abi.encode(address(root), deployer)
@@ -71,7 +69,7 @@ contract SpokeDeployer is CommonDeployer {
         routerEscrow = Escrow(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("router-escrow")),
+                    computeSalt("escrow", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Escrow).creationCode,
                         abi.encode(deployer)
@@ -83,7 +81,7 @@ contract SpokeDeployer is CommonDeployer {
         globalEscrow = Escrow(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("global-escrow")),
+                    computeSalt("escrow", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Escrow).creationCode,
                         abi.encode(deployer)
@@ -95,7 +93,7 @@ contract SpokeDeployer is CommonDeployer {
         tokenFactory = TokenFactory(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("token-factory")),
+                    computeSalt("token-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(TokenFactory).creationCode,
                         abi.encode(address(root), deployer)
@@ -107,7 +105,11 @@ contract SpokeDeployer is CommonDeployer {
         asyncRequestManager = AsyncRequestManager(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("async-request-manager")),
+                    computeSalt(
+                        "async-request-manager",
+                        deployer,
+                        SPOKE_VERSION
+                    ),
                     abi.encodePacked(
                         type(AsyncRequestManager).creationCode,
                         abi.encode(
@@ -123,7 +125,11 @@ contract SpokeDeployer is CommonDeployer {
         syncRequestManager = SyncRequestManager(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("sync-request-manager")),
+                    computeSalt(
+                        "sync-request-manager",
+                        deployer,
+                        SPOKE_VERSION
+                    ),
                     abi.encodePacked(
                         type(SyncRequestManager).creationCode,
                         abi.encode(
@@ -139,7 +145,7 @@ contract SpokeDeployer is CommonDeployer {
         asyncVaultFactory = AsyncVaultFactory(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("async-vault-factory")),
+                    computeSalt("async-vault-factory", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(AsyncVaultFactory).creationCode,
                         abi.encode(address(root), asyncRequestManager, deployer)
@@ -151,7 +157,11 @@ contract SpokeDeployer is CommonDeployer {
         syncDepositVaultFactory = SyncDepositVaultFactory(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("sync-deposit-vault-factory")),
+                    computeSalt(
+                        "sync-deposit-vault-factory",
+                        deployer,
+                        SPOKE_VERSION
+                    ),
                     abi.encodePacked(
                         type(SyncDepositVaultFactory).creationCode,
                         abi.encode(
@@ -168,10 +178,10 @@ contract SpokeDeployer is CommonDeployer {
         spoke = Spoke(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("spoke")),
+                    computeSalt("spoke", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(Spoke).creationCode,
-                        abi.encode(tokenFactory, deployer)
+                        abi.encode(centrifugeId, gateway, deployer)
                     )
                 )
             )
@@ -180,7 +190,7 @@ contract SpokeDeployer is CommonDeployer {
         balanceSheet = BalanceSheet(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("balance-sheet")),
+                    computeSalt("balance-sheet", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(BalanceSheet).creationCode,
                         abi.encode(root, deployer)
@@ -192,7 +202,7 @@ contract SpokeDeployer is CommonDeployer {
         vaultRouter = VaultRouter(
             payable(
                 create3Factory.deploy(
-                    keccak256(abi.encodePacked("vault-router")),
+                    computeSalt("vault-router", deployer, SPOKE_VERSION),
                     abi.encodePacked(
                         type(VaultRouter).creationCode,
                         abi.encode(
@@ -212,7 +222,11 @@ contract SpokeDeployer is CommonDeployer {
             FreezeOnly(
                 payable(
                     create3Factory.deploy(
-                        keccak256(abi.encodePacked("freeze-only-hook")),
+                        computeSalt(
+                            "freeze-only-hook",
+                            deployer,
+                            SPOKE_VERSION
+                        ),
                         abi.encodePacked(
                             type(FreezeOnly).creationCode,
                             abi.encode(address(root), deployer)
@@ -226,7 +240,11 @@ contract SpokeDeployer is CommonDeployer {
             FullRestrictions(
                 payable(
                     create3Factory.deploy(
-                        keccak256(abi.encodePacked("full-restrictions-hook")),
+                        computeSalt(
+                            "full-restrictions-hook",
+                            deployer,
+                            SPOKE_VERSION
+                        ),
                         abi.encodePacked(
                             type(FullRestrictions).creationCode,
                             abi.encode(address(root), deployer)
@@ -240,8 +258,10 @@ contract SpokeDeployer is CommonDeployer {
             RedemptionRestrictions(
                 payable(
                     create3Factory.deploy(
-                        keccak256(
-                            abi.encodePacked("redemption-restrictions-hook")
+                        computeSalt(
+                            "redemption-restrictions-hook",
+                            deployer,
+                            SPOKE_VERSION
                         ),
                         abi.encodePacked(
                             type(RedemptionRestrictions).creationCode,
