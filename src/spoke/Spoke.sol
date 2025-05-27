@@ -75,9 +75,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = ISpokeMessageSender(data);
+        if (what == "gateway") gateway = IGateway(data);
+        else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
