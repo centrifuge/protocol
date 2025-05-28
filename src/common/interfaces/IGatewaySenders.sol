@@ -144,16 +144,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        external;
-
-    /// @notice Creates and send the message
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
-
-    /// @notice Creates and send the message
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
-
-    /// @notice Creates and send the message
     function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 
     /// @notice Creates and send the message

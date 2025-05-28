@@ -128,7 +128,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) public authOrManager(poolId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -177,6 +177,57 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(msg.sender, msg.sender, address(this), shares);
         token.burn(address(this), shares);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+        AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
+        if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) return;
+
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
+        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
+        if (assetQueue.deposits > assetQueue.withdrawals) {
+            sender.sendUpdateHoldingAmount(
+                poolId,
+                scId,
+                assetId,
+                assetQueue.deposits - assetQueue.withdrawals,
+                pricePoolPerAsset,
+                true,
+                isSnapshot,
+                shareQueue.nonce
+            );
+        } else if (assetQueue.withdrawals > assetQueue.deposits) {
+            sender.sendUpdateHoldingAmount(
+                poolId,
+                scId,
+                assetId,
+                assetQueue.withdrawals - assetQueue.deposits,
+                pricePoolPerAsset,
+                false,
+                isSnapshot,
+                shareQueue.nonce
+            );
+        }
+
+        assetQueue.deposits = 0;
+        assetQueue.withdrawals = 0;
+        shareQueue.nonce++;
+        shareQueue.queuedAssetCounter--;
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        if (shareQueue.delta == 0) return;
+
+        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
+        sender.sendUpdateShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
+
+        shareQueue.delta = 0;
+        shareQueue.isPositive = true;
+        shareQueue.nonce++;
     }
 
     /// @inheritdoc IBalanceSheet
@@ -243,64 +294,8 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares) external auth {
-        issue(poolId, scId, receiver, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queueDisabled[poolId][scId] = !enabled;
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
-        AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
-        if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) return;
-
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
-        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
-        if (assetQueue.deposits > assetQueue.withdrawals) {
-            sender.sendUpdateHoldingAmount(
-                poolId,
-                scId,
-                assetId,
-                assetQueue.deposits - assetQueue.withdrawals,
-                pricePoolPerAsset,
-                true,
-                isSnapshot,
-                shareQueue.nonce
-            );
-        } else if (assetQueue.withdrawals > assetQueue.deposits) {
-            sender.sendUpdateHoldingAmount(
-                poolId,
-                scId,
-                assetId,
-                assetQueue.withdrawals - assetQueue.deposits,
-                pricePoolPerAsset,
-                false,
-                isSnapshot,
-                shareQueue.nonce
-            );
-        }
-
-        assetQueue.deposits = 0;
-        assetQueue.withdrawals = 0;
-        shareQueue.nonce++;
-        shareQueue.queuedAssetCounter--;
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (shareQueue.delta == 0) return;
-
-        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        sender.sendUpdateShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
-
-        shareQueue.delta = 0;
-        shareQueue.isPositive = true;
-        shareQueue.nonce++;
     }
 
     //----------------------------------------------------------------------------------------------
