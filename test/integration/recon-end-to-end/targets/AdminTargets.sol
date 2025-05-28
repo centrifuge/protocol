@@ -85,7 +85,7 @@ abstract contract AdminTargets is
         createdAccountIds.push(account);
     }
 
-    function hub_createHolding(IValuation valuation, uint32 assetAccountAsUint, uint32 equityAccountAsUint, uint32 lossAccountAsUint, uint32 gainAccountAsUint) public updateGhosts {
+    function hub_initializeHolding(IValuation valuation, uint32 assetAccountAsUint, uint32 equityAccountAsUint, uint32 lossAccountAsUint, uint32 gainAccountAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         AssetId assetId = hubRegistry.currency(poolId);
