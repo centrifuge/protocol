@@ -75,16 +75,16 @@ abstract contract SharedStorage {
 
     /**
      * See:
-     *         - poolManager_handleTransfer(bytes32 receiver, uint128 amount)
-     *         - poolManager_handleTransfer(address receiver, uint128 amount)
+     *         - spoke_handleTransfer(bytes32 receiver, uint128 amount)
+     *         - spoke_handleTransfer(address receiver, uint128 amount)
      *
-     *         - poolManager_transfer
+     *         - spoke_transfer
      */
     mapping(address => uint256) sumOfTransfersIn;
 
     /**
      * See:
-     *     -   poolManager_handleTransfer
+     *     -   spoke_handleTransfer
      */
     mapping(address => uint256) sumOfTransfersOut;
 

@@ -29,7 +29,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function test_shortcut_deployNewTokenPoolAndShare_deposit() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
         vault_requestDeposit(1e18, 0);
     }
@@ -43,7 +43,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
         
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
@@ -65,7 +65,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
         
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
         vault_deposit(1e18);
     }
@@ -83,7 +83,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
@@ -186,7 +186,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
     }
 
     function test_shortcut_deployNewTokenPoolAndShare_only() public {

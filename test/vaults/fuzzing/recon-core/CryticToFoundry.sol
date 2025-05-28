@@ -19,8 +19,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_deployNewTokenPoolAndShare_deposit() public {
         deployNewTokenPoolAndShare(18, 1_000_000e18);
 
-        poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
-        poolManager_updateMember(type(uint64).max);
+        spoke_updatePricePoolPerShare(1e18, type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
         vault_requestDeposit(1e18, 0);
     }
@@ -28,17 +28,17 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_deployNewTokenPoolAndShare_change_price() public {
         deployNewTokenPoolAndShare(18, 1_000_000e18);
 
-        poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
-        poolManager_updateMember(type(uint64).max);
+        spoke_updatePricePoolPerShare(1e18, type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
-        poolManager_updatePricePoolPerShare(2e18, type(uint64).max);
+        spoke_updatePricePoolPerShare(2e18, type(uint64).max);
     }
 
     function test_vault_deposit_and_redeem() public {
         deployNewTokenPoolAndShare(18, 1_000_000e18);
 
-        poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
-        poolManager_updateMember(type(uint64).max);
+        spoke_updatePricePoolPerShare(1e18, type(uint64).max);
+        spoke_updateMember(type(uint64).max);
         
         vault_requestDeposit(1e18, 0);
 
@@ -62,13 +62,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         deployNewTokenPoolAndShare(2,0);
 
-        poolManager_updatePricePoolPerShare(1,0);
+        spoke_updatePricePoolPerShare(1,0);
 
         fullRestrictions_updateMemberBasic(1525116735);
 
         vault_requestDeposit(1,0);
 
-        poolManager_updatePricePoolPerShare(1,1525005619);
+        spoke_updatePricePoolPerShare(1,1525005619);
 
         asyncRequests_fulfillDepositRequest(0,1000154974352403727,0,0, D18.wrap(1e18));
 
@@ -80,9 +80,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         deployNewTokenPoolAndShare(2,0);
 
-        poolManager_updateMember(1525186875);
+        spoke_updateMember(1525186875);
 
-        poolManager_updatePricePoolPerShare(1,0);
+        spoke_updatePricePoolPerShare(1,0);
 
         vault_requestDeposit(1,0);
 

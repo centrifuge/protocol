@@ -18,7 +18,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
 
     // NOTE: These introduce many false positives because they're used for cross-chain transfers but we our test environment only allows tracking state on one chain so they were removed
     // TODO: Overflow stuff
-    // function poolManager_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
+    // function spoke_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
     //     address investor = _getRandomActor(investorEntropy);
     //     spoke.handleTransferShares(poolId, scId, investor, amount);
 
@@ -28,7 +28,7 @@ abstract contract PoolManagerTargets is BaseTargetFunctions, Properties {
     //     incomingTransfers[address(token)] += amount;
     // }
 
-    // function poolManager_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
+    // function spoke_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
     //     public
     // updateGhosts asActor {
     //     uint256 balB4 = token.balanceOf(_getActor());

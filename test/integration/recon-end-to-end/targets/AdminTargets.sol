@@ -109,7 +109,7 @@ abstract contract AdminTargets is
         AccountId lossAccount = Helpers.getRandomAccountId(createdAccountIds, lossAccountEntropy);
         AccountId gainAccount = Helpers.getRandomAccountId(createdAccountIds, gainAccountEntropy);
 
-        hub_createHolding(valuation, assetAccount.raw(), equityAccount.raw(), lossAccount.raw(), gainAccount.raw());
+        hub_initializeHolding(valuation, assetAccount.raw(), equityAccount.raw(), lossAccount.raw(), gainAccount.raw());
     }
 
     function hub_initializeLiability(IValuation valuation, uint32 expenseAccountAsUint, uint32 liabilityAccountAsUint) public updateGhosts {

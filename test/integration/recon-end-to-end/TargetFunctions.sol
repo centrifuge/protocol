@@ -104,7 +104,7 @@ abstract contract TargetFunctions is
         PoolId _poolId;
 
         {
-            poolManager_registerAsset(_getAsset(), 0);
+            spoke_registerAsset(_getAsset(), 0);
         }
 
         // 2. Deploy new pool and register it
@@ -112,7 +112,7 @@ abstract contract TargetFunctions is
             _poolId = PoolId.wrap(POOL_ID_COUNTER);
             hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
 
-            poolManager_addPool();
+            spoke_addPool();
 
             POOL_ID_COUNTER++;
         }
@@ -126,7 +126,7 @@ abstract contract TargetFunctions is
             hub_addShareClass(salt);
 
             // TODO: Should we customize decimals and permissions here?
-            poolManager_addShareClass(_scId, 18, address(fullRestrictions));
+            spoke_addShareClass(_scId, 18, address(fullRestrictions));
         }
 
         // 4. Create accounts and holding
@@ -140,12 +140,12 @@ abstract contract TargetFunctions is
             hub_createAccount(LOSS_ACCOUNT, isDebitNormal);
             hub_createAccount(GAIN_ACCOUNT, isDebitNormal);
             
-            hub_createHolding(valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
+            hub_initializeHolding(valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         }
 
         // 5. Deploy new vault and register it
-        poolManager_deployVault(isAsyncVault);
-        poolManager_linkVault(_getVault());
+        spoke_deployVault(isAsyncVault);
+        spoke_linkVault(_getVault());
         asyncRequestManager.rely(address(_getVault()));
 
         // 6. approve and mint initial amount of underlying asset to all actors
@@ -170,7 +170,7 @@ abstract contract TargetFunctions is
         
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
         
         vault_requestDeposit(amount, toEntropy);
     }
@@ -181,7 +181,7 @@ abstract contract TargetFunctions is
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
         
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
         vault_deposit(assets);
     }
@@ -192,7 +192,7 @@ abstract contract TargetFunctions is
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
         
-        poolManager_updateMember(type(uint64).max);
+        spoke_updateMember(type(uint64).max);
 
         vault_mint(shares);
     }

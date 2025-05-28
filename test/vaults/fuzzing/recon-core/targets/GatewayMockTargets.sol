@@ -26,7 +26,7 @@ import {OpType} from "../BeforeAfter.sol";
 // `Gateway.handle(bytes calldata message)`
 /**
  * - deployNewTokenPoolAndShare Core function that deploys a Liquidity Pool
- *     - poolManager_registerAsset
+ *     - spoke_registerAsset
  */
 abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
@@ -64,12 +64,12 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         newToken = _newAsset(decimals);
         {
             ASSET_ID_COUNTER += 1;
-            newAssetId = poolManager_registerAsset(address(newToken), 0);
+            newAssetId = spoke_registerAsset(address(newToken), 0);
         }
 
         {
             POOL_ID += 1;
-            poolManager_addPool(POOL_ID);
+            spoke_addPool(POOL_ID);
         }
 
         {
@@ -78,7 +78,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
             string memory symbol = "T1";
 
             // TODO: Ask if we should customize decimals and permissions here
-            (newShareToken,) = poolManager_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(fullRestrictions));
+            (newShareToken,) = spoke_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(fullRestrictions));
         }
 
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
@@ -121,7 +121,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function poolManager_registerAsset(address assetAddress, uint256 erc6909TokenId) public notGovFuzzing asAdmin returns (uint128 assetId) {
+    function spoke_registerAsset(address assetAddress, uint256 erc6909TokenId) public notGovFuzzing asAdmin returns (uint128 assetId) {
         assetId = spoke.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
 
         // Only if successful
@@ -130,12 +130,12 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 3
-    function poolManager_addPool(uint64 poolId) public notGovFuzzing asAdmin {
+    function spoke_addPool(uint64 poolId) public notGovFuzzing asAdmin {
         spoke.addPool(PoolId.wrap(poolId));
     }
 
     // Step 4
-    function poolManager_addShareClass(
+    function spoke_addShareClass(
         uint64 poolId,
         bytes16 scId,
         string memory tokenName,
@@ -155,7 +155,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 5
-    function poolManager_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
+    function spoke_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
         return address(spoke.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
     }
 
@@ -182,27 +182,27 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     /**
      * NOTE: All of these are implicitly clamped!
      */
-    function poolManager_updateMember(uint64 validUntil) public asAdmin {
+    function spoke_updateMember(uint64 validUntil) public asAdmin {
         spoke.updateRestriction(
             PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil))
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function poolManager_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
+    function spoke_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
         spoke.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), price, computedAt);
         spoke.updatePricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, computedAt);
     }
 
-    function poolManager_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
+    function spoke_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
         spoke.updateShareMetadata(PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol);
     }
 
-    function poolManager_freeze() public asAdmin {
+    function spoke_freeze() public asAdmin {
         spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionFreeze(_getActor().toBytes32())));
     }
 
-    function poolManager_unfreeze() public asAdmin {
+    function spoke_unfreeze() public asAdmin {
         spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32())));
     }
 

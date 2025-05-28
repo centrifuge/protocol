@@ -189,7 +189,7 @@ contract CryticToFoundry is CryticSanity {
 
     //     vm.roll(block.number + 3);
     //     vm.warp(block.timestamp + 30);
-    //     poolManager_registerAsset(0xE8F1B392844009F24effeA587932Ee06c049b434,16060024066238306762108704779051709181052769654158773406672896171390510505927);
+    //     spoke_registerAsset(0xE8F1B392844009F24effeA587932Ee06c049b434,16060024066238306762108704779051709181052769654158773406672896171390510505927);
 
     //     vm.roll(block.number + 30178);
     //     vm.warp(block.timestamp + 522178);
@@ -313,12 +313,12 @@ contract CryticToFoundry is CryticSanity {
 
         shortcut_deposit_and_claim(0,1,1,1,0);
 
-        poolManager_addShareClass(hex"12",2,0x0000000000000000000000000000000000000000);
+        spoke_addShareClass(hex"12",2,0x0000000000000000000000000000000000000000);
 
         // this creates a new holding which gets queried by the property but it's overwriting existing accounts so incorrectly calculates accountValue
         hub_createHolding_clamped(false,0,0,0,0);
 
-        poolManager_deployVault(false);
+        spoke_deployVault(false);
 
         property_accounting_and_holdings_soundness();
 
@@ -402,7 +402,7 @@ contract CryticToFoundry is CryticSanity {
 
         shortcut_queue_redemption(1,1004036701446375220,5254288375605742773881224755342121000960484163);
 
-        poolManager_deployVault_clamped();
+        spoke_deployVault_clamped();
 
         hub_notifyRedeem(1);
 
@@ -587,7 +587,7 @@ contract CryticToFoundry is CryticSanity {
     //     vm.roll(block.number + 36859);
     //     vm.warp(block.timestamp + 412373);
     //     vm.prank(0x0000000000000000000000000000000000030000);
-    //     poolManager_unfreeze();
+    //     spoke_unfreeze();
 
     //     vm.roll(block.number + 11905);
     //     vm.warp(block.timestamp + 379552);
@@ -625,7 +625,7 @@ contract CryticToFoundry is CryticSanity {
     //     vm.roll(block.number + 12155);
     //     vm.warp(block.timestamp + 49735);
     //     vm.prank(0x0000000000000000000000000000000000020000);
-    //     poolManager_deployVault_clamped();
+    //     spoke_deployVault_clamped();
 
     //     vm.roll(block.number + 32737);
     //     vm.warp(block.timestamp + 195123);
@@ -668,7 +668,7 @@ contract CryticToFoundry is CryticSanity {
     //     vm.roll(block.number + 30042);
     //     vm.warp(block.timestamp + 65535);
     //     vm.prank(0x0000000000000000000000000000000000030000);
-    //     poolManager_unlinkVault();
+    //     spoke_unlinkVault();
 
     //     vm.roll(block.number + 689);
     //     vm.warp(block.timestamp + 887);
@@ -687,7 +687,7 @@ contract CryticToFoundry is CryticSanity {
     //     vm.roll(block.number + 23722);
     //     vm.warp(block.timestamp + 254414);
     //     vm.prank(0x0000000000000000000000000000000000020000);
-    //     poolManager_updateShareMetadata(hex"8252535458f3d351ef",hex"42b1624e554cbcf3b341b7694e03");
+    //     spoke_updateShareMetadata(hex"8252535458f3d351ef",hex"42b1624e554cbcf3b341b7694e03");
 
     //     vm.warp(block.timestamp + 298042);
 
@@ -715,7 +715,7 @@ contract CryticToFoundry is CryticSanity {
     //     vm.roll(block.number + 22699);
     //     vm.warp(block.timestamp + 447588);
     //     vm.prank(0x0000000000000000000000000000000000030000);
-    //     poolManager_linkVault_clamped();
+    //     spoke_linkVault_clamped();
 
     //     vm.roll(block.number + 18429);
     //     vm.warp(block.timestamp + 115085);
