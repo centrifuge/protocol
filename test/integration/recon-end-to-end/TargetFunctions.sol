@@ -125,8 +125,10 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            // TODO: Should we customize decimals and permissions here?
-            spoke_addShareClass(_scId, 18, address(fullRestrictions));
+            // NOTE: This seems like an issue, doesn't ever work with fullRestrictions passed in
+            // spoke_addShareClass(_scId, 18, address(fullRestrictions));
+            spoke_addShareClass(_scId, 18, address(0));
+            ShareToken(_getShareToken()).rely(address(spoke));
         }
 
         // 4. Create accounts and holding
@@ -146,6 +148,7 @@ abstract contract TargetFunctions is
         // 5. Deploy new vault and register it
         spoke_deployVault(isAsyncVault);
         spoke_linkVault(_getVault());
+
         asyncRequestManager.rely(address(_getVault()));
 
         // 6. approve and mint initial amount of underlying asset to all actors

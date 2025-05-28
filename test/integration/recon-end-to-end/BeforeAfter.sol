@@ -100,6 +100,11 @@ abstract contract BeforeAfter is Setup {
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
 
+        // if the vault isn't deployed, these values can't be updated
+        if(address(_getVault()) == address(0)) {
+            return;
+        }
+
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -141,7 +146,12 @@ abstract contract BeforeAfter is Setup {
         // Hub
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
-        
+
+        // if the vault isn't deployed, these values can't be updated
+        if(address(_getVault()) == address(0)) {
+            return;
+        }
+
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();

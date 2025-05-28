@@ -170,10 +170,9 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         syncRequestManager.file("spoke", address(spoke));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
         syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
-        spoke.file("gateway", address(gateway));
-        spoke.file("balanceSheet", address(balanceSheet));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
         spoke.file("vaultFactory", address(vaultFactory), true);
         balanceSheet.file("spoke", address(spoke));
