@@ -243,11 +243,5 @@ interface IRequestManagerGatewayHandler {
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;
 
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
-
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
-
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
-
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 }

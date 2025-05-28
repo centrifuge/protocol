@@ -128,7 +128,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) public authOrManager(poolId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -180,79 +180,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
-        external
-        authOrManager(poolId)
-    {
-        require(!root.endorsed(from), CannotTransferFromEndorsedContract());
-        IShareToken token = IShareToken(spoke.shareToken(poolId, scId));
-        token.authTransferFrom(from, from, to, amount);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
-        external
-        authOrManager(poolId)
-    {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // View methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBalanceSheet
-    function escrow(PoolId poolId) public view returns (IPoolEscrow) {
-        return poolEscrowProvider.escrow(poolId);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
-        public
-        view
-        returns (uint128)
-    {
-        return escrow(poolId).availableBalanceOf(scId, asset, tokenId);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Gateway handlers
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function updateManager(PoolId poolId, address who, bool canManage) external auth {
-        manager[poolId][who] = canManage;
-        emit UpdateManager(poolId, who, canManage);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address receiver, uint128 shares) external auth {
-        issue(poolId, scId, receiver, shares);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        queueDisabled[poolId][scId] = !enabled;
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) return;
@@ -290,7 +217,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         shareQueue.queuedAssetCounter--;
     }
 
-    /// @inheritdoc IBalanceSheetGatewayHandler
+    /// @inheritdoc IBalanceSheet
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (shareQueue.delta == 0) return;
@@ -301,6 +228,74 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         shareQueue.delta = 0;
         shareQueue.isPositive = true;
         shareQueue.nonce++;
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount)
+        external
+        authOrManager(poolId)
+    {
+        require(!root.endorsed(from), CannotTransferFromEndorsedContract());
+        IShareToken token = IShareToken(spoke.shareToken(poolId, scId));
+        token.authTransferFrom(from, from, to, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
+        external
+        authOrManager(poolId)
+    {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), true);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Gateway handlers
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        queueDisabled[poolId][scId] = !enabled;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheet
+    function escrow(PoolId poolId) public view returns (IPoolEscrow) {
+        return poolEscrowProvider.escrow(poolId);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        public
+        view
+        returns (uint128)
+    {
+        return escrow(poolId).availableBalanceOf(scId, asset, tokenId);
     }
 
     //----------------------------------------------------------------------------------------------

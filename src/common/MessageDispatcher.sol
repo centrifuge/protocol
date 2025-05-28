@@ -407,50 +407,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        external
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            balanceSheet.triggerIssueShares(poolId, scId, who, shares);
-        } else {
-            gateway.send(
-                centrifugeId,
-                MessageLib.TriggerIssueShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    who: who.toBytes32(),
-                    shares: shares
-                }).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external auth {
-        if (centrifugeId == localCentrifugeId) {
-            balanceSheet.submitQueuedShares(poolId, scId);
-        } else {
-            gateway.send(
-                centrifugeId, MessageLib.TriggerSubmitQueuedShares({poolId: poolId.raw(), scId: scId.raw()}).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            balanceSheet.submitQueuedAssets(poolId, scId, assetId);
-        } else {
-            gateway.send(
-                assetId.centrifugeId(),
-                MessageLib.TriggerSubmitQueuedAssets({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw()})
-                    .serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
     function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         // Forced to be to the same chain
         balanceSheet.setQueue(poolId, scId, enabled);
