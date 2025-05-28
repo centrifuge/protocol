@@ -3,7 +3,7 @@
 source .env
 
 display_help() {
-    echo 
+    echo
     echo "This script verifies the vault contract and its associated share class and restriction manager contracts."
     echo
     echo "Usage: $0 contract_address"
@@ -54,7 +54,7 @@ echo "asyncRedeemManager: $asyncRedeemManager"
 echo "syncDepositManager: $syncDepositManager"
 echo "spoke: $spoke"
 echo "token decimals: $decimals"
-forge verify-contract --constructor-args $(cast abi-encode "constructor(uint8)" $decimals) --watch --etherscan-api-key $ETHERSCAN_KEY $share src/spokes/ShareToken.sol:CentrifugeToken --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
+forge verify-contract --constructor-args $(cast abi-encode "constructor(uint8)" $decimals) --watch --etherscan-api-key $ETHERSCAN_KEY $share src/spoke/ShareToken.sol:CentrifugeToken --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
 
-# forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address)" $poolId $scId $asset 0 $share $root $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/spokes/ERC7540Vault.sol:ERC7540Vault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
-forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address,address)" $poolId $scId $asset 0 $share $root $syncDepositManager $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/spokes/vaults/SyncDepositVault.sol:SyncDepositVault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
+# forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address)" $poolId $scId $asset 0 $share $root $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/spoke/ERC7540Vault.sol:ERC7540Vault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID
+forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,uint256,address,address,address,address)" $poolId $scId $asset 0 $share $root $syncDepositManager $asyncRedeemManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/vaults/SyncDepositVault.sol:SyncDepositVault --verifier-url $ETHERSCAN_URL --chain $CHAIN_ID

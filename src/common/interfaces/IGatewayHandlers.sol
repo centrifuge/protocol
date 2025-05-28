@@ -7,6 +7,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
 ///  Hub Handlers
@@ -34,12 +35,15 @@ interface IHubGatewayHandler {
 
     /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external;
 
     /// @notice Forward an initiated share transfer to the destination chain.
@@ -51,11 +55,16 @@ interface IHubGatewayHandler {
         uint128 amount
     ) external;
 
-    /// @notice Increases the total issuance of shares by request from vaults.
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
-
-    /// @notice Decreases the total issuance of shares by request from vaults.
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external;
+    /// @notice Updates the total issuance of shares by request from vaults.
+    function updateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external;
 }
 
 /// -----------------------------------------------------
@@ -125,12 +134,39 @@ interface ISpokeGatewayHandler {
     /// @dev    The function can only be executed internally or by the gateway contract.
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
+    /// @notice Updates a vault based on VaultUpdateKind
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
+    /// @param  kind The kind of action applied
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address vaultOrFactory,
+        VaultUpdateKind kind
+    ) external;
+
     /// @notice Updates the target address. Generic update function from Hub to Vaults
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
     function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+
+    /// @notice Updates the max price age of an asset
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  maxPriceAge new max price age value
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external;
+
+    /// @notice Updates the max price age of a share
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  maxPriceAge new max price age value
+    function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 }
 
 /// @notice Interface for Vaults methods related to async investments called by messages
@@ -206,12 +242,6 @@ interface IRequestManagerGatewayHandler {
 /// @notice Interface for Vaults methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;
-
-    function triggerIssueShares(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
-
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
-
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 }

@@ -6,11 +6,12 @@ import "forge-std/Test.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
-
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
-address constant C6 = address(6);
-address constant C18 = address(18);
+import {AssetId} from "src/common/types/AssetId.sol";
+
+AssetId constant C6 = AssetId.wrap(6);
+AssetId constant C18 = AssetId.wrap(18);
 
 contract TestIdentityValuation is Test {
     IdentityValuation valuation = new IdentityValuation(new MockERC6909(), address(0));

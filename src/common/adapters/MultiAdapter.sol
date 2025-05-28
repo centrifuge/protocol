@@ -156,6 +156,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
+        require(recoveries[centrifugeId][adapter][payloadHash] != 0, RecoveryNotInitiated());
         delete recoveries[centrifugeId][adapter][payloadHash];
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);
     }
