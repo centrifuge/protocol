@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
@@ -16,22 +14,16 @@ import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
+import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
+import {IOnOfframpManagerFactory} from "src/managers/interfaces/IOnOfframpManagerFactory.sol";
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
-contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManager, IUpdateContract {
+contract OnOfframpManager is IOnOfframpManager {
     using CastLib for *;
     using MathLib for uint256;
 
-    event UpdateManager(address who, bool canManage);
-    event UpdatePermissionless(bool isSet);
-    event UpdateOnramp(address indexed asset, bool isEnabled);
-    event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
-
-    error NotAllowedOnrampAsset();
-    error InvalidAmount();
-    error InvalidOfframpDestination();
-
     PoolId public immutable poolId;
+    address public immutable spoke;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
@@ -40,14 +32,15 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     mapping(address asset => bool) public onramp;
     mapping(address asset => mapping(address receiver => bool)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
         scId = scId_;
+        spoke = spoke_;
         balanceSheet = balanceSheet_;
     }
 
-    modifier authOrManager() {
-        require(wards[msg.sender] == 1 || manager[msg.sender], IAuth.NotAuthorized());
+    modifier isManager() {
+        require(manager[msg.sender], IAuth.NotAuthorized());
         _;
     }
 
@@ -56,7 +49,10 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
+    function update(PoolId poolId_, ShareClassId, /* scId */ bytes calldata payload) external {
+        require(poolId == poolId_, InvalidPoolId());
+        require(msg.sender == spoke, NotAuthorized());
+
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateAddress)) {
@@ -90,7 +86,7 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external authOrManager {
+    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external isManager {
         require(onramp[asset], NotAllowedOnrampAsset());
         require(owner == address(this) || owner == msg.sender);
         require(amount <= IERC20(asset).balanceOf(owner), InvalidAmount());
@@ -99,7 +95,7 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     }
 
     /// @inheritdoc IWithdrawManager
-    function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external authOrManager {
+    function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external isManager {
         require(offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
@@ -113,5 +109,25 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
     function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
         return interfaceId == type(IDepositManager).interfaceId || interfaceId == type(IWithdrawManager).interfaceId
             || interfaceId == type(IERC165).interfaceId;
+    }
+}
+
+contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
+    address public immutable spoke;
+    IBalanceSheet public immutable balanceSheet;
+
+    constructor(address spoke_, IBalanceSheet balanceSheet_) {
+        spoke = spoke_;
+        balanceSheet = balanceSheet_;
+    }
+
+    /// @inheritdoc IOnOfframpManagerFactory
+    function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
+        OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
+            poolId, scId, spoke, balanceSheet
+        );
+
+        emit DeployOnOfframpManager(poolId, scId, address(manager));
+        return IOnOfframpManager(manager);
     }
 }

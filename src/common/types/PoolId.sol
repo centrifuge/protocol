@@ -19,8 +19,12 @@ function isNull(PoolId poolId) pure returns (bool) {
     return PoolId.unwrap(poolId) == 0;
 }
 
+function isEqual(PoolId a, PoolId b) pure returns (bool) {
+    return PoolId.unwrap(a) == PoolId.unwrap(b);
+}
+
 function raw(PoolId poolId) pure returns (uint64) {
     return PoolId.unwrap(poolId);
 }
 
-using {centrifugeId, isNull, raw} for PoolId global;
+using {centrifugeId, isNull, raw, isEqual as ==} for PoolId global;
