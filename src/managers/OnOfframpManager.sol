@@ -6,6 +6,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -88,13 +89,14 @@ contract OnOfframpManager is IOnOfframpManager {
         require(owner == address(this) || owner == msg.sender);
         require(amount <= IERC20(asset).balanceOf(owner), InvalidAmount());
 
+        if (owner == msg.sender) SafeTransferLib.safeTransferFrom(asset, owner, address(this), amount);
+
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
     }
 
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
         require(manager[msg.sender] || permissionlessOfframp, IAuth.NotAuthorized());
-
         require(offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
