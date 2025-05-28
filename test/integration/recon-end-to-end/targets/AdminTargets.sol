@@ -283,5 +283,60 @@ abstract contract AdminTargets is
         address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
         syncRequestManager_setValuation(valuation);
     }
+
+    function hub_updateSharePrice(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPoolPerShare) public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(navPoolPerShare));
+    }
+
+    function hub_forceCancelDepositRequest() public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        bytes32 investor = _getActor().toBytes32();
+        AssetId depositAssetId = hubRegistry.currency(poolId);
+
+        hub.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
+    }
+
+    function hub_forceCancelRedeemRequest() public updateGhosts {    
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        bytes32 investor = _getActor().toBytes32();
+        AssetId payoutAssetId = hubRegistry.currency(poolId);
+
+        hub.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+    }
+
+    function hub_setMaxAssetPriceAge(uint32 maxAge) public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+        
+        hub.setMaxAssetPriceAge(poolId, scId, assetId, maxAge);
+    }
+
+    function hub_setMaxSharePriceAge(uint16 centrifugeId, uint32 maxAge) public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.setMaxSharePriceAge(centrifugeId, poolId, scId, maxAge);
+    }
+
+    function hub_updateHoldingValue() public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        hub.updateHoldingValue(poolId, scId, assetId);
+    }
+
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 }
