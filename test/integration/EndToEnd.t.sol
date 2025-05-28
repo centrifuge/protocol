@@ -58,9 +58,9 @@ import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 /// chosen from a deployment. If not, it has two side effects:
 ///   1.
 ///   vm.prank(FM)
-///   deployA.hub().notifyPool() // Will fail, given prank is used to retriver the hub.
+///   deployA.hub().notifyPool() // Will fail, given prank is used to retrieve the hub.
 ///
-///   2. It increases significatily the amount of calls shown by the debugger.
+///   2. It significantly increases the amount of calls shown by the debugger.
 ///
 /// By using these structs we avoid both "issues".
 contract EndToEndDeployment is Test {
@@ -131,17 +131,20 @@ contract EndToEndDeployment is Test {
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
 
+    LocalAdapter adapterA;
+    LocalAdapter adapterB;
+
     CHub h;
     CSpoke s;
 
     D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable TEN_PERCENT = d18(1, 10);
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
 
-        LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
-        LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
+        adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
+        adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
 
         // We connect both deploys through the adapters
         adapterA.setEndpoint(adapterB);
@@ -173,6 +176,10 @@ contract EndToEndDeployment is Test {
         USD_ID = deployA.USD_ID();
         POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
         SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
+
+        vm.label(address(adapterA), "AdapterA");
+        vm.label(address(adapterB), "AdapterB");
+        vm.label(address(h.hub), "Hub");
     }
 
     function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
@@ -184,7 +191,8 @@ contract EndToEndDeployment is Test {
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         deploy.wire(remoteCentrifugeId, adapter, address(deploy));
 
-        deploy.removeFullDeployerAccess(address(deploy));
+        // TODO(wischli): Revert when 3-chain-setup works
+        // deploy.removeFullDeployerAccess(address(deploy));
     }
 
     function _setSpoke(bool sameChain) internal {
