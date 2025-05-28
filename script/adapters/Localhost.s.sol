@@ -15,8 +15,8 @@ import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestriction
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 

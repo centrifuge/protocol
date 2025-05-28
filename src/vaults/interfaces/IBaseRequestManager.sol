@@ -8,7 +8,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 interface IBaseRequestManager is IVaultManager {
     // --- Events ---

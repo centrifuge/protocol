@@ -13,20 +13,20 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {BaseRequestManager} from "src/spoke/vaults/BaseRequestManager.sol";
+import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRedeemVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IBaseRequestManager} from "src/spoke/vaults/interfaces/IBaseRequestManager.sol";
-import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {IDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {IAsyncRedeemManager} from "src/spoke/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";

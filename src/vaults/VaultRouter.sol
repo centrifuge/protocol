@@ -14,12 +14,12 @@ import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/spoke/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/spoke/vaults/interfaces/IAsyncVault.sol";
-import {IVaultRouter} from "src/spoke/vaults/interfaces/IVaultRouter.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {BaseSyncDepositVault} from "src/spoke/vaults/BaseVaults.sol";
+import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
