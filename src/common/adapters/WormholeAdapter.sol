@@ -59,10 +59,22 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         bytes32 /* deliveryHash */
     ) external payable {
         WormholeSource memory source = sources[sourceWormholeId];
-        require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
-        require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        entrypoint.handle(source.centrifugeId, payload);
+        if (source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded()) {
+            // Normal case
+            require(msg.sender == address(relayer), NotWormholeRelayer());
+            entrypoint.handle(source.centrifugeId, payload);
+        } else if (payload.isDiscovery()) {
+            // Discovery case
+            Discovery memory m = payload.deserializeDiscovery();
+            sources[m.adapterId] = WormholeSource(m.centrifugeId, m.source); // adapterId == wormholeId
+            destinations[m.centrifugeId] = WormholeDestination(m.adapterId, m.destination);
+
+            // MultiAdapter will register this adapter for centrifugeId when processing the Wire message
+            entrypoint.handle(m.centrifugeId, Wire(address(this)).serialize());
+        } else {
+            revert InvalidSource();
+        }
     }
 
     //----------------------------------------------------------------------------------------------
