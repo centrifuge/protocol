@@ -375,23 +375,6 @@ contract CryticToFoundry is CryticSanity {
 
     }
 
-    // forge test --match-test test_asyncVault_maxWithdraw_14 -vvv 
-    // NOTE: looks like a property implementation issue, might be related to trying to withdraw 0 amount
-    function test_asyncVault_maxWithdraw_14() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,1,1,0);
-
-        shortcut_queue_redemption(1,2000526650452376978,0);
-
-        hub_notifyRedeem(1);
-
-        // withdrawAmount gets clamped in the handler to 0 so the latestRedeemApproval < withdrawAmount check doesn't seem to make sense
-        asyncVault_maxWithdraw(0,0,0);
-
-    }
-
     // forge test --match-test test_property_actor_pending_and_queued_redemptions_15 -vvv 
     // NOTE: looks like an issue with ghost tracking
     function test_property_actor_pending_and_queued_redemptions_15() public {

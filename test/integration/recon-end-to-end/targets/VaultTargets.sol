@@ -212,6 +212,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, controller);
 
             // update ghosts
+            // cancelled pending decreases since it's a queued request
             uint256 delta = pendingCancelAfter - pendingCancelBefore;
             cancelledDeposits[vault.scId()][hubRegistry.currency(vault.poolId())][controller] += delta;
             cancelDepositCurrencyPayout[vault.asset()] += delta;
@@ -247,16 +248,19 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
-        (, uint128 cancelledPendingBefore) = shareClassManager.queuedRedeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
-        
+        uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelRedeemRequest(REQUEST_ID, controller);
+
         vm.prank(controller);
         try IAsyncVault(_getVault()).cancelRedeemRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
-
-            (, uint128 cancelledPendingAfter) = shareClassManager.queuedRedeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
+            uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelRedeemRequest(REQUEST_ID, controller);
+            
             // update ghosts
-            cancelledRedemptions[vault.scId()][hubRegistry.currency(vault.poolId())][controller] += (pendingBefore - pendingAfter);
+            // cancelled pending increases since it's a queued request
+            uint256 delta = pendingCancelAfter - pendingCancelBefore;
+            cancelledRedemptions[vault.scId()][hubRegistry.currency(vault.poolId())][controller] += delta;
+            cancelRedeemShareTokenPayout[vault.share()] += delta;
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {

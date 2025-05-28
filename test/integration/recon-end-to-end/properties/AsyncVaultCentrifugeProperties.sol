@@ -206,7 +206,11 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             }
         }
         catch {
-            t(latestRedeemApproval < withdrawAmount, "reverts on withdraw for approved amount");
+            // precondition: withdrawing more than 1 wei 
+            // NOTE: this is because maxWithdraw rounds up so there's always 1 wei that can't be withdrawn
+            if(withdrawAmount > 1) {
+                t(latestRedeemApproval < withdrawAmount, "reverts on withdraw for approved amount");
+            }
         }
     }
 
@@ -222,7 +226,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = hubRegistry.currency(poolId);
-        // (,uint32 latestRedeemApproval,,) = shareClassManager.epochPointers(scId, assetId);
+        (,uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
     
         vm.prank(_getActor());
         try IBaseVault(_getVault()).redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
@@ -250,7 +254,11 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         }
         catch {
-            // t(latestRedeemApproval < redeemAmount, "reverts on redeem for approved amount");
+            // precondition: redeeming more than 1 wei
+            // NOTE: this is because maxRedeem rounds up so there's always 1 wei that can't be redeemed
+            if(redeemAmount > 1) {
+                t(latestRedeemApproval < redeemAmount, "reverts on redeem for approved amount");
+            }
         }
     }
     
