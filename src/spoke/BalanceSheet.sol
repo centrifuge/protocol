@@ -266,6 +266,21 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     //----------------------------------------------------------------------------------------------
+    // Gateway handlers
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc IBalanceSheetGatewayHandler
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
+        queueDisabled[poolId][scId] = !enabled;
+    }
+
+    //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
 
@@ -281,21 +296,6 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         returns (uint128)
     {
         return escrow(poolId).availableBalanceOf(scId, asset, tokenId);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Gateway handlers
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function updateManager(PoolId poolId, address who, bool canManage) external auth {
-        manager[poolId][who] = canManage;
-        emit UpdateManager(poolId, who, canManage);
-    }
-
-    /// @inheritdoc IBalanceSheetGatewayHandler
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        queueDisabled[poolId][scId] = !enabled;
     }
 
     //----------------------------------------------------------------------------------------------
