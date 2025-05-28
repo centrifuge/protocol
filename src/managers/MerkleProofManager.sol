@@ -12,6 +12,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {IMerkleProofManagerFactory} from "src/managers/interfaces/IMerkleProofManagerFactory.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
@@ -113,5 +114,24 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         require(success, WrappedError(target, bytes4(data), returnData, abi.encodeWithSelector(CallFailed.selector)));
 
         return returnData;
+    }
+}
+
+contract MerkleProofManagerFactory is IMerkleProofManagerFactory {
+    address public immutable spoke;
+    IBalanceSheet public immutable balanceSheet;
+
+    constructor(address spoke_, IBalanceSheet balanceSheet_) {
+        spoke = spoke_;
+        balanceSheet = balanceSheet_;
+    }
+
+    /// @inheritdoc IMerkleProofManagerFactory
+    function newManager(PoolId poolId) external returns (IMerkleProofManager) {
+        MerkleProofManager manager =
+            new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, spoke, balanceSheet);
+
+        emit DeployMerkleProofManager(poolId, address(manager));
+        return IMerkleProofManager(manager);
     }
 }
