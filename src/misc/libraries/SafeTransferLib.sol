@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 /// @title  Safe Transfer Lib
 /// @author Modified from Uniswap v3 Periphery (libraries/TransferHelper.sol)
@@ -21,8 +22,13 @@ library SafeTransferLib {
     function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         require(address(token).code.length > 0, NoCode());
 
-        (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.transferFrom, (from, to, value)));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), SafeTransferFromFailed());
+        (bool success, bytes memory returnData) = token.call(abi.encodeCall(IERC20.transferFrom, (from, to, value)));
+        require(
+            success && (returnData.length == 0 || abi.decode(returnData, (bool))),
+            IERC7751.WrappedError(
+                token, IERC20.transferFrom.selector, returnData, abi.encodeWithSelector(SafeTransferFromFailed.selector)
+            )
+        );
     }
 
     /// @notice Transfers tokens from msg.sender to a recipient
@@ -33,8 +39,13 @@ library SafeTransferLib {
     function safeTransfer(address token, address to, uint256 value) internal {
         require(address(token).code.length > 0, NoCode());
 
-        (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.transfer, (to, value)));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), SafeTransferFailed());
+        (bool success, bytes memory returnData) = token.call(abi.encodeCall(IERC20.transfer, (to, value)));
+        require(
+            success && (returnData.length == 0 || abi.decode(returnData, (bool))),
+            IERC7751.WrappedError(
+                token, IERC20.transfer.selector, returnData, abi.encodeWithSelector(SafeTransferFailed.selector)
+            )
+        );
     }
 
     /// @notice Approves the stipulated contract to spend the given allowance in the given token
@@ -45,8 +56,13 @@ library SafeTransferLib {
     function safeApprove(address token, address to, uint256 value) internal {
         require(address(token).code.length > 0, NoCode());
 
-        (bool success, bytes memory data) = token.call(abi.encodeCall(IERC20.approve, (to, value)));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), SafeApproveFailed());
+        (bool success, bytes memory returnData) = token.call(abi.encodeCall(IERC20.approve, (to, value)));
+        require(
+            success && (returnData.length == 0 || abi.decode(returnData, (bool))),
+            IERC7751.WrappedError(
+                token, IERC20.approve.selector, returnData, abi.encodeWithSelector(SafeApproveFailed.selector)
+            )
+        );
     }
 
     /// @notice Transfers ETH to the recipient address
