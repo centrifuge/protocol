@@ -3,13 +3,14 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 
-import {IHub} from "src/hub/interfaces/IHub.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+
+import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
@@ -55,15 +56,18 @@ contract NAVManager is Auth {
     // Account creation
     //----------------------------------------------------------------------------------------------
 
-    function createHolding(AssetId assetId, IERC7726 valuation) external auth {
+    // TODO: create equity/gain/loss/liability accounts per centrifugeId
+    // TODO: add ISnapshotHook.onSync
+
+    function initializeHolding(AssetId assetId, IValuation valuation) external auth {
         hub.createAccount(poolId, nextAccountId, true);
-        hub.createHolding(poolId, scId, assetId, valuation, nextAccountId, equityAccount, gainAccount, lossAccount);
+        hub.initializeHolding(poolId, scId, assetId, valuation, nextAccountId, equityAccount, gainAccount, lossAccount);
         nextAccountId = nextAccountId.increment();
     }
 
-    function createLiability(AssetId assetId, IERC7726 valuation) external auth {
+    function initializeLiability(AssetId assetId, IValuation valuation) external auth {
         hub.createAccount(poolId, nextAccountId, true);
-        hub.createLiability(poolId, scId, assetId, valuation, nextAccountId, liabilityAccount);
+        hub.initializeLiability(poolId, scId, assetId, valuation, nextAccountId, liabilityAccount);
         nextAccountId = nextAccountId.increment();
     }
 
@@ -77,7 +81,7 @@ contract NAVManager is Auth {
 
     function updatePricePerShare() external {
         (D18 current,) = navPoolPerShare();
-        hub.updatePricePerShare(poolId, scId, current);
+        hub.updateSharePrice(poolId, scId, current);
     }
 
     //----------------------------------------------------------------------------------------------

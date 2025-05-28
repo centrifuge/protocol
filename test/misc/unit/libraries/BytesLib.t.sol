@@ -10,6 +10,25 @@ contract BytesLibTest is Test {
         assertEq(BytesLib.slice(value, randomStart.length, data.length), data);
     }
 
+    function testSliceZeroPadded(bytes memory data, bytes memory randomStart, uint8 randomLength) public pure {
+        bytes memory value = bytes.concat(randomStart, abi.encodePacked(data));
+        bytes memory expected;
+
+        if (randomLength > data.length) {
+            // Padding case
+            bytes memory padding = new bytes(randomLength - data.length);
+            expected = abi.encodePacked(data, padding);
+        } else {
+            // Base case, equivalent to original code's -- not really relevant for this test
+            expected = BytesLib.slice(value, randomStart.length, randomLength);
+        }
+
+        bytes memory got = BytesLib.sliceZeroPadded(value, randomStart.length, randomLength);
+
+        assertEq(got.length, expected.length, "!length");
+        assertEq(got, expected, "!bytes");
+    }
+
     function testToAddress(address addr, bytes memory randomStart, bytes memory randomEnd) public pure {
         bytes memory value = bytes.concat(bytes.concat(randomStart, abi.encodePacked(addr)), randomEnd);
         assertEq(BytesLib.toAddress(value, randomStart.length), addr);

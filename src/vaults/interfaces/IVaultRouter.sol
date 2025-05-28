@@ -5,7 +5,8 @@ import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IBaseVault, IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 interface IVaultRouter is IMulticall {
@@ -20,8 +21,6 @@ interface IVaultRouter is IMulticall {
     error NoLockedBalance();
     error NoLockedRequest();
     error ZeroBalance();
-    error WrapFailed();
-    error UnwrapFailed();
     error InvalidSender();
     error NonSyncDepositVault();
     error NonAsyncVault();
@@ -175,30 +174,9 @@ interface IVaultRouter is IMulticall {
         external
         payable;
 
-    // --- ERC20 wrapping ---
-    /// @notice There are vault which underlying asset is actuall a wrapped one.
-    ///
-    /// @param  wrapper The address of the wrapper
-    /// @param  amount  Amount to be wrapped
-    /// @param  receiver Receiver of the wrapped tokens
-    /// @param  owner The address from which `amount` is taken from
-    function wrap(address wrapper, uint256 amount, address receiver, address owner) external payable;
-
-    /// @notice There are vault which underlying asset is actuall a wrapped one.
-    /// @dev    Wrapped tokens need to be held by the VaultRouter to be unwrapped.
-    /// @param  wrapper The address of the wrapper
-    /// @param  amount  Amount to be wrapped
-    /// @param  receiver Receiver of the unwrapped tokens
-    function unwrap(address wrapper, uint256 amount, address receiver) external payable;
-
     // --- View Methods ---
-    /// @notice Check IPoolManager.getVault
+    /// @notice Check ISpoke.getVault
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
-
-    /// @notice Check IGateway.estimate
-    ///         If the destination and source chain ID are the same, this will always return 0.
-    /// @param centrifugeId destination chain
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount);
 
     /// @notice Called to check if `user` has permissions on `vault` to execute requests
     ///

@@ -68,11 +68,9 @@ interface IGuardian {
 
     /// @notice Initiate a gateway payload recovery on a specific chain
     /// @dev    Only supports EVM targets today
-    function initiateRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external;
+    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external;
 
     /// @notice Dispute a gateway paylaod recovery on a specific chain
     /// @dev    Only supports EVM targets today
-    function disputeRecovery(uint16 centrifugeId, uint16 adapterCentrifugeId, IAdapter adapter, bytes32 hash)
-        external;
+    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external;
 }

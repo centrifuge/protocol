@@ -11,4 +11,8 @@ function increment(AccountId accountId_) pure returns (AccountId) {
     return AccountId.wrap(AccountId.unwrap(accountId_) + 1);
 }
 
-using {raw, increment} for AccountId global;
+function neq(AccountId a, AccountId b) pure returns (bool) {
+    return AccountId.unwrap(a) != AccountId.unwrap(b);
+}
+
+using {raw, increment, neq as !=} for AccountId global;

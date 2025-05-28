@@ -8,28 +8,29 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IVaultMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {IPoolManager, VaultDetails} from "src/vaults/interfaces/IPoolManager.sol";
-import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/investments/IAsyncRedeemManager.sol";
-import {IAsyncDepositManager} from "src/vaults/interfaces/investments/IAsyncDepositManager.sol";
-import {IDepositManager} from "src/vaults/interfaces/investments/IDepositManager.sol";
-import {IRedeemManager} from "src/vaults/interfaces/investments/IRedeemManager.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/investments/IBaseRequestManager.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncVault, IBaseVault, IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
+import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IEscrow} from "src/vaults/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/common/interfaces/IHook.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Investment Manager
 /// @notice This is the main contract vaults interact with for
@@ -40,7 +41,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    IVaultMessageSender public sender;
+    ISpokeMessageSender public sender;
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -54,8 +55,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "sender") sender = IVaultMessageSender(data);
-        else if (what == "poolManager") poolManager = IPoolManager(data);
+        if (what == "sender") sender = ISpokeMessageSender(data);
+        else if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
@@ -75,11 +76,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint128 assets_ = assets.toUint128();
         require(assets_ != 0, ZeroAmountNotAllowed());
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(_canTransfer(vault_, address(0), controller, convertToShares(vault_, assets_)), TransferNotAllowed());
 
@@ -101,11 +102,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmountNotAllowed());
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        require(poolManager.isLinked(poolId, scId, vaultDetails.asset, vault_), AssetNotAllowed());
+        require(spoke.isLinked(vault_), AssetNotAllowed());
 
         require(
             _canTransfer(vault_, owner, ESCROW_HOOK_ID, shares)
@@ -129,7 +130,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
         state.pendingCancelDepositRequest = true;
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
         sender.sendCancelDepositRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
     }
@@ -144,7 +145,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
         state.pendingCancelRedeemRequest = true;
 
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
         sender.sendCancelRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
     }
@@ -161,12 +162,13 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint128 assetAmount,
         D18 pricePoolPerAsset
     ) external auth {
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
         // Note deposit and transfer from global escrow into the pool escrow,
         // to make assets available for managers of the balance sheet
         balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
-        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, address(globalEscrow), assetAmount);
+        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
+        balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
         address poolEscrow = address(poolEscrowProvider.escrow(poolId));
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
@@ -176,6 +178,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler
@@ -188,11 +191,13 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         D18 pricePoolPerShare
     ) external auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
-        (address asset, uint256 tokenId) = poolManager.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
         poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
 
+        globalEscrow.authTransferTo(address(spoke.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
-        balanceSheet.revoke(poolId, scId, address(globalEscrow), shareAmount);
+        balanceSheet.revoke(poolId, scId, shareAmount);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler
@@ -201,22 +206,31 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         ShareClassId scId,
         address user,
         AssetId assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssets,
+        uint128 fulfilledShares,
+        uint128 cancelledAssets
     ) public auth {
         IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
-
         AsyncInvestmentState storage state = investments[vault_][user];
+
         require(state.pendingDepositRequest != 0, NoPendingRequest());
+        if (cancelledAssets > 0) {
+            require(state.pendingCancelDepositRequest == true, NoPendingRequest());
+            state.claimableCancelDepositRequest = state.claimableCancelDepositRequest + cancelledAssets;
+        }
+
         state.depositPrice = _calculatePriceAssetPerShare(
-            vault_, state.maxMint + shares, _maxDeposit(vault_, user) + assets, MathLib.Rounding.Down
+            vault_, state.maxMint + fulfilledShares, _maxDeposit(vault_, user) + fulfilledAssets, MathLib.Rounding.Down
         );
-        state.maxMint = state.maxMint + shares;
-        state.pendingDepositRequest = state.pendingDepositRequest > assets ? state.pendingDepositRequest - assets : 0;
+        state.maxMint = state.maxMint + fulfilledShares;
+        state.pendingDepositRequest = state.pendingDepositRequest > fulfilledAssets + cancelledAssets
+            ? state.pendingDepositRequest - fulfilledAssets - cancelledAssets
+            : 0;
 
         if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
 
-        vault_.onDepositClaimable(user, assets, shares);
+        if (fulfilledAssets > 0) vault_.onDepositClaimable(user, fulfilledAssets, fulfilledShares);
+        if (cancelledAssets > 0) vault_.onCancelDepositClaimable(user, cancelledAssets);
     }
 
     /// @inheritdoc IRequestManagerGatewayHandler
@@ -225,64 +239,36 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         ShareClassId scId,
         address user,
         AssetId assetId,
-        uint128 assets,
-        uint128 shares
+        uint128 fulfilledAssets,
+        uint128 fulfilledShares,
+        uint128 cancelledShares
     ) public auth {
         IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
 
+        if (cancelledShares > 0) {
+            require(state.pendingCancelRedeemRequest, NoPendingRequest());
+            state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + cancelledShares;
+        }
+
         // Calculate new weighted average redeem price and update order book values
         state.redeemPrice = _calculatePriceAssetPerShare(
-            vault_, ((maxRedeem(vault_, user)) + shares).toUint128(), state.maxWithdraw + assets, MathLib.Rounding.Down
+            vault_,
+            ((maxRedeem(vault_, user)) + fulfilledShares).toUint128(),
+            state.maxWithdraw + fulfilledAssets,
+            MathLib.Rounding.Down
         );
-        state.maxWithdraw = state.maxWithdraw + assets;
-        state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
+        state.maxWithdraw = state.maxWithdraw + fulfilledAssets;
+        state.pendingRedeemRequest = state.pendingRedeemRequest > fulfilledShares + cancelledShares
+            ? state.pendingRedeemRequest - fulfilledShares - cancelledShares
+            : 0;
 
         if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
 
-        vault_.onRedeemClaimable(user, assets, shares);
-    }
-
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function fulfillCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        address user,
-        AssetId assetId,
-        uint128 assets,
-        uint128 fulfillment
-    ) public auth {
-        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
-
-        AsyncInvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelDepositRequest == true, NoPendingRequest());
-
-        state.claimableCancelDepositRequest = state.claimableCancelDepositRequest + assets;
-        state.pendingDepositRequest =
-            state.pendingDepositRequest > fulfillment ? state.pendingDepositRequest - fulfillment : 0;
-
-        if (state.pendingDepositRequest == 0) delete state.pendingCancelDepositRequest;
-
-        vault_.onCancelDepositClaimable(user, assets);
-    }
-
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function fulfillCancelRedeemRequest(PoolId poolId, ShareClassId scId, address user, AssetId assetId, uint128 shares)
-        public
-        auth
-    {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
-        AsyncInvestmentState storage state = investments[vault_][user];
-        require(state.pendingCancelRedeemRequest == true, NoPendingRequest());
-
-        state.claimableCancelRedeemRequest = state.claimableCancelRedeemRequest + shares;
-        state.pendingRedeemRequest = state.pendingRedeemRequest > shares ? state.pendingRedeemRequest - shares : 0;
-
-        if (state.pendingRedeemRequest == 0) delete state.pendingCancelRedeemRequest;
-
-        vault_.onCancelRedeemClaimable(user, shares);
+        if (fulfilledShares > 0) vault_.onRedeemClaimable(user, fulfilledAssets, fulfilledShares);
+        if (cancelledShares > 0) vault_.onCancelRedeemClaimable(user, cancelledShares);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -388,7 +374,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
 
     /// @dev Transfer funds from escrow to receiver and update holdings
     function _withdraw(IBaseVault vault_, address receiver, uint128 assets) internal {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
@@ -418,7 +404,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(_canTransfer(vault_, receiver, address(0), shares), TransferNotAllowed());
 
         if (assets > 0) {
-            VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+            VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
             globalEscrow.authTransferTo(vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
         }
     }
@@ -525,7 +511,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint256 priceAssetPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return PricingLib.assetToShareAmount(
@@ -539,7 +525,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint256 priceAssetPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint128 assets) {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return PricingLib.shareToAssetAmount(
@@ -552,7 +538,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         view
         returns (uint256 price)
     {
-        VaultDetails memory vaultDetails = poolManager.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return PricingLib.calculatePriceAssetPerShare(

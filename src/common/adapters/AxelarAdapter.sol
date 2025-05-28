@@ -11,7 +11,7 @@ import {
     AxelarSource,
     AxelarDestination,
     IAxelarExecutable
-} from "src/common/interfaces/IAxelarAdapter.sol";
+} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @title  Axelar Adapter
@@ -19,17 +19,17 @@ import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
-    IMessageHandler public immutable gateway;
+    IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
 
     mapping(string axelarId => AxelarSource) public sources;
     mapping(uint16 centrifugeId => AxelarDestination) public destinations;
 
-    constructor(IMessageHandler gateway_, address axelarGateway_, address axelarGasService_, address deployer)
+    constructor(IMessageHandler entrypoint_, address axelarGateway_, address axelarGasService_, address deployer)
         Auth(deployer)
     {
-        gateway = gateway_;
+        entrypoint = entrypoint_;
         axelarGateway = IAxelarGateway(axelarGateway_);
         axelarGasService = IAxelarGasService(axelarGasService_);
     }
@@ -76,7 +76,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
             NotApprovedByGateway()
         );
 
-        gateway.handle(source.centrifugeId, payload);
+        entrypoint.handle(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         payable
         returns (bytes32 adapterData)
     {
-        require(msg.sender == address(gateway), NotGateway());
+        require(msg.sender == address(entrypoint), NotEntrypoint());
         AxelarDestination memory destination = destinations[centrifugeId];
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
@@ -103,7 +103,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) public view returns (uint256) {
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         AxelarDestination memory destination = destinations[centrifugeId];
         return axelarGasService.estimateGasFee(destination.axelarId, destination.addr, payload, gasLimit, bytes(""));
     }

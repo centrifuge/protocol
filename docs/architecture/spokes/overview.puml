@@ -1,0 +1,39 @@
+@startuml
+hide empty members
+
+package common {
+    class Gateway
+    class MessageDispatcher
+}
+
+class Spoke
+class Escrow
+class PoolEscrow
+class ShareToken
+class BalanceSheet
+class PoolEscrowFactory
+class TokenFactory
+
+interface IVaultFactory
+interface IVault
+interface IVaultManager
+
+Spoke -up-> TokenFactory
+Spoke -up-> PoolEscrowFactory
+Spoke -up->"n" IVaultFactory
+Spoke -->"n" ShareToken
+Spoke -right->"n" IVault
+Spoke --> Gateway
+Spoke --> MessageDispatcher
+
+BalanceSheet -up-> PoolEscrowFactory
+BalanceSheet --> MessageDispatcher
+BalanceSheet -right-> Spoke
+
+PoolEscrowFactory -left-> PoolEscrow
+PoolEscrow -up-|> Escrow
+
+ShareToken -up-> IVault
+IVault --> IVaultManager
+
+@enduml
