@@ -19,17 +19,17 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 // core contracts
-import {AsyncRequestManager} from "src/spoke/vaults/AsyncRequestManager.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
-import {AsyncVaultFactory} from "src/spoke/factories/AsyncVaultFactory.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {AsyncVault} from "src/spoke/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {IVaultFactory} from "src/spoke/interfaces/factories/IVaultFactory.sol";
-import {VaultKind} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 
 // scripts
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";

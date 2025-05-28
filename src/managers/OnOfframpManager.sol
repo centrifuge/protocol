@@ -11,7 +11,7 @@ import {IERC165} from "src/misc/interfaces/IERC165.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
@@ -57,10 +57,11 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
 
     /// @inheritdoc IUpdateContract
     function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.UpdateAddress)) {
-            MessageLib.UpdateContractUpdateAddress memory m = MessageLib.deserializeUpdateContractUpdateAddress(payload);
+            UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
+                UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
             address who = m.who.toAddress();
 
             if (m.kind == "onramp") {
@@ -72,7 +73,8 @@ contract OnOfframpManager is Auth, Recoverable, IDepositManager, IWithdrawManage
                 emit UpdateOfframp(asset, who, m.isEnabled);
             }
         } else if (kind == uint8(UpdateContractType.Toggle)) {
-            MessageLib.UpdateContractToggle memory m = MessageLib.deserializeUpdateContractToggle(payload);
+            UpdateContractMessageLib.UpdateContractToggle memory m =
+                UpdateContractMessageLib.deserializeUpdateContractToggle(payload);
 
             if (m.what == "permissionless") {
                 permissionless = m.isEnabled;

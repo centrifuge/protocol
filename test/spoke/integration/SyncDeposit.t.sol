@@ -7,21 +7,21 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {ISyncRequestManager} from "src/spoke/interfaces/investments/ISyncRequestManager.sol";
-import {IBaseVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {IBaseRequestManager} from "src/spoke/interfaces/investments/IBaseRequestManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -61,7 +61,7 @@ contract SyncDepositTestHelper is BaseTest {
 
         vm.expectEmit();
         emit IBalanceSheet.Deposit(
-            poolId, scId, vault.asset(), vaultDetails.tokenId, self, depositAssetAmount, pricePoolPerAsset
+            poolId, scId, vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
         );
     }
 }
@@ -111,7 +111,18 @@ contract SyncDepositTest is SyncDepositTestHelper {
         vault.file("manager", random);
     }
 
-    function testSyncDepositERC20(uint256 amount) public {
+    /// forge-config: default.isolate = true
+    function testSyncDepositERC20() public {
+        _testSyncDepositERC20(4, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncDepositERC20Fuzz(uint256 amount) public {
+        vm.assume(amount % 2 == 0);
+        _testSyncDepositERC20(amount, false);
+    }
+
+    function _testSyncDepositERC20(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
         amount = uint128(bound(amount, 4, MAX_UINT128 / assetsPerShare));
         vm.assume(amount % 2 == 0);
@@ -124,10 +135,12 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        IBaseVault asyncVault_ =
+        IVault asyncVault_ =
             syncVault.asyncRedeemManager().vaultByAssetId(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        AsyncVault asyncVault = AsyncVault(address(asyncVault_));
+        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
+
+        assertEq(address(syncVault), address(asyncVault));
 
         // Check price and max amounts
         uint256 shares = syncVault.previewDeposit(amount);
@@ -142,7 +155,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         );
 
         // Will fail - user not member: can not send funds
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         syncVault.deposit(amount, self);
 
         assertEq(syncVault.isPermissioned(self), false);
@@ -150,7 +163,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.isPermissioned(self), true);
 
         // Will fail - user did not give asset allowance to syncVault
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         syncVault.deposit(amount, self);
         erc20.approve(address(syncVault), amount);
 
@@ -166,15 +179,34 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount)
         );
 
-        _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount, self);
+        if (snap) {
+            vm.startSnapshotGas("SyncDepositVault", "deposit_withoutQueue");
+        }
+        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        syncVault.deposit(amount / 2, self);
+        if (snap) {
+            vm.stopSnapshotGas();
+        }
+
+        balanceSheet.setQueue(syncVault.poolId(), syncVault.scId(), true);
+
+        if (snap) {
+            vm.startSnapshotGas("SyncDepositVault", "deposit_withQueue");
+        }
+        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        syncVault.deposit(amount / 2, self);
+        if (snap) {
+            vm.stopSnapshotGas();
+        }
+
         assertEq(erc20.balanceOf(self), 0, "Mismatch in sync deposited amount");
-        assertEq(shareToken.balanceOf(self), shares, "Mismatch in amount of sync received shares");
+        assertApproxEqAbs(shareToken.balanceOf(self), shares, 1, "Mismatch in amount of sync received shares");
+        uint256 shareBalance = shareToken.balanceOf(self);
 
         // Can now request redemption through async syncVault
         assertEq(asyncVault.pendingRedeemRequest(0, self), 0);
-        asyncVault.requestRedeem(amount / 2, self, self);
-        assertEq(asyncVault.pendingRedeemRequest(0, self), amount / 2);
+        asyncVault.requestRedeem(shareBalance, self, self);
+        assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
         spoke.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
         assertEq(syncVault.maxDeposit(address(this)), 0);

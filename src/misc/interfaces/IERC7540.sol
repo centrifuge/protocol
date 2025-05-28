@@ -1,8 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
-
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
-import {IERC7575, IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 interface IERC7540Operator {
     /**

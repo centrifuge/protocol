@@ -1,25 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import "test/spoke/BaseTest.sol";
 
 import "src/misc/interfaces/IERC20.sol";
 import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
-import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
-import {IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {SyncDepositVault} from "src/spoke/vaults/SyncDepositVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -100,8 +99,10 @@ contract VaultRouterTest is BaseTest {
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
         uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
 
+        balanceSheet.setQueue(vault.poolId(), vault.scId(), false);
+
         erc20.approve(address(vault_), amount);
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vaultRouter.deposit{value: gas}(vault, amount, self, self);
 
         erc20.approve(address(vaultRouter), amount);

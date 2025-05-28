@@ -7,13 +7,13 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7575Share, IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {
-    IHook,
+    ITransferHook,
     HookData,
     SUCCESS_CODE_ID,
     SUCCESS_MESSAGE,
     ERROR_CODE_ID,
     ERROR_MESSAGE
-} from "src/common/interfaces/IHook.sol";
+} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken, IERC1404} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Share Token
@@ -111,8 +111,8 @@ contract ShareToken is ERC20, IShareToken {
         address hook_ = hook;
         require(
             hook_ == address(0)
-                || IHook(hook_).onERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
-                    == IHook.onERC20Transfer.selector,
+                || ITransferHook(hook_).onERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
+                    == ITransferHook.onERC20Transfer.selector,
             RestrictionsFailed()
         );
     }
@@ -126,7 +126,9 @@ contract ShareToken is ERC20, IShareToken {
         success = _transferFrom(sender, from, to, value);
         address hook_ = hook;
         if (hook_ != address(0)) {
-            IHook(hook_).onERC20AuthTransfer(sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to)));
+            ITransferHook(hook_).onERC20AuthTransfer(
+                sender, from, to, value, HookData(hookDataOf(from), hookDataOf(to))
+            );
         }
     }
 
@@ -143,7 +145,7 @@ contract ShareToken is ERC20, IShareToken {
     function detectTransferRestriction(address from, address to, uint256 value) public view returns (uint8) {
         address hook_ = hook;
         if (hook_ == address(0)) return SUCCESS_CODE_ID;
-        return IHook(hook_).checkERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
+        return ITransferHook(hook_).checkERC20Transfer(from, to, value, HookData(hookDataOf(from), hookDataOf(to)))
             ? SUCCESS_CODE_ID
             : ERROR_CODE_ID;
     }

@@ -186,21 +186,27 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hub.updateHoldingAmount(
+                centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
                 m.amount,
                 D18.wrap(m.pricePerUnit),
-                m.isIncrease
+                m.isIncrease,
+                m.isSnapshot,
+                m.nonce
             );
         } else if (kind == MessageType.UpdateShares) {
             MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
-
-            if (m.isIssuance) {
-                hub.increaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
-            } else {
-                hub.decreaseShareIssuance(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.shares);
-            }
+            hub.updateShares(
+                centrifugeId,
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.shares,
+                m.isIssuance,
+                m.isSnapshot,
+                m.nonce
+            );
         } else if (kind == MessageType.ApprovedDeposits) {
             MessageLib.ApprovedDeposits memory m = message.deserializeApprovedDeposits();
             investmentManager.approvedDeposits(
@@ -231,9 +237,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
             MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
             balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
-        } else if (kind == MessageType.SetQueue) {
-            MessageLib.SetQueue memory m = message.deserializeSetQueue();
-            balanceSheet.setQueue(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.enabled);
+        } else if (kind == MessageType.MaxAssetPriceAge) {
+            MessageLib.MaxAssetPriceAge memory m = message.deserializeMaxAssetPriceAge();
+            spoke.setMaxAssetPriceAge(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.maxPriceAge
+            );
+        } else if (kind == MessageType.MaxSharePriceAge) {
+            MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
+            spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else {
             revert InvalidMessage(uint8(kind));
         }

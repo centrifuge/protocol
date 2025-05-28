@@ -13,7 +13,7 @@ import "src/misc/interfaces/IERC7540.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 
 import {MockFullRestrictions} from "test/spoke/mocks/MockFullRestrictions.sol";
-import {IHook} from "src/common/interfaces/IHook.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 interface ERC20Like {
@@ -108,7 +108,7 @@ contract ShareTokenTest is Test {
         fullRestrictionsHook.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -118,13 +118,13 @@ contract ShareTokenTest is Test {
         assertEq(_validUntil, validUntil);
 
         fullRestrictionsHook.freeze(address(token), self);
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
         fullRestrictionsHook.unfreeze(address(token), self);
         fullRestrictionsHook.freeze(address(token), targetUser);
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -140,7 +140,7 @@ contract ShareTokenTest is Test {
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transferFrom(self, targetUser, amount);
     }
 
@@ -169,7 +169,7 @@ contract ShareTokenTest is Test {
         fullRestrictionsHook.updateMember(address(token), self, uint64(validUntil));
         token.mint(self, amount * 2);
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -179,7 +179,7 @@ contract ShareTokenTest is Test {
         assertEq(_validUntil, validUntil);
 
         fullRestrictionsHook.freeze(address(token), self);
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transfer(targetUser, amount);
         assertEq(token.balanceOf(targetUser), 0);
 
@@ -189,7 +189,7 @@ contract ShareTokenTest is Test {
         afterTransferAssumptions(self, targetUser, amount);
 
         vm.warp(validUntil + 1);
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.transfer(targetUser, amount);
     }
 
@@ -216,7 +216,7 @@ contract ShareTokenTest is Test {
         amount = bound(amount, 0, type(uint128).max / 2);
 
         // mint fails -> self not a member
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.mint(targetUser, amount);
 
         fullRestrictionsHook.updateMember(address(token), targetUser, uint64(validUntil));
@@ -230,7 +230,7 @@ contract ShareTokenTest is Test {
 
         vm.warp(validUntil + 1);
 
-        vm.expectRevert(IHook.TransferBlocked.selector);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
         token.mint(targetUser, amount);
     }
 

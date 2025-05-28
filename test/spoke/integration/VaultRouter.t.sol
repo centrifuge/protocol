@@ -7,18 +7,17 @@ import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 
-import {IBaseVault, IAsyncVault} from "src/spoke/interfaces/vaults/IBaseVaults.sol";
-import {VaultRouter} from "src/spoke/vaults/VaultRouter.sol";
-import {IVaultRouter} from "src/spoke/interfaces/vaults/IVaultRouter.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IAsyncRequestManager} from "src/spoke/interfaces/investments/IAsyncRequestManager.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -59,7 +58,7 @@ contract VaultRouterTest is BaseTest {
         uint256 preBalance = address(gateway).balance;
         uint256 gas = DEFAULT_GAS + GAS_BUFFER;
 
-        vm.expectRevert(SafeTransferLib.SafeTransferFromFailed.selector);
+        vm.expectPartialRevert(IERC7751.WrappedError.selector);
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         erc20.approve(vault_, amount);
 
