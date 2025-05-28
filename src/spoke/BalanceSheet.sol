@@ -278,6 +278,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheetGatewayHandler
     function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
         queueDisabled[poolId][scId] = !enabled;
+        emit SetQueue(poolId, scId, enabled);
     }
 
     //----------------------------------------------------------------------------------------------

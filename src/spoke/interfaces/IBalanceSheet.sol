@@ -33,6 +33,7 @@ interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event UpdateManager(PoolId indexed poolId, address who, bool canManage);
+    event SetQueue(PoolId indexed poolId, ShareClassId indexed scId, bool enabled);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
