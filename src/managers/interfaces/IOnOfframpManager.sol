@@ -7,7 +7,7 @@ import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanc
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
     event UpdateManager(address who, bool canManage);
-    event UpdatePermissionless(bool isSet);
+    event UpdatePermissionless(bytes32 what, bool isSet);
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
 

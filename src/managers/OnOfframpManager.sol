@@ -27,7 +27,8 @@ contract OnOfframpManager is IOnOfframpManager {
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
-    bool public permissionless;
+    bool public permissionlessOnramp;
+    bool public permissionlessOfframp;
     mapping(address => bool) public manager;
     mapping(address asset => bool) public onramp;
     mapping(address asset => mapping(address receiver => bool)) public offramp;
@@ -37,11 +38,6 @@ contract OnOfframpManager is IOnOfframpManager {
         scId = scId_;
         spoke = spoke_;
         balanceSheet = balanceSheet_;
-    }
-
-    modifier isManager() {
-        require(manager[msg.sender], IAuth.NotAuthorized());
-        _;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -72,10 +68,9 @@ contract OnOfframpManager is IOnOfframpManager {
             UpdateContractMessageLib.UpdateContractToggle memory m =
                 UpdateContractMessageLib.deserializeUpdateContractToggle(payload);
 
-            if (m.what == "permissionless") {
-                permissionless = m.isEnabled;
-                emit UpdatePermissionless(m.isEnabled);
-            }
+            if (m.what == "permissionlessOnramp") permissionlessOnramp = m.isEnabled;
+            else if (m.what == "permissionlessOfframp") permissionlessOfframp = m.isEnabled;
+            emit UpdatePermissionless(m.what, m.isEnabled);
         } else {
             revert UnknownUpdateContractType();
         }
@@ -86,7 +81,9 @@ contract OnOfframpManager is IOnOfframpManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external isManager {
+    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external {
+        require(manager[msg.sender] || permissionlessOnramp, IAuth.NotAuthorized());
+
         require(onramp[asset], NotAllowedOnrampAsset());
         require(owner == address(this) || owner == msg.sender);
         require(amount <= IERC20(asset).balanceOf(owner), InvalidAmount());
@@ -95,7 +92,9 @@ contract OnOfframpManager is IOnOfframpManager {
     }
 
     /// @inheritdoc IWithdrawManager
-    function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external isManager {
+    function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
+        require(manager[msg.sender] || permissionlessOfframp, IAuth.NotAuthorized());
+
         require(offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
