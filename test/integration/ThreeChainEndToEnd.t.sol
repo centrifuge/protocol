@@ -30,15 +30,12 @@ contract ThreeChainEndToEndDeployment is EndToEndDeployment {
         adapterC = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
         vm.label(address(adapterC), "AdapterC");
 
-        // Connect Chain C to Chain A (hub)
-        adapterC.setEndpoint(adapterA);
-
         // Connect Chain A to Chain C (spoke 2)
         vm.startPrank(address(deployA.root()));
-        // FIXME: Breaks with NoDuplicatesAllowed even though A doesn't yet know about C?!
         deployA.wire(CENTRIFUGE_ID_C, adapterA, address(deployA));
         vm.stopPrank();
 
+        adapterC.setEndpoint(adapterA);
         adapterA.setEndpoint(adapterC);
     }
 
