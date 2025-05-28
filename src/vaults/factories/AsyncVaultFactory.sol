@@ -7,11 +7,11 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {IVaultFactory} from "src/vaults/interfaces/factories/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/vaults/interfaces/factories/IPoolEscrowFactory.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts

@@ -3,19 +3,19 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IERC6909NFT} from "src/misc/interfaces/IERC6909.sol";
-import {ERC6909NFT} from "src/misc/ERC6909NFT.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {ILinearAccrual} from "src/misc/interfaces/ILinearAccrual.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
-import {MessageLib, UpdateContractType} from "src/common/libraries/MessageLib.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId, assetIdFromAddr} from "src/common/types/AssetId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "src/vaults/interfaces/IBalanceSheet.sol";
-import {IPoolManager} from "src/vaults/interfaces/IPoolManager.sol";
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 
 struct Loan {
     // System properties
@@ -34,7 +34,7 @@ struct Loan {
 
 // TODO: maturity date and/or open term
 
-contract LoansManager is Auth, IERC7726 {
+contract LoansManager is Auth, IValuation {
     error UnknownUpdateContractType();
     error UnregisteredRateId();
     error TooManyLoans();
@@ -50,7 +50,7 @@ contract LoansManager is Auth, IERC7726 {
     IERC6909NFT public immutable token;
     ILinearAccrual public immutable linearAccrual;
 
-    IPoolManager public poolManager;
+    ISpoke public spoke;
     IBalanceSheet public balanceSheet;
 
     mapping(AssetId assetId => Loan) public loans;
@@ -59,7 +59,7 @@ contract LoansManager is Auth, IERC7726 {
         PoolId poolId_,
         IERC6909NFT token_,
         ILinearAccrual linearAccrual_,
-        IPoolManager poolManager_,
+        ISpoke spoke_,
         IBalanceSheet balanceSheet_,
         AccountId equityAccount_,
         AccountId lossAccount_,
@@ -74,7 +74,7 @@ contract LoansManager is Auth, IERC7726 {
         token = token_;
         linearAccrual = linearAccrual_;
 
-        poolManager = poolManager_;
+        spoke = spoke_;
         balanceSheet = balanceSheet_;
     }
 
@@ -82,11 +82,12 @@ contract LoansManager is Auth, IERC7726 {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    function update(PoolId /* poolId */, ShareClassId, /* scId */ bytes calldata payload) external auth {
-        uint8 kind = uint8(MessageLib.updateContractType(payload));
+    function update(PoolId, /* poolId */ ShareClassId, /* scId */ bytes calldata payload) external auth {
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
         if (kind == uint8(UpdateContractType.LoanMaxBorrowAmount)) {
-            MessageLib.UpdateContractLoanMaxBorrowAmount memory m = MessageLib.deserializeUpdateContractLoanMaxBorrowAmount(payload);
+            UpdateContractMessageLib.UpdateContractLoanMaxBorrowAmount memory m =
+                UpdateContractMessageLib.deserializeUpdateContractLoanMaxBorrowAmount(payload);
 
             Loan storage loan = loans[AssetId.wrap(m.assetId)];
             require(linearAccrual.debt(loan.rateId, loan.normalizedDebt) <= int128(m.maxBorrowAmount), ExceedsLTV());
@@ -94,8 +95,8 @@ contract LoansManager is Auth, IERC7726 {
             loan.maxBorrowAmount = d18(m.maxBorrowAmount);
             // emit UpdateLoanMaxBorrowAmount();
         } else if (kind == uint8(UpdateContractType.LoanRate)) {
-
-            MessageLib.UpdateContractLoanRate memory m = MessageLib.deserializeUpdateContractLoanRate(payload);
+            UpdateContractMessageLib.UpdateContractLoanRate memory m =
+                UpdateContractMessageLib.deserializeUpdateContractLoanRate(payload);
 
             Loan storage loan = loans[AssetId.wrap(m.assetId)];
 
@@ -111,18 +112,14 @@ contract LoansManager is Auth, IERC7726 {
     // Borrower actions
     //----------------------------------------------------------------------------------------------
 
-    function create(
-        ShareClassId scId,
-        address borrower,
-        address borrowAsset,
-        bytes32 rateId,
-        string memory tokenURI
-    ) external {
+    function create(ShareClassId scId, address borrower, address borrowAsset, bytes32 rateId, string memory tokenURI)
+        external
+    {
         require(linearAccrual.rateIdExists(rateId), UnregisteredRateId());
 
         uint256 tokenId = token.mint(address(this), tokenURI);
         require(tokenId <= type(uint16).max, TooManyLoans());
-        AssetId assetId = poolManager.registerAsset(poolId.centrifugeId(), address(this), tokenId);
+        AssetId assetId = spoke.registerAsset(poolId.centrifugeId(), address(this), tokenId);
 
         loans[assetId] = Loan({
             scId: scId,
@@ -136,7 +133,7 @@ contract LoansManager is Auth, IERC7726 {
             totalRepaid: d18(0)
         });
 
-        balanceSheet.deposit(poolId, scId, address(this), uint16(tokenId), address(this), 1);
+        balanceSheet.deposit(poolId, scId, address(this), uint16(tokenId), 1);
 
         // emit NewLoan(..);
     }
@@ -163,7 +160,8 @@ contract LoansManager is Auth, IERC7726 {
         loan.normalizedDebt = linearAccrual.getModifiedNormalizedDebt(loan.rateId, loan.normalizedDebt, -int128(amount));
         loan.totalRepaid = loan.totalRepaid + d18(amount);
 
-        balanceSheet.deposit(poolId, loan.scId, loan.borrowAsset, loan.tokenId, owner, amount);
+        SafeTransferLib.safeTransferFrom(loan.borrowAsset, owner, address(this), amount);
+        balanceSheet.deposit(poolId, loan.scId, loan.borrowAsset, loan.tokenId, amount);
     }
 
     function close(AssetId assetId) external {
@@ -179,11 +177,11 @@ contract LoansManager is Auth, IERC7726 {
     // Valuation
     //----------------------------------------------------------------------------------------------
 
-    function getQuote(uint256, address base, address /* quote */ ) external view returns (uint256 quoteAmount) {
+    function getQuote(uint128, AssetId base, AssetId /* quote */ ) external view returns (uint128 quoteAmount) {
         // TODO: how to know conversion to quote asset?
 
-        Loan storage loan = loans[assetIdFromAddr(base)];
+        Loan storage loan = loans[base];
         int128 debt = linearAccrual.debt(loan.rateId, loan.normalizedDebt);
-        quoteAmount = debt > 0 ? uint256(uint128(debt)) : 0;
+        quoteAmount = debt > 0 ? uint128(debt) : 0;
     }
 }

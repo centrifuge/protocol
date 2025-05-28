@@ -6,6 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Root} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
@@ -33,6 +34,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     Guardian public guardian;
     GasService public gasService;
     Gateway public gateway;
+    MultiAdapter public multiAdapter;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
@@ -60,14 +62,15 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(centrifugeId, root, gasService, deployer);
+        gateway = new Gateway(root, gasService, deployer);
+        multiAdapter = new MultiAdapter(centrifugeId, gateway, deployer);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
 
         adminSafe = adminSafe_;
 
         // deployer is not actually an implementation of ISafe but for deployment this is not an issue
-        guardian = new Guardian(ISafe(deployer), root, messageDispatcher);
+        guardian = new Guardian(ISafe(deployer), multiAdapter, root, messageDispatcher);
 
         _commonRegister();
         _commonRely();
@@ -80,6 +83,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
+        register("multiAdapter", address(multiAdapter));
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
     }
@@ -89,24 +93,28 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         root.rely(address(messageProcessor));
         root.rely(address(messageDispatcher));
         gateway.rely(address(root));
-        gateway.rely(address(guardian));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(messageProcessor));
+        gateway.rely(address(multiAdapter));
+        multiAdapter.rely(address(root));
+        multiAdapter.rely(address(guardian));
+        multiAdapter.rely(address(gateway));
         messageDispatcher.rely(address(root));
-        messageProcessor.rely(address(gateway));
         messageDispatcher.rely(address(guardian));
+        messageProcessor.rely(address(root));
+        messageProcessor.rely(address(gateway));
         tokenRecoverer.rely(address(messageDispatcher));
         tokenRecoverer.rely(address(messageProcessor));
     }
 
     function _commonFile() private {
-        messageProcessor.file("gateway", address(gateway));
         gateway.file("processor", address(messageProcessor));
+        gateway.file("adapter", address(multiAdapter));
     }
 
     function wire(uint16 centrifugeId, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
-        gateway.file("adapters", centrifugeId, adapters);
+        multiAdapter.file("adapters", centrifugeId, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
     }
@@ -120,6 +128,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         root.deny(deployer);
         gateway.deny(deployer);
+        multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
