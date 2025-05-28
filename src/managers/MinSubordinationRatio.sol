@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -59,8 +58,6 @@ contract MinSubordination is Auth {
         uint128 juniorRedeem,
         D18 juniorNavPerShare
     ) external auth {
-        IValuation valuation = holdings.valuation(poolId, seniorScId, assetId);
-
         hub.updateSharePrice(poolId, seniorScId, seniorNavPerShare);
         hub.updateSharePrice(poolId, juniorScId, juniorNavPerShare);
 
