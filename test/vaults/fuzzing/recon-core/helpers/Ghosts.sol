@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Setup} from "../Setup.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 /**
     * GLOBAL GHOST VARIABLES
  */

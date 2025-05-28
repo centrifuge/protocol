@@ -7,8 +7,8 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
 

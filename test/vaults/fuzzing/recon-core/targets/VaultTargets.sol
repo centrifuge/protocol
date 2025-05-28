@@ -8,7 +8,7 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
 

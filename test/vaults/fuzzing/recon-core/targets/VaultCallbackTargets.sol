@@ -15,10 +15,10 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 // Src Deps 
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {ShareToken} from "src/spokes/ShareToken.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -80,7 +80,7 @@ abstract contract VaultCallbackTargets is BaseTargetFunctions, Properties {
         asyncRequestManager.fulfillDepositRequest(PoolId.wrap(poolId), ShareClassId.wrap(scId), investor, AssetId.wrap(assetId), currencyPayout, tokenPayout, cancelledAssets);
 
         (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
-        balanceSheet.noteDeposit(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, tokenId, investor, currencyPayout);
+        balanceSheet.noteDeposit(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, tokenId, currencyPayout);
         // E-2 | Global-1
         sumOfFullfilledDeposits[address(token)] += tokenPayout;
 

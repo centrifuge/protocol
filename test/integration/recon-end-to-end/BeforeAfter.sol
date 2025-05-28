@@ -11,10 +11,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UserOrder, EpochId} from "src/hub/interfaces/IShareClassManager.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-import {BaseVault} from "src/spokes/vaults/BaseVaults.sol";
-import {AsyncInvestmentState} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
+import {BaseVault} from "src/vaults/BaseVaults.sol";
+import {AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import {Setup} from "./Setup.sol";
 

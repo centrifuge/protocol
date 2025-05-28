@@ -10,18 +10,18 @@ import {Utils} from "@recon/Utils.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Vaults
-import {Escrow} from "src/spokes/Escrow.sol";
-import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {Escrow} from "src/spoke/Escrow.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
-import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/spokes/factories/SyncDepositVaultFactory.sol";
-import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
-import {PoolEscrowFactory} from "src/spokes/factories/PoolEscrowFactory.sol";
-import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
-import {ShareToken} from "src/spokes/ShareToken.sol";
-import {Spoke} from "src/spokes/Spoke.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
+import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
+import {Spoke} from "src/spoke/Spoke.sol";
 
 // Hub
 import {Accounting} from "src/hub/Accounting.sol";
@@ -48,7 +48,7 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
-import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 // Common

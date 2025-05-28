@@ -7,13 +7,13 @@ import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/spokes/Escrow.sol";
+import {PoolEscrow} from "src/spoke/Escrow.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
@@ -29,7 +29,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function test_shortcut_deployNewTokenPoolAndShare_deposit() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
-        // poolManager_updatePricePoolPerShare(1e18, type(uint64).max);
         poolManager_updateMember(type(uint64).max);
 
         vault_requestDeposit(1e18, 0);
@@ -41,7 +40,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
 
-        hub_updatePricePerShare(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
         
@@ -64,7 +62,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
 
-        hub_updatePricePerShare(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
         
@@ -84,7 +81,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(1e18);
 
-        hub_updatePricePerShare(1e18);
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
         poolManager_updateMember(type(uint64).max);
@@ -188,7 +184,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         transientValuation_setPrice_clamped(1e18);
 
-        hub_updatePricePerShare(1e18);
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
         poolManager_updateMember(type(uint64).max);
@@ -217,7 +212,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
 
-        hub_updatePricePerShare(1e18);
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
         // Set up test values

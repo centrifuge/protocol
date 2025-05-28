@@ -16,8 +16,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 contract MockMessageDispatcher {
@@ -25,8 +24,8 @@ contract MockMessageDispatcher {
     using MathLib for uint256;
 
     IRoot public root;
-    address public gateway;
-    address public tokenRecoverer;
+    IGateway public gateway;
+    ITokenRecoverer public tokenRecoverer;
 
     uint16 public localCentrifugeId;
 
@@ -34,21 +33,12 @@ contract MockMessageDispatcher {
     ISpokeGatewayHandler public spoke;
     IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
-    
 
     function file(bytes32 what, address data) external {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-    }
-
-    function estimate(uint16 centrifugeId, bytes calldata payload) external view returns (uint256 amount) {
-        return 0;
-    }
-
-    function setLocalCentrifugeId(uint16 _localCentrifugeId) external {
-        localCentrifugeId = _localCentrifugeId;
     }
 
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId) external {
@@ -150,8 +140,61 @@ contract MockMessageDispatcher {
         spoke.updateContract(poolId, scId, target.toAddress(), payload);
     }
 
+    function sendUpdateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external {
+        spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+    }
+
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external {
         balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+    }
+
+    function sendApprovedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external {
+        investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
+    }
+
+    function sendIssuedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external {
+        investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
+    }
+
+    function sendRevokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external {
+        investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
+    }
+
+    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external {
+        balanceSheet.setQueue(poolId, scId, enabled);
+    }
+
+    function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external {
+        spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+    }
+
+    function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external {
+        spoke.setMaxSharePriceAge(poolId, scId, maxPriceAge);
     }
 
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target) external {
@@ -170,23 +213,23 @@ contract MockMessageDispatcher {
         bytes32 to,
         uint256 amount
     ) external {
-        // Mock implementation - no actual token recovery
+        
     }
 
     function sendInitiateTransferShares(
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external {
-        // Mock implementation - no actual transfer because this is done via the gateway
+        hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
     }
 
     function sendExecuteTransferShares(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
         bytes32 receiver,
         uint128 amount
     ) external {
@@ -213,72 +256,30 @@ contract MockMessageDispatcher {
         hub.cancelRedeemRequest(poolId, scId, investor, assetId);
     }
 
-    function sendApprovedDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        D18 pricePoolPerAsset
-    ) external {
-        investmentManager.approvedDeposits(poolId, scId, assetId, assetAmount, pricePoolPerAsset);
-    }
-
-    function sendIssuedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external {
-        investmentManager.issuedShares(poolId, scId, shareAmount, pricePoolPerShare);
-    }
-
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        external
-    {
-        balanceSheet.triggerIssueShares(poolId, scId, who, shares);
-    }
-
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external {
-        balanceSheet.submitQueuedShares(poolId, scId);
-    }
-
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external {
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId);
-    }
-
-    function sendSetQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) external {
-        balanceSheet.setQueue(poolId, scId, enabled);
-    }
-
-    function sendRevokedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external {
-        investmentManager.revokedShares(poolId, scId, assetId, assetAmount, shareAmount, pricePoolPerShare);
-    }
-
     function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external {
-        hub.updateHoldingAmount(poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease);
+        hub.updateHoldingAmount(
+            localCentrifugeId, poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, isSnapshot, nonce
+        );
     }
 
-    function sendUpdateShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external {
-        if (isIssuance) {
-            hub.increaseShareIssuance(poolId, scId, shares);
-        } else {
-            hub.decreaseShareIssuance(poolId, scId, shares);
-        }
+    function sendUpdateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 shares,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external {
+        hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);
     }
 
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external {

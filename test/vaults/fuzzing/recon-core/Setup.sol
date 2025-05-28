@@ -8,21 +8,21 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {Escrow} from "src/spokes/Escrow.sol";
-import {AsyncRequestManager} from "src/spokes/vaults/AsyncRequestManager.sol";
-import {Spoke} from "src/spokes/Spoke.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {Escrow} from "src/spoke/Escrow.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {Spoke} from "src/spoke/Spoke.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
-import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
-import {AsyncVaultFactory} from "src/spokes/factories/AsyncVaultFactory.sol";
-import {PoolEscrowFactory} from "src/spokes/factories/PoolEscrowFactory.sol";
-import {TokenFactory} from "src/spokes/factories/TokenFactory.sol";
-import {SyncRequestManager} from "src/spokes/vaults/SyncRequestManager.sol";
-import {IVaultFactory} from "src/spokes/interfaces/factories/IVaultFactory.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
+import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {ShareToken} from "src/spokes/ShareToken.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
 
 import {Root} from "src/common/Root.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";

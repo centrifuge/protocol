@@ -9,7 +9,7 @@ import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";

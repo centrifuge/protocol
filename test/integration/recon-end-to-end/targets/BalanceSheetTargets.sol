@@ -10,10 +10,10 @@ import {Panic} from "@recon/Panic.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {D18} from "src/misc/types/D18.sol";
 
-import {BalanceSheet} from "src/spokes/BalanceSheet.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
@@ -51,7 +51,7 @@ abstract contract BalanceSheetTargets is
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.noteDeposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
+        balanceSheet.noteDeposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
     }
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {

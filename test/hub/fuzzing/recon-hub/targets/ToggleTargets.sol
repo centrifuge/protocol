@@ -55,4 +55,12 @@ abstract contract ToggleTargets is
     function toggle_NowRevokeEpochId(uint32 nowRevokeEpochId) public {
         NOW_REVOKE_EPOCH_ID = nowRevokeEpochId;
     }
+
+    function toggle_IsSnapshot() public {
+        IS_SNAPSHOT = !IS_SNAPSHOT;
+    }
+
+    function toggle_Nonce() public {
+        NONCE++;
+    }
 }

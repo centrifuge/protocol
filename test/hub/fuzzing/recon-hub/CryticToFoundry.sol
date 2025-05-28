@@ -161,7 +161,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         
         // decrease the holding amount
         toggle_IsIncrease();
-        hub_updateHoldingAmount_clamped(1,1,1,5e18,20e18,false);
+        // hub_updateHoldingAmount_clamped(1,1,1,5e18,20e18,false);
     }
 
     function test_shortcut_create_pool_and_update_holding_value() public {
@@ -170,34 +170,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     function test_shortcut_create_pool_and_update_journal() public {
         shortcut_create_pool_and_update_journal(18, 123, SC_SALT, true, 3, 10e18, 10e18);
-    }
-
-    function test_hub_increaseShareIssuance() public {
-        (poolId, scId) = test_request_deposit();
-
-        hub_increaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
-    }
-
-    function test_hub_decreaseShareIssuance() public {
-        (poolId, scId) = test_request_deposit();
-
-        hub_increaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
-
-        hub_decreaseShareIssuance(poolId.raw(), scId.raw(), SHARE_AMOUNT);
-    }
-
-    function test_hub_increaseShareIssuance_clamped() public {
-        (poolId, scId) = test_request_deposit();
-
-        hub_increaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
-    }
-
-    function test_hub_decreaseShareIssuance_clamped() public {
-        (poolId, scId) = test_request_deposit();
-
-        hub_increaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
-
-        hub_decreaseShareIssuance_clamped(poolId.raw(), 2, SHARE_AMOUNT);
     }
     
     /// === REPRODUCERS === ///
@@ -230,7 +202,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_and_cancel(6,1,2,false,1,1,1);
 
-        hub_updateHoldingAmount_clamped(0,0,0,1000019115540989997,1,true);
+        // hub_updateHoldingAmount_clamped(0,0,0,1000019115540989997,1,true);
 
         hub_addShareClass_clamped(0,1);
 
@@ -279,7 +251,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_addShareClass_clamped(0,1);
 
-        hub_updateHoldingAmount_clamped(0,0,0,1,2000612857814007812,true);
+        // hub_updateHoldingAmount_clamped(0,0,0,1,2000612857814007812,true);
 
         hub_updateHoldingValue_clamped(0,0);
 
@@ -292,7 +264,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_create_pool_and_holding(6,1,2,false);
 
-        hub_updateHoldingAmount_clamped(0,0,0,1000041545513794237,1,true);
+        // hub_updateHoldingAmount_clamped(0,0,0,1000041545513794237,1,true);
 
         hub_addShareClass_clamped(0,1);
 

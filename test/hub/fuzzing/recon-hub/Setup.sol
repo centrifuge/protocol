@@ -19,7 +19,7 @@ import {Holdings} from "src/hub/Holdings.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {Spoke} from "src/spokes/Spoke.sol";
+import {Spoke} from "src/spoke/Spoke.sol";
 import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
@@ -89,7 +89,9 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
     bool internal IS_DEBIT_NORMAL = true;
-    uint32 internal MAX_CLAIMS = type(uint32).max;
+    bool internal IS_SNAPSHOT = false;
+    uint64 internal NONCE = 0;
+    uint32 internal MAX_CLAIMS = 10;
     /// @dev see toggle_AccountToUpdate
     AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
     uint32 internal ASSET_ACCOUNT = 1;

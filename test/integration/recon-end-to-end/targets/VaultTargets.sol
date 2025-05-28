@@ -9,14 +9,14 @@ import {Panic} from "@recon/Panic.sol";
 import {console2} from "forge-std/console2.sol";
 
 // Dependencies
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IAsyncVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 // Test Utils
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";

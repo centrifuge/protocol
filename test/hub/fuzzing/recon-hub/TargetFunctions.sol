@@ -10,7 +10,7 @@ import {Panic} from "@recon/Panic.sol";
 // Source
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
@@ -304,7 +304,7 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation);
         AssetId assetId = newAssetId(isoCode);
 
-        transientValuation_setPrice(address(assetId.addr()), hubRegistry.currency(poolId).addr(), newPrice);
+        transientValuation_setPrice(assetId, assetId, newPrice);
     }
 
     function shortcut_create_pool_and_update_holding_amount(
@@ -313,7 +313,7 @@ abstract contract TargetFunctions is
         uint256 salt, 
         bool isIdentityValuation,
         uint128 amount,
-        uint128 pricePerUnit,
+        uint128 pricePoolPerAsset,
         uint128 debitAmount,
         uint128 creditAmount
     ) public clearQueuedCalls returns (PoolId poolId, ShareClassId scId) {
@@ -336,7 +336,16 @@ abstract contract TargetFunctions is
                 accountId: ACCOUNT_TO_UPDATE
             });
 
-            hub_updateHoldingAmount(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), amount, pricePerUnit, IS_INCREASE);
+            hub_updateHoldingAmount(
+                PoolId.unwrap(poolId),
+                ShareClassId.unwrap(scId),
+                assetId.raw(),
+                amount,
+                pricePoolPerAsset,
+                IS_INCREASE, 
+                IS_SNAPSHOT,
+                NONCE
+            );
         }
     }
 
@@ -398,7 +407,7 @@ abstract contract TargetFunctions is
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation);
     
         AssetId assetId = newAssetId(isoCode);
-        hub_updateHoldingValuation(poolId.raw(), ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation)));
+        hub_updateHoldingValuation(poolId.raw(), ShareClassId.unwrap(scId), assetId.raw(), isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation)));
     }
 
     function shortcut_notify_share_class(
@@ -430,9 +439,9 @@ abstract contract TargetFunctions is
     ) public  {
         hub_addShareClass(poolId, salt);
 
-        IERC7726 valuation = isIdentityValuation ? 
-            IERC7726(address(identityValuation)) : 
-            IERC7726(address(transientValuation));
+        IValuation valuation = isIdentityValuation ? 
+            IValuation(address(identityValuation)) : 
+            IValuation(address(transientValuation));
 
         hub_createAccount(poolId, ASSET_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId, EQUITY_ACCOUNT, IS_DEBIT_NORMAL);
@@ -452,9 +461,9 @@ abstract contract TargetFunctions is
     ) public  {
         AssetId assetId = newAssetId(isoCode);
 
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+        IValuation valuation = isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
 
-        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), INITIAL_PRICE);
+        transientValuation_setPrice(assetId, assetId, INITIAL_PRICE.raw());
 
         hub_approveDeposits(poolId, scId, assetId.raw(), NOW_REVOKE_EPOCH_ID, maxApproval);
         hub_issueShares(poolId, scId, assetId.raw(), NOW_REVOKE_EPOCH_ID, navPerShare);
@@ -468,7 +477,7 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         bool isIdentityValuation
     ) public  {        
-        IERC7726 valuation = isIdentityValuation ? IERC7726(address(identityValuation)) : IERC7726(address(transientValuation));
+        IValuation valuation = isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
         
         AssetId assetId = newAssetId(isoCode);
         hub_approveRedeems(poolId, scId, assetId.raw(), 0, maxApproval);
@@ -492,7 +501,7 @@ abstract contract TargetFunctions is
     }
 
     /// === Transient Valuation === ///
-    function transientValuation_setPrice(address base, address quote, uint128 price) public {
+    function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
         transientValuation.setPrice(base, quote, D18.wrap(price));
     }
 
@@ -500,7 +509,7 @@ abstract contract TargetFunctions is
     function transientValuation_setPrice_clamped(uint64 poolId, uint128 price) public {
         AssetId assetId = hubRegistry.currency(PoolId.wrap(poolId));
 
-        transientValuation.setPrice(address(assetId.addr()), address(assetId.addr()), D18.wrap(price));
+        transientValuation_setPrice(assetId, assetId, price);
     }
 
     /// === Gateway === ///

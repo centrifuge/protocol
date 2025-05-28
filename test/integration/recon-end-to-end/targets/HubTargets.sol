@@ -11,8 +11,8 @@ import {console2} from "forge-std/console2.sol";
 // Dependencies
 import {Hub} from "src/hub/Hub.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";

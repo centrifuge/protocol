@@ -8,15 +8,16 @@ import {vm} from "@chimera/Hevm.sol";
 
 // Src Deps | For cycling of values
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {ShareToken} from "src/spokes/ShareToken.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -183,7 +184,7 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
      */
     function poolManager_updateMember(uint64 validUntil) public asAdmin {
         spoke.updateRestriction(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil).serialize()
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil))
         );
     }
 
@@ -198,11 +199,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     function poolManager_freeze() public asAdmin {
-        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionFreeze(_getActor().toBytes32()).serialize());
+        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionFreeze(_getActor().toBytes32())));
     }
 
     function poolManager_unfreeze() public asAdmin {
-        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), MessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32()).serialize());
+        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32())));
     }
 
     // TODO: Rely / Permissions

@@ -7,10 +7,10 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {AsyncInvestmentState} from "src/spokes/interfaces/investments/IAsyncRequestManager.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 

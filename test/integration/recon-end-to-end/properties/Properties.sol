@@ -12,12 +12,12 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {PoolEscrow} from "src/spokes/Escrow.sol";
+import {PoolEscrow} from "src/spoke/Escrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {VaultDetails} from "src/spokes/interfaces/ISpoke.sol";
+import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
@@ -98,6 +98,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address shareToken = vault.share();
         uint256 totalSupply = IShareToken(shareToken).totalSupply();
 
+        // NOTE: shareMints is no longet updated because hub_triggerIssueShares was removed
         unchecked {
             ghostTotalSupply = 
                 (shareMints[address(shareToken)] + 
@@ -881,7 +882,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
         
         // precondition: if queue is enabled, holdings don't get updated until the queue is submitted
-        if(!balanceSheet.queueEnabled(vault.poolId(), vault.scId())) {
+        if(balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
             eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
         } 
     }

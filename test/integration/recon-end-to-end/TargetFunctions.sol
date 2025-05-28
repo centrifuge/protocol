@@ -9,17 +9,17 @@ import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {ERC20} from "src/misc/ERC20.sol";
-import {AsyncVault} from "src/spokes/vaults/AsyncVault.sol";
-import {ShareToken} from "src/spokes/ShareToken.sol";
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
-import {IBaseVault} from "src/spokes/interfaces/vaults/IBaseVaults.sol";
-import {IShareToken} from "src/spokes/interfaces/IShareToken.sol";
-import {PoolEscrow} from "src/spokes/Escrow.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {PoolEscrow} from "src/spoke/Escrow.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -131,9 +131,9 @@ abstract contract TargetFunctions is
 
         // 4. Create accounts and holding
         {
-            IERC7726 valuation = isIdentityValuation ? 
-                        IERC7726(address(identityValuation)) : 
-                        IERC7726(address(transientValuation));
+            IValuation valuation = isIdentityValuation ? 
+                        IValuation(address(identityValuation)) : 
+                        IValuation(address(transientValuation));
                         
             hub_createAccount(ASSET_ACCOUNT, isDebitNormal);
             hub_createAccount(EQUITY_ACCOUNT, isDebitNormal);
@@ -168,7 +168,6 @@ abstract contract TargetFunctions is
     function shortcut_request_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint256 toEntropy) public {
         transientValuation_setPrice_clamped(priceValuation);
         
-        hub_updatePricePerShare(pricePoolPerShare);
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
         poolManager_updateMember(type(uint64).max);
@@ -179,7 +178,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
         transientValuation_setPrice_clamped(navPerShare);
 
-        hub_updatePricePerShare(navPerShare);
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
         
@@ -191,7 +189,6 @@ abstract contract TargetFunctions is
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
         transientValuation_setPrice_clamped(navPerShare);
 
-        hub_updatePricePerShare(navPerShare);
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
         
@@ -328,7 +325,7 @@ abstract contract TargetFunctions is
     }
 
     /// === Transient Valuation === ///
-    function transientValuation_setPrice(address base, address quote, uint128 price) public {
+    function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
         transientValuation.setPrice(base, quote, D18.wrap(price));
     }
 
@@ -337,7 +334,7 @@ abstract contract TargetFunctions is
         AssetId poolCurrency = hubRegistry.currency(PoolId.wrap(_getPool()));
         AssetId assetId = AssetId.wrap(_getAssetId());
 
-        transientValuation.setPrice(address(assetId.addr()), address(poolCurrency.addr()), D18.wrap(price));
+        transientValuation_setPrice(assetId, AssetId.wrap(_getAssetId()), price);
     }
 
     /// === Permission Functions === ///
