@@ -1,0 +1,32 @@
+{
+  "contracts": {
+    "root": "0x74227E2dfA7468532164e613Db27D650aE8bdd1D",
+    "adminSafe": "0x423420Ae467df6e90291fd0252c0A8a637C1e03f",
+    "guardian": "0x172C282DB804BE4E6669C4783FcF1ddBA8602886",
+    "gasService": "0x25cCa2FF6902a944dE23e969a119cC380B203044",
+    "gateway": "0x11Aa622634F2e5eDB348D0880f132d19D6b2f35a",
+    "multiAdapter": "0xc4A3296aA7F29F7FdC7A8e62783C19fc59b14cC9",
+    "messageProcessor": "0xddb0540873AaE947257dB1e654eFA2C8289a8995",
+    "messageDispatcher": "0xde2c5aa6ae3D8211d8EFcD89304bAC70124738cd",
+    "hubRegistry": "0x0813Aaf6e26fB2a8b644c63cbAA8d72bbA3F7418",
+    "accounting": "0xd23B7e7E4fcFDA2b9d397420da5635231Ae96b19",
+    "holdings": "0x6c01abA1B378E498b5f45bA8AF19ab0fbD05Fd2b",
+    "shareClassManager": "0x0CbDEC3F96F1e05F6986aA16Dd30B3c88f9f44f6",
+    "hub": "0x7914838A68D94ed2fc574C73cC66037609B62825",
+    "identityValuation": "0x25D740b2869bC4Ae6C5051aFC092A69266F08787",
+    "poolEscrowFactory": "0xb77d5569B3719d75d005941cDf24899A84BF7BcA",
+    "routerEscrow": "0x5C6a9CBDfCeD98AEB78f7F8839d2cac1D21F6f4A",
+    "globalEscrow": "0xFD2B7CAE3eDeF78eC115aA8C7E29C8C28992e754",
+    "freezeOnlyHook": "0xC80f50C335e41e47C87DBdd6A330ab219Fbbc4ca",
+    "redemptionRestrictionsHook": "0x4533755dD1a0d1B81225416a95AB3aAB5204A39C",
+    "fullRestrictionsHook": "0xd5b409697c52b986801D0A43E172F078f24DE8E5",
+    "tokenFactory": "0xa9eB7590170D933502A634f3Ebe97B78c1E4E087",
+    "asyncRequestManager": "0xffe8d49BE4D11cb733C34CC7b84df0ff1385982b",
+    "syncRequestManager": "0x7ba81291B29841AC20B9bb1e92e94BA38718Fa78",
+    "asyncVaultFactory": "0x83cc1E9cC5afaBff97B2e15c9d7edE68bDa203F0",
+    "syncDepositVaultFactory": "0x8C6972f1a36c64339742Aa4bE250c9e8C62f971a",
+    "spoke": "0x82899213B18c5Ad9f4725D6e26bc9C2E42cee568",
+    "vaultRouter": "0xFEB443Cae03b50DD957077032A38E07B97Aa950F",
+    "balanceSheet": "0x261141dbAE9ec06Ef7913dA999Ba6de9a7833A6f"
+  }
+}
