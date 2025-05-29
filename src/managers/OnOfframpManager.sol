@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -57,6 +58,10 @@ contract OnOfframpManager is IOnOfframpManager {
             if (m.kind == "onramp") {
                 address asset = m.what.toAddress();
                 onramp[asset] = m.isEnabled;
+
+                if (m.isEnabled) SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
+                else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
+
                 emit UpdateOnramp(asset, m.isEnabled);
             } else if (m.kind == "offramp") {
                 address asset = m.what.toAddress();

@@ -10,6 +10,7 @@ import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -73,6 +74,47 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
     }
 }
 
+contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest {
+    using CastLib for *;
+    using UpdateContractMessageLib for *;
+
+    PoolId public immutable POOL_B = newPoolId(OTHER_CHAIN_ID, 2);
+
+    function testInvalidSource(address notSpoke) public {
+        vm.assume(notSpoke != address(spoke));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(notSpoke);
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("onramp"),
+                what: address(erc20).toBytes32(),
+                who: bytes32(""),
+                where: bytes32(""),
+                isEnabled: true
+            }).serialize()
+        );
+    }
+
+    function testInvalidPool() public {
+        vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_B,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("onramp"),
+                what: address(erc20).toBytes32(),
+                who: bytes32(""),
+                where: bytes32(""),
+                isEnabled: true
+            }).serialize()
+        );
+    }
+}
+
 contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
     using CastLib for *;
     using UpdateContractMessageLib for *;
@@ -123,9 +165,124 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
     }
 }
 
+contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerBaseTest {
+    using CastLib for *;
+    using UpdateContractMessageLib for *;
+
+    function testDeposit(uint128 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("onramp"),
+                what: address(erc20).toBytes32(),
+                who: bytes32(""),
+                where: bytes32(""),
+                isEnabled: true
+            }).serialize()
+        );
+
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        erc20.mint(address(manager), amount);
+
+        assertEq(erc20.balanceOf(address(manager)), amount);
+        assertEq(balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
+
+        manager.deposit(address(erc20), erc20TokenId, amount, address(manager));
+
+        assertEq(erc20.balanceOf(address(manager)), 0);
+        assertEq(
+            balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), amount
+        );
+    }
+}
+
 contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
+    using CastLib for *;
+    using UpdateContractMessageLib for *;
+
     function testNotAllowed(uint128 amount) public {
         vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
         manager.withdraw(address(erc20), erc20TokenId, amount, address(this));
+    }
+
+    function testNotBalanceSheetManager(uint128 amount) public {
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("offramp"),
+                what: address(erc20).toBytes32(),
+                who: address(this).toBytes32(),
+                where: makeAddr("receiver").toBytes32(),
+                isEnabled: true
+            }).serialize()
+        );
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        manager.withdraw(address(erc20), erc20TokenId, amount, makeAddr("receiver"));
+    }
+
+    function testInsufficientBalance(uint128 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("offramp"),
+                what: address(erc20).toBytes32(),
+                who: address(this).toBytes32(),
+                where: makeAddr("receiver").toBytes32(),
+                isEnabled: true
+            }).serialize()
+        );
+
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        vm.expectPartialRevert(IEscrow.InsufficientBalance.selector);
+        manager.withdraw(address(erc20), erc20TokenId, amount, makeAddr("receiver"));
+    }
+}
+
+contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerBaseTest {
+    using CastLib for *;
+    using UpdateContractMessageLib for *;
+
+    function testWithdraw(uint128 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("offramp"),
+                what: address(erc20).toBytes32(),
+                who: address(this).toBytes32(),
+                where: makeAddr("receiver").toBytes32(),
+                isEnabled: true
+            }).serialize()
+        );
+
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        _depositIntoBalanceSheet(amount);
+
+        assertEq(
+            balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), amount
+        );
+        assertEq(erc20.balanceOf(makeAddr("receiver")), 0);
+
+        manager.withdraw(address(erc20), erc20TokenId, amount, makeAddr("receiver"));
+
+        assertEq(balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
+        assertEq(erc20.balanceOf(makeAddr("receiver")), amount);
     }
 }
