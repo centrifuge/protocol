@@ -882,7 +882,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
         
         // precondition: if queue is enabled, holdings don't get updated until the queue is submitted
-        if(balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
+        if(!balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
             eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
         } 
     }
