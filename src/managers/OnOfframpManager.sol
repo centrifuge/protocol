@@ -55,7 +55,7 @@ contract OnOfframpManager is IOnOfframpManager {
                 UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
 
             if (m.kind == "onramp") {
-                address asset = m.who.toAddress();
+                address asset = m.what.toAddress();
                 onramp[asset] = m.isEnabled;
                 emit UpdateOnramp(asset, m.isEnabled);
             } else if (m.kind == "offramp") {
@@ -75,7 +75,7 @@ contract OnOfframpManager is IOnOfframpManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address /* owner */) external {
+    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address /* owner */ ) external {
         require(onramp[asset], NotAllowedOnrampAsset());
 
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
