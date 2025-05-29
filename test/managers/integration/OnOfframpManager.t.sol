@@ -5,6 +5,7 @@ import "test/spoke/BaseTest.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC165.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -16,7 +17,10 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {OnOfframpManager} from "src/managers/OnOfframpManager.sol";
+import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
+
+// TODO: approval tests + factory tests
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -284,5 +288,28 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerBaseTest {
 
         assertEq(balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
         assertEq(erc20.balanceOf(makeAddr("receiver")), amount);
+    }
+}
+
+contract OnOfframpManagerERC165Tests is OnOfframpManagerBaseTest {
+    function testERC165Support(bytes4 unsupportedInterfaceId) public {
+        bytes4 erc165 = 0x01ffc9a7;
+        bytes4 depositManager = 0xc864037c;
+        bytes4 withdrawManager = 0x3e55212a;
+
+        vm.assume(
+            unsupportedInterfaceId != erc165 && unsupportedInterfaceId != depositManager
+                && unsupportedInterfaceId != withdrawManager
+        );
+
+        assertEq(type(IERC165).interfaceId, erc165);
+        assertEq(type(IDepositManager).interfaceId, depositManager);
+        assertEq(type(IWithdrawManager).interfaceId, withdrawManager);
+
+        assertEq(manager.supportsInterface(erc165), true);
+        assertEq(manager.supportsInterface(depositManager), true);
+        assertEq(manager.supportsInterface(withdrawManager), true);
+
+        assertEq(manager.supportsInterface(unsupportedInterfaceId), false);
     }
 }
