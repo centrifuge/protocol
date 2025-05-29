@@ -21,7 +21,7 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 /// @dev sanity tests for the fuzzing suite setup
 // forge test --match-contract CryticSanity --match-path test/integration/recon-end-to-end/CryticSanity.sol -vv
 contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
-    function setUp() virtual public {
+    function setUp() public {
         setup();
     }
 
