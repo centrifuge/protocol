@@ -239,6 +239,9 @@ abstract contract Setup is
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
+        address[] memory tokenWards = new address[](1);
+        tokenWards[0] = address(spoke);
+        tokenFactory.file("wards", tokenWards);
 
         // authorize contracts
         asyncRequestManager.rely(address(spoke));

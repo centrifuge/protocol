@@ -125,9 +125,7 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            // NOTE: This seems like an issue, doesn't ever work with fullRestrictions passed in
-            // spoke_addShareClass(_scId, 18, address(fullRestrictions));
-            spoke_addShareClass(_scId, 18, address(0));
+            spoke_addShareClass(_scId, 18, address(fullRestrictions));
             ShareToken(_getShareToken()).rely(address(spoke));
             ShareToken(_getShareToken()).rely(address(balanceSheet));
         }
@@ -157,8 +155,6 @@ abstract contract TargetFunctions is
         approvals[0] = address(spoke);
         approvals[1] = address(_getVault());
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
-
-        IShareToken(_getShareToken()).file("hook", address(fullRestrictions));
 
         _token = _getAsset(); 
         _shareToken = _getShareToken();
