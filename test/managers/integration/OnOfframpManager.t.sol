@@ -292,7 +292,7 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerBaseTest {
 }
 
 contract OnOfframpManagerERC165Tests is OnOfframpManagerBaseTest {
-    function testERC165Support(bytes4 unsupportedInterfaceId) public {
+    function testERC165Support(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 depositManager = 0xc864037c;
         bytes4 withdrawManager = 0x3e55212a;
