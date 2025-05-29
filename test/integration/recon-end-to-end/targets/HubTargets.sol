@@ -55,6 +55,7 @@ abstract contract HubTargets is
         bytes32 investor = CastLib.toBytes32(_getActor());
         (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
         (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        (, uint128 cancelledAmountBefore) = shareClassManager.queuedDepositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
 
         hub.notifyDeposit(
             IBaseVault(_getVault()).poolId(), 
@@ -67,12 +68,13 @@ abstract contract HubTargets is
         (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
         (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         (uint32 depositEpochId,,, )= shareClassManager.epochId(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
+        (, uint128 cancelledAmountAfter) = shareClassManager.queuedDepositRequest(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor);
 
-        // fulfillments are handled in the AsyncRequestManager
-        sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeARM - pendingAfterARM);
-        // claims are handled in the ShareClassManager
-        sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM);
+        uint128 cancelDelta = cancelledAmountBefore - cancelledAmountAfter; // cancelled decreases if it was claimed
+        sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeARM - pendingAfterARM); // fulfillments are handled in the AsyncRequestManager
+        sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM); // claims are handled in the ShareClassManager
         depositProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += (pendingBeforeSCM - pendingAfterSCM);
+        cancelledDeposits[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {
@@ -98,9 +100,11 @@ abstract contract HubTargets is
         uint256 investorSharesAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         
+        uint128 cancelDelta = cancelledAmountBefore - cancelledAmountAfter; // cancelled decreases if it was claimed
         currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore); // the currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
-        cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += (cancelledAmountBefore - cancelledAmountAfter);
+        cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += cancelDelta; 
         redemptionsProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += (pendingBefore - pendingAfter);
+        cancelledRedemptions[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {
