@@ -6,10 +6,8 @@ import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
-    event UpdateRelayer(address who, bool canManage);
-    event UpdatePermissionless(bytes32 what, bool isSet);
     event UpdateOnramp(address indexed asset, bool isEnabled);
-    event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
+    event UpdateOfframp(address indexed asset, address indexed relayer, address receiver);
 
     error NotAllowedOnrampAsset();
     error InvalidAmount();

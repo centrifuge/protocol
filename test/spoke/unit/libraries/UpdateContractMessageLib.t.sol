@@ -31,26 +31,19 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.maxReserve, b.maxReserve);
     }
 
-    function testUpdateContractToggle(bytes32 what, bool isEnabled) public pure {
-        UpdateContractMessageLib.UpdateContractToggle memory a =
-            UpdateContractMessageLib.UpdateContractToggle({what: what, isEnabled: isEnabled});
-        UpdateContractMessageLib.UpdateContractToggle memory b =
-            UpdateContractMessageLib.deserializeUpdateContractToggle(a.serialize());
-
-        assertEq(a.what, b.what);
-        assertEq(a.isEnabled, b.isEnabled);
-        // This message is a submessage and has not static message length defined
-    }
-
-    function testUpdateContractUpdateAddress(bytes32 kind, bytes32 what, bytes32 who, bool isEnabled) public pure {
+    function testUpdateContractUpdateAddress(bytes32 kind, bytes32 what, bytes32 who, bytes32 where, bool isEnabled)
+        public
+        pure
+    {
         UpdateContractMessageLib.UpdateContractUpdateAddress memory a = UpdateContractMessageLib
-            .UpdateContractUpdateAddress({kind: kind, what: what, who: who, isEnabled: isEnabled});
+            .UpdateContractUpdateAddress({kind: kind, what: what, who: who, where: where, isEnabled: isEnabled});
         UpdateContractMessageLib.UpdateContractUpdateAddress memory b =
             UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(a.serialize());
 
         assertEq(a.kind, b.kind);
         assertEq(a.what, b.what);
         assertEq(a.who, b.who);
+        assertEq(a.where, b.where);
         assertEq(a.isEnabled, b.isEnabled);
         // This message is a submessage and has not static message length defined
     }

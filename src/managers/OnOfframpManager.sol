@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -18,20 +15,22 @@ import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
 import {IOnOfframpManagerFactory} from "src/managers/interfaces/IOnOfframpManagerFactory.sol";
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
+/// @title  OnOfframpManager
+/// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
+///         - Onramping is permissionless: once an asset is allowed to be onramped and ERC20 assets have been
+///           transferred to the manager, anyone can trigger the balance sheet deposit.
+///         - Offramping is permissioned: only predefined relayers can trigger withdrawals to predefined
+///           offramp accounts.
 contract OnOfframpManager is IOnOfframpManager {
     using CastLib for *;
-    using MathLib for uint256;
 
     PoolId public immutable poolId;
     address public immutable spoke;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
-    bool public permissionlessOnramp;
-    bool public permissionlessOfframp;
-    mapping(address => bool) public relayer;
     mapping(address asset => bool) public onramp;
-    mapping(address asset => mapping(address receiver => bool)) public offramp;
+    mapping(address asset => mapping(address relayer => address receiver)) public offramp;
 
     constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
@@ -55,27 +54,17 @@ contract OnOfframpManager is IOnOfframpManager {
             UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
 
-            if (m.kind == "relayer") {
-                address relayer_ = m.who.toAddress();
-                relayer[relayer_] = m.isEnabled;
-                emit UpdateRelayer(relayer_, m.isEnabled);
-            } else if (m.kind == "onramp") {
+            if (m.kind == "onramp") {
                 address asset = m.who.toAddress();
                 onramp[asset] = m.isEnabled;
                 emit UpdateOnramp(asset, m.isEnabled);
             } else if (m.kind == "offramp") {
                 address asset = m.what.toAddress();
-                address receiver = m.who.toAddress();
-                offramp[asset][receiver] = m.isEnabled;
-                emit UpdateOfframp(asset, receiver, m.isEnabled);
+                address relayer = m.who.toAddress();
+                address receiver = m.where.toAddress();
+                offramp[asset][relayer] = receiver;
+                emit UpdateOfframp(asset, relayer, receiver);
             }
-        } else if (kind == uint8(UpdateContractType.Toggle)) {
-            UpdateContractMessageLib.UpdateContractToggle memory m =
-                UpdateContractMessageLib.deserializeUpdateContractToggle(payload);
-
-            if (m.what == "permissionlessOnramp") permissionlessOnramp = m.isEnabled;
-            else if (m.what == "permissionlessOfframp") permissionlessOfframp = m.isEnabled;
-            emit UpdatePermissionless(m.what, m.isEnabled);
         } else {
             revert UnknownUpdateContractType();
         }
@@ -86,20 +75,15 @@ contract OnOfframpManager is IOnOfframpManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IDepositManager
-    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external {
-        require(relayer[msg.sender] || permissionlessOnramp, IAuth.NotAuthorized());
-
+    function deposit(address asset, uint256, /* tokenId */ uint128 amount, address /* owner */) external {
         require(onramp[asset], NotAllowedOnrampAsset());
-        require(owner == address(this) || owner == msg.sender);
 
-        if (owner == msg.sender) SafeTransferLib.safeTransferFrom(asset, owner, address(this), amount);
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
     }
 
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
-        require(relayer[msg.sender] || permissionlessOfframp, IAuth.NotAuthorized());
-        require(offramp[asset][receiver], InvalidOfframpDestination());
+        require(receiver != address(0) && receiver == offramp[asset][msg.sender], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }

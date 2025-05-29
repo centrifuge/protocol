@@ -9,7 +9,6 @@ enum UpdateContractType {
     Invalid,
     Valuation,
     SyncDepositMaxReserve,
-    Toggle,
     UpdateAddress
 }
 
@@ -68,25 +67,6 @@ library UpdateContractMessageLib {
     }
 
     //---------------------------------------
-    //   UpdateContract.Toggle (submsg)
-    //---------------------------------------
-
-    struct UpdateContractToggle {
-        bytes32 what;
-        bool isEnabled;
-    }
-
-    function deserializeUpdateContractToggle(bytes memory data) internal pure returns (UpdateContractToggle memory) {
-        require(updateContractType(data) == UpdateContractType.Toggle, UnknownMessageType());
-
-        return UpdateContractToggle({what: data.toBytes32(1), isEnabled: data.toBool(33)});
-    }
-
-    function serialize(UpdateContractToggle memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.Toggle, t.what, t.isEnabled);
-    }
-
-    //---------------------------------------
     //   UpdateContract.UpdateAddress (submsg)
     //---------------------------------------
 
@@ -94,6 +74,7 @@ library UpdateContractMessageLib {
         bytes32 kind;
         bytes32 what;
         bytes32 who;
+        bytes32 where;
         bool isEnabled;
     }
 
@@ -108,11 +89,12 @@ library UpdateContractMessageLib {
             kind: data.toBytes32(1),
             what: data.toBytes32(33),
             who: data.toBytes32(65),
-            isEnabled: data.toBool(97)
+            where: data.toBytes32(97),
+            isEnabled: data.toBool(129)
         });
     }
 
     function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.what, t.who, t.isEnabled);
+        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.what, t.who, t.where, t.isEnabled);
     }
 }
