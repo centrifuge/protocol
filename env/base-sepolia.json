@@ -1,4 +1,28 @@
 {
+  "network": {
+    "chainId": 84532,
+    "environment": "testnet",
+    "centrifugeId": 84532
+  },
+  "adapters": {
+    "wormhole": {
+      "deploy": true,
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "chain-id": 10004,
+      "connectsTo": [
+        "sepolia"
+      ]
+    },
+    "axelar": {
+      "deploy": false,
+      "chain-id": "axelar-testnet-lisbon-3",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "connectsTo": [
+        "sepolia"
+      ]
+    }
+  },
   "contracts": {
     "root": "0x74227E2dfA7468532164e613Db27D650aE8bdd1D",
     "adminSafe": "0x423420Ae467df6e90291fd0252c0A8a637C1e03f",
@@ -27,6 +51,7 @@
     "syncDepositVaultFactory": "0x8C6972f1a36c64339742Aa4bE250c9e8C62f971a",
     "spoke": "0x82899213B18c5Ad9f4725D6e26bc9C2E42cee568",
     "vaultRouter": "0xFEB443Cae03b50DD957077032A38E07B97Aa950F",
-    "balanceSheet": "0x261141dbAE9ec06Ef7913dA999Ba6de9a7833A6f"
+    "balanceSheet": "0x261141dbAE9ec06Ef7913dA999Ba6de9a7833A6f",
+    "wormholeAdapter": "0xb543131C91562126d371138D96Ec1241E4b6B42c"
   }
 }
