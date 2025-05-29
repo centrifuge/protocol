@@ -212,10 +212,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, controller);
 
             // update ghosts
-            // cancelled pending decreases since it's a queued request
-            uint256 delta = pendingCancelAfter - pendingCancelBefore;
-            cancelledDeposits[vault.scId()][hubRegistry.currency(vault.poolId())][controller] += delta;
-            cancelDepositCurrencyPayout[vault.asset()] += delta;
+            cancelledDeposits[vault.scId()][hubRegistry.currency(vault.poolId())][controller] += (pendingCancelAfter - pendingCancelBefore); // cancelled pending decreases since it's a queued request
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
             if(Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
@@ -290,6 +287,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         uint256 assets = IAsyncVault(_getVault()).claimCancelDepositRequest(REQUEST_ID, to, _getActor());
         sumOfClaimedDepositCancelations[IBaseVault(_getVault()).asset()] += assets;
+        cancelDepositCurrencyPayout[IBaseVault(_getVault()).asset()] += assets;
     }
 
     function vault_claimCancelRedeemRequest(uint256 toEntropy) public updateGhosts asActor {

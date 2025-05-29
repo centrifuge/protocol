@@ -33,6 +33,8 @@ abstract contract BalanceSheetTargets is
     function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.deposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
+
+        sumOfManagerDeposits[vault.asset()] += amount;
     }
 
     function balanceSheet_file(bytes32 what, address data) public updateGhosts asActor {
@@ -47,6 +49,7 @@ abstract contract BalanceSheetTargets is
         balanceSheet.issue(poolId, scId, _getActor(), shares);
 
         issuedBalanceSheetShares[poolId][scId] += shares;
+        shareMints[vault.share()] += shares;
     }
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
@@ -96,6 +99,7 @@ abstract contract BalanceSheetTargets is
         balanceSheet.revoke(poolId, scId, shares);
 
         revokedBalanceSheetShares[poolId][scId] += shares;
+        shareMints[vault.share()] -= shares;
     }
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
@@ -106,5 +110,7 @@ abstract contract BalanceSheetTargets is
     function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         balanceSheet.withdraw(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
+
+        sumOfManagerWithdrawals[vault.asset()] += amount;
     }
 }

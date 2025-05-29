@@ -131,6 +131,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // investmentManager_fulfillCancelDepositRequest
         IBaseVault vault = IBaseVault(_getVault());
         address asset = vault.asset();
+
         lte(sumOfClaimedDepositCancelations[address(asset)], cancelDepositCurrencyPayout[address(asset)], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 
@@ -242,9 +243,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             /// @audit Minted by Asset Payouts by Investors
             ghostBalOfEscrow = (
                 (sumOfDepositRequests[asset]  +
-                sumOfSyncDepositsAsset[asset]) -  
+                sumOfSyncDepositsAsset[asset] +
+                sumOfManagerDeposits[asset]) -  
                 (sumOfClaimedDepositCancelations[asset] +
-                sumOfClaimedRedemptions[asset])
+                sumOfClaimedRedemptions[asset] +
+                sumOfManagerWithdrawals[asset])
             );
             
         }
@@ -264,6 +267,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
         unchecked {       
+            console2.log("sumOfFullfilledDeposits:", sumOfFullfilledDeposits[address(shareToken)]);
+            console2.log("sumOfRedeemRequests:", sumOfRedeemRequests[address(shareToken)]);
+            console2.log("sumOfClaimedDeposits:", sumOfClaimedDeposits[address(shareToken)]);
+            console2.log("cancelRedeemShareTokenPayout:", cancelRedeemShareTokenPayout[address(shareToken)]);
+            console2.log("sumOfClaimedRedeemCancelations:", sumOfClaimedRedeemCancelations[address(shareToken)]);
+
             ghostBalanceOfEscrow = (
                 (sumOfFullfilledDeposits[address(shareToken)] + 
                 sumOfRedeemRequests[address(shareToken)]) - 
@@ -301,34 +310,23 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
-        IBaseVault vault = IBaseVault(_getVault());
-        
-        // Get the appropriate max value based on vault type
-        uint256 max;
-        if (!Helpers.isAsyncVault(_getVault())) {
-            // Sync vault - use maxReserve
-            AssetId assetId = hubRegistry.currency(vault.poolId());
-            (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-            uint256 maxAssets = uint256(syncRequestManager.maxReserve(vault.poolId(), vault.scId(), asset, tokenId));
-            max = syncRequestManager.convertToShares(vault, maxAssets);
-            console2.log("max %e", max);
-        } else {
-            // Async vault - use global escrow balance
-            max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
+        // only check for async vaults because sync vaults claim minted shares immediately
+        if(!Helpers.isAsyncVault(_getVault())) {
+            return;
         }
-        
-        // Use acc to get maxMint for each actor
+
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 max = IShareToken(vault.share()).balanceOf(address(globalEscrow));
         address[] memory actors = _getActors();
         
-        uint256 acc;
+        uint256 acc; // Use acc to get maxMint for each actor
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo share class
-            try vault.maxMint(actors[i]) returns (uint256 amt) {
-                acc += amt;
+            try vault.maxMint(actors[i]) returns (uint256 shareAmt) {
+                acc += shareAmt;
             } catch {}
         }
 
-        console2.log("acc %e", acc);
         lte(acc, max, "account balance > max");
     }
 

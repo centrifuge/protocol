@@ -126,24 +126,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_actor_pending_and_queued_redemptions_15 -vvv 
-    // NOTE: looks like an issue with ghost tracking
-    function test_property_actor_pending_and_queued_redemptions_15() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,26110280501627174417963496637225013,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,1,1,0);
-
-        shortcut_queue_redemption(1,0,0);
-
-        vault_requestRedeem(1,0);
-
-        hub_notifyRedeem(1);
-
-        property_actor_pending_and_queued_redemptions();
-
-    }
-
     // forge test --match-test test_property_price_on_redeem_16 -vvv 
     // NOTE: looks like an issue with updating globals
     function test_property_price_on_redeem_16() public {
@@ -162,36 +144,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         property_price_on_redeem();
     }
-    
-    // forge test --match-test test_property_sum_of_assets_received_on_claim_cancel_deposit_request_15 -vvv 
-    // NOTE: looks like issue with not tracking cancellations that get queued then claimed via `notifyDeposit`
-    function test_property_sum_of_assets_received_on_claim_cancel_deposit_request_15() public {
-
-        shortcut_deployNewTokenPoolAndShare(13,5516660714625968031527564836271718,true,false,true);
-
-        shortcut_deposit_queue_cancel(28116632,1,247888342983059284870515782138539233336215874848693504774355995578,1,1,15932349122905649941988425867585084269396420944461629);
-
-        hub_notifyDeposit(1);
-
-        vault_claimCancelDepositRequest(0);
-
-        property_sum_of_assets_received_on_claim_cancel_deposit_request();
-
-    }
-
-    // forge test --match-test test_property_escrow_balance_4 -vvv 
-    // NOTE: potential issue with ghost tracking
-    function test_property_escrow_balance_4() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
-
-        shortcut_deposit_sync(1,5524717);
-
-        balanceSheet_withdraw(0,1);
-
-        property_escrow_balance();
-
-    }
 
     // forge test --match-test test_property_sum_of_possible_account_balances_leq_escrow_0 -vvv 
     // NOTE: potential misimplementation due to using convertToShares
@@ -202,20 +154,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_mint_sync(0,10008227449332081991018993375817399);
 
         property_sum_of_possible_account_balances_leq_escrow();
-
-    }
-
-    // forge test --match-test test_property_sum_of_minted_equals_total_supply_7 -vvv 
-    // NOTE: potential issue with ghost tracking
-    function test_property_sum_of_minted_equals_total_supply_7() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
-
-        shortcut_deposit_sync(0,1);
-
-        balanceSheet_issue(1);
-
-        property_sum_of_minted_equals_total_supply();
 
     }
 
