@@ -58,9 +58,11 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
     function test_vault_deposit_and_fulfill_sync() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, false);
+        IBaseVault vault = IBaseVault(_getVault());
 
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
+        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), 1e18);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();

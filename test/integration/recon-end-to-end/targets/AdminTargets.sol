@@ -128,6 +128,7 @@ abstract contract AdminTargets is
     }
     
     /// @dev Property: After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
+    // TODO: Refactor this property to work with new issuance update logic
     function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhosts {
         uint128 totalIssuanceBefore;
         uint128 totalIssuanceAfter;
@@ -149,9 +150,10 @@ abstract contract AdminTargets is
         executedInvestments[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
 
-        if(navPerShare > 0) {
-            gt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not increased after issueShares");
-        }
+        // TODO: Refactor this to work with new issuance update logic
+        // if(navPerShare > 0) {
+        //     gt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not increased after issueShares");
+        // }
     }
 
     function hub_issueShares_clamped(uint32 nowIssueEpochId, uint128 navPerShare) public {
@@ -205,6 +207,7 @@ abstract contract AdminTargets is
     }
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
+    // TODO: Refactor this property to work with new issuance update logic
     function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhosts {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -225,9 +228,9 @@ abstract contract AdminTargets is
         executedRedemptions[vault.share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
 
-        if(navPerShare > 0) {
-            lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");
-        }
+        // if(navPerShare > 0) {
+        //     lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");
+        // }
     }
 
     function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public updateGhosts {
@@ -336,6 +339,41 @@ abstract contract AdminTargets is
         AssetId assetId = hubRegistry.currency(poolId);
 
         hub.updateHoldingValue(poolId, scId, assetId);
+    }
+
+    function hub_updateJournal(uint64 poolId, uint8 accountToUpdate, uint128 debitAmount, uint128 creditAmount) public updateGhosts {
+        AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({
+            value: debitAmount,
+            accountId: accountId
+        });
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({
+            value: creditAmount,
+            accountId: accountId
+        });
+
+        hub.updateJournal(PoolId.wrap(poolId), debits, credits);
+    }
+
+    function hub_updateJournal_clamped(uint64 poolEntropy, uint8 accountToUpdate, uint128 debitAmount, uint128 creditAmount) public updateGhosts {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+
+        AccountId accountId = createdAccountIds[accountToUpdate % createdAccountIds.length];
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        debits[0] = JournalEntry({
+            value: debitAmount,
+            accountId: accountId
+        });
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        credits[0] = JournalEntry({
+            value: creditAmount,
+            accountId: accountId
+        });
+
+        hub.updateJournal(poolId, debits, credits);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///

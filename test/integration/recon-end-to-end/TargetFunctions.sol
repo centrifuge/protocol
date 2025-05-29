@@ -129,6 +129,7 @@ abstract contract TargetFunctions is
             // spoke_addShareClass(_scId, 18, address(fullRestrictions));
             spoke_addShareClass(_scId, 18, address(0));
             ShareToken(_getShareToken()).rely(address(spoke));
+            ShareToken(_getShareToken()).rely(address(balanceSheet));
         }
 
         // 4. Create accounts and holding
@@ -179,8 +180,11 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
-        transientValuation_setPrice_clamped(navPerShare);
+        IBaseVault vault = IBaseVault(_getVault());
 
+        transientValuation_setPrice_clamped(navPerShare);
+        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), navPerShare);
+        
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
         
@@ -190,7 +194,10 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
+        IBaseVault vault = IBaseVault(_getVault());
+
         transientValuation_setPrice_clamped(navPerShare);
+        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), navPerShare);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
@@ -205,7 +212,7 @@ abstract contract TargetFunctions is
 
         uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_issue_shares(uint128(amount), depositEpoch, navPerShare);
-       
+
         hub_notifyDeposit(MAX_CLAIMS);
 
         vault_deposit(amount);
