@@ -62,8 +62,8 @@
 | 60 | property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount | pricePerShare never changes after a user operation | |
 | 61 | doomsday_pricePerShare_never_changes_after_user_operation | implied pricePerShare (totalAssets / totalSupply) never changes after a user operation | |
 | 62 | doomsday_impliedPricePerShare_never_changes_after_user_operation | accounting.accountValue should never revert | |
-| 63 | hub_initializeLiability | After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased | |
-| 64 | hub_setQueue | After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased | |
+| 63 | hub_initializeLiability | After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased | ❌ |
+| 64 | hub_setQueue | After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased | ❌ |
 | 65 | doomsday_deposit | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | |
 | 66 | doomsday_deposit | user should always be able to mint less than maxMint | |
 | 67 | doomsday_mint | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | |
