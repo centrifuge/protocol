@@ -6,7 +6,7 @@ import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
-    event UpdateManager(address who, bool canManage);
+    event UpdateRelayer(address who, bool canManage);
     event UpdatePermissionless(bytes32 what, bool isSet);
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
@@ -16,6 +16,4 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContrac
     error InvalidOfframpDestination();
     error InvalidPoolId();
     error NotAuthorized();
-
-    // TODO: add functions
 }

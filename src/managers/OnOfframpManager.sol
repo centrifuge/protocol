@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC165.sol";
@@ -30,7 +29,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
     bool public permissionlessOnramp;
     bool public permissionlessOfframp;
-    mapping(address => bool) public manager;
+    mapping(address => bool) public relayer;
     mapping(address asset => bool) public onramp;
     mapping(address asset => mapping(address receiver => bool)) public offramp;
 
@@ -56,7 +55,11 @@ contract OnOfframpManager is IOnOfframpManager {
             UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
 
-            if (m.kind == "onramp") {
+            if (m.kind == "relayer") {
+                address relayer_ = m.who.toAddress();
+                relayer[relayer_] = m.isEnabled;
+                emit UpdateRelayer(relayer_, m.isEnabled);
+            } else if (m.kind == "onramp") {
                 address asset = m.who.toAddress();
                 onramp[asset] = m.isEnabled;
                 emit UpdateOnramp(asset, m.isEnabled);
@@ -84,7 +87,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
     /// @inheritdoc IDepositManager
     function deposit(address asset, uint256, /* tokenId */ uint128 amount, address owner) external {
-        require(manager[msg.sender] || permissionlessOnramp, IAuth.NotAuthorized());
+        require(relayer[msg.sender] || permissionlessOnramp, IAuth.NotAuthorized());
 
         require(onramp[asset], NotAllowedOnrampAsset());
         require(owner == address(this) || owner == msg.sender);
@@ -95,7 +98,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
-        require(manager[msg.sender] || permissionlessOfframp, IAuth.NotAuthorized());
+        require(relayer[msg.sender] || permissionlessOfframp, IAuth.NotAuthorized());
         require(offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
