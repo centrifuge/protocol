@@ -55,15 +55,16 @@ contract OnOfframpManager is IOnOfframpManager {
         if (kind == uint8(UpdateContractType.UpdateAddress)) {
             UpdateContractMessageLib.UpdateContractUpdateAddress memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
-            address who = m.who.toAddress();
 
             if (m.kind == "onramp") {
-                onramp[who] = m.isEnabled;
-                emit UpdateOnramp(who, m.isEnabled);
+                address asset = m.who.toAddress();
+                onramp[asset] = m.isEnabled;
+                emit UpdateOnramp(asset, m.isEnabled);
             } else if (m.kind == "offramp") {
                 address asset = m.what.toAddress();
-                offramp[asset][who] = m.isEnabled;
-                emit UpdateOfframp(asset, who, m.isEnabled);
+                address receiver = m.who.toAddress();
+                offramp[asset][receiver] = m.isEnabled;
+                emit UpdateOfframp(asset, receiver, m.isEnabled);
             }
         } else if (kind == uint8(UpdateContractType.Toggle)) {
             UpdateContractMessageLib.UpdateContractToggle memory m =
@@ -87,10 +88,8 @@ contract OnOfframpManager is IOnOfframpManager {
 
         require(onramp[asset], NotAllowedOnrampAsset());
         require(owner == address(this) || owner == msg.sender);
-        require(amount <= IERC20(asset).balanceOf(owner), InvalidAmount());
 
         if (owner == msg.sender) SafeTransferLib.safeTransferFrom(asset, owner, address(this), amount);
-
         balanceSheet.deposit(poolId, scId, asset, 0, amount);
     }
 
