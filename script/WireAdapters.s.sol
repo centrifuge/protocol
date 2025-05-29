@@ -44,6 +44,7 @@ contract WireAdapters is Script {
                             "$.adapters.wormhole.chain-id"
                         )
                     );
+                    vm.startBroadcast();
                     WormholeAdapter w1 = WormholeAdapter(adapter1);
                     w1.file("sources", centrifugeId2, wormholeId2, adapter2);
                     w1.file(
@@ -52,6 +53,7 @@ contract WireAdapters is Script {
                         wormholeId2,
                         adapter2
                     );
+                    vm.stopBroadcast();
                     console.log(
                         "Wired WormholeAdapter from",
                         network1,
@@ -102,12 +104,13 @@ contract WireAdapters is Script {
                     }
                     string memory axelarId2 = vm.parseJsonString(
                         config2,
-                        "$.network.name"
+                        "$.adapters.axelar.chain-id"
                     );
                     uint16 centrifugeId2 = uint16(
                         vm.parseJsonUint(config2, "$.network.centrifugeId")
                     );
                     AxelarAdapter a1 = AxelarAdapter(axelar1);
+                    vm.startBroadcast();
                     a1.file(
                         "sources",
                         axelarId2,
@@ -120,6 +123,7 @@ contract WireAdapters is Script {
                         axelarId2,
                         vm.toString(axelar2)
                     );
+                    vm.stopBroadcast();
                     console.log(
                         "Wired AxelarAdapter from",
                         network1,
@@ -134,7 +138,7 @@ contract WireAdapters is Script {
                 }
             }
         } catch {
-            console.log("No AxelarAdapter found in config for network", network1);
+            console.log("No AxelarAdapter found in network", network1);
         }
     }
 

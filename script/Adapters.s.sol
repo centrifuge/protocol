@@ -10,7 +10,7 @@ import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
 import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
-abstract contract Adapters is Script {
+contract Adapters is Script, JsonRegistry {
     // Common contract addresses
     Root public root;
     MultiAdapter public multiAdapter;
@@ -22,6 +22,11 @@ abstract contract Adapters is Script {
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        string memory environment = vm.parseJsonString(config, "$.network.environment");
+        bool isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
+        
+        console.log("Environment:", environment);
+        console.log("Is testnet:", isTestnet);
         
         root = Root(vm.parseJsonAddress(config, "$.contracts.root"));
         multiAdapter = MultiAdapter(vm.parseJsonAddress(config, "$.contracts.multiAdapter"));
@@ -58,10 +63,16 @@ abstract contract Adapters is Script {
 
         // Register all adapters at once
         if (adapters.length > 0) {
+            console.log("Registering adapters...");
             multiAdapter.file("adapters", centrifugeId, adapters);
             for (uint256 i = 0; i < adapters.length; i++) {
+                console.log("Processing adapter:", address(adapters[i]));
                 IAuth(address(adapters[i])).rely(address(root));
-                IAuth(address(adapters[i])).deny(msg.sender);
+                
+                // Only deny msg.sender if not on testnet
+                if (!isTestnet) {
+                    IAuth(address(adapters[i])).deny(msg.sender);
+                }
             }
         }
         

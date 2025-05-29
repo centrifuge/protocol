@@ -42,7 +42,10 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr(
-            "DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(blockhash(block.number - 1)))))
+            "DEPLOYMENT_SALT",
+            keccak256(
+                abi.encodePacked(string(abi.encodePacked(block.timestamp)))
+            )
         );
     }
 

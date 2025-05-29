@@ -13,8 +13,18 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         deploySpoke(centrifugeId, adminSafe_, deployer, isTests);
     }
 
-    function removeFullDeployerAccess(address deployer) public {
-        removeHubDeployerAccess(deployer);
-        removeSpokeDeployerAccess(deployer);
+    function run() public {
+        uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
+        vm.startBroadcast();
+        deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
+        // Since `wire()` is not called, separately adding the safe here
+        guardian.file("safe", address(adminSafe));
+        saveDeploymentOutput();
+        vm.stopBroadcast();
     }
+
+    // function removeFullDeployerAccess(address deployer) public {
+    //     removeHubDeployerAccess(deployer);
+    //     removeSpokeDeployerAccess(deployer);
+    // }
 }
