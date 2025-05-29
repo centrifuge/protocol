@@ -48,7 +48,8 @@ abstract contract ManagerTargets is
     }
 
     /// @dev Starts using a new vault
-    function switch_vault(uint256 entropy) public {
+    /// @notice We `updateGhosts` so we can know if the vault changed
+    function switch_vault(uint256 entropy) public updateGhosts {
         _switchVault(entropy);
     }
 

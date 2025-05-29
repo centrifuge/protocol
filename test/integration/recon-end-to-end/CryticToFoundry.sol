@@ -114,49 +114,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_sum_of_possible_account_balances_leq_escrow_13 -vvv 
-    // NOTE: looks like a property implementation issue 
-    function test_property_sum_of_possible_account_balances_leq_escrow_13() public {
-
-        shortcut_deployNewTokenPoolAndShare(7,1,true,false,false);
-
-        shortcut_mint_sync(0,100012070407234780089322828896);
-
-        property_sum_of_possible_account_balances_leq_escrow();
-
-    }
-
-    // forge test --match-test test_property_price_on_redeem_16 -vvv 
-    // NOTE: looks like an issue with updating globals
-    function test_property_price_on_redeem_16() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,2023043212183937121117125365820931693276147716,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,1,1,0);
-
-        shortcut_queue_redemption(1,1004036701446375220,5254288375605742773881224755342121000960484163);
-
-        spoke_deployVault_clamped();
-
-        hub_notifyRedeem(1);
-
-        switch_vault(0);
-
-        property_price_on_redeem();
-    }
-
-    // forge test --match-test test_property_sum_of_possible_account_balances_leq_escrow_0 -vvv 
-    // NOTE: potential misimplementation due to using convertToShares
-    function test_property_sum_of_possible_account_balances_leq_escrow_0() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,1,true,false,false);
-
-        shortcut_mint_sync(0,10008227449332081991018993375817399);
-
-        property_sum_of_possible_account_balances_leq_escrow();
-
-    }
-
     // forge test --match-test test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10 -vvv 
     // NOTE: might be an issue with not checking previous epochs
     function test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10() public {

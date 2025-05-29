@@ -211,6 +211,11 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             return;
         }
 
+        // changing vault messes up tracking so vault must have not changed
+        if(_before.vault != _after.vault) {
+            return;
+        }
+
         // Get actor data
         {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();

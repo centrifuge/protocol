@@ -50,6 +50,7 @@ abstract contract BeforeAfter is Setup {
         uint256 totalShareSupply;
         uint128 ghostDebited;
         uint128 ghostCredited;
+        address vault;
 
         mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => D18 pricePoolPerAsset))) pricePoolPerAsset;
         mapping(PoolId poolId => mapping(ShareClassId scId => D18 pricePoolPerShare)) pricePoolPerShare;
@@ -99,6 +100,7 @@ abstract contract BeforeAfter is Setup {
         // Hub
         _before.ghostDebited = accounting.debited();
         _before.ghostCredited = accounting.credited();
+        _before.vault = address(_getVault());
 
         // if the vault isn't deployed, these values can't be updated
         if(address(_getVault()) == address(0)) {
@@ -146,6 +148,7 @@ abstract contract BeforeAfter is Setup {
         // Hub
         _after.ghostDebited = accounting.debited();
         _after.ghostCredited = accounting.credited();
+        _after.vault = address(_getVault());
 
         // if the vault isn't deployed, these values can't be updated
         if(address(_getVault()) == address(0)) {
