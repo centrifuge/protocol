@@ -7,7 +7,7 @@ broadcast/
 .env.*
 lcov.info
 .vscode
-deployments/latest
+**/latest
 
 ## Recon
 /medusa
@@ -17,3 +17,6 @@ deployments/latest
 ## Recon Separate Configs
 /medusa-core
 /medusa-aggregator
+
+## Deployment
+/script/adapters/**
