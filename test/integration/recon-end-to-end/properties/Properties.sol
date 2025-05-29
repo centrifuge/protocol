@@ -272,18 +272,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint256 balanceOfEscrow = IShareToken(shareToken).balanceOf(address(globalEscrow));
 
         unchecked {       
-            console2.log("sumOfFullfilledDeposits:", sumOfFullfilledDeposits[address(shareToken)]);
-            console2.log("sumOfRedeemRequests:", sumOfRedeemRequests[address(shareToken)]);
-            console2.log("sumOfClaimedDeposits:", sumOfClaimedDeposits[address(shareToken)]);
-            console2.log("cancelRedeemShareTokenPayout:", cancelRedeemShareTokenPayout[address(shareToken)]);
-            console2.log("sumOfClaimedRedeemCancelations:", sumOfClaimedRedeemCancelations[address(shareToken)]);
-
             ghostBalanceOfEscrow = (
                 (sumOfFullfilledDeposits[address(shareToken)] + 
                 sumOfRedeemRequests[address(shareToken)]) - 
                 (sumOfClaimedDeposits[address(shareToken)] + 
-                cancelRedeemShareTokenPayout[address(shareToken)] +
-                sumOfClaimedRedeemCancelations[address(shareToken)])
+                executedRedemptions[address(shareToken)] + // revoked redemptions burn share tokens
+                sumOfClaimedRedeemCancelations[address(shareToken)]) // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
             );
         }
         eq(balanceOfEscrow, ghostBalanceOfEscrow, "balanceOfEscrow != ghostBalanceOfEscrow");
@@ -417,10 +411,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
 
         for(uint256 i; i < actors.length; i++) {
-            console2.log("Vault:", _getVault());
-            console2.log("requestRedeemed:", requestRedeemed[scId][assetId][actors[i]]);
-            console2.log("cancelledRedemptions:", cancelledRedemptions[scId][assetId][actors[i]]);
-            console2.log("redemptionsProcessed:", redemptionsProcessed[scId][assetId][actors[i]]);
             gte(requestRedeemed[scId][assetId][actors[i]], cancelledRedemptions[scId][assetId][actors[i]] + redemptionsProcessed[scId][assetId][actors[i]], "actor requests must be >= cancelled + processed amounts");
         }
     }

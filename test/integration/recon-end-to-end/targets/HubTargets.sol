@@ -105,6 +105,7 @@ abstract contract HubTargets is
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += cancelDelta; 
         redemptionsProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += (pendingBefore - pendingAfter);
         cancelledRedemptions[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor()] += cancelDelta;
+        sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if(maxClaims > 0) {

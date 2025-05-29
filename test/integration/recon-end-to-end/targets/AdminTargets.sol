@@ -227,6 +227,7 @@ abstract contract AdminTargets is
         // NOTE: shares are burned on revoke 
         executedRedemptions[vault.share()] += burnedShares;
         revokedHubShares[poolId][scId][payoutAssetId] += revokedShareAmount;
+        
 
         // if(navPerShare > 0) {
         //     lt(totalIssuanceAfter, totalIssuanceBefore, "total issuance is not decreased after revokeShares");

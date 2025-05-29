@@ -98,24 +98,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-
-    /// === Categorized Issues === ///
-    // forge test --match-test test_property_escrow_share_balance_8 -vvv 
-    // NOTE: looks like an issue with ghost tracking
-    function test_property_escrow_share_balance_8() public {
-
-        shortcut_deployNewTokenPoolAndShare(2,1,false,false,true);
-
-        shortcut_deposit_and_claim(0,4,1,25,0);
-
-        shortcut_queue_redemption(1,0,0);
-
-        property_escrow_share_balance();
-
-    }
-
     // forge test --match-test test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10 -vvv 
-    // NOTE: might be an issue with not checking previous epochs
+    // NOTE: passing in a high navPerShare results in a payoutAssetAmount that's significantly less than the amount in the epoch
     function test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10() public {
 
         shortcut_deployNewTokenPoolAndShare(0,2739917975647239028567165394084111319569479035714252026947453096283,true,false,true);
@@ -127,10 +111,14 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_cancel_redeem_claim_clamped(8448991857867710314527286738020113534764412038154406736803557,0,2);
 
         shortcut_queue_redemption(1,368127116196650982403211,3137074433482099721841043092394058031879436671929572534935832);
-
+        console2.log("value in decimals: %e", uint256(368127116196650982403211));
+        
         property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount();
 
     }
+
+
+    /// === Categorized Issues === ///
 
 
     /// === Newest Issues === ///
