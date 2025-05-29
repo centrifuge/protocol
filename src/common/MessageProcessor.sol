@@ -178,11 +178,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.fulfilledShareAmount,
                 m.cancelledShareAmount
             );
-        } else if (kind == MessageType.TriggerIssueShares) {
-            MessageLib.TriggerIssueShares memory m = message.deserializeTriggerIssueShares();
-            balanceSheet.triggerIssueShares(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.who.toAddress(), m.shares
-            );
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
             hub.updateHoldingAmount(
@@ -231,12 +226,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.shareAmount,
                 D18.wrap(m.pricePoolPerShare)
             );
-        } else if (kind == MessageType.TriggerSubmitQueuedShares) {
-            MessageLib.TriggerSubmitQueuedShares memory m = message.deserializeTriggerSubmitQueuedShares();
-            balanceSheet.submitQueuedShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId));
-        } else if (kind == MessageType.TriggerSubmitQueuedAssets) {
-            MessageLib.TriggerSubmitQueuedAssets memory m = message.deserializeTriggerSubmitQueuedAssets();
-            balanceSheet.submitQueuedAssets(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId));
         } else if (kind == MessageType.MaxAssetPriceAge) {
             MessageLib.MaxAssetPriceAge memory m = message.deserializeMaxAssetPriceAge();
             spoke.setMaxAssetPriceAge(
