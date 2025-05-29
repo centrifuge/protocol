@@ -8,7 +8,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
@@ -21,14 +20,12 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
 
     PoolId public immutable poolId;
     address public immutable spoke;
-    IBalanceSheet public immutable balanceSheet;
 
     mapping(address strategist => bytes32 root) public policy;
 
-    constructor(PoolId poolId_, address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(PoolId poolId_, address spoke_) {
         poolId = poolId_;
         spoke = spoke_;
-        balanceSheet = balanceSheet_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -119,17 +116,14 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
 
 contract MerkleProofManagerFactory is IMerkleProofManagerFactory {
     address public immutable spoke;
-    IBalanceSheet public immutable balanceSheet;
 
-    constructor(address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(address spoke_) {
         spoke = spoke_;
-        balanceSheet = balanceSheet_;
     }
 
     /// @inheritdoc IMerkleProofManagerFactory
     function newManager(PoolId poolId) external returns (IMerkleProofManager) {
-        MerkleProofManager manager =
-            new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, spoke, balanceSheet);
+        MerkleProofManager manager = new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, spoke);
 
         emit DeployMerkleProofManager(poolId, address(manager));
         return IMerkleProofManager(manager);

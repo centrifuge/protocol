@@ -65,7 +65,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             }).serialize()
         );
 
-        manager = new MerkleProofManager(POOL_A, address(spoke), balanceSheet);
+        manager = new MerkleProofManager(POOL_A, address(spoke));
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {
