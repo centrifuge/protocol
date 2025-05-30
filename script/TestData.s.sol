@@ -14,26 +14,30 @@ import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestriction
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {Hub} from "src/hub/Hub.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IBalanceSheet} from "src/hub/interfaces/IBalanceSheet.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
 contract TestData is Script {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
+    AssetId public immutable USD_ID = newAssetId(840); // USD currency code
+
     struct Contracts {
         address admin;
         ISpoke spoke;
-        IHub hub;
+        Hub hub;
         IShareClassManager shareClassManager;
         address redemptionRestrictionsHook;
-        address identityValuation;
+        IdentityValuation identityValuation;
         address asyncVaultFactory;
         address syncDepositVaultFactory;
-        IBalanceSheet balanceSheet;
-        bytes32 USD_ID;
+        BalanceSheet balanceSheet;
+        IHubRegistry hubRegistry;
     }
 
     function run() public {
@@ -46,14 +50,14 @@ contract TestData is Script {
         Contracts memory contracts = Contracts({
             admin: vm.parseJsonAddress(config, "$.contracts.adminSafe"),
             spoke: ISpoke(vm.parseJsonAddress(config, "$.contracts.spoke")),
-            hub: IHub(vm.parseJsonAddress(config, "$.contracts.hub")),
+            hub: Hub(vm.parseJsonAddress(config, "$.contracts.hub")),
             shareClassManager: IShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager")),
             redemptionRestrictionsHook: vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"),
-            identityValuation: vm.parseJsonAddress(config, "$.contracts.identityValuation"),
+            identityValuation: IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation")),
             asyncVaultFactory: vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"),
             syncDepositVaultFactory: vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"),
-            balanceSheet: IBalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet")),
-            USD_ID: bytes32("USD")
+            balanceSheet: BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet")),
+            hubRegistry: IHubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"))
         });
 
         vm.startBroadcast();
@@ -76,8 +80,8 @@ contract TestData is Script {
     }
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts) internal {
-        PoolId poolId = PoolId.wrap(bytes32(abi.encodePacked(centrifugeId, uint16(1))));
-        contracts.hub.createPool(poolId, msg.sender, contracts.USD_ID);
+        PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 1);
+        contracts.hub.createPool(poolId, msg.sender, USD_ID);
         contracts.hub.updateHubManager(poolId, contracts.admin, true);
         ShareClassId scId = contracts.shareClassManager.previewNextShareClassId(poolId);
 
@@ -162,8 +166,8 @@ contract TestData is Script {
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts) internal {
-        PoolId poolId = PoolId.wrap(bytes32(abi.encodePacked(centrifugeId, uint16(2))));
-        contracts.hub.createPool(poolId, msg.sender, contracts.USD_ID);
+        PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 2);
+        contracts.hub.createPool(poolId, msg.sender, USD_ID);
         contracts.hub.updateHubManager(poolId, contracts.admin, true);
         ShareClassId scId = contracts.shareClassManager.previewNextShareClassId(poolId);
 
@@ -189,9 +193,7 @@ contract TestData is Script {
             AccountId.wrap(0x04)
         );
 
-        contracts.hub.updateVault(
-            poolId, scId, assetId, address(contracts.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
-        );
+        contracts.hub.updateVault(poolId, scId, assetId, address(contracts.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
 
         contracts.hub.updateSharePrice(poolId, scId, navPerShare);
         contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
