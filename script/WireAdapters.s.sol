@@ -8,20 +8,24 @@ import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 contract WireAdapters is Script {
-    function run() public {
-        string memory network1 = vm.envString("NETWORK");
-        string memory configFile1 = string.concat("env/", network1, ".json");
-        string memory config1 = vm.readFile(configFile1);
-        string memory environment = vm.parseJsonString(config1, "$.network.environment");
-        uint16 centrifugeId = uint16(vm.parseJsonUint(config1, "$.network.centrifugeId"));
+    IAdapter[] adapters;  // Storage array like in CommonDeployer
+
+    function fetchConfig(string memory network) internal view returns (string memory) {
+        string memory configFile = string.concat("env/", network, ".json");
+        string memory config = vm.readFile(configFile);
         
-        IAdapter[] memory adapters = new IAdapter[];
-        bool isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
-        
-        if (!isTestnet) {
+        string memory environment = vm.parseJsonString(config, "$.network.environment");
+        if (keccak256(bytes(environment)) != keccak256(bytes("testnet"))) {
             revert("This script is intended for testnet use only");
         }
+        
+        return config;
+    }
 
+    function run() public {
+        string memory network1 = vm.envString("NETWORK");
+        string memory config1 = fetchConfig(network1);
+        
         // Declare and initialize adapter addresses
         address wormholeAddr = address(0);
         address axelarAddr = address(0);
@@ -54,8 +58,7 @@ contract WireAdapters is Script {
         vm.startBroadcast();
         for (uint256 i = 0; i < connectsTo.length; i++) {
             string memory network2 = connectsTo[i];
-            string memory configFile2 = string.concat("env/", network2, ".json");
-            string memory config2 = vm.readFile(configFile2);
+            string memory config2 = fetchConfig(network2);
             uint16 centrifugeId2 = uint16(vm.parseJsonUint(config2, "$.network.centrifugeId"));
 
             // Register ALL adapters for this destination chain
@@ -66,16 +69,18 @@ contract WireAdapters is Script {
             // Wire WormholeAdapter
             if (wormholeAddr != address(0)) {
                 uint16 wormholeId2 = uint16(vm.parseJsonUint(config2, "$.adapters.wormhole.chain-id"));
-                multiAdapter.file("sources", wormholeId2, centrifugeId2, vm.toString(wormholeAddr));
-                multiAdapter.file("destinations", centrifugeId2, wormholeId2, vm.toString(wormholeAddr));
+                WormholeAdapter wormholeAdapter = WormholeAdapter(wormholeAddr);
+                wormholeAdapter.file("sources", wormholeId2, centrifugeId2, wormholeAddr);
+                wormholeAdapter.file("destinations", centrifugeId2, wormholeId2, wormholeAddr);
                 console.log("Wired WormholeAdapter from", network1, "to", network2);
             }
 
             // Wire AxelarAdapter
             if (axelarAddr != address(0)) {
-                uint16 axelarId2 = uint16(vm.parseJsonUint(config2, "$.adapters.axelar.chain-id"));
-                multiAdapter.file("sources", axelarId2, centrifugeId2, vm.toString(axelarAddr));
-                multiAdapter.file("destinations", centrifugeId2, axelarId2, vm.toString(axelarAddr));
+                string memory axelarId2 = vm.parseJsonString(config2, "$.adapters.axelar.chain-id");
+                AxelarAdapter axelarAdapter = AxelarAdapter(axelarAddr);
+                axelarAdapter.file("sources", axelarId2, centrifugeId2, vm.toString(axelarAddr));
+                axelarAdapter.file("destinations", centrifugeId2, axelarId2, vm.toString(axelarAddr));
                 console.log("Wired AxelarAdapter from", network1, "to", network2);
             }
         }
