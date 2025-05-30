@@ -7,13 +7,13 @@ cd "$SCRIPT_DIR" || exit
 # Get the root directory (one level up)
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Usage: ./fulldeploy.sh <network> <step> [forge_args...]
-# Example: ./fulldeploy.sh sepolia fulldeploy
-# Example: ./fulldeploy.sh base-sepolia adapters --priority-gas-price 2
-# Example: ./fulldeploy.sh sepolia testdata --nonce 4765
+# Usage: ./deploy.sh <network> <step> [forge_args...]
+# Example: ./deploy.sh sepolia fulldeploy
+# Example: ./deploy.sh base-sepolia adapters --priority-gas-price 2
+# Example: ./deploy.sh sepolia testdata --nonce 4765
 
 if [[ -z "$1" || -z "$2" ]]; then
-    echo "Usage: ./fulldeploy.sh <network> <step> [forge_args...]"
+    echo "Usage: ./deploy.sh <network> <step> [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
     echo "  fulldeploy    - Deploy everything (hub, spoke, adapters, wiring)"
@@ -22,9 +22,9 @@ if [[ -z "$1" || -z "$2" ]]; then
     echo "  testdata      - Deploy test data"
     echo
     echo "Examples:"
-    echo "  ./fulldeploy.sh sepolia fulldeploy"
-    echo "  ./fulldeploy.sh base-sepolia adapters --priority-gas-price 2"
-    echo "  ./fulldeploy.sh sepolia testdata --nonce 4765"
+    echo "  ./deploy.sh sepolia fulldeploy"
+    echo "  ./deploy.sh base-sepolia adapters --priority-gas-price 2"
+    echo "  ./deploy.sh sepolia testdata --nonce 4765"
     exit 1
 fi
 
