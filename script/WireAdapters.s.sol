@@ -7,7 +7,6 @@ import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-
 contract WireAdapters is Script {
     function run() public {
         string memory network1 = vm.envString("NETWORK");
@@ -23,27 +22,39 @@ contract WireAdapters is Script {
             revert("This script is intended for testnet use only");
         }
 
-        try vm.parseJsonAddress(config1, "$.contracts.wormholeAdapter") returns (address wormholeAddr) {
-            adapters.push(IAdapter(wormholeAddr));
-            wormholeExists = true;
+        // Declare and initialize adapter addresses
+        address wormholeAddr = address(0);
+        address axelarAddr = address(0);
+
+        // Try to get Wormhole adapter
+        try vm.parseJsonAddress(config1, "$.contracts.wormholeAdapter") returns (address addr) {
+            if (addr != address(0)) {
+                wormholeAddr = addr;
+                adapters.push(IAdapter(addr));
+            }
         } catch {
             console.log("No WormholeAdapter found in config for network", network1);
         }
 
-        try vm.parseJsonAddress(config1, "$.contracts.axelarAdapter") returns (address axelarAddr) {
-            adapters.push(IAdapter(axelarAddr));
-            axelarExists = true;
+        // Try to get Axelar adapter
+        try vm.parseJsonAddress(config1, "$.contracts.axelarAdapter") returns (address addr) {
+            if (addr != address(0)) {
+                axelarAddr = addr;
+                adapters.push(IAdapter(addr));
+            }
         } catch {
             console.log("No AxelarAdapter found in config for network", network1);
         }
+
         string[] memory connectsTo = vm.parseJsonStringArray(
             config1,
             "$.adapters.wormhole.connectsTo"
         );
+
         vm.startBroadcast();
         for (uint256 i = 0; i < connectsTo.length; i++) {
             string memory network2 = connectsTo[i];
-            string memory configFile2 = string.concat("env/",network2,".json");
+            string memory configFile2 = string.concat("env/", network2, ".json");
             string memory config2 = vm.readFile(configFile2);
             uint16 centrifugeId2 = uint16(vm.parseJsonUint(config2, "$.network.centrifugeId"));
 
@@ -53,15 +64,16 @@ contract WireAdapters is Script {
             console.log("Registered MultiAdapter(", network1, ") for", network2);
 
             // Wire WormholeAdapter
-            if (wormholeExists) {
-                uint16 wormholeId2 = uint16(vm.parseJsonUint( config2, "$.adapters.wormhole.chain-id"));
+            if (wormholeAddr != address(0)) {
+                uint16 wormholeId2 = uint16(vm.parseJsonUint(config2, "$.adapters.wormhole.chain-id"));
                 multiAdapter.file("sources", wormholeId2, centrifugeId2, vm.toString(wormholeAddr));
                 multiAdapter.file("destinations", centrifugeId2, wormholeId2, vm.toString(wormholeAddr));
                 console.log("Wired WormholeAdapter from", network1, "to", network2);
             }
+
             // Wire AxelarAdapter
-            if (axelarExists) {
-                uint16 axelarId2 = uint16(vm.parseJsonUint( config2, "$.adapters.axelar.chain-id"));
+            if (axelarAddr != address(0)) {
+                uint16 axelarId2 = uint16(vm.parseJsonUint(config2, "$.adapters.axelar.chain-id"));
                 multiAdapter.file("sources", axelarId2, centrifugeId2, vm.toString(axelarAddr));
                 multiAdapter.file("destinations", centrifugeId2, axelarId2, vm.toString(axelarAddr));
                 console.log("Wired AxelarAdapter from", network1, "to", network2);
