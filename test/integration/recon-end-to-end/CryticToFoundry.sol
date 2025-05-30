@@ -35,10 +35,24 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_and_claim(0,1,143,1,0);
 
+        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        console2.log("maxWithdraw before redeeming and claiming: %e", maxWithdraw);
+        // queues a redemption of 1.2407674564261682736e20 shares, 124 assets
+        // results in a stuck 1 wei of "virtual" assets in state.maxWithdraw
+        // this is because in _processRedeem, state.maxWithdraw = state.maxWithdraw - assetsUp = 124 - 123 = 1
+        console2.log(" === Before Redeem and Claim === ");
         shortcut_redeem_and_claim_clamped(44055836141804467353088311715299154505223682107,1,60194726908356682833407755266714281307);
+        (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        console2.log("maxWithdraw after redeeming and claiming: %e", maxWithdraw);
 
+        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
+        console2.log("pool escrow balance before maxRedeem: %e", MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(poolEscrow));
+        // asset is gets wiped out from the state.maxWithdraw, but is still in the escrow balance
+        console2.log(" === Before maxRedeem === ");
         asyncVault_maxRedeem(0,0,0);
-
+        (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        console2.log("maxWithdraw after maxRedeem: %e", maxWithdraw);
+        console2.log("pool escrow balance after maxRedeem: %e", MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(poolEscrow));
     }
 
     // forge test --match-test test_asyncVault_maxDeposit_3 -vvv 
