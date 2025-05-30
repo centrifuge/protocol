@@ -47,12 +47,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr(
-            "DEPLOYMENT_SALT",
-            keccak256(
-                abi.encodePacked(string(abi.encodePacked(block.timestamp)))
-            )
-        );
+        SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
 
         _fetchConfig();
     }
@@ -61,7 +56,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         network = vm.envString("NETWORK");
         string memory configFile = string.concat("env/", network, ".json");
         config = vm.readFile(configFile);
-        
+
         centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
         isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
@@ -134,6 +129,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
     // The centrifugeId_ here has to be the destination centrifuge_chain_id
     // Use WireAdapters.s.sol for automatic wiring of live multi-chains adapters
+
     function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
         multiAdapter.file("adapters", centrifugeId_, adapters);

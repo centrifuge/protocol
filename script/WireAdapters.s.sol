@@ -8,24 +8,24 @@ import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 contract WireAdapters is Script {
-    IAdapter[] adapters;  // Storage array like in CommonDeployer
+    IAdapter[] adapters; // Storage array like in CommonDeployer
 
     function fetchConfig(string memory network) internal view returns (string memory) {
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
-        
+
         string memory environment = vm.parseJsonString(config, "$.network.environment");
         if (keccak256(bytes(environment)) != keccak256(bytes("testnet"))) {
             revert("This script is intended for testnet use only");
         }
-        
+
         return config;
     }
 
     function run() public {
         string memory network1 = vm.envString("NETWORK");
         string memory config1 = fetchConfig(network1);
-        
+
         // Declare and initialize adapter addresses
         address wormholeAddr = address(0);
         address axelarAddr = address(0);
@@ -50,10 +50,7 @@ contract WireAdapters is Script {
             console.log("No AxelarAdapter found in config for network", network1);
         }
 
-        string[] memory connectsTo = vm.parseJsonStringArray(
-            config1,
-            "$.adapters.wormhole.connectsTo"
-        );
+        string[] memory connectsTo = vm.parseJsonStringArray(config1, "$.adapters.wormhole.connectsTo");
 
         vm.startBroadcast();
         for (uint256 i = 0; i < connectsTo.length; i++) {

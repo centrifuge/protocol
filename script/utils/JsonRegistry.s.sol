@@ -10,26 +10,8 @@ contract JsonRegistry is Script {
 
     function register(string memory name, address target) public {
         deploymentOutput = (registeredContracts == 0)
-            ? string(
-                abi.encodePacked(
-                    deploymentOutput,
-                    '    "',
-                    name,
-                    '": "',
-                    vm.toString(target),
-                    '"'
-                )
-            )
-            : string(
-                abi.encodePacked(
-                    deploymentOutput,
-                    ',\n    "',
-                    name,
-                    '": "',
-                    vm.toString(target),
-                    '"'
-                )
-            );
+            ? string(abi.encodePacked(deploymentOutput, '    "', name, '": "', vm.toString(target), '"'))
+            : string(abi.encodePacked(deploymentOutput, ',\n    "', name, '": "', vm.toString(target), '"'));
 
         registeredContracts += 1;
     }
@@ -38,10 +20,7 @@ contract JsonRegistry is Script {
         deploymentOutput = '{\n  "contracts": {\n';
 
         if (!isTests) {
-            console.log(
-                "\n\n---------\n\nStarting deployment for chain ID: %s\n\n",
-                vm.toString(block.chainid)
-            );
+            console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
         }
     }
 
@@ -49,27 +28,16 @@ contract JsonRegistry is Script {
         // Save with timestamp for history
         string memory timestampedPath = string(
             abi.encodePacked(
-                "./deployments/latest/",
-                vm.toString(block.chainid),
-                "_",
-                vm.toString(block.timestamp),
-                ".json"
+                "./deployments/latest/", vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"
             )
         );
-        deploymentOutput = string(
-            abi.encodePacked(deploymentOutput, "\n  }\n}\n")
-        );
+        deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
         vm.writeFile(timestampedPath, deploymentOutput);
         console.log("Contract addresses saved to: %s", timestampedPath);
 
         // Save as latest
-        string memory latestPath = string(
-            abi.encodePacked(
-                "./deployments/latest/",
-                vm.toString(block.chainid),
-                "-latest.json"
-            )
-        );
+        string memory latestPath =
+            string(abi.encodePacked("./deployments/latest/", vm.toString(block.chainid), "-latest.json"));
         vm.writeFile(latestPath, deploymentOutput);
         console.log("Contract addresses also saved to: %s", latestPath);
     }

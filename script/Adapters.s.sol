@@ -20,27 +20,22 @@ contract Adapters is Script, JsonRegistry {
         string memory network = vm.envString("NETWORK");
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
-        uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
         bool isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
-        
+
         console.log("Environment:", environment);
         console.log("Is testnet:", isTestnet);
-        
+
         root = Root(vm.parseJsonAddress(config, "$.contracts.root"));
         multiAdapter = MultiAdapter(vm.parseJsonAddress(config, "$.contracts.multiAdapter"));
-        
+
         vm.startBroadcast();
         startDeploymentOutput(false);
 
         // Deploy and save adapters in config file
         if (vm.parseJsonBool(config, "$.adapters.wormhole.deploy")) {
             address relayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
-            WormholeAdapter wormholeAdapter = new WormholeAdapter(
-                multiAdapter,
-                relayer,
-                msg.sender
-            );
+            WormholeAdapter wormholeAdapter = new WormholeAdapter(multiAdapter, relayer, msg.sender);
             IAuth(address(wormholeAdapter)).rely(address(root));
             if (!isTestnet) {
                 IAuth(address(wormholeAdapter)).deny(msg.sender);
@@ -52,12 +47,7 @@ contract Adapters is Script, JsonRegistry {
         if (vm.parseJsonBool(config, "$.adapters.axelar.deploy")) {
             address gateway = vm.parseJsonAddress(config, "$.adapters.axelar.gateway");
             address gasService = vm.parseJsonAddress(config, "$.adapters.axelar.gasService");
-            AxelarAdapter axelarAdapter = new AxelarAdapter(
-                multiAdapter,
-                gateway,
-                gasService,
-                msg.sender
-            );
+            AxelarAdapter axelarAdapter = new AxelarAdapter(multiAdapter, gateway, gasService, msg.sender);
             adapters.push(axelarAdapter);
             IAuth(address(axelarAdapter)).rely(address(root));
             if (!isTestnet) {
@@ -66,7 +56,7 @@ contract Adapters is Script, JsonRegistry {
             register("axelarAdapter", address(axelarAdapter));
             console.log("AxelarAdapter deployed at:", address(axelarAdapter));
         }
-        
+
         saveDeploymentOutput(); // Save JSON output
         vm.stopBroadcast();
     }

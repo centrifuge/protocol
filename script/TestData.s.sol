@@ -46,7 +46,7 @@ contract TestData is Script {
         string memory config = vm.readFile(configFile);
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-        
+
         Contracts memory contracts = Contracts({
             admin: vm.parseJsonAddress(config, "$.contracts.adminSafe"),
             spoke: ISpoke(vm.parseJsonAddress(config, "$.contracts.spoke")),
@@ -79,7 +79,9 @@ contract TestData is Script {
         _deploySyncDepositVault(centrifugeId, token, assetId, contracts);
     }
 
-    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts) internal {
+    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts)
+        internal
+    {
         PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 1);
         contracts.hub.createPool(poolId, msg.sender, USD_ID);
         contracts.hub.updateHubManager(poolId, contracts.admin, true);
@@ -90,7 +92,9 @@ contract TestData is Script {
         contracts.hub.setPoolMetadata(poolId, bytes("Testing pool"));
         contracts.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
         contracts.hub.notifyPool(poolId, centrifugeId);
-        contracts.hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook)));
+        contracts.hub.notifyShareClass(
+            poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook))
+        );
 
         contracts.hub.createAccount(poolId, AccountId.wrap(0x01), true);
         contracts.hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -107,7 +111,9 @@ contract TestData is Script {
             AccountId.wrap(0x04)
         );
 
-        contracts.hub.updateVault(poolId, scId, assetId, address(contracts.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
+        contracts.hub.updateVault(
+            poolId, scId, assetId, address(contracts.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+        );
 
         contracts.hub.updateSharePrice(poolId, scId, navPerShare);
         contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -121,8 +127,12 @@ contract TestData is Script {
         vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        contracts.hub.approveDeposits(poolId, scId, assetId, contracts.shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
-        contracts.hub.issueShares(poolId, scId, assetId, contracts.shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
+        contracts.hub.approveDeposits(
+            poolId, scId, assetId, contracts.shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6
+        );
+        contracts.hub.issueShares(
+            poolId, scId, assetId, contracts.shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1)
+        );
 
         uint32 maxClaims = contracts.shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         contracts.hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
@@ -156,8 +166,12 @@ contract TestData is Script {
         vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        contracts.hub.approveRedeems(poolId, scId, assetId, contracts.shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
-        contracts.hub.revokeShares(poolId, scId, assetId, contracts.shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
+        contracts.hub.approveRedeems(
+            poolId, scId, assetId, contracts.shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18
+        );
+        contracts.hub.revokeShares(
+            poolId, scId, assetId, contracts.shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10)
+        );
 
         contracts.hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
@@ -165,7 +179,9 @@ contract TestData is Script {
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
-    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts) internal {
+    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts)
+        internal
+    {
         PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 2);
         contracts.hub.createPool(poolId, msg.sender, USD_ID);
         contracts.hub.updateHubManager(poolId, contracts.admin, true);
@@ -176,7 +192,9 @@ contract TestData is Script {
         contracts.hub.setPoolMetadata(poolId, bytes("Testing pool"));
         contracts.hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
         contracts.hub.notifyPool(poolId, centrifugeId);
-        contracts.hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook)));
+        contracts.hub.notifyShareClass(
+            poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook))
+        );
 
         contracts.hub.createAccount(poolId, AccountId.wrap(0x01), true);
         contracts.hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -193,7 +211,9 @@ contract TestData is Script {
             AccountId.wrap(0x04)
         );
 
-        contracts.hub.updateVault(poolId, scId, assetId, address(contracts.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
+        contracts.hub.updateVault(
+            poolId, scId, assetId, address(contracts.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+        );
 
         contracts.hub.updateSharePrice(poolId, scId, navPerShare);
         contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -207,4 +227,4 @@ contract TestData is Script {
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);
     }
-} 
+}
