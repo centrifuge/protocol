@@ -894,6 +894,50 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
+    function property_additions_dont_cause_ppfs_loss() public {
+        if(currentOperation == OpType.ADD) {
+            gte(_after.totalAssets, _before.totalAssets, "total assets must increase when adding");
+            gte(_after.totalShareSupply, _before.totalShareSupply, "total supply must increase when adding");
+        }
+    }
+
+    function property_removals_dont_cause_ppfs_loss() public {
+        if(currentOperation == OpType.REMOVE) {
+            lte(_after.totalAssets, _before.totalAssets, "total assets must decrease when removing");
+            lte(_after.totalShareSupply, _before.totalShareSupply, "total supply must decrease when removing");
+        }
+    }
+
+    /// @dev Property: If user deposits assets, they must always receive at least the pricePerShare
+    function property_additions_use_correct_price() public {
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 decimals = MockERC20(vault.asset()).decimals();
+        
+        if(currentOperation == OpType.ADD) {
+            uint256 assetDelta = _after.totalAssets - _before.totalAssets;
+            uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
+            uint256 expectedShares = (_before.pricePerShare * assetDelta) - (10 ** decimals);
+            // user getting less than expected is in favor of protocol
+            lte(shareDelta, expectedShares, "shareDelta must be <= expectedShares using pricePerShare");
+        }
+    }
+
+    /// @dev Property: If user redeems shares, they must always pay at least the pricePerShare
+    function property_removals_use_correct_price() public {
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 decimals = MockERC20(vault.asset()).decimals();
+        
+        if(currentOperation == OpType.REMOVE) {
+            uint256 assetDelta = _after.totalAssets - _before.totalAssets;
+            uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
+            uint256 expectedShares = (_before.pricePerShare * assetDelta) + (10 ** decimals);
+            // user paying more than expected is in favor of protocol
+            gte(shareDelta, expectedShares, "shareDelta must be >= expectedShares using pricePerShare");
+        }
+    }
+    
+    
+
     /// @dev Property: The amount of tokens existing in the AssetRegistry MUST always be <= the balance of the associated token in the escrow
     // TODO: confirm if this is correct because it seems like AssetRegistry would never be receiving tokens in the first place
     // TODO: verify if this should be applied to the vaults side instead
