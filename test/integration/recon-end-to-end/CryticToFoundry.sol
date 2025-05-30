@@ -27,8 +27,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Potential Issues === ///
     // forge test --match-test test_asyncVault_maxRedeem_8 -vvv 
-    // NOTE: shows that user maintains an extra 1 wei in maxRedeem after a redemption
-    // this is only a precondition, optimization property will determine what the max difference amount can be 
+    // NOTE: shows that user maintains an extra 1 wei of assets in maxRedeem after a redemption
     function test_asyncVault_maxRedeem_8() public {
         shortcut_deployNewTokenPoolAndShare(16,29654276389875203551777999997167602027943,true,false,true);
         address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
