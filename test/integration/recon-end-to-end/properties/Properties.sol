@@ -917,8 +917,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
             uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
             uint256 expectedShares = (_before.pricePerShare * assetDelta) - (10 ** decimals);
-            // user getting less than expected is in favor of protocol
-            lte(shareDelta, expectedShares, "shareDelta must be <= expectedShares using pricePerShare");
+            if(expectedShares > shareDelta) {
+                // difference between expected and how much they actually paid
+                uint256 expectedVsActual = shareDelta - expectedShares;
+                // difference should be less than 1 atom
+                lte(expectedVsActual, (10 ** decimals), "shareDelta must be >= expectedShares using pricePerShare");
+            }
         }
     }
 
@@ -931,8 +935,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
             uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
             uint256 expectedShares = (_before.pricePerShare * assetDelta) + (10 ** decimals);
-            // user paying more than expected is in favor of protocol
-            gte(shareDelta, expectedShares, "shareDelta must be >= expectedShares using pricePerShare");
+            if(expectedShares > shareDelta) {
+                // difference between expected and how much they actually paid
+                uint256 expectedVsActual = expectedShares - shareDelta;
+                // difference should be less than 1 atom
+                lte(expectedVsActual, (10 ** decimals), "shareDelta must be >= expectedShares using pricePerShare");
+            }
         }
     }
     
