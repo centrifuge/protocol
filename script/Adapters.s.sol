@@ -11,7 +11,6 @@ import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 contract Adapters is Script, JsonRegistry {
-    // Common contract addresses
     Root public root;
     MultiAdapter public multiAdapter;
     IAdapter[] public adapters;
@@ -34,7 +33,7 @@ contract Adapters is Script, JsonRegistry {
         vm.startBroadcast();
         startDeploymentOutput(false);
 
-        // Deploy and save adapters for wiring
+        // Deploy and save adapters in config file
         if (vm.parseJsonBool(config, "$.adapters.wormhole.deploy")) {
             address relayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
             WormholeAdapter wormholeAdapter = new WormholeAdapter(
@@ -42,7 +41,10 @@ contract Adapters is Script, JsonRegistry {
                 relayer,
                 msg.sender
             );
-            adapters.push(wormholeAdapter);
+            IAuth(address(wormholeAdapter)).rely(address(root));
+            if (!isTestnet) {
+                IAuth(address(wormholeAdapter)).deny(msg.sender);
+            }
             register("wormholeAdapter", address(wormholeAdapter));
             console.log("WormholeAdapter deployed at:", address(wormholeAdapter));
         }
@@ -57,23 +59,12 @@ contract Adapters is Script, JsonRegistry {
                 msg.sender
             );
             adapters.push(axelarAdapter);
+            IAuth(address(axelarAdapter)).rely(address(root));
+            if (!isTestnet) {
+                IAuth(address(axelarAdapter)).deny(msg.sender);
+            }
             register("axelarAdapter", address(axelarAdapter));
             console.log("AxelarAdapter deployed at:", address(axelarAdapter));
-        }
-
-        // Register all adapters at once
-        if (adapters.length > 0) {
-            console.log("Registering adapters...");
-            multiAdapter.file("adapters", centrifugeId, adapters);
-            for (uint256 i = 0; i < adapters.length; i++) {
-                console.log("Processing adapter:", address(adapters[i]));
-                IAuth(address(adapters[i])).rely(address(root));
-                
-                // Only deny msg.sender if not on testnet
-                if (!isTestnet) {
-                    IAuth(address(adapters[i])).deny(msg.sender);
-                }
-            }
         }
         
         saveDeploymentOutput(); // Save JSON output
