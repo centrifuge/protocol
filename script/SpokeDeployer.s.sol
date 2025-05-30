@@ -43,8 +43,8 @@ contract SpokeDeployer is CommonDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deploySpoke(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
+    function deploySpoke(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
+        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
 
         poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);

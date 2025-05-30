@@ -38,6 +38,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
+    // Config state
+    string public config;
+    string public network;
+    uint16 public centrifugeId;
+    bool public isTestnet;
+
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
@@ -47,9 +53,21 @@ abstract contract CommonDeployer is Script, JsonRegistry {
                 abi.encodePacked(string(abi.encodePacked(block.timestamp)))
             )
         );
+
+        _fetchConfig();
     }
 
-    function deployCommon(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
+    function _fetchConfig() private {
+        network = vm.envString("NETWORK");
+        string memory configFile = string.concat("env/", network, ".json");
+        config = vm.readFile(configFile);
+        
+        centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        string memory environment = vm.parseJsonString(config, "$.network.environment");
+        isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
+    }
+
+    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -66,9 +84,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
         gasService = new GasService(maxBatchSize, messageGasLimit);
         gateway = new Gateway(root, gasService, deployer);
-        multiAdapter = new MultiAdapter(centrifugeId, gateway, deployer);
+        multiAdapter = new MultiAdapter(centrifugeId_, gateway, deployer);
 
-        messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
+        messageDispatcher = new MessageDispatcher(centrifugeId_, root, gateway, tokenRecoverer, deployer);
 
         adminSafe = adminSafe_;
 
@@ -115,9 +133,9 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("adapter", address(multiAdapter));
     }
 
-    function wire(uint16 centrifugeId, IAdapter adapter, address deployer) public {
+    function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
-        multiAdapter.file("adapters", centrifugeId, adapters);
+        multiAdapter.file("adapters", centrifugeId_, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
     }

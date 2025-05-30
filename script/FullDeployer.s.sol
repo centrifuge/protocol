@@ -8,13 +8,12 @@ import {HubDeployer} from "script/HubDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
 contract FullDeployer is HubDeployer, SpokeDeployer {
-    function deployFull(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployHub(centrifugeId, adminSafe_, deployer, isTests);
-        deploySpoke(centrifugeId, adminSafe_, deployer, isTests);
+    function deployFull(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
+        deployHub(centrifugeId_, adminSafe_, deployer, isTests);
+        deploySpoke(centrifugeId_, adminSafe_, deployer, isTests);
     }
 
     function run() public {
-        uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
         vm.startBroadcast();
         deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
         // Since `wire()` is not called, separately adding the safe here
@@ -23,8 +22,10 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         vm.stopBroadcast();
     }
 
-    // function removeFullDeployerAccess(address deployer) public {
-    //     removeHubDeployerAccess(deployer);
-    //     removeSpokeDeployerAccess(deployer);
-    // }
+    function removeFullDeployerAccess(address deployer) public {
+        if (!isTestnet) {
+            removeHubDeployerAccess(deployer);
+            removeSpokeDeployerAccess(deployer);
+        }
+    }
 }
