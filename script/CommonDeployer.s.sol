@@ -48,8 +48,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
-
-        _fetchConfig();
+        
+        try vm.envString("NETWORK"){
+            _fetchConfig();
+        } catch {
+            console.log("NETWORK environment variable is not set, this must be a mocked test");
+        }
     }
 
     function _fetchConfig() private {
