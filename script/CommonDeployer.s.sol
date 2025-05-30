@@ -132,7 +132,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("processor", address(messageProcessor));
         gateway.file("adapter", address(multiAdapter));
     }
-
+    // The centrifugeId_ here has to be the destination centrifuge_chain_id
+    // Use WireAdapters.s.sol for automatic wiring of live multi-chains adapters
     function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
         adapters.push(adapter);
         multiAdapter.file("adapters", centrifugeId_, adapters);
