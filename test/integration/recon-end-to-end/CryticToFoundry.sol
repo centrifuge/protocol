@@ -44,24 +44,28 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         console2.log(" === Before Redeem and Claim === ");
         shortcut_redeem_and_claim_clamped(44055836141804467353088311715299154505223682107,1,60194726908356682833407755266714281307);
         (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        console2.log("maxWithdraw after redeeming and claiming: %e", maxWithdraw);
+        console2.log("maxWithdraw after redeeming and claiming: ", maxWithdraw);
 
         console2.log("pool escrow balance after redeeming and claiming: ", MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(poolEscrow));
         // asset is gets wiped out from the state.maxWithdraw, but is still in the escrow balance
         console2.log(" === Before maxRedeem === ");
         asyncVault_maxRedeem(0,0,0);
         (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        console2.log("maxWithdraw after maxRedeem: %e", maxWithdraw);
+        console2.log("maxWithdraw after maxRedeem: ", maxWithdraw);
     }
 
     // forge test --match-test test_asyncVault_maxDeposit_3 -vvv 
     // NOTE: potential issue with rounding
     function test_asyncVault_maxDeposit_3() public {
-
         shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
+        IBaseVault vault = IBaseVault(_getVault());
 
+        console2.log(" === Before Deposit === ");
         shortcut_deposit_sync(1,2380311791704365157);
+        console2.log(" === After Deposit === ");
+        poolEscrowFactory.escrow(vault.poolId()).availableBalanceOf(vault.scId(), vault.asset(), 0);
 
+        // console2.log(" === Before Cancel Redeem === ");
         shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1,1018635830101702210,0);
 
         asyncVault_maxDeposit(0,0,0);
@@ -75,6 +79,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_deposit_sync(0,1001264570074274036555728822370);
 
+        console2.log(" === Before Mint === ");
         asyncVault_maxMint(0,0,0);
 
     }
