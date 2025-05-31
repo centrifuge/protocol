@@ -129,7 +129,7 @@ abstract contract AdminTargets is
     
     /// @dev Property: After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance totalIssuance[..] is increased
     // TODO: Refactor this property to work with new issuance update logic
-    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhosts {
+    function hub_issueShares(uint32 nowIssueEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.ADD) {
         uint128 totalIssuanceBefore;
         uint128 totalIssuanceAfter;
 
@@ -208,7 +208,7 @@ abstract contract AdminTargets is
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
     // TODO: Refactor this property to work with new issuance update logic
-    function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhosts {
+    function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();

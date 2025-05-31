@@ -21,12 +21,10 @@ import {Setup} from "./Setup.sol";
 enum OpType {
     GENERIC, // generic operations can be performed by both users and admins
     ADMIN, // admin operations can only be performed by admins
-    DEPOSIT,
-    REDEEM,
     BATCH, // batch operations that make multiple calls in one transaction
     NOTIFY, 
-    ISSUE, 
-    REVOKE
+    ADD, 
+    REMOVE
 }
 
 

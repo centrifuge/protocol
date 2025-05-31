@@ -136,10 +136,10 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
                 maxDepositDifference = int256(difference - maxDepositAfter);
             }
 
-            console2.log("difference in asyncVault_maxDeposit: ", difference);
-            console2.log("maxDepositAfter in asyncVault_maxDeposit: ", maxDepositAfter);
-            console2.log("maxDepositBefore in asyncVault_maxDeposit: ", maxDepositBefore);
-            console2.log("shares in asyncVault_maxDeposit: ", shares);
+            // console2.log("difference in asyncVault_maxDeposit: ", difference);
+            // console2.log("maxDepositAfter in asyncVault_maxDeposit: ", maxDepositAfter);
+            // console2.log("maxDepositBefore in asyncVault_maxDeposit: ", maxDepositBefore);
+            // console2.log("shares in asyncVault_maxDeposit: ", shares);
             // NOTE: temporarily remove the assertion to optimize the difference
             // otherwise it asserts false and undoes state changes
             // t(difference == maxDepositAfter, "rounding error in maxDeposit");

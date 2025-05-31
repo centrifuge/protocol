@@ -298,7 +298,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += shares;
     }
 
-    function vault_deposit(uint256 assets) public updateGhosts {
+    function vault_deposit(uint256 assets) public updateGhostsWithType(OpType.ADD) {
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(_getVault());
         // Get vault
@@ -360,7 +360,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     // TODO: See how these go
     // TODO: Receiver -> Not this
-    function vault_mint(uint256 shares) public updateGhosts {
+    function vault_mint(uint256 shares) public updateGhostsWithType(OpType.ADD) {
         address to = _getActor();
         // Get vault
         IBaseVault vault = IBaseVault(_getVault());
@@ -420,7 +420,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
@@ -460,7 +460,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
+    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
         

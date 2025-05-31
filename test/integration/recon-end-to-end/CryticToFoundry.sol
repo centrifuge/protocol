@@ -55,7 +55,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_asyncVault_maxDeposit_3 -vvv 
-    // NOTE: potential issue with rounding
     function test_asyncVault_maxDeposit_3() public {
         shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
         IBaseVault vault = IBaseVault(_getVault());
@@ -69,7 +68,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1,1018635830101702210,0);
 
         asyncVault_maxDeposit(0,0,0);
-
     }
 
     // forge test --match-test test_asyncVault_maxMint_5 -vvv 
