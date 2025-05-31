@@ -24,7 +24,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
     uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
-    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000 ether); // 10M in Weight
+    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
 
     IAdapter[] adapters;
 
