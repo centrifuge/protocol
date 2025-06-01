@@ -104,20 +104,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     }
 
-    // forge test --match-test test_property_account_totalDebit_and_totalCredit_leq_max_int128_8 -vvv 
-    // NOTE: might be an unsafe casting or irrelevant with latest implementation
-    function test_property_account_totalDebit_and_totalCredit_leq_max_int128_8() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
-
-        hub_addShareClass(2);
-
-        hub_updateJournal_clamped(0,0,340282366920938463463374607431768211455,340282366920938463463374607431768211455);
-
-        property_account_totalDebit_and_totalCredit_leq_max_int128();
-
-    }
-
     // forge test --match-test test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10 -vvv 
     // NOTE: passing in a high navPerShare results in a payoutAssetAmount that's significantly less than the amount in the epoch
     function test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10() public {

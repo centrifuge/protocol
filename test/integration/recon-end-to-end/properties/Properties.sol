@@ -650,25 +650,26 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
 
     /// @dev Property: account.totalDebit and account.totalCredit is always less than uint128(type(int128).max)
-    function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
-        uint64[] memory _createdPools = _getPools();
-        for (uint256 i = 0; i < _createdPools.length; i++) {
-            PoolId poolId = PoolId.wrap(_createdPools[i]);
-            uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-            // skip the first share class because it's never assigned
-            for (uint32 j = 1; j < shareClassCount; j++) {
-                ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
-                // loop over all account types defined in IHub::AccountType
-                for(uint8 kind = 0; kind < 6; kind++) {
-                    AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-                    (uint128 totalDebit, uint128 totalCredit,,,) = accounting.accounts(poolId, accountId);
-                    lte(totalDebit, uint128(type(int128).max), "totalDebit is greater than max int128");
-                    lte(totalCredit, uint128(type(int128).max), "totalCredit is greater than max int128");
-                }
-            }
-        }
-    }
+    // NOTE: this property is not relevant anymore with the latest implementation of the accountValue using uint128 instead of int128
+    // function property_account_totalDebit_and_totalCredit_leq_max_int128() public {
+    //     uint64[] memory _createdPools = _getPools();
+    //     for (uint256 i = 0; i < _createdPools.length; i++) {
+    //         PoolId poolId = PoolId.wrap(_createdPools[i]);
+    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
+    //         // skip the first share class because it's never assigned
+    //         for (uint32 j = 1; j < shareClassCount; j++) {
+    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
+    //             AssetId assetId = hubRegistry.currency(poolId);
+    //             // loop over all account types defined in IHub::AccountType
+    //             for(uint8 kind = 0; kind < 6; kind++) {
+    //                 AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
+    //                 (uint128 totalDebit, uint128 totalCredit,,,) = accounting.accounts(poolId, accountId);
+    //                 lte(totalDebit, uint128(type(int128).max), "totalDebit is greater than max int128");
+    //                 lte(totalCredit, uint128(type(int128).max), "totalCredit is greater than max int128");
+    //             }
+    //         }
+    //     }
+    // }
 
     /// @dev Property: Any decrease in valuation should not result in an increase in accountValue
     function property_decrease_valuation_no_increase_in_accountValue() public {
