@@ -1,0 +1,37 @@
+{
+    "network": {
+        "chainId": 12345,
+        "environment": "testnet OR mainnet",
+        "centrifugeId": 2,
+        "connectsTo": [
+            "network1",
+            "network2",
+            "network3"
+        ]
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": 1234,
+            "relayer": "0x..."
+        },
+        "axelar": {
+            "axelarId": "Chain Name",
+            "gateway": "0x...",
+            "gasService": "0x..."
+        }
+    },
+    "contracts": {},
+    "metadata": {
+        "network": {
+            "chainId": "The chain ID of the network (e.g. 84532 for Base Sepolia)",
+            "environment": "The environment type - can be 'testnet' or 'mainnet'",
+            "centrifugeId": "Unique identifier for this network in the Centrifuge ecosystem. Sequence 1,2,3,4 etc.",
+            "connectsTo": "List of networks this network can connect to. Use the same names as the env/$chainName.json files"
+        },
+        "adapters": {
+            "wormhole": "Get values from https://wormhole.com/docs/build/reference/chain-ids/",
+            "axelar": "Get values from https://docs.axelar.dev/axelar-api/chain-ids - axelarId is the Chain Name field"
+        },
+        "contracts": "Deployed contract addresses. Leave empty, it'll be populated by the deployment script."
+    }
+}
