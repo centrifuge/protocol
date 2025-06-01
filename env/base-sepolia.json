@@ -10,7 +10,7 @@
   "adapters": {
     "wormhole": {
       "wormholeId": 10004,
-      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470"
+      "relayer": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE"
     },
     "axelar": {
       "axelarId": "base-sepolia",
