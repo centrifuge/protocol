@@ -4,15 +4,16 @@
         "environment": "testnet OR mainnet",
         "centrifugeId": 2,
         "connectsTo": [
-            "network1",
-            "network2",
-            "network3"
+            "sepolia",
+            "base-sepolia",
+            "example",
+            "another-network"
         ]
     },
     "adapters": {
         "wormhole": {
-            "wormholeId": 1234,
-            "relayer": "0x..."
+            "wormholeId": "https://wormhole.com/docs/build/reference/chain-ids/",
+            "relayer": "https://wormhole.com/docs/build/reference/contract-addresses"
         },
         "axelar": {
             "axelarId": "Chain Name",
@@ -23,14 +24,14 @@
     "contracts": {},
     "metadata": {
         "network": {
-            "chainId": "The chain ID of the network (e.g. 84532 for Base Sepolia)",
+            "chainId": "The chain ID of the network (e.g. 84532 for Base Sepolia). Avaibale in many places like https://chainlist.org/",
             "environment": "The environment type - can be 'testnet' or 'mainnet'",
             "centrifugeId": "Unique identifier for this network in the Centrifuge ecosystem. Sequence 1,2,3,4 etc.",
-            "connectsTo": "List of networks this network can connect to. Use the same names as the env/$chainName.json files"
+            "connectsTo": "List of networks this network can connect to. Use the same name as the env/$chainName.json files"
         },
         "adapters": {
-            "wormhole": "Get values from https://wormhole.com/docs/build/reference/chain-ids/",
-            "axelar": "Get values from https://docs.axelar.dev/axelar-api/chain-ids - axelarId is the Chain Name field"
+            "wormhole": "Get values from https://wormhole.com/docs/build/reference/",
+            "axelar": "Get values from https://docs.axelar.dev/resources/contract-addresses/mainnet/ or /testnet - axelarId is the Chain Name field"
         },
         "contracts": "Deployed contract addresses. Leave empty, it'll be populated by the deployment script."
     }
