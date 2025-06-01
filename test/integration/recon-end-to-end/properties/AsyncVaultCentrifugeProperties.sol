@@ -195,8 +195,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         }
     }
 
-    /// @dev user can always maxWithdraw if they have > 0 shares and are approved
-    /// @dev user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
+    /// @dev Property: user can always maxWithdraw if they have > 0 shares and are approved
+    /// @dev Property: user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
+    /// @dev Property: maxWithdraw should decrease by the amount withdrawn
     function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public statelessTest {
         uint256 maxWithdrawBefore = IBaseVault(_getVault()).maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
@@ -234,8 +235,8 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         }
     }
 
-    /// @dev user can always maxRedeem if they have > 0 shares and are approved
-    /// @dev user can always redeem an amount between 1 and maxRedeem have > 0 shares and are approved
+    /// @dev Property: user can always maxRedeem if they have > 0 shares and are approved
+    /// @dev Property: user can always redeem an amount between 1 and maxRedeem have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem leaves user with 0 pending redeem requests
     // function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public statelessTest {
     // NOTE: temporarily remove the statelessTest modifier to optimize the difference
