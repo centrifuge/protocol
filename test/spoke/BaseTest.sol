@@ -66,11 +66,11 @@ contract BaseTest is SpokeDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
-    uint256 public constant ESTIMATE_ADAPTER_1 = 1 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_2 = 1.25 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_3 = 1.75 gwei;
+    uint256 public constant ESTIMATE_ADAPTER_1 = 1_000_000;  // 1M gas
+    uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000;  // 1.25M gas
+    uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000;  // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = 0.5 gwei;
+    uint256 public constant GAS_COST_LIMIT = 500_000;  // 500K gas
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
