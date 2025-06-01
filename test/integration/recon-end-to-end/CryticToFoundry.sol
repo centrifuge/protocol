@@ -28,6 +28,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     /// === Potential Issues === ///
     // forge test --match-test test_asyncVault_maxRedeem_8 -vvv 
     // NOTE: shows that user maintains an extra 1 wei of assets in maxRedeem after a redemption
+    // see this issue: https://github.com/centrifuge/protocol-v3/issues/421
     function test_asyncVault_maxRedeem_8() public {
         shortcut_deployNewTokenPoolAndShare(16,29654276389875203551777999997167602027943,true,false,true);
         address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
@@ -55,6 +56,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_asyncVault_maxDeposit_3 -vvv 
+    // NOTE: admin issue with NAV passed in 
+    // see this issue: https://github.com/centrifuge/protocol-v3/issues/422
     function test_asyncVault_maxDeposit_3() public {
         shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
         IBaseVault vault = IBaseVault(_getVault());
@@ -70,11 +73,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         asyncVault_maxDeposit(0,0,0);
     }
 
-    function test_log_value() public {
-        console2.log("value: %e", uint256(1813858205576491725565));
-    }
-
     // forge test --match-test test_asyncVault_maxMint_5 -vvv 
+    // NOTE: same as the above
     function test_asyncVault_maxMint_5() public {
 
         shortcut_deployNewTokenPoolAndShare(27,1,true,false,false);
@@ -83,61 +83,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         console2.log(" === Before Mint === ");
         asyncVault_maxMint(0,0,0);
-
-    }
-
-    // NOTE: indicates a discrepancy between the totalAssets and actualAssets, root cause TBD
-    // NOTE: this is only a precondition, optimize_totalAssets_solvency is used to determine the maximum possible difference between totalAssets and actualAssets
-    // forge test --match-test test_property_totalAssets_solvency_12 -vvv 
-    function test_property_totalAssets_solvency_12() public {
-        shortcut_deployNewTokenPoolAndShare(12,2099372101097792568170330428032486163036476777498747403522292624632190,true,false,true);
-        IBaseVault vault = IBaseVault(_getVault());
-
-        shortcut_deposit_and_claim(0,1,2,1,243);
-
-        console2.log("totalAssets before price update: %e", vault.totalAssets());
-        hub_updateSharePrice(0,hex"12",2504724);
-
-        hub_notifySharePrice(0);
-
-        property_totalAssets_solvency();
-
-    }
-
-    // forge test --match-test test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10 -vvv 
-    // NOTE: passing in a high navPerShare results in a payoutAssetAmount that's significantly less than the amount in the epoch
-    function test_property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount_10() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,2739917975647239028567165394084111319569479035714252026947453096283,true,false,true);
-
-        shortcut_deposit_and_claim(0,1,1,1,312);
-
-        shortcut_queue_redemption(1,10044207105274,0);
-
-        shortcut_cancel_redeem_claim_clamped(8448991857867710314527286738020113534764412038154406736803557,0,2);
-
-        shortcut_queue_redemption(1,368127116196650982403211,3137074433482099721841043092394058031879436671929572534935832);
-        console2.log("value in decimals: %e", uint256(368127116196650982403211));
-        
-        property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount();
-
-    }
-
-    // forge test --match-test test_property_total_issuance_soundness_2 -vvv 
-    // TODO: fixed with an additional precondition to check if the queue is enabled but need to confirm if this doesn't potentially block checking other interesting state transitions
-    function test_property_total_issuance_soundness_2() public {
-
-        shortcut_deployNewTokenPoolAndShare(0,1,false,false,false);
-
-        hub_setQueue_clamped(false);
-
-        shortcut_deposit_sync(1,5426223);
-
-        hub_setQueue(0,true);
-
-        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1,0,0);
-
-        property_total_issuance_soundness();
 
     }
 

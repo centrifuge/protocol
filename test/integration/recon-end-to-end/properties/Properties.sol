@@ -1042,60 +1042,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(differenceAsset, 1, "totalDepositAssets - totalPayoutAssetAmount difference is greater than 1");
     }
 
-
-    /// @dev Property: The sum of eligible user claim payout asset amounts for an epoch is <= the asset amount of revoked share class tokens epochRedeemAmounts[..].payoutAssetAmount
-    /// @dev Property: The sum of eligible user claim payment share amounts for an epoch is <= the approved amount of redeemed share class tokens epochRedeemAmounts[..].approvedShareAmount
-    /// @dev This doesn't sum over previous epochs because it can be assumed that it'll be called by the fuzzer for each current epoch
-    // function property_eligible_user_redemption_amount_leq_approved_asset_redemption_amount() public statelessTest {
-    //     address[] memory _actors = _getActors();
-
-    //     // loop over all created pools
-    //     uint64[] memory _createdPools = _getPools();
-    //     for (uint256 i = 0; i < _createdPools.length; i++) {
-    //         PoolId poolId = PoolId.wrap(_createdPools[i]);
-    //         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
-    //         // loop over all share classes in the pool
-    //         // skip the first share class because it's never assigned
-    //         for (uint32 j = 1; j < shareClassCount; j++) {
-    //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
-
-    //             (,,, uint32 latestRevocationEpochId) = shareClassManager.epochId(scId, assetId);
-    //             // sum up to the latest revocation epoch where users can claim redemptions for 
-    //             uint128 sumRedeemApprovedShares;
-    //             uint128 sumRedeemAssets;
-    //             for (uint32 epochId; epochId <= latestRevocationEpochId; epochId++) {
-    //                 (uint128 redeemAssets, uint128 redeemApprovedShares,,,,) = shareClassManager.epochRedeemAmounts(scId, assetId, epochId);
-    //                 sumRedeemApprovedShares += redeemApprovedShares;
-    //                 sumRedeemAssets += redeemAssets;
-    //             }
-
-    //             // sum eligible user claim payoutAssetAmount for the epoch
-    //             uint128 totalPayoutAssetAmount = 0;
-    //             uint128 totalPaymentShareAmount = 0;
-    //             for (uint256 k = 0; k < _actors.length; k++) {
-    //                 address actor = _actors[k];
-    //                 // we claim via shareClassManager directly here because PoolRouter doesn't return the payoutAssetAmount
-    //                 (uint128 payoutAssetAmount, uint128 paymentShareAmount,,) = shareClassManager.claimRedeem(poolId, scId, CastLib.toBytes32(actor), assetId);
-    //                 totalPayoutAssetAmount += payoutAssetAmount;
-    //                 totalPaymentShareAmount += paymentShareAmount;
-    //             }
-
-    //             // check that the totalPayoutAssetAmount is less than or equal to the sum of redeemAssets
-    //             lte(totalPayoutAssetAmount, sumRedeemAssets, "total payout asset amount is > redeem assets");
-    //             // check that the totalPaymentShareAmount is less than or equal to the sum of redeemApprovedShares
-    //             lte(totalPaymentShareAmount, sumRedeemApprovedShares, "total payment share amount is > redeem shares revoked");
-
-    //             uint128 differenceAsset = sumRedeemAssets - totalPayoutAssetAmount;
-    //             uint128 differenceShare = sumRedeemApprovedShares - totalPaymentShareAmount;
-    //             // check that the totalPayoutAssetAmount is no more than 1 wei less than the sum of redeemAssets
-    //             lte(differenceAsset, 1, "sumRedeemAssets - totalPayoutAssetAmount difference is greater than 1");
-    //             // check that the totalPaymentShareAmount is no more than 1 wei less than the sum of redeemApproved
-    //             lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
-    //         }
-    //     }
-    // }
-
     /// @dev Property: The sum of eligible user claim payout asset amounts for an epoch is <= the asset amount of revoked share class tokens epochRedeemAmounts[..].payoutAssetAmount
     /// @dev Property: The sum of eligible user claim payment share amounts for an epoch is <= the approved amount of redeemed share class tokens epochRedeemAmounts[..].approvedShareAmount
     /// @dev This doesn't sum over previous epochs because it can be assumed that it'll be called by the fuzzer for each current epoch
@@ -1130,13 +1076,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(totalPayoutAssetAmount, totalPayoutAssetAmountEpochs, "total payout asset amount is > redeem assets");
         lte(totalPaymentShareAmount, totalApprovedShareAmountEpochs, "total payment share amount is > redeem shares approved");
 
+        // NOTE: removed because the totalPayoutAssetAmount, totalPaymentShareAmount are dependent on the NAV passed in by the admin when approving/revoking so can easily allow the admin to wreck the user 
         // checks above prevent underflow here
-        uint128 differenceAsset = totalPayoutAssetAmountEpochs - totalPayoutAssetAmount;
-        uint128 differenceShare = totalApprovedShareAmountEpochs - totalPaymentShareAmount;
-        // check that the totalPayoutAssetAmount is no more than 1 atom less than the payoutAssetAmount
-        lte(differenceAsset, 1, "sumRedeemAssets - totalPayoutAssetAmount difference is greater than 1");
-        // check that the totalPaymentShareAmount is no more than 1 atom less than the approvedShareAmount
-        lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
+        // uint128 differenceAsset = totalPayoutAssetAmountEpochs - totalPayoutAssetAmount;
+        // uint128 differenceShare = totalApprovedShareAmountEpochs - totalPaymentShareAmount;
+        // // check that the totalPayoutAssetAmount is no more than 1 atom less than the payoutAssetAmount
+        // lte(differenceAsset, 1, "sumRedeemAssets - totalPayoutAssetAmount difference is greater than 1");
+        // // check that the totalPaymentShareAmount is no more than 1 atom less than the approvedShareAmount
+        // lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
     }
 
     /// === DOOMSDAY TESTS === ///
