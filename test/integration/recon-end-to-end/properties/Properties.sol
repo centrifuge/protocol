@@ -895,10 +895,20 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         ShareClassId scId = vault.scId();
         AssetId assetId = hubRegistry.currency(poolId);
 
+        // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when the queue isn't enabled
+        if(!balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
+            return;
+        }
+
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         
         uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId] + sumOfSyncDepositsShare[vault.share()];
         uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
+        console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
+        console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
+        console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
+        console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
+        console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
         lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
