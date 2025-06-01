@@ -52,7 +52,7 @@ contract VaultRouterTest is BaseTest {
     using MathLib for uint256;
 
     uint16 constant CHAIN_ID = 1;
-    uint256 constant GAS_BUFFER = 10_000_000;  // 10M gas
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     function testInitialization() public {

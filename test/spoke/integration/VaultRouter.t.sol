@@ -23,7 +23,7 @@ contract VaultRouterTest is BaseTest {
     using MessageLib for *;
     using MathLib for uint256;
 
-    uint256 constant GAS_BUFFER = 10_000_000;  // 10M gas
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     /// forge-config: default.isolate = true
