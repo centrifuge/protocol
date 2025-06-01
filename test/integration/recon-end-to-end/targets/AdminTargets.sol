@@ -179,7 +179,7 @@ abstract contract AdminTargets is
         hub_notifyShareClass(CENTRIFUGE_CHAIN_ID, hook);
     }
 
-    function hub_notifySharePrice(uint16 centrifugeId) public updateGhosts {
+    function hub_notifySharePrice(uint16 centrifugeId) public updateGhostsWithType(OpType.UPDATE) {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
         hub.notifySharePrice(poolId, scId, centrifugeId);

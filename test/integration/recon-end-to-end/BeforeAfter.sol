@@ -24,7 +24,8 @@ enum OpType {
     BATCH, // batch operations that make multiple calls in one transaction
     NOTIFY, 
     ADD, 
-    REMOVE
+    REMOVE, 
+    UPDATE
 }
 
 
