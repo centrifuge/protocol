@@ -70,7 +70,7 @@ contract WireAdapters is Script {
                 uint16 wormholeId2 = uint16(vm.parseJsonUint(config2, "$.adapters.wormhole.wormholeId"));
 
                 WormholeAdapter wormholeAdapter = WormholeAdapter(wormholeAddr);
-                wormholeAdapter.file("sources", wormholeId2, centrifugeId2, wormholeAddr2);
+                wormholeAdapter.file("sources", centrifugeId2, wormholeId2, wormholeAddr2);
                 wormholeAdapter.file("destinations", centrifugeId2, wormholeId2, wormholeAddr2);
 
                 console.log("Wired WormholeAdapter from", network1, "to", network2);
