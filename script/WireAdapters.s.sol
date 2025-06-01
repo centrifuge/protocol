@@ -72,9 +72,13 @@ contract WireAdapters is Script {
                     WormholeAdapter wormholeAdapter = WormholeAdapter(wormholeAddr);
                     wormholeAdapter.file("sources", centrifugeId2, wormholeId2, wormholeAddr2);
                     wormholeAdapter.file("destinations", centrifugeId2, wormholeId2, wormholeAddr2);
-                    console.log("Wired WormholeAdapter from", network1, "to", network2);                    
+                    console.log("Wired WormholeAdapter from", network1, "to", network2);
                 } catch {
-                    console.log("Failed to wire Wormhole. No WormholeAdapter contract found in config (not deployed yet?) for network ", network2);
+                    console.log(
+                        "Failed to wire Wormhole.",
+                        "No WormholeAdapter contract found in config (not deployed yet?) for network ",
+                        network2
+                    );
                 }
             }
 
@@ -90,7 +94,11 @@ contract WireAdapters is Script {
 
                     console.log("Wired AxelarAdapter from", network1, "to", network2);
                 } catch {
-                    console.log("Failed to wire Axelar. No AxelarAdapter contract found (not deployed yet?) in config for network ", network2);
+                    console.log(
+                        "Failed to wire Axelar.",
+                        "No AxelarAdapter contract found (not deployed yet?) in config for network ",
+                        network2
+                    );
                 }
             }
         }
