@@ -7,6 +7,7 @@ import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 
+// Assumes each adapter in network A is also set up in network B, and all adapters should be wired
 contract WireAdapters is Script {
     IAdapter[] adapters; // Storage array like in CommonDeployer
 
@@ -35,27 +36,27 @@ contract WireAdapters is Script {
             uint16 centrifugeId2 = uint16(vm.parseJsonUint(config2, "$.network.centrifugeId"));
 
             // Declare and initialize adapter addresses
-            address wormholeAddr2 = address(0);
-            address axelarAddr2 = address(0);
+            address wormholeAddr = address(0);
+            address axelarAddr = address(0);
 
             // Try to get Wormhole adapter
-            try vm.parseJsonAddress(config2, "$.contracts.wormholeAdapter") returns (address addr) {
+            try vm.parseJsonAddress(config1, "$.contracts.wormholeAdapter") returns (address addr) {
                 if (addr != address(0)) {
-                    wormholeAddr2 = addr;
+                    wormholeAddr = addr;
                     adapters.push(IAdapter(addr));
                 }
             } catch {
-                console.log("No WormholeAdapter found in config for network", network2);
+                console.log("No WormholeAdapter found in config for network", network1);
             }
 
             // Try to get Axelar adapter
-            try vm.parseJsonAddress(config2, "$.contracts.axelarAdapter") returns (address addr) {
+            try vm.parseJsonAddress(config1, "$.contracts.axelarAdapter") returns (address addr) {
                 if (addr != address(0)) {
-                    axelarAddr2 = addr;
+                    axelarAddr = addr;
                     adapters.push(IAdapter(addr));
                 }
             } catch {
-                console.log("No AxelarAdapter found in config for network", network2);
+                console.log("No AxelarAdapter found in config for network", network1);
             }
 
             // Register ALL adapters for this destination chain
@@ -64,25 +65,32 @@ contract WireAdapters is Script {
             console.log("Registered MultiAdapter(", network1, ") for", network2);
 
             // Wire WormholeAdapter
-            address wormholeAddr2 = vm.parseJsonAddress(config2, "$.contracts.multiAdapter");
             if (wormholeAddr != address(0)) {
+                address wormholeAddr2 = vm.parseJsonAddress(config2, "$.contracts.wormholeAdapter");
                 uint16 wormholeId2 = uint16(vm.parseJsonUint(config2, "$.adapters.wormhole.wormholeId"));
+
                 WormholeAdapter wormholeAdapter = WormholeAdapter(wormholeAddr);
                 wormholeAdapter.file("sources", wormholeId2, centrifugeId2, wormholeAddr2);
                 wormholeAdapter.file("destinations", centrifugeId2, wormholeId2, wormholeAddr2);
+
                 console.log("Wired WormholeAdapter from", network1, "to", network2);
             }
 
             // Wire AxelarAdapter
             if (axelarAddr != address(0)) {
+                address axelarAddr2 = vm.parseJsonAddress(config2, "$.contracts.axelarAdapter");
                 string memory axelarId2 = vm.parseJsonString(config2, "$.adapters.axelar.axelarId");
+
                 AxelarAdapter axelarAdapter = AxelarAdapter(axelarAddr);
                 axelarAdapter.file("sources", axelarId2, centrifugeId2, vm.toString(axelarAddr2));
                 axelarAdapter.file("destinations", centrifugeId2, axelarId2, vm.toString(axelarAddr2));
+
                 console.log("Wired AxelarAdapter from", network1, "to", network2);
             }
 
             delete adapters;
+            delete wormholeAddr;
+            delete axelarAddr;
         }
         vm.stopBroadcast();
     }
