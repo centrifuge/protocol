@@ -8,23 +8,23 @@ cd "$SCRIPT_DIR" || exit
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Usage: ./deploy.sh <network> <step> [forge_args...]
-# Example: ./deploy.sh sepolia fulldeploy
-# Example: ./deploy.sh base-sepolia adapters --priority-gas-price 2
-# Example: ./deploy.sh sepolia testdata --nonce 4765
+# Example: ./deploy.sh sepolia deploy:full
+# Example: ./deploy.sh base-sepolia deploy:adapters --priority-gas-price 2
+# Example: ./deploy.sh sepolia test --nonce 4765
 
 if [[ -z "$1" || -z "$2" ]]; then
     echo "Usage: ./deploy.sh <network> <step> [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
-    echo "  fulldeploy    - Deploy everything (hub, spoke, adapters, wiring)"
-    echo "  adapters      - Deploy only adapters"
-    echo "  adapterwiring - Wire adapters to hub/spoke"
-    echo "  testdata      - Deploy test data"
+    echo "  deploy:full      - Deploy everything (hub, spoke, adapters)"
+    echo "  deploy:adapters  - Deploy only adapters"
+    echo "  wire:adapters    - Wire adapters to hub/spoke"
+    echo "  test            - Deploy test data"
     echo
     echo "Examples:"
-    echo "  ./deploy.sh sepolia fulldeploy"
-    echo "  ./deploy.sh base-sepolia adapters --priority-gas-price 2"
-    echo "  ./deploy.sh sepolia testdata --nonce 4765"
+    echo "  ./deploy.sh sepolia deploy:full"
+    echo "  ./deploy.sh base-sepolia deploy:adapters --priority-gas-price 2"
+    echo "  ./deploy.sh sepolia test --nonce 4765"
     exit 1
 fi
 
@@ -37,10 +37,10 @@ FORGE_ARGS=("$@")
 
 # Validate step
 case "$STEP" in
-"fulldeploy" | "adapters" | "adapterwiring" | "testdata") ;;
+"deploy:full" | "deploy:adapters" | "wire:adapters" | "test") ;;
 *)
     echo "Invalid step: $STEP"
-    echo "Valid steps are: fulldeploy, adapters, adapterwiring, testdata"
+    echo "Valid steps are: deploy:full, deploy:adapters, wire:adapters, test"
     exit 1
     ;;
 esac
@@ -137,7 +137,7 @@ update_network_config() {
 
 # Run the requested step
 case "$STEP" in
-"fulldeploy")
+"deploy:full")
     echo "Starting full deployment for $NETWORK"
     run_forge_script "FullDeployer"
 
@@ -147,9 +147,10 @@ case "$STEP" in
         exit 1
     fi
 
-    run_forge_script "TestData"
+    run_forge_script "Adapters"
+
     ;;
-"adapters")
+"deploy:adapters")
     echo "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
 
@@ -159,12 +160,12 @@ case "$STEP" in
         exit 1
     fi
     ;;
-"adapterwiring")
+"wire:adapters")
     echo "Wiring adapters for $NETWORK"
     run_forge_script "WireAdapters"
 
     ;;
-"testdata")
+"test")
     echo "Deploying test data for $NETWORK"
     run_forge_script "TestData"
     ;;
