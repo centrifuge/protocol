@@ -1033,13 +1033,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         lte(totalPayoutAssetAmount, totalDepositAssets, "totalPayoutAssetAmount > totalDepositAssets");
         lte(totalPayoutShareAmount, totalDepositShares, "totalPayoutShareAmount > totalDepositShares");
 
+        // NOTE: removed because the totalPayoutAssetAmount, totalPaymentShareAmount are dependent on the NAV passed in by the admin when approving/revoking so can easily allow the admin to wreck the user 
         // checks above prevent underflow here
-        uint128 differenceShares = totalDepositShares - totalPayoutShareAmount;
-        uint128 differenceAsset = totalDepositAssets - totalPayoutAssetAmount;
-        // check that the totalPayoutShareAmount is no more than 1 atom less than the totalDepositShares
-        lte(differenceShares, 1, "totalDepositShares - totalPayoutShareAmount difference is greater than 1");
-        // check that the totalPayoutAssetAmount is no more than 1 atom less than the totalDepositAssets
-        lte(differenceAsset, 1, "totalDepositAssets - totalPayoutAssetAmount difference is greater than 1");
+        // uint128 differenceShares = totalDepositShares - totalPayoutShareAmount;
+        // uint128 differenceAsset = totalDepositAssets - totalPayoutAssetAmount;
+        // // check that the totalPayoutShareAmount is no more than 1 atom less than the totalDepositShares
+        // lte(differenceShares, 1, "totalDepositShares - totalPayoutShareAmount difference is greater than 1");
+        // // check that the totalPayoutAssetAmount is no more than 1 atom less than the totalDepositAssets
+        // lte(differenceAsset, 1, "totalDepositAssets - totalPayoutAssetAmount difference is greater than 1");
     }
 
     /// @dev Property: The sum of eligible user claim payout asset amounts for an epoch is <= the asset amount of revoked share class tokens epochRedeemAmounts[..].payoutAssetAmount
