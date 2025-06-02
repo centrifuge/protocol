@@ -17,7 +17,7 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         vm.startBroadcast();
         uint16 centrifugeId;
         bool isTestnet;
-        
+
         try vm.envString("NETWORK") returns (string memory network) {
             string memory configFile = string.concat("env/", network, ".json");
             string memory config = vm.readFile(configFile);
@@ -38,7 +38,7 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
 
     function removeFullDeployerAccess(address deployer) public {
         bool isTestnet;
-        
+
         try vm.envString("NETWORK") returns (string memory network) {
             string memory configFile = string.concat("env/", network, ".json");
             string memory config = vm.readFile(configFile);
@@ -46,7 +46,6 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
             isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
         } catch {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
-            revert("NETWORK environment variable is required");
         }
 
         if (!isTestnet) {

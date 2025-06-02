@@ -38,8 +38,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
-
-
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
