@@ -18,6 +18,7 @@ contract ThreeChainEndToEndDeployment is EndToEndDeployment {
 
     FullDeployer deployC = new FullDeployer();
     LocalAdapter adapterC;
+    LocalAdapter adapterAToC;
 
     // This represents the third Chain's spoke
     CSpoke sC;
@@ -25,18 +26,27 @@ contract ThreeChainEndToEndDeployment is EndToEndDeployment {
     function setUp() public override {
         // Call the original setUp to set up chains A and B
         super.setUp();
+        _setSpoke(false);
 
         // Deploy the third chain (C)
         adapterC = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
         vm.label(address(adapterC), "AdapterC");
 
+        adapterAToC = new LocalAdapter(
+            CENTRIFUGE_ID_A,
+            deployA.multiAdapter(),
+            address(deployA)
+        );
+
         // Connect Chain A to Chain C (spoke 2)
         vm.startPrank(address(deployA.root()));
-        deployA.wire(CENTRIFUGE_ID_C, adapterA, address(deployA));
+        deployA.wire(CENTRIFUGE_ID_C, adapterAToC, address(adapterAToC));
         vm.stopPrank();
 
-        adapterC.setEndpoint(adapterA);
-        adapterA.setEndpoint(adapterC);
+        adapterC.setEndpoint(adapterAToC);
+        adapterAToC.setEndpoint(adapterC);
+
+        _setThirdSpoke();
     }
 
     function _setThirdSpoke() internal {
@@ -73,9 +83,6 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
     /// @notice Configure the third chain (C) with assets
     /// forge-config: default.isolate = true
     function testConfigureThirdChainAsset() public {
-        _setThirdSpoke();
-
-        // Initialize USDC on chain C
         sC.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
         sC.spoke.registerAsset{value: GAS}(h.centrifugeId, address(sC.usdc), 0);
 
