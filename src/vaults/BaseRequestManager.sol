@@ -59,6 +59,8 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
         vault[poolId][scId][assetId] = IBaseVault(address(vault_));
         rely(address(vault_));
+        
+        emit AddVault(poolId, scId, assetId, vault_);
     }
 
     /// @inheritdoc IVaultManager
@@ -72,6 +74,8 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
         delete vault[poolId][scId][assetId];
         deny(address(vault_));
+        
+        emit RemoveVault(poolId, scId, assetId, vault_);
     }
 
     //----------------------------------------------------------------------------------------------
