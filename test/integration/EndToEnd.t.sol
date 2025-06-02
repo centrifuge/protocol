@@ -151,8 +151,8 @@ contract EndToEndDeployment is Test {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
 
         // This call reduce the likehood of a concurrency issue with the env OS where the deployer reads the var before
-        // it's set in the OS. This comment generate a OS interruption given more chances to the OS to set the envvar.
-        console.log("Init test");
+        // it's set in the OS.
+        for (uint256 i = 0; i < 100000; i++) {}
 
         LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
@@ -250,8 +250,6 @@ contract EndToEndUseCases is EndToEndUtils {
 
     /// forge-config: default.isolate = true
     function testConfigureAsset(bool sameChain, D18 assetPrice) public {
-        vm.assume(assetPrice.raw() != 0);
-
         _setSpoke(sameChain);
 
         s.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);

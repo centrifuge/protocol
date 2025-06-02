@@ -41,10 +41,12 @@ function inner(D18 d1) pure returns (uint128) {
 }
 
 /// @dev Returns the reciprocal of a D18 decimal, i.e. 1 / d.
-///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
+/// This method is infallible, if d == 0, the returning D18 is 0.
+///
+/// Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
 function reciprocal(D18 d) pure returns (D18) {
     uint128 val = D18.unwrap(d);
-    require(val != 0, "D18/division-by-zero");
+    if (val == 0) return d18(0);
     return d18(1e18, val);
 }
 
@@ -70,6 +72,7 @@ function mulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure return
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
 function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) pure returns (uint128) {
+    if (d.raw() == 0) return 0;
     return MathLib.mulDiv(value, 1e18, d.inner(), rounding).toUint128();
 }
 
@@ -79,6 +82,7 @@ function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) p
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
 function reciprocalMulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure returns (uint256) {
+    if (d.raw() == 0) return 0;
     return MathLib.mulDiv(value, 1e18, d.inner(), rounding);
 }
 
