@@ -28,7 +28,7 @@ contract JsonRegistry is Script {
         // Save with timestamp for history
         string memory timestampedPath = string(
             abi.encodePacked(
-                "./deployments/latest/", vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"
+                "./script/deploy/latest/", vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"
             )
         );
         deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
