@@ -2,10 +2,13 @@
 
 # Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR" || exit
+# cd "$SCRIPT_DIR" || exit
 
 # Get the root directory (one level up)
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Source the helper scripts
+source "$SCRIPT_DIR/formathelper.sh"
 
 # Usage: ./deploy.sh <network> <step> [forge_args...]
 # Example: ./deploy.sh sepolia deploy:full
@@ -28,6 +31,8 @@ if [[ -z "$1" || -z "$2" ]]; then
     exit 1
 fi
 
+# Set arguments
+CI_MODE=${CI_MODE:-false}
 NETWORK=$1
 STEP=$2
 shift 2 # Remove the first two arguments, leaving any additional forge args
@@ -45,34 +50,12 @@ case "$STEP" in
     ;;
 esac
 
-# Check if network config exists
-NETWORK_CONFIG="$ROOT_DIR/env/$NETWORK.json"
-if [[ ! -f "$NETWORK_CONFIG" ]]; then
-    echo "Network config file $NETWORK_CONFIG not found"
-    exit 1
-fi
-
-# Get chain ID from network config
-CHAIN_ID=$(jq -r ".network.chainId" "$NETWORK_CONFIG")
-if [[ "$CHAIN_ID" == "null" ]]; then
-    echo "Chain ID not found in $NETWORK_CONFIG"
-    exit 1
-fi
-
 # Function to run a forge script
 run_forge_script() {
     local script=$1
-    echo "================================================"
-    echo "Running $script..."
-    echo "Network: $NETWORK"
-    echo "Chain ID: $CHAIN_ID"
-    echo "================================================"
-
-    set -a
-    export NETWORK="$NETWORK"
-    export CHAIN_ID="$CHAIN_ID"
-    source "$ROOT_DIR/.env.$NETWORK"
-    set +a
+    print_step "Script: $script"
+    print_info "Network: $NETWORK"
+    print_info "Chain ID: $CHAIN_ID"
 
     # Construct the forge command
     FORGE_CMD="cd \"$ROOT_DIR\" && forge script \
@@ -86,21 +69,15 @@ run_forge_script() {
         --etherscan-api-key \"$ETHERSCAN_API_KEY\" \
         ${FORGE_ARGS[*]}"
 
-    # Show the command that will be executed
-    echo "Executing:"
-    echo "$FORGE_CMD"
-    echo "================================================"
+    print_step "Executing Forge Command"
 
     # Execute the command
     if ! eval "$FORGE_CMD"; then
-        echo "Failed to run $script"
+        print_error "Failed to run $script"
+        print_info "Command: $FORGE_CMD"
         exit 1
     fi
-
-    echo "================================================"
-    echo "$script completed successfully!"
-    echo "================================================"
-    echo
+    print_section "Deployment Complete"
 }
 
 # Function to update network config with deployment output
@@ -109,7 +86,7 @@ update_network_config() {
     local network_config="$ROOT_DIR/env/$NETWORK.json"
 
     if [[ ! -f "$latest_deployment" ]]; then
-        echo "Deployment output file not found at $latest_deployment"
+        print_error "Deployment output file not found at $latest_deployment"
         return 1
     fi
 
@@ -122,7 +99,7 @@ update_network_config() {
         .[1].contracts as $new_contracts |
         $config | .contracts = ($config.contracts + $new_contracts)
     ' "$network_config" "$latest_deployment" >"${network_config}.tmp"; then
-        echo "Failed to update network config"
+        print_error "Failed to update network config"
         mv "${network_config}.bak" "$network_config"
         return 1
     fi
@@ -131,19 +108,26 @@ update_network_config() {
     mv "${network_config}.tmp" "$network_config"
     rm "${network_config}.bak"
 
-    echo "Deployed contracts added to $network_config (.contracts section)"
+    print_success "Deployed contracts added to $network_config (.contracts section)"
     return 0
 }
 
+# Load environment variables
+if ! source "$SCRIPT_DIR/load_vars.sh" "$NETWORK"; then
+    print_error "Failed to load environment variables"
+    exit 1
+fi
+
 # Run the requested step
+print_section "Running Deployment"
 case "$STEP" in
 "deploy:full")
-    echo "Starting full deployment for $NETWORK"
+    print_step "Starting full deployment for $NETWORK"
     run_forge_script "FullDeployer"
 
     # Update network config after hub/spoke deployment
     if ! update_network_config; then
-        echo "Failed to update network config after hub/spoke deployment"
+        print_error "Failed to update network config after hub/spoke deployment"
         exit 1
     fi
 
@@ -151,26 +135,21 @@ case "$STEP" in
 
     ;;
 "deploy:adapters")
-    echo "Deploying adapters for $NETWORK"
+    print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
 
     # Update network config with adapter addresses
     if ! update_network_config; then
-        echo "Failed to update network config with adapter addresses"
+        print_error "Failed to update network config with adapter addresses"
         exit 1
     fi
     ;;
 "wire:adapters")
-    echo "Wiring adapters for $NETWORK"
+    print_step "Wiring adapters for $NETWORK"
     run_forge_script "WireAdapters"
-
     ;;
 "test")
-    echo "Deploying test data for $NETWORK"
+    print_step "Deploying test data for $NETWORK"
     run_forge_script "TestData"
     ;;
 esac
-
-echo "================================================"
-echo "Deployment completed successfully!"
-echo "================================================"
