@@ -43,7 +43,8 @@ interface IBalanceSheet {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(
+    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
+    event NoteDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address asset,
@@ -53,6 +54,22 @@ interface IBalanceSheet {
     );
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event TransferSharesFrom(
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed from, address to, uint256 amount
+    );
+    event SubmitQueuedShares(
+        PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance, bool isSnapshot, uint64 nonce
+    );
+    event SubmitQueuedAssets(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed assetId,
+        uint128 deposits,
+        uint128 withdrawals,
+        D18 pricePoolPerAsset,
+        bool isSnapshot,
+        uint64 nonce
+    );
 
     // --- Errors ---
     error FileUnrecognizedParam();
