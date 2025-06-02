@@ -153,7 +153,7 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
 
     /// @notice Test transferring shares between Chain B and Chain C via Hub A
     /// forge-config: default.isolate = true
-    function testTransferSharesBetweenChains() public {
+    function testTransferSharesWithHop() public {
         uint128 amount = 1000 * 1e18;
 
         testConfigurePoolWithThreeChains();
@@ -203,6 +203,7 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
         emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterC);
         vm.expectEmit();
         emit IERC20.Transfer(address(0), INVESTOR_A, amount);
+        emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
         h.gateway.repay{value: DEFAULT_SUBSIDY}(sC.centrifugeId, message);
 
         // C: Verify shares were minted
