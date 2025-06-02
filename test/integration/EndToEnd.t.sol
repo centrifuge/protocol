@@ -19,6 +19,7 @@ import {Guardian} from "src/common/Guardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {Hub} from "src/hub/Hub.sol";
@@ -31,10 +32,11 @@ import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
@@ -115,6 +117,7 @@ contract EndToEndDeployment is Test {
     address immutable BSM = makeAddr("BSM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
+    address immutable REFUND = makeAddr("REFUND");
 
     uint128 constant INVESTOR_A_USDC_AMOUNT = 1_000_000e6; // Measured in USDC: 1M of USDC
 
