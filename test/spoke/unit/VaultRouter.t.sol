@@ -20,6 +20,8 @@ import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+
 interface Authlike {
     function rely(address) external;
 }
@@ -47,9 +49,10 @@ contract NonAsyncVault {
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
     using MessageLib for *;
+    using MathLib for uint256;
 
     uint16 constant CHAIN_ID = 1;
-    uint256 constant GAS_BUFFER = 10 gwei;
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     function testInitialization() public {
