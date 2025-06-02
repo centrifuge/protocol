@@ -840,7 +840,7 @@ contract SpokeRegisterAssetTest is BaseTest {
 
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -889,7 +889,8 @@ contract SpokeRegisterAssetTest is BaseTest {
             tokenId,
             erc6909.name(tokenId),
             erc6909.symbol(tokenId),
-            erc6909.decimals(tokenId)
+            erc6909.decimals(tokenId),
+            true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -919,7 +920,7 @@ contract SpokeRegisterAssetTest is BaseTest {
     function testRegisterAssetTwice() public {
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
