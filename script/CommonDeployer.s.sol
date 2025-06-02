@@ -38,32 +38,12 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
 
-    // Config state
-    string public config;
-    string public network;
-    uint16 public centrifugeId;
-    bool public isTestnet;
+
 
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
-
-        try vm.envString("NETWORK") {
-            _fetchConfig();
-        } catch {
-            console.log("NETWORK environment variable is not set, this must be a mocked test");
-        }
-    }
-
-    function _fetchConfig() private {
-        network = vm.envString("NETWORK");
-        string memory configFile = string.concat("env/", network, ".json");
-        config = vm.readFile(configFile);
-
-        centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-        string memory environment = vm.parseJsonString(config, "$.network.environment");
-        isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
     }
 
     function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {

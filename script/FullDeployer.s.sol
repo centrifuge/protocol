@@ -15,6 +15,14 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
 
     function run() public {
         vm.startBroadcast();
+        try vm.envString("NETWORK") {
+            network = vm.envString("NETWORK");
+            string memory configFile = string.concat("env/", network, ".json");
+            config = vm.readFile(configFile);
+            centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        } catch {
+            console.log("NETWORK environment variable is not set, this must be a mocked test");
+        }
         deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
         // Since `wire()` is not called, separately adding the safe here
         guardian.file("safe", address(adminSafe));
@@ -23,6 +31,15 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
     }
 
     function removeFullDeployerAccess(address deployer) public {
+        try vm.envString("NETWORK") {
+            network = vm.envString("NETWORK");
+            string memory configFile = string.concat("env/", network, ".json");
+            config = vm.readFile(configFile);
+            string memory environment = vm.parseJsonString(config, "$.network.environment");
+            isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
+        } catch {
+            console.log("NETWORK environment variable is not set, this must be a mocked test");
+        }        
         if (!isTestnet) {
             removeHubDeployerAccess(deployer);
             removeSpokeDeployerAccess(deployer);
