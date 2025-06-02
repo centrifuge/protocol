@@ -142,6 +142,8 @@ contract EndToEndDeployment is Test {
 
     D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable TEN_PERCENT = d18(1, 10);
+    D18 immutable MAX_PRICE = d18(1e30);
+    D18 immutable MIN_PRICE = d18(1e10);
 
     uint8 constant USDC_DECIMALS = 6;
     uint8 constant POOL_DECIMALS = 18;
@@ -264,10 +266,10 @@ contract EndToEndUseCases is EndToEndUtils {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain, D18 assetPrice, D18 sharePrice) public {
-        vm.assume(assetPrice.raw() <= d18(1e20).raw());
-        vm.assume(sharePrice.raw() <= d18(1e20).raw());
-        vm.assume(assetPrice.raw() >= d18(1e14).raw());
-        vm.assume(sharePrice.raw() >= d18(1e14).raw());
+        vm.assume(assetPrice.raw() <= MAX_PRICE.raw());
+        vm.assume(sharePrice.raw() <= MAX_PRICE.raw());
+        vm.assume(assetPrice.raw() >= MIN_PRICE.raw());
+        vm.assume(sharePrice.raw() >= MIN_PRICE.raw());
 
         testConfigureAsset(sameChain, assetPrice);
 
