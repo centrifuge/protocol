@@ -142,7 +142,7 @@ contract EndToEndDeployment is Test {
 
     D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable TEN_PERCENT = d18(1, 10);
-    D18 immutable MAX_PRICE = d18(1e30);
+    D18 immutable MAX_PRICE = d18(1e24);
     D18 immutable MIN_PRICE = d18(1e10);
 
     uint8 constant USDC_DECIMALS = 6;
@@ -152,12 +152,13 @@ contract EndToEndDeployment is Test {
     function setUp() public {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
 
-        // This call reduce the likehood of a concurrency issue with the env OS where the deployer reads the var before
-        // it's set in the OS.
-        for (uint256 i = 0; i < 100000; i++) {}
+        // Active waiting to ensure the env value is set in the OS
+        console.log(vm.envUint(MESSAGE_COST_ENV));
 
         LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
+
+        console.log(deployB.gasService().gasLimit(0, ""));
 
         // We connect both deploys through the adapters
         adapterA.setEndpoint(adapterB);
