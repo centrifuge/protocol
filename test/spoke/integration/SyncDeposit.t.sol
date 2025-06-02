@@ -60,7 +60,7 @@ contract SyncDepositTestHelper is BaseTest {
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             poolId, scId, vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
         );
     }
