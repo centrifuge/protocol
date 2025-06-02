@@ -1,0 +1,4 @@
+# .sops.yaml
+creation_rules:
+  - path_regex: script/deploy/secrets/.*\.(yaml|env)
+    gcp_kms: "projects/centrifuge-production-x/locations/global/keyRings/protocol-team/cryptoKeys/sops-git-key"

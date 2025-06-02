@@ -4,7 +4,7 @@ broadcast/
 .env.*
 .idea/
 .DS_Store
-.env.*
+.env
 lcov.info
 .vscode
 **/latest
