@@ -145,7 +145,7 @@ contract BalanceSheetTest is BaseTest {
         erc20.approve(address(balanceSheet), defaultAmount);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
@@ -162,7 +162,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
         balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
@@ -473,7 +473,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.overridePricePoolPerShare(POOL_A, defaultTypedShareClassId, pricePerShare);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, pricePerAsset
         );
         balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
@@ -496,7 +496,7 @@ contract BalanceSheetTest is BaseTest {
         balanceSheet.resetPricePoolPerShare(POOL_A, defaultTypedShareClassId);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount, defaultPricePoolPerAsset
         );
         balanceSheet.noteDeposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);

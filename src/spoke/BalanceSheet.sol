@@ -90,7 +90,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         } else {
             IERC6909(asset).transferFrom(msg.sender, escrow_, tokenId, amount);
         }
-        emit Deposit(poolId, scId, asset, tokenId, amount, pricePoolPerAsset_);
+        emit Deposit(poolId, scId, asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
