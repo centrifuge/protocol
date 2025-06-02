@@ -2,25 +2,20 @@
   "network": {
     "chainId": 11155111,
     "environment": "testnet",
-    "centrifugeId": 1
+    "centrifugeId": 1,
+    "connectsTo": [
+      "base-sepolia"
+    ]
   },
   "adapters": {
     "wormhole": {
-      "deploy": true,
-      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
-      "chain-id": 10002,
-      "connectsTo": [
-        "base-sepolia"
-      ]
+      "wormholeId": 10002,
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470"
     },
     "axelar": {
-      "deploy": false,
-      "chain-id": "axelar-testnet-lisbon-3",
+      "axelarId": "ethereum-sepolia",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
-      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-      "connectsTo": [
-        "base-sepolia"
-      ]
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6"
     }
   },
   "contracts": {
@@ -52,6 +47,7 @@
     "spoke": "0x0f914c4213d77fFFC7C588bAf1aF431826bAF760",
     "vaultRouter": "0xF04b50aE4484452f4b876Ea3559bcDC45af5d17B",
     "balanceSheet": "0xCA948470AB7f310499333a9797385F08E5BDbDb0",
-    "wormholeAdapter": "0xCa6A3448f1B9F357fcCFf689819f8fb8e5E1BCd7"
+    "wormholeAdapter": "0xD6EF6945cd99738E63B21f336d7A8437121C76B8",
+    "axelarAdapter": "0x6B794f0542F991C1073B289f7E5F9D821786CC7C"
   }
 }
