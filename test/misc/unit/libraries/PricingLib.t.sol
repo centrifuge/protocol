@@ -33,7 +33,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         uint128 baseAmount = 4e10;
         D18 priceQuotePerBase = d18(2e10);
 
-        uint256 expected = priceQuotePerBase.inner() * baseAmount * 10 ** (quoteDecimals - baseDecimals) / 1e18;
+        uint256 expected = priceQuotePerBase.raw() * baseAmount * 10 ** (quoteDecimals - baseDecimals) / 1e18;
 
         assertEq(expected, 8e18);
         assertEq(
@@ -73,10 +73,10 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
 
         uint256 underestimate = price.mulUint256(scaledBase, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, price.inner(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Down
+            baseAmount * 10 ** quoteDecimals, price.raw(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, price.inner(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Up
+            baseAmount * 10 ** quoteDecimals, price.raw(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Up
         );
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
 
@@ -137,7 +137,7 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         uint128 baseAmount = 8e10;
         D18 priceBasePerQuote = d18(2e10);
 
-        uint256 expected = baseAmount * 10 ** quoteDecimals * 1e18 / (10 ** baseDecimals * priceBasePerQuote.inner());
+        uint256 expected = baseAmount * 10 ** quoteDecimals * 1e18 / (10 ** baseDecimals * priceBasePerQuote.raw());
 
         assertEq(expected, 4e34);
         assertEq(
@@ -177,10 +177,10 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
 
         uint256 underestimate = price.reciprocalMulUint256(scaledBase, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.inner(), MathLib.Rounding.Down
+            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.inner(), MathLib.Rounding.Up
+            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Up
         );
         uint256 result =
             PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
@@ -257,7 +257,7 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         D18 priceDenominator = d18(8e10);
 
         uint256 expected =
-            priceNumerator.inner() * baseAmount * 10 ** quoteDecimals / (10 ** baseDecimals * priceDenominator.inner());
+            priceNumerator.raw() * baseAmount * 10 ** quoteDecimals / (10 ** baseDecimals * priceDenominator.raw());
 
         assertEq(expected, 1e26);
         assertEq(
@@ -278,7 +278,7 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         D18 priceDenominator = d18(uint128(bound(priceDenominatorRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
 
         uint256 expected =
-            MathLib.mulDiv(priceNumerator.inner(), baseAmount, priceDenominator.inner(), MathLib.Rounding.Down);
+            MathLib.mulDiv(priceNumerator.raw(), baseAmount, priceDenominator.raw(), MathLib.Rounding.Down);
         uint256 result =
             PricingLib.convertWithPrices(baseAmount, 18, 18, priceNumerator, priceDenominator, MathLib.Rounding.Down);
         assertEq(result, expected);
@@ -305,17 +305,17 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         }
 
         uint256 underestimate =
-            MathLib.mulDiv(priceNumerator.inner(), scaledBase, priceDenominator.inner(), MathLib.Rounding.Down);
+            MathLib.mulDiv(priceNumerator.raw(), scaledBase, priceDenominator.raw(), MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
-            priceNumerator.inner(),
+            priceNumerator.raw(),
             baseAmount * 10 ** quoteDecimals,
-            10 ** baseDecimals * priceDenominator.inner(),
+            10 ** baseDecimals * priceDenominator.raw(),
             MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
-            priceNumerator.inner(),
+            priceNumerator.raw(),
             baseAmount * 10 ** quoteDecimals,
-            10 ** baseDecimals * priceDenominator.inner(),
+            10 ** baseDecimals * priceDenominator.raw(),
             MathLib.Rounding.Up
         );
         uint256 result = PricingLib.convertWithPrices(
@@ -414,14 +414,14 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
         );
         uint256 expectedDown = MathLib.mulDiv(
             assetAmount * 10 ** SHARE_DECIMALS,
-            pricePoolPerAsset.inner(),
-            10 ** assetDecimals * pricePoolPerShare.inner(),
+            pricePoolPerAsset.raw(),
+            10 ** assetDecimals * pricePoolPerShare.raw(),
             MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
             assetAmount * 10 ** SHARE_DECIMALS,
-            pricePoolPerAsset.inner(),
-            10 ** assetDecimals * pricePoolPerShare.inner(),
+            pricePoolPerAsset.raw(),
+            10 ** assetDecimals * pricePoolPerShare.raw(),
             MathLib.Rounding.Up
         );
 
@@ -500,14 +500,14 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         );
         uint256 expectedDown = MathLib.mulDiv(
             shareAmount * 10 ** assetDecimals,
-            pricePoolPerShare.inner(),
-            10 ** SHARE_DECIMALS * pricePoolPerAsset.inner(),
+            pricePoolPerShare.raw(),
+            10 ** SHARE_DECIMALS * pricePoolPerAsset.raw(),
             MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
             shareAmount * 10 ** assetDecimals,
-            pricePoolPerShare.inner(),
-            10 ** SHARE_DECIMALS * pricePoolPerAsset.inner(),
+            pricePoolPerShare.raw(),
+            10 ** SHARE_DECIMALS * pricePoolPerAsset.raw(),
             MathLib.Rounding.Up
         );
 
@@ -557,10 +557,10 @@ contract PoolToAssetAmountTest is PricingLibBaseTest {
             MathLib.Rounding.Down
         );
         uint256 expectedDown = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.inner(), MathLib.Rounding.Down
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down
         );
         uint256 expectedUp = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.inner(), MathLib.Rounding.Up
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up
         );
 
         uint256 result = PricingLib.poolToAssetAmount(
