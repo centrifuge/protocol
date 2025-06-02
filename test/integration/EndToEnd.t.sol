@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
@@ -19,6 +20,7 @@ import {Guardian} from "src/common/Guardian.sol";
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {Hub} from "src/hub/Hub.sol";
@@ -46,6 +48,7 @@ import {FullDeployer, HubDeployer, SpokeDeployer} from "script/FullDeployer.s.so
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+import {MockValuation} from "test/misc/mocks/MockValuation.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -64,7 +67,9 @@ import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
 ///
 /// By using these structs we avoid both "issues".
 contract EndToEndDeployment is Test {
+    using MathLib for *;
     using CastLib for *;
+    using PricingLib for *;
 
     struct CHub {
         uint16 centrifugeId;
@@ -78,7 +83,8 @@ contract EndToEndDeployment is Test {
         Holdings holdings;
         ShareClassManager shareClassManager;
         Hub hub;
-        IdentityValuation identityValuation;
+        // Others
+        MockValuation valuation;
     }
 
     struct CSpoke {
@@ -137,8 +143,16 @@ contract EndToEndDeployment is Test {
     D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable TEN_PERCENT = d18(1, 10);
 
+    uint8 constant USDC_DECIMALS = 6;
+    uint8 constant POOL_DECIMALS = 18;
+    uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
+
     function setUp() public {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
+
+        // This call reduce the likehood of a concurrency issue with the env OS where the deployer reads the var before
+        // it's set in the OS. This comment generate a OS interruption given more chances to the OS to set the envvar.
+        console.log("Init test");
 
         LocalAdapter adapterA = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         LocalAdapter adapterB = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
@@ -166,7 +180,7 @@ contract EndToEndDeployment is Test {
             holdings: deployA.holdings(),
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
-            identityValuation: deployA.identityValuation()
+            valuation: new MockValuation(deployA.hubRegistry())
         });
 
         // Initialize default values
@@ -206,7 +220,7 @@ contract EndToEndDeployment is Test {
             syncDepositVaultFactory: address(deploy.syncDepositVaultFactory()).toBytes32(),
             asyncRequestManager: deploy.asyncRequestManager(),
             syncRequestManager: deploy.syncRequestManager(),
-            usdc: new ERC20(6)
+            usdc: new ERC20(USDC_DECIMALS)
         });
 
         // Initialize default values
@@ -231,21 +245,33 @@ contract EndToEndUtils is EndToEndDeployment {
 }
 
 contract EndToEndUseCases is EndToEndUtils {
+    using MathLib for *;
     using CastLib for *;
 
     /// forge-config: default.isolate = true
-    function testConfigureAsset(bool sameChain) public {
+    function testConfigureAsset(bool sameChain, D18 assetPrice) public {
+        vm.assume(assetPrice.raw() != 0);
+
         _setSpoke(sameChain);
 
         s.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
+
+        vm.startPrank(ANY);
         s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s.usdc), 0);
+
+        h.valuation.setPrice(USDC_ID, USD_ID, assetPrice);
 
         assertEq(h.hubRegistry.decimals(USDC_ID), 6, "expected decimals");
     }
 
     /// forge-config: default.isolate = true
-    function testConfigurePool(bool sameChain) public {
-        testConfigureAsset(sameChain);
+    function testConfigurePool(bool sameChain, D18 assetPrice, D18 sharePrice) public {
+        vm.assume(assetPrice.raw() <= d18(1e20).raw());
+        vm.assume(sharePrice.raw() <= d18(1e20).raw());
+        vm.assume(assetPrice.raw() >= d18(1e14).raw());
+        vm.assume(sharePrice.raw() >= d18(1e14).raw());
+
+        testConfigureAsset(sameChain, assetPrice);
 
         vm.startPrank(address(h.guardian.safe()));
         h.guardian.createPool(POOL_A, FM, USD_ID);
@@ -261,11 +287,11 @@ contract EndToEndUseCases is EndToEndUtils {
         h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
         h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
         h.hub.initializeHolding(
-            POOL_A, SC_1, USDC_ID, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            POOL_A, SC_1, USDC_ID, h.valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
-        h.hub.updateSharePrice(POOL_A, SC_1, IDENTITY_PRICE);
+        h.hub.updateSharePrice(POOL_A, SC_1, sharePrice);
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, USDC_ID);
 
@@ -274,8 +300,13 @@ contract EndToEndUseCases is EndToEndUtils {
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncDeposit(bool sameChain) public {
-        testConfigurePool(sameChain);
+    function testAsyncDepositWithIdentityPrices(bool sameChain) public {
+        testAsyncDeposit(sameChain, IDENTITY_PRICE, IDENTITY_PRICE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAsyncDeposit(bool sameChain, D18 assetPrice, D18 sharePrice) public {
+        testConfigurePool(sameChain, assetPrice, sharePrice);
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
@@ -292,7 +323,7 @@ contract EndToEndUseCases is EndToEndUtils {
 
         vm.startPrank(FM);
         uint32 issueEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, USDC_ID);
-        h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC_ID, issueEpochId, IDENTITY_PRICE);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, USDC_ID, issueEpochId, sharePrice);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), USDC_ID);
@@ -302,7 +333,11 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.mint(s.asyncRequestManager.maxMint(vault, INVESTOR_A), INVESTOR_A);
 
         // CHECKS
-        uint128 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
+
+        uint128 expectedShares = PricingLib.assetToShareAmount(
+            INVESTOR_A_USDC_AMOUNT, USDC_DECIMALS, SHARE_DECIMALS, assetPrice, sharePrice, MathLib.Rounding.Down
+        ).toUint128();
+
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks
@@ -310,8 +345,13 @@ contract EndToEndUseCases is EndToEndUtils {
     }
 
     /// forge-config: default.isolate = true
-    function testSyncDeposit(bool sameChain) public {
-        testConfigurePool(sameChain);
+    function testSyncDepositWithIdentityPrices(bool sameChain) public {
+        testSyncDeposit(sameChain, IDENTITY_PRICE, IDENTITY_PRICE);
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncDeposit(bool sameChain, D18 assetPrice, D18 sharePrice) public {
+        testConfigurePool(sameChain, assetPrice, sharePrice);
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink);
@@ -323,7 +363,11 @@ contract EndToEndUseCases is EndToEndUtils {
         vault.deposit(INVESTOR_A_USDC_AMOUNT, INVESTOR_A);
 
         // CHECKS
-        uint128 expectedShares = h.identityValuation.getQuote(INVESTOR_A_USDC_AMOUNT, USDC_ID, USD_ID);
+
+        uint128 expectedShares = PricingLib.assetToShareAmount(
+            INVESTOR_A_USDC_AMOUNT, USDC_DECIMALS, SHARE_DECIMALS, assetPrice, sharePrice, MathLib.Rounding.Down
+        ).toUint128();
+
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares);
 
         // TODO: Add more checks
@@ -331,31 +375,16 @@ contract EndToEndUseCases is EndToEndUtils {
     }
 
     /// forge-config: default.isolate = true
-    function testFundManagement(bool sameChain) public {
-        testAsyncDeposit(sameChain);
-
-        vm.startPrank(BSM);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, INVESTOR_A_USDC_AMOUNT);
-
-        uint128 increment = TEN_PERCENT.mulUint128(INVESTOR_A_USDC_AMOUNT, MathLib.Rounding.Down);
-
-        vm.startPrank(DEPLOYER);
-        s.usdc.mint(BSM, increment);
-
-        vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), INVESTOR_A_USDC_AMOUNT + increment);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, INVESTOR_A_USDC_AMOUNT + increment);
-
-        // CHECKS
-        // TODO: Check holdings in the Hub
+    function testAsyncRedeemWithIdentityPrices(bool sameChain, bool afterAsyncDeposit) public {
+        testAsyncRedeem(sameChain, afterAsyncDeposit, IDENTITY_PRICE, IDENTITY_PRICE);
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeem(bool sameChain, bool afterAsyncDeposit) public {
+    function testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, D18 assetPrice, D18 sharePrice) public {
         if (afterAsyncDeposit) {
-            testAsyncDeposit(sameChain);
+            testAsyncDeposit(sameChain, assetPrice, sharePrice);
         } else {
-            testSyncDeposit(sameChain);
+            testSyncDeposit(sameChain, assetPrice, sharePrice);
         }
 
         vm.startPrank(FM);
@@ -374,19 +403,44 @@ contract EndToEndUseCases is EndToEndUtils {
 
         vm.startPrank(FM);
         uint32 revokeEpochId = h.shareClassManager.nowRevokeEpoch(SC_1, USDC_ID);
-        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, USDC_ID, revokeEpochId, IDENTITY_PRICE);
+        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, USDC_ID, revokeEpochId, sharePrice);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxRedeemClaims(SC_1, INVESTOR_A.toBytes32(), USDC_ID);
         h.hub.notifyRedeem{value: GAS}(POOL_A, SC_1, USDC_ID, INVESTOR_A.toBytes32(), maxClaims);
 
         vm.startPrank(INVESTOR_A);
-        vault.withdraw(INVESTOR_A_USDC_AMOUNT, INVESTOR_A, INVESTOR_A);
+        vault.withdraw(s.asyncRequestManager.maxWithdraw(vault, INVESTOR_A), INVESTOR_A, INVESTOR_A);
 
         // CHECKS
-        assertEq(s.usdc.balanceOf(INVESTOR_A), INVESTOR_A_USDC_AMOUNT);
+
+        uint128 expectedAssets = PricingLib.shareToAssetAmount(
+            shares, SHARE_DECIMALS, USDC_DECIMALS, assetPrice, sharePrice, MathLib.Rounding.Down
+        ).toUint128();
+
+        assertEq(s.usdc.balanceOf(INVESTOR_A), expectedAssets);
 
         // TODO: Add more checks
         // TODO: Check accounting
+    }
+
+    /// forge-config: default.isolate = true
+    function testFundManagement(bool sameChain, D18 assetPrice, D18 sharePrice) public {
+        testAsyncDeposit(sameChain, assetPrice, sharePrice);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, INVESTOR_A_USDC_AMOUNT);
+
+        uint128 increment = TEN_PERCENT.mulUint128(INVESTOR_A_USDC_AMOUNT, MathLib.Rounding.Down);
+
+        vm.startPrank(DEPLOYER);
+        s.usdc.mint(BSM, increment);
+
+        vm.startPrank(BSM);
+        s.usdc.approve(address(s.balanceSheet), INVESTOR_A_USDC_AMOUNT + increment);
+        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, INVESTOR_A_USDC_AMOUNT + increment);
+
+        // CHECKS
+        // TODO: Check holdings in the Hub
     }
 }
