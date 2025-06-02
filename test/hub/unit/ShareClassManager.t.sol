@@ -264,7 +264,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     function testDefaultGetShareClassNavPerShare() public view {
         (uint128 totalIssuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(totalIssuance, 0);
-        assertEq(navPerShare.inner(), 0);
+        assertEq(navPerShare.raw(), 0);
     }
 
     function testExistence() public view {
@@ -334,7 +334,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, amount);
-        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
     }
 
     function testDecreaseShareClassIssuance(uint128 amount) public {
@@ -345,7 +345,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
-        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
     }
 
     function testMaxDepositClaims() public {
@@ -1544,7 +1544,7 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
         uint128 redeemApprovedShares
     ) public {
         D18 navPerShareDeposit = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
-        D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.inner())));
+        D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.raw())));
         uint128 shares = navPerShareDeposit.reciprocalMulUint128(
             _intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC), MathLib.Rounding.Down
         );
@@ -1599,7 +1599,7 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
         shareClass.revokeShares(poolId, scId, USDC, epochId - 1, navPerShareRedeem);
         shares -= redeemApprovedShares;
         (, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), 0, "Metrics nav should only be set in updateShareClass");
+        assertEq(navPerShare.raw(), 0, "Metrics nav should only be set in updateShareClass");
 
         // Step 2f: Claim deposit and redeem
         epochId += 1;
