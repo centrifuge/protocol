@@ -22,7 +22,7 @@ if [[ -z "$1" || -z "$2" ]]; then
     echo "  deploy:full      - Deploy everything (hub, spoke, adapters)"
     echo "  deploy:adapters  - Deploy only adapters"
     echo "  wire:adapters    - Wire adapters to hub/spoke"
-    echo "  test             - Deploy test data"
+    echo "  deploy:test             - Deploy test data"
     echo
     echo "Examples:"
     echo "  ./deploy.sh sepolia deploy:full"
@@ -148,7 +148,7 @@ case "$STEP" in
     print_step "Wiring adapters for $NETWORK"
     run_forge_script "WireAdapters"
     ;;
-"test")
+"deploy:test")
     print_step "Deploying test data for $NETWORK"
     run_forge_script "TestData"
     ;;
