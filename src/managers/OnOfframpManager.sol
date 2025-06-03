@@ -31,7 +31,8 @@ contract OnOfframpManager is IOnOfframpManager {
     IBalanceSheet public immutable balanceSheet;
 
     mapping(address asset => bool) public onramp;
-    mapping(address asset => mapping(address relayer => address receiver)) public offramp;
+    mapping(address relayer => bool) public relayer;
+    mapping(address asset => address receiver) public offramp;
 
     constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
@@ -88,7 +89,8 @@ contract OnOfframpManager is IOnOfframpManager {
 
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
-        require(receiver != address(0) && receiver == offramp[asset][msg.sender], InvalidOfframpDestination());
+        require(relayer[msg.sender], NotAuthorized());
+        require(receiver != address(0) && receiver == offramp[asset], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }
