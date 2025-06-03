@@ -118,7 +118,6 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
         vm.expectEmit(true, false, false, false);
         emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
         vm.expectEmit();
-        emit IERC20.Transfer(address(0), INVESTOR_A, amount);
         emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
         h.gateway.repay{value: DEFAULT_SUBSIDY}(sC.centrifugeId, message);
 
