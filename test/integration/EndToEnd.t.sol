@@ -267,31 +267,29 @@ contract EndToEndUtils is EndToEndDeployment {
         vm.stopPrank();
     }
 
-    function _configurePool(CSpoke memory spoke) internal {
-        _configureAsset(spoke);
+    function _configurePool(CSpoke memory s_) internal {
+        _configureAsset(s_);
 
         if (!h.hubRegistry.exists(POOL_A)) {
             _createPool();
         }
 
         vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, spoke.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, spoke.centrifugeId, spoke.redemptionRestrictionsHook.toBytes32()
-        );
+        h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId);
+        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s_.centrifugeId, s_.redemptionRestrictionsHook.toBytes32());
 
         h.hub.initializeHolding(
-            POOL_A, SC_1, spoke.usdcId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            POOL_A, SC_1, s_.usdcId, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
-        h.hub.updateBalanceSheetManager{value: GAS}(spoke.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
         h.hub.updateSharePrice(POOL_A, SC_1, IDENTITY_PRICE);
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, spoke.centrifugeId);
-        h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, spoke.usdcId);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s_.centrifugeId);
+        h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, s_.usdcId);
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        spoke.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
         vm.stopPrank();
     }
 }
