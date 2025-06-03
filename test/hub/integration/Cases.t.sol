@@ -253,14 +253,14 @@ contract TestCases is BaseTest {
         assertEq(m0.poolId, poolId.raw());
         assertEq(m0.scId, scId.raw());
         assertEq(m0.assetId, EUR_STABLE_C2.raw());
-        assertEq(m0.price, poolPerEurPrice.inner(), "EUR price mismatch");
+        assertEq(m0.price, poolPerEurPrice.raw(), "EUR price mismatch");
         assertEq(m0.timestamp, block.timestamp.toUint64());
 
         MessageLib.NotifyPricePoolPerAsset memory m1 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
         assertEq(m1.poolId, poolId.raw());
         assertEq(m1.scId, scId.raw());
         assertEq(m1.assetId, USDC_C2.raw());
-        assertEq(m1.price, identityPrice.inner(), "USDC price mismatch");
+        assertEq(m1.price, identityPrice.raw(), "USDC price mismatch");
         assertEq(m1.timestamp, block.timestamp.toUint64());
 
         MessageLib.NotifyPricePoolPerShare memory m2 = MessageLib.deserializeNotifyPricePoolPerShare(cv.popMessage());
