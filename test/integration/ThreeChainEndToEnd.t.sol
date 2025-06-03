@@ -35,7 +35,6 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     function setUp() public override {
         // Call the original setUp to set up chains A and B
         super.setUp();
-        _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
 
         // Deploy the third chain (C)
         adapterCToA = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
@@ -53,6 +52,15 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
         vm.label(address(adapterAToC), "AdapterAToC");
         vm.label(address(adapterCToA), "AdapterCToA");
     }
+
+    /// @param sameChain Whether the chain A equals chain B, such that sB points to Centrifuge ID A == 5
+    function _setSpokeB(bool sameChain) internal {
+        if (sameChain) {
+            _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
+        } else {
+            _setSpoke(deployA, CENTRIFUGE_ID_A, sB);
+        }
+    }
 }
 
 /// @title  Three Chain End-to-End Use Cases
@@ -62,25 +70,30 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
     using MessageLib for *;
 
     /// @notice Configure the third chain (C) with assets
+    /// @param sameChain Whether the chain A equals chain B, such that sB points to Centrifuge ID A == 5
     /// forge-config: default.isolate = true
-    function testConfigureAssets() public {
+    function testConfigureAssets(bool sameChain) public {
+        _setSpokeB(sameChain);
+
         _configureAsset(sB);
         _configureAsset(sC);
     }
 
     /// @notice Configure a pool with support for all three chains
     /// forge-config: default.isolate = true
-    function testConfigurePool() public {
+    function testConfigurePool(bool sameChain) public {
+        _setSpokeB(sameChain);
+
         _configurePool(sB);
         _configurePool(sC);
     }
 
     /// @notice Test transferring shares between Chain B and Chain C via Hub A
     /// forge-config: default.isolate = true
-    function testCrossChainTransferShares(uint128 amount) public {
-        vm.assume(amount != 0);
+    function testCrossChainTransferShares(bool sameChain) public {
+        uint128 amount = 1e18;
 
-        testConfigurePool();
+        testConfigurePool(sameChain);
 
         // B: Mint shares
         vm.startPrank(address(sB.root));
