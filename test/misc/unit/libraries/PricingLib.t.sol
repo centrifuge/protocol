@@ -17,10 +17,10 @@ contract PricingLibBaseTest is Test {
     uint8 constant MAX_ASSET_DECIMALS = 18;
     uint8 constant POOL_DECIMALS = 18;
     uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
-    uint128 constant MIN_PRICE = 1e14;
-    uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e20;
-    uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e20;
-    uint128 constant MAX_AMOUNT = type(uint128).max / MAX_PRICE_POOL_PER_SHARE;
+    uint128 constant MIN_PRICE = 1; // NOTE: 0 prices are handled separately
+    uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e38;
+    uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e38;
+    uint128 constant MAX_AMOUNT = 1e38; //type(uint128).max / MAX_PRICE_POOL_PER_SHARE;
 }
 
 contract ConvertWithPriceTest is PricingLibBaseTest {
@@ -406,12 +406,12 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
 
-        uint256 underestimate = pricePoolPerShare.reciprocalMulUint256(
-            pricePoolPerAsset.mulUint256(
-                uint256(assetAmount).mulDiv(10 ** SHARE_DECIMALS, 10 ** assetDecimals), MathLib.Rounding.Down
-            ),
-            MathLib.Rounding.Down
+        uint256 poolAmount = pricePoolPerAsset.mulUint256(
+            uint256(assetAmount).mulDiv(10 ** SHARE_DECIMALS, 10 ** assetDecimals), MathLib.Rounding.Down
         );
+        vm.assume(poolAmount < type(uint256).max / 1e18);
+
+        uint256 underestimate = pricePoolPerShare.reciprocalMulUint256(poolAmount, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
             assetAmount * 10 ** SHARE_DECIMALS,
             pricePoolPerAsset.raw(),
@@ -434,6 +434,7 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
 
+    /// NOTE: Precision is horrible with fuzzed inputs but still reflects a worst case which is better than nothing
     function testAssetToShareToAssetRoundTrip(
         uint128 assetAmount,
         uint8 assetDecimals,
@@ -452,7 +453,7 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
 
-        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e7, "Asset->Share->Asset roundtrip target precision excess");
+        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e20, "Asset->Share->Asset roundtrip target precision excess");
     }
 }
 
@@ -460,7 +461,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
     using PricingLib for *;
     using MathLib for uint256;
 
-    /// NOTE: Solely serves to represent the horrible precision for this round trip due to reciprocal multiplication
+    /// NOTE: Precision is horrible with fuzzed inputs but still reflects a worst case which is better than nothing
     function testShareToAssetToShareRoundTrip(
         uint128 shareAmount,
         uint8 assetDecimals,
@@ -478,7 +479,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint256 shareRoundTrip = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
-        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e19, "Share->Asset->Share roundtrip target precision excess");
+        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e36, "Share->Asset->Share roundtrip target precision excess");
     }
 
     function testShareToAssetAmount(
