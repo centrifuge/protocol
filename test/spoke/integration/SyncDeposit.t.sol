@@ -37,14 +37,10 @@ contract SyncDepositTestHelper is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.raw(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId().raw(),
-            syncVault.scId().raw(),
-            assetId,
-            pricePoolPerAsset.inner(),
-            uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), assetId, pricePoolPerAsset.raw(), uint64(block.timestamp)
         );
     }
 
