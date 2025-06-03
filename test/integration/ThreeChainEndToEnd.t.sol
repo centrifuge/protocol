@@ -26,7 +26,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     ISafe immutable safeAdminC = ISafe(makeAddr("SafeAdminC"));
 
     FullDeployer deployC = new FullDeployer();
-    LocalAdapter adapterC;
+    LocalAdapter adapterCToA;
     LocalAdapter adapterAToC;
 
     CSpoke sC;
@@ -35,50 +35,23 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     function setUp() public override {
         // Call the original setUp to set up chains A and B
         super.setUp();
-        _setSpoke(false);
-        sB = s;
+        _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
 
         // Deploy the third chain (C)
-        adapterC = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
-        vm.label(address(adapterC), "AdapterC");
-
-        adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
-        vm.label(address(adapterAToC), "AdapterAToC");
+        adapterCToA = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
+        _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
 
         // Connect Chain A to Chain C (spoke 2)
-        vm.startPrank(address(sB.root));
+        adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
+        vm.startPrank(address(h.guardian.safe()));
         deployA.wire(CENTRIFUGE_ID_C, adapterAToC, address(adapterAToC));
         vm.stopPrank();
 
-        adapterC.setEndpoint(adapterAToC);
-        adapterAToC.setEndpoint(adapterC);
+        adapterCToA.setEndpoint(adapterAToC);
+        adapterAToC.setEndpoint(adapterCToA);
 
-        _setThirdSpoke();
-    }
-
-    function _setThirdSpoke() internal {
-        if (sC.centrifugeId != 0) return; // Already set
-
-        sC = CSpoke({
-            centrifugeId: CENTRIFUGE_ID_C,
-            root: deployC.root(),
-            guardian: deployC.guardian(),
-            gateway: deployC.gateway(),
-            balanceSheet: deployC.balanceSheet(),
-            spoke: deployC.spoke(),
-            router: deployC.vaultRouter(),
-            fullRestrictionsHook: deployC.fullRestrictionsHook(),
-            redemptionRestrictionsHook: deployC.redemptionRestrictionsHook(),
-            asyncVaultFactory: address(deployC.asyncVaultFactory()).toBytes32(),
-            syncDepositVaultFactory: address(deployC.syncDepositVaultFactory()).toBytes32(),
-            asyncRequestManager: deployC.asyncRequestManager(),
-            syncRequestManager: deployC.syncRequestManager(),
-            usdc: new ERC20(6)
-        });
-
-        // Initialize USDC on chain C
-        sC.usdc.file("name", "USD Coin");
-        sC.usdc.file("symbol", "USDC");
+        vm.label(address(adapterAToC), "AdapterAToC");
+        vm.label(address(adapterCToA), "AdapterCToA");
     }
 }
 
@@ -90,81 +63,24 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
 
     /// @notice Configure the third chain (C) with assets
     /// forge-config: default.isolate = true
-    function testConfigureThirdChainAsset() public {
-        sC.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
-        sC.spoke.registerAsset{value: GAS}(h.centrifugeId, address(sC.usdc), 0);
-
-        assertEq(h.hubRegistry.decimals(newAssetId(CENTRIFUGE_ID_C, 1)), 6, "expected decimals");
+    function testConfigureAssets() public {
+        _configureAsset(sB);
+        _configureAsset(sC);
     }
 
     /// @notice Configure a pool with support for all three chains
     /// forge-config: default.isolate = true
-    function testConfigurePoolWithThreeChains() public {
-        // Configure spokes
-        sB.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
-        sB.spoke.registerAsset{value: GAS}(h.centrifugeId, address(sB.usdc), 0);
-        sC.usdc.mint(INVESTOR_A, INVESTOR_A_USDC_AMOUNT);
-        sC.spoke.registerAsset{value: GAS}(h.centrifugeId, address(sC.usdc), 0);
-
-        // Create and configure the pool on hub (chain A)
-        vm.prank(address(h.guardian.safe()));
-        h.guardian.createPool(POOL_A, FM, USD_ID);
-
-        vm.startPrank(FM);
-        h.hub.setPoolMetadata(POOL_A, bytes("Testing pool with three chains"));
-        h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
-
-        h.hub.notifyPool{value: GAS}(POOL_A, sB.centrifugeId);
-        h.hub.notifyPool{value: GAS}(POOL_A, sC.centrifugeId);
-
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, sB.centrifugeId, sB.redemptionRestrictionsHook.toBytes32());
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, sC.centrifugeId, sC.redemptionRestrictionsHook.toBytes32());
-
-        h.hub.createAccount(POOL_A, ASSET_ACCOUNT, true);
-        h.hub.createAccount(POOL_A, EQUITY_ACCOUNT, false);
-        h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
-        h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
-
-        AssetId USDC_ID_B = newAssetId(sB.centrifugeId, 1);
-        AssetId USDC_ID_C = newAssetId(sC.centrifugeId, 1);
-
-        h.hub.initializeHolding(
-            POOL_A, SC_1, USDC_ID_B, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
-        );
-        h.hub.initializeHolding(
-            POOL_A, SC_1, USDC_ID_C, h.identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
-        );
-
-        h.hub.updateBalanceSheetManager{value: GAS}(sB.centrifugeId, POOL_A, BSM.toBytes32(), true);
-        h.hub.updateBalanceSheetManager{value: GAS}(sC.centrifugeId, POOL_A, BSM.toBytes32(), true);
-
-        h.hub.updateSharePrice(POOL_A, SC_1, IDENTITY_PRICE);
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sB.centrifugeId);
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, sC.centrifugeId);
-
-        h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, USDC_ID_B);
-        h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, USDC_ID_C);
-        vm.stopPrank();
-
-        vm.startPrank(BSM);
-        sB.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-        sC.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+    function testConfigurePool() public {
+        _configurePool(sB);
+        _configurePool(sC);
     }
 
     /// @notice Test transferring shares between Chain B and Chain C via Hub A
     /// forge-config: default.isolate = true
-    function testTransferSharesWithHop() public {
-        uint128 amount = 1000 * 1e18;
+    function testCrossChainTransferShares(uint128 amount) public {
+        vm.assume(amount != 0);
 
-        testConfigurePoolWithThreeChains();
-
-        // B + C: Deploy vaults on both chains
-        vm.startPrank(FM);
-        AssetId USDC_ID_B = newAssetId(sB.centrifugeId, 1);
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID_B, sB.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
-        AssetId USDC_ID_C = newAssetId(sC.centrifugeId, 1);
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, USDC_ID_C, sC.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
-        vm.stopPrank();
+        testConfigurePool();
 
         // B: Mint shares
         vm.startPrank(address(sB.root));
@@ -200,7 +116,7 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
             amount: amount
         }).serialize();
         vm.expectEmit(true, false, false, false);
-        emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterC);
+        emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
         vm.expectEmit();
         emit IERC20.Transfer(address(0), INVESTOR_A, amount);
         emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
