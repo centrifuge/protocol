@@ -72,9 +72,8 @@ library UpdateContractMessageLib {
 
     struct UpdateContractUpdateAddress {
         bytes32 kind;
+        uint128 assetId;
         bytes32 what;
-        bytes32 who;
-        bytes32 where;
         bool isEnabled;
     }
 
@@ -87,14 +86,13 @@ library UpdateContractMessageLib {
 
         return UpdateContractUpdateAddress({
             kind: data.toBytes32(1),
-            what: data.toBytes32(33),
-            who: data.toBytes32(65),
-            where: data.toBytes32(97),
-            isEnabled: data.toBool(129)
+            assetId: data.toUint128(33),
+            what: data.toBytes32(49),
+            isEnabled: data.toBool(81)
         });
     }
 
     function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.what, t.who, t.where, t.isEnabled);
+        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.assetId, t.what, t.isEnabled);
     }
 }

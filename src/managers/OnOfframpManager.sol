@@ -6,6 +6,7 @@ import {IERC165} from "src/misc/interfaces/IERC165.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -57,19 +58,27 @@ contract OnOfframpManager is IOnOfframpManager {
                 UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(payload);
 
             if (m.kind == "onramp") {
-                address asset = m.what.toAddress();
+                (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(m.assetId));
+                require(tokenId == 0, ERC6909NotSupported());
+
                 onramp[asset] = m.isEnabled;
 
                 if (m.isEnabled) SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
                 else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
 
                 emit UpdateOnramp(asset, m.isEnabled);
+            } else if (m.kind == "relayer") {
+                address relayer_ = m.what.toAddress();
+
+                relayer[relayer_] = m.isEnabled;
+                emit UpdateRelayer(relayer_, m.isEnabled);
             } else if (m.kind == "offramp") {
-                address asset = m.what.toAddress();
-                address relayer = m.who.toAddress();
-                address receiver = m.where.toAddress();
-                offramp[asset][relayer] = receiver;
-                emit UpdateOfframp(asset, relayer, receiver);
+                (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(m.assetId));
+                require(tokenId == 0, ERC6909NotSupported());
+                address receiver = m.what.toAddress();
+
+                offramp[asset] = receiver;
+                emit UpdateOfframp(asset, receiver);
             }
         } else {
             revert UnknownUpdateContractType();

@@ -95,8 +95,6 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest 
             UpdateContractMessageLib.UpdateContractUpdateAddress({
                 kind: bytes32("onramp"),
                 what: address(erc20).toBytes32(),
-                who: bytes32(""),
-                where: bytes32(""),
                 isEnabled: true
             }).serialize()
         );
@@ -111,8 +109,6 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest 
             UpdateContractMessageLib.UpdateContractUpdateAddress({
                 kind: bytes32("onramp"),
                 what: address(erc20).toBytes32(),
-                who: bytes32(""),
-                where: bytes32(""),
                 isEnabled: true
             }).serialize()
         );
@@ -136,8 +132,6 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
             UpdateContractMessageLib.UpdateContractUpdateAddress({
                 kind: bytes32("onramp"),
                 what: address(erc20).toBytes32(),
-                who: bytes32(""),
-                where: bytes32(""),
                 isEnabled: true
             }).serialize()
         );
@@ -156,8 +150,6 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
             UpdateContractMessageLib.UpdateContractUpdateAddress({
                 kind: bytes32("onramp"),
                 what: address(erc20).toBytes32(),
-                who: bytes32(""),
-                where: bytes32(""),
                 isEnabled: true
             }).serialize()
         );
@@ -183,8 +175,6 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerBaseTest {
             UpdateContractMessageLib.UpdateContractUpdateAddress({
                 kind: bytes32("onramp"),
                 what: address(erc20).toBytes32(),
-                who: bytes32(""),
-                where: bytes32(""),
                 isEnabled: true
             }).serialize()
         );
