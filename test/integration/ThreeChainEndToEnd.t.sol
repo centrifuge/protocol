@@ -16,11 +16,21 @@ import {IHub} from "src/hub/interfaces/IHub.sol";
 
 import "test/integration/EndToEnd.t.sol";
 
+enum CrossChainDirection {
+    WithIntermediaryHub, // C -> A -> B (Hub is on A)
+    FromHub, // C == A -> B (Hub is on C)
+    ToHub // C -> B == A (Hub is on B)
+
+}
+
 /// @title  Three Chain End-to-End Test
 /// @notice Extends the dual-chain setup to include a third chain (C) which acts as an additional spoke
 ///         Hub is on Chain A, with spokes on Chains B and C
+///         C is considered the source chain, B the destination chain
+///         Depending on the cross chain direction, the hub is either on A or B or C
 contract ThreeChainEndToEndDeployment is EndToEndUtils {
     using CastLib for *;
+    using MessageLib for *;
 
     uint16 constant CENTRIFUGE_ID_C = 7;
     ISafe immutable safeAdminC = ISafe(makeAddr("SafeAdminC"));
@@ -53,64 +63,40 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
         vm.label(address(adapterCToA), "AdapterCToA");
     }
 
-    /// @param sameChain Whether the chain B equals chain C, such that sB points to Centrifuge ID C == 7
-    function _setSpokeB(bool sameChain) internal {
-        if (sameChain) {
-            _setSpoke(deployC, CENTRIFUGE_ID_C, sB);
-        } else {
+    function _setSpokes(CrossChainDirection direction) internal {
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
+            _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
+        } else if (direction == CrossChainDirection.FromHub) {
+            _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
+            _setSpoke(deployA, CENTRIFUGE_ID_A, sC);
+        } else if (direction == CrossChainDirection.ToHub) {
+            _setSpoke(deployA, CENTRIFUGE_ID_A, sB);
+            _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
         }
     }
-}
-
-/// @title  Three Chain End-to-End Use Cases
-/// @notice Test cases for the three-chain setup
-contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
-    using CastLib for *;
-    using MessageLib for *;
 
     /// @notice Configure the third chain (C) with assets
-    /// @param sameChain Whether the chain B equals chain C, such that sB points to Centrifuge ID C == 7
-    /// forge-config: default.isolate = true
-    function testConfigureAssets(bool sameChain) public {
-        _setSpokeB(sameChain);
+    function _testConfigureAssets(CrossChainDirection direction) internal {
+        _setSpokes(direction);
 
         _configureAsset(sB);
-
-        if (!sameChain) {
-            _configureAsset(sC);
-        }
+        _configureAsset(sC);
     }
 
     /// @notice Configure a pool with support for all three chains
-    /// forge-config: default.isolate = true
-    function testConfigurePool(bool sameChain) public {
-        _setSpokeB(sameChain);
+    function _testConfigurePool(CrossChainDirection direction) internal {
+        _setSpokes(direction);
 
         _configurePool(sB);
-
-        if (!sameChain) {
-            _configurePool(sC);
-        }
+        _configurePool(sC);
     }
 
     /// @notice Test transferring shares between Chain B and Chain C via Hub A
-    /// forge-config: default.isolate = true
-    function testCrossChainTransferShares() public {
-        _testCrossChainTransferShares(false);
-    }
-
-    /// @notice Test transferring shares between Chain B and Chain C via Hub A
-    /// forge-config: default.isolate = true
-    function testCrossChainTransferSharesSameChain() public {
-        _testCrossChainTransferShares(true);
-    }
-
-    /// @notice Test transferring shares between Chain B and Chain C via Hub A
-    function _testCrossChainTransferShares(bool sameChain) internal {
+    function _testCrossChainTransferShares(CrossChainDirection direction) internal {
         uint128 amount = 1e18;
 
-        testConfigurePool(sameChain);
+        _testConfigurePool(direction);
 
         // B: Mint shares
         vm.startPrank(address(sB.root));
@@ -154,5 +140,63 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
         // C: Verify shares were minted
         assertEq(shareTokenC.balanceOf(INVESTOR_A), amount, "Shares should be minted on chain C");
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should still be burned on chain B");
+    }
+}
+
+/// @title  Three Chain End-to-End Use Cases
+/// @notice Test cases for the three-chain setup
+contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
+    /// @notice Test configuring assets: C (Spoke1) -> A (Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testConfigureAssets_WithIntermediaryHubChain() public {
+        _testConfigureAssets(CrossChainDirection.WithIntermediaryHub);
+    }
+
+    /// @notice Test configuring assets: C (Spoke1, Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testConfigureAssets_FromHubChain() public {
+        _testConfigureAssets(CrossChainDirection.FromHub);
+    }
+
+    /// @notice Test configuring assets: C (Spoke1) -> B (Spoke2, Hub)
+    /// forge-config: default.isolate = true
+    function testConfigureAssets_ToHubChain() public {
+        _testConfigureAssets(CrossChainDirection.ToHub);
+    }
+
+    /// @notice Test configuring a pool: C (Spoke1) -> A (Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testConfigurePool_WithIntermediaryHubChain() public {
+        _testConfigurePool(CrossChainDirection.WithIntermediaryHub);
+    }
+
+    /// @notice Test configuring a pool: C (Spoke1, Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testConfigurePool_FromHubChain() public {
+        _testConfigurePool(CrossChainDirection.FromHub);
+    }
+
+    /// @notice Test configuring a pool: C (Spoke1) -> B (Spoke2, Hub)
+    /// forge-config: default.isolate = true
+    function testConfigurePool_ToHubChain() public {
+        _testConfigurePool(CrossChainDirection.ToHub);
+    }
+
+    /// @notice Test transferring shares: C (Spoke1) -> A (Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testCrossChainTransferShares_WithIntermediaryHubChain() public {
+        _testCrossChainTransferShares(CrossChainDirection.WithIntermediaryHub);
+    }
+
+    /// @notice Test transferring shares: C (Spoke1, Hub) -> B (Spoke2)
+    /// forge-config: default.isolate = true
+    function testCrossChainTransferShares_FromHubChain() public {
+        _testCrossChainTransferShares(CrossChainDirection.FromHub);
+    }
+
+    /// @notice Test transferring shares: C (Spoke1) -> B (Spoke2, Hub)
+    /// forge-config: default.isolate = true
+    function testCrossChainTransferShares_ToHubChain() public {
+        _testCrossChainTransferShares(CrossChainDirection.ToHub);
     }
 }
