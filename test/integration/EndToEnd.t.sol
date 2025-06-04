@@ -140,6 +140,7 @@ contract EndToEndDeployment is Test {
     CHub h;
     CSpoke s;
 
+    D18 immutable ZERO_PRICE = d18(0);
     D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable TEN_PERCENT = d18(1, 10);
     D18 immutable MAX_PRICE = d18(1e24);
@@ -267,10 +268,8 @@ contract EndToEndUseCases is EndToEndUtils {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain, D18 assetPrice, D18 sharePrice) public {
-        vm.assume(assetPrice.raw() <= MAX_PRICE.raw());
-        vm.assume(sharePrice.raw() <= MAX_PRICE.raw());
-        vm.assume(assetPrice.raw() >= MIN_PRICE.raw());
-        vm.assume(sharePrice.raw() >= MIN_PRICE.raw());
+        vm.assume(assetPrice.raw() <= MAX_PRICE.raw() && assetPrice.raw() >= MIN_PRICE.raw() || assetPrice.raw() == 0);
+        vm.assume(sharePrice.raw() <= MAX_PRICE.raw() && sharePrice.raw() >= MIN_PRICE.raw() || sharePrice.raw() == 0);
 
         testConfigureAsset(sameChain, assetPrice);
 
@@ -298,6 +297,11 @@ contract EndToEndUseCases is EndToEndUtils {
 
         vm.startPrank(BSM);
         s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAsyncDepositWithZeroPrices(bool sameChain) public {
+        testAsyncDeposit(sameChain, ZERO_PRICE, ZERO_PRICE);
     }
 
     /// forge-config: default.isolate = true
@@ -343,6 +347,11 @@ contract EndToEndUseCases is EndToEndUtils {
 
         // TODO: Add more checks
         // TODO: Check accounting
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncDepositWithZeroPrices(bool sameChain) public {
+        testSyncDeposit(sameChain, ZERO_PRICE, ZERO_PRICE);
     }
 
     /// forge-config: default.isolate = true

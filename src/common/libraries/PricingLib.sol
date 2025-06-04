@@ -178,7 +178,7 @@ library PricingLib {
         D18 priceBasePerQuote,
         MathLib.Rounding rounding
     ) internal pure returns (uint256 quoteAmount) {
-        require(priceBasePerQuote.raw() != 0, "PricingLib/division-by-zero");
+        if (priceBasePerQuote.raw() == 0) return 0;
 
         if (baseDecimals == quoteDecimals) {
             return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding);
@@ -203,7 +203,7 @@ library PricingLib {
         D18 priceDenominator,
         MathLib.Rounding rounding
     ) internal pure returns (uint256 quoteAmount) {
-        require(priceDenominator.raw() != 0, "PricingLib/division-by-zero");
+        if (priceDenominator.raw() == 0) return 0;
 
         return MathLib.mulDiv(
             priceNumerator.raw(),
@@ -263,6 +263,7 @@ library PricingLib {
         pure
         returns (D18 priceAssetPerShare_)
     {
+        if (pricePoolPerAsset.raw() == 0) return d18(0);
         return pricePoolPerShare / pricePoolPerAsset;
     }
 

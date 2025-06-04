@@ -239,9 +239,9 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testEdgeCaseWithReciprocalPriceZeroPrice() public {
-        vm.expectRevert(bytes("PricingLib/division-by-zero"));
-        PricingLib.convertWithReciprocalPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
+    function testEdgeCaseWithReciprocalPriceZeroPrice() public pure {
+        uint256 resultNumZero = PricingLib.convertWithReciprocalPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
+        assertEq(resultNumZero, 0);
     }
 }
 
@@ -382,12 +382,12 @@ contract ConvertWithPricesEdgeCasesTest is PricingLibBaseTest {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testConvertWithPricesZeroPrices() public {
+    function testConvertWithPricesZeroPrices() public pure {
         uint256 resultNumZero = PricingLib.convertWithPrices(1e18, 18, 18, d18(0), d18(1e18), MathLib.Rounding.Down);
         assertEq(resultNumZero, 0);
 
-        vm.expectRevert(bytes("PricingLib/division-by-zero"));
-        PricingLib.convertWithPrices(1e18, 18, 18, d18(1e18), d18(0), MathLib.Rounding.Down);
+        resultNumZero = PricingLib.convertWithPrices(1e18, 18, 18, d18(1e18), d18(0), MathLib.Rounding.Down);
+        assertEq(resultNumZero, 0);
     }
 }
 
