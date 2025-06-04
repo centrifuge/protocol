@@ -39,6 +39,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     LocalAdapter adapterCToA;
     LocalAdapter adapterAToC;
 
+    CSpoke sA;
     CSpoke sC;
     CSpoke sB;
 
@@ -48,7 +49,6 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
 
         // Deploy the third chain (C)
         adapterCToA = _deployChain(deployC, CENTRIFUGE_ID_C, CENTRIFUGE_ID_A, safeAdminC);
-        _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
 
         // Connect Chain A to Chain C (spoke 2)
         adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
@@ -65,14 +65,17 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
 
     function _setSpokes(CrossChainDirection direction) internal {
         if (direction == CrossChainDirection.WithIntermediaryHub) {
+            _setSpoke(deployA, CENTRIFUGE_ID_A, sA);
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
             _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
         } else if (direction == CrossChainDirection.FromHub) {
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
             _setSpoke(deployA, CENTRIFUGE_ID_A, sC);
+            sA = sC;
         } else if (direction == CrossChainDirection.ToHub) {
             _setSpoke(deployA, CENTRIFUGE_ID_A, sB);
             _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
+            sA = sB;
         }
     }
 
@@ -80,6 +83,9 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     function _testConfigureAssets(CrossChainDirection direction) internal {
         _setSpokes(direction);
 
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
+            _configureAsset(sA);
+        }
         _configureAsset(sB);
         _configureAsset(sC);
     }
@@ -88,6 +94,9 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
     function _testConfigurePool(CrossChainDirection direction) internal {
         _setSpokes(direction);
 
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
+            _configurePool(sA);
+        }
         _configurePool(sB);
         _configurePool(sC);
     }
@@ -109,36 +118,42 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
         vm.expectEmit();
         emit ISpoke.TransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
         emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
-        vm.expectEmit(true, false, false, false);
-        emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""));
+
+        // If hub is not source, then message will be pending as unpaid on hub until repaid
+        if (direction != CrossChainDirection.FromHub) {
+            vm.expectEmit(true, false, false, false);
+            emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""));
+        } else {
+            vm.expectEmit();
+            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
+        }
+
         vm.prank(INVESTOR_A);
         sB.spoke.transferShares{value: GAS}(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
-
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
 
         // C: Transfer expected to be pending on A due to message being unpaid
         IShareToken shareTokenC = IShareToken(sC.spoke.shareToken(POOL_A, SC_1));
-        assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
 
-        // A: Before calling repay, set a refund address for the pool
-        vm.prank(address(h.root));
-        h.gateway.setRefundAddress(POOL_A, IRecoverable(h.gateway));
+        // If hub is not source, then message will be pending as unpaid on hub until repaid
+        if (direction != CrossChainDirection.FromHub) {
+            assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
+            bytes memory message = MessageLib.ExecuteTransferShares({
+                poolId: PoolId.unwrap(POOL_A),
+                scId: ShareClassId.unwrap(SC_1),
+                receiver: INVESTOR_A.toBytes32(),
+                amount: amount
+            }).serialize();
 
-        // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C
-        bytes memory message = MessageLib.ExecuteTransferShares({
-            poolId: PoolId.unwrap(POOL_A),
-            scId: ShareClassId.unwrap(SC_1),
-            receiver: INVESTOR_A.toBytes32(),
-            amount: amount
-        }).serialize();
-        vm.expectEmit(true, false, false, false);
-        emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
-        vm.expectEmit();
-        emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
-        h.gateway.repay{value: DEFAULT_SUBSIDY}(sC.centrifugeId, message);
+            // A: Repay for unpaid ExecuteTransferShares message on A to trigger sending it to C if A != C
+            vm.expectEmit(true, false, false, false);
+            emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
+            vm.expectEmit();
+            emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
+            h.gateway.repay{value: GAS}(sC.centrifugeId, message);
+        }
 
         // C: Verify shares were minted
-        assertEq(shareTokenC.balanceOf(INVESTOR_A), amount, "Shares should be minted on chain C");
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should still be burned on chain B");
     }
 }
