@@ -15,6 +15,11 @@ import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
+struct NetworkMetrics {
+    D18 netAssetValue;
+    uint128 issuance;
+}
+
 contract NAVManager is Auth, ISnapshotHook {
     error InvalidShareClassCount();
     error AlreadyInitialized();
@@ -25,17 +30,22 @@ contract NAVManager is Auth, ISnapshotHook {
     ShareClassId public immutable scId;
 
     IHub public immutable hub;
+    address public immutable holdings;
     IAccounting public immutable accounting;
     IShareClassManager public immutable shareClassManager;
 
+    uint128 public globalIssuance;
+    D18 public globalNetAssetValue;
     mapping(uint16 centrifugeId => uint16) public accountCounter;
+    mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address holdings_, address deployer) Auth(deployer) {
         require(hub.shareClassManager().shareClassCount(poolId_) == 1, InvalidShareClassCount());
 
         poolId = poolId_;
         scId = scId_;
         hub = hub_;
+        holdings = holdings_;
         accounting = hub.accounting();
         shareClassManager = hub.shareClassManager();
     }
@@ -47,10 +57,10 @@ contract NAVManager is Auth, ISnapshotHook {
     function initializeNetwork(uint16 centrifugeId) external auth {
         require(accountCounter[centrifugeId] == 0, AlreadyInitialized());
 
-        hub.createAccount(poolId, equityAccount(centrifugeId), false); // equity
-        hub.createAccount(poolId, liabilityAccount(centrifugeId), false); // liability
-        hub.createAccount(poolId, gainAccount(centrifugeId), false); // gain
-        hub.createAccount(poolId, lossAccount(centrifugeId), false); // loss
+        hub.createAccount(poolId, equityAccount(centrifugeId), false);
+        hub.createAccount(poolId, liabilityAccount(centrifugeId), false);
+        hub.createAccount(poolId, gainAccount(centrifugeId), false);
+        hub.createAccount(poolId, lossAccount(centrifugeId), false);
 
         accountCounter[centrifugeId] = 5;
     }
@@ -96,12 +106,19 @@ contract NAVManager is Auth, ISnapshotHook {
 
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId) external {
-        // TODO
         require(poolId == poolId_ && scId == scId_);
+        require(msg.sender == holdings, NotAuthorized());
 
-        D18 price = navPoolPerShare(centrifugeId);
+        NetworkMetrics storage networkMetrics = metrics[centrifugeId];
+        D18 netAssetValue_ = netAssetValue(centrifugeId);
+        uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
-        // TODO: combine with
+        globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
+        globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
+        D18 price = globalNetAssetValue / d18(globalIssuance);
+
+        networkMetrics.netAssetValue = netAssetValue_;
+        networkMetrics.issuance = issuance;
 
         hub.updateSharePrice(poolId, scId, price);
     }
@@ -127,12 +144,8 @@ contract NAVManager is Auth, ISnapshotHook {
         return d18(equity) + d18(gain) - d18(loss) - d18(liability);
     }
 
-    /// @dev Price = NAV / share class issuance
-    function navPoolPerShare(uint16 centrifugeId) public view returns (D18) {
-        D18 nav = netAssetValue(centrifugeId);
-        uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
-
-        return nav / d18(issuance);
+    function navPoolPerShare() public view returns (D18) {
+        return globalNetAssetValue / d18(globalIssuance);
     }
 
     //----------------------------------------------------------------------------------------------
