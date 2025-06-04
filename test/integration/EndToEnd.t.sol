@@ -253,7 +253,6 @@ contract EndToEndUtils is EndToEndDeployment {
     function _createPool() internal {
         vm.startPrank(address(h.guardian.safe()));
         h.guardian.createPool(POOL_A, FM, USD_ID);
-        vm.stopPrank();
 
         vm.startPrank(FM);
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
@@ -286,7 +285,6 @@ contract EndToEndUtils is EndToEndDeployment {
         h.hub.updateSharePrice(POOL_A, SC_1, IDENTITY_PRICE);
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s_.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, s_.usdcId);
-        vm.stopPrank();
 
         vm.startPrank(BSM);
         s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
