@@ -423,8 +423,8 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             uint256 poolAmount
         )
     {
-        assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        assetAmount = uint128(bound(assetAmount, 0, type(uint128).max / (10 ** assetDecimals)));
+        assetDecimals = uint8(bound(assetDecimals_, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        assetAmount = uint128(bound(assetAmount_, 0, type(uint128).max / (10 ** assetDecimals)));
         pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
         pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
 
