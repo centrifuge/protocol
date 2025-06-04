@@ -18,9 +18,6 @@ interface IEscrow {
 
     /// @notice
     function authTransferTo(address asset, uint256 tokenId, address receiver, uint256 value) external;
-
-    /// @notice
-    function authTransferTo(address asset, address receiver, uint256 value) external;
 }
 
 struct Holding {

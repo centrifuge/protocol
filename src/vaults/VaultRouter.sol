@@ -167,7 +167,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[msg.sender][vault] = 0;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, receiver, lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, 0, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
     }
@@ -184,7 +184,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] = 0;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, address(this), lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, 0, address(this), lockedRequest);
 
         _approveMax(vaultDetails.asset, address(vault));
         vault.requestDeposit(lockedRequest, controller, address(this));

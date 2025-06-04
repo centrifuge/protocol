@@ -20,10 +20,11 @@ import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {BalanceSheet, IBalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
-contract ContractWithCode {}
+// Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
+contract IsContract {}
 
 contract BalanceSheetTest is Test {
     using UpdateRestrictionMessageLib for *;
@@ -32,10 +33,10 @@ contract BalanceSheetTest is Test {
     IRoot root = IRoot(makeAddr("Root"));
     ISpoke spoke = ISpoke(makeAddr("Spoke"));
     ISpokeMessageSender sender = ISpokeMessageSender(makeAddr("Sender"));
-    address erc6909 = makeAddr("ERC6909");
-    address erc20 = address(new ContractWithCode());
-    address share = makeAddr("ShareToken");
-    address escrow = makeAddr("Escrow");
+    address erc6909 = address(new IsContract());
+    address erc20 = address(new IsContract());
+    address share = address(new IsContract());
+    address escrow = address(new IsContract());
     IPoolEscrowProvider escrowProvider = IPoolEscrowProvider(makeAddr("EscrowProvider"));
 
     address immutable AUTH = makeAddr("AUTH");
@@ -50,6 +51,7 @@ contract BalanceSheetTest is Test {
     AssetId constant ASSET_20 = AssetId.wrap(3);
     AssetId constant ASSET_6909_1 = AssetId.wrap(4);
     uint256 constant TOKEN_ID = 1;
+    bool constant IS_ISSUANCE = true;
     bool constant IS_DEPOSIT = true;
     bool constant IS_SNAPSHOT = true;
 
@@ -73,6 +75,11 @@ contract BalanceSheetTest is Test {
         );
         vm.mockCall(
             address(spoke),
+            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_6909_1, true),
+            abi.encode(ASSET_PRICE)
+        );
+        vm.mockCall(
+            address(spoke),
             abi.encodeWithSelector(ISpoke.pricePoolPerShare.selector, POOL_A, SC_1, true),
             abi.encode(SHARE_PRICE)
         );
@@ -88,12 +95,6 @@ contract BalanceSheetTest is Test {
         balanceSheet.file("poolEscrowProvider", address(escrowProvider));
         balanceSheet.updateManager(POOL_A, MANAGER, true);
         vm.stopPrank();
-
-        // mock poolEscrow.authTransferTo()
-        // mock shareToken.authTransferTo()
-
-        // TODO: mock sender in each method
-        // TODO: mock root.endorsed
     }
 
     function _mockEscrowDeposit(address asset, uint256 tokenId, uint128 amount) internal {
@@ -106,6 +107,11 @@ contract BalanceSheetTest is Test {
         vm.mockCall(
             escrow, abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, asset, tokenId, amount), abi.encode()
         );
+        vm.mockCall(
+            escrow,
+            abi.encodeWithSelector(IEscrow.authTransferTo.selector, asset, tokenId, RECEIVER, amount),
+            abi.encode()
+        );
     }
 
     function _mockShareMint(uint128 amount) internal {
@@ -113,7 +119,7 @@ contract BalanceSheetTest is Test {
     }
 
     function _mockShareBurn(uint128 amount) internal {
-        vm.mockCall(share, abi.encodeWithSelector(IShareToken.burn.selector, RECEIVER, amount), abi.encode());
+        vm.mockCall(share, abi.encodeWithSelector(IShareToken.burn.selector, balanceSheet, amount), abi.encode());
     }
 
     function _mockShareAuthTransferFrom(address from, address to, uint128 amount) internal {
@@ -124,7 +130,7 @@ contract BalanceSheetTest is Test {
         );
     }
 
-    function _mockUpdateHoldingAmount(
+    function _mockSendUpdateHoldingAmount(
         AssetId assetId,
         uint128 amount,
         D18 price,
@@ -144,6 +150,16 @@ contract BalanceSheetTest is Test {
                 isDeposit,
                 isSnapshot,
                 nonce
+            ),
+            abi.encode()
+        );
+    }
+
+    function _mockSendUpdateShares(uint128 delta, bool isPositive, bool isSnapshot, uint64 nonce) internal {
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                ISpokeMessageSender.sendUpdateShares.selector, POOL_A, SC_1, delta, isPositive, isSnapshot, nonce
             ),
             abi.encode()
         );
@@ -188,7 +204,7 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.deposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
+        balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
     function testNoteDeposit(bool managerOrAuth) public {
@@ -196,8 +212,8 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT, ASSET_PRICE);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -210,8 +226,8 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -225,38 +241,37 @@ contract BalanceSheetTestDeposit is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.deposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
+        balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
     }
 
-    function testErrTransferFrom() public {
-        _mockEscrowDeposit(erc20, 0, AMOUNT);
-
-        vm.mockCallRevert(
-            address(erc20),
-            abi.encodeWithSelector(IERC20.transferFrom.selector, AUTH, escrow, AMOUNT),
-            abi.encode("err")
-        );
-
-        vm.prank(AUTH);
-        vm.expectPartialRevert(IERC7751.WrappedError.selector);
-        balanceSheet.deposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-    }
-
-    function testDeposit(bool managerOrAuth) public {
+    function testDepositERC20(bool managerOrAuth) public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
         vm.mockCall(
-            address(erc20),
+            erc20,
             abi.encodeWithSelector(IERC20.transferFrom.selector, managerOrAuth ? MANAGER : AUTH, escrow, AMOUNT),
             abi.encode(true)
         );
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT, ASSET_PRICE);
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, ASSET_PRICE);
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-        balanceSheet.deposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
+        emit IBalanceSheet.Deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.deposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+
+    function testDepositERC6909() public {
+        _mockEscrowDeposit(erc6909, TOKEN_ID, AMOUNT);
+
+        vm.mockCall(
+            address(erc6909),
+            abi.encodeWithSelector(IERC6909.transferFrom.selector, AUTH, escrow, TOKEN_ID, AMOUNT),
+            abi.encode(true)
+        );
+
+        vm.prank(AUTH);
+        balanceSheet.deposit(POOL_A, SC_1, address(erc6909), TOKEN_ID, AMOUNT);
     }
 }
 
@@ -264,7 +279,7 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
     }
 
     function testWithdraw(bool managerOrAuth) public {
@@ -272,8 +287,8 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         vm.expectEmit();
-        emit IBalanceSheet.Withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT, ASSET_PRICE);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT, ASSET_PRICE);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -282,12 +297,12 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
         assertEq(withdrawals, AMOUNT);
     }
 
-    function testNoteDepositTwice() public {
-        _mockEscrowDeposit(erc20, 0, AMOUNT);
+    function testWithdrawTwice() public {
+        _mockEscrowWithdraw(erc20, 0, AMOUNT);
 
         vm.startPrank(AUTH);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
 
         (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 1);
@@ -385,11 +400,11 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsWithMoreDepositAmount() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT * 3);
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
-        _mockUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT * 3);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT * 3);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -404,11 +419,11 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsWithMoreWithdrawAmount() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
         _mockEscrowWithdraw(erc20, 0, AMOUNT * 3);
-        _mockUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT * 2, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT * 3);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT * 3);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -423,10 +438,11 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsWithSameAmount() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
+        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -438,13 +454,36 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         assertEq(nonce, 1);
     }
 
-    function testSubmitQueuedAssetsWithSameAmountDifferentAssets() public {
+    function testSubmitQueuedAssetsWithDifferentAssets() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
-        _mockEscrowWithdraw(erc20, 0, AMOUNT);
+        _mockEscrowDeposit(erc6909, TOKEN_ID, AMOUNT);
+        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, !IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, address(erc20), 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, address(erc20), 0, RECEIVER, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc6909, TOKEN_ID, AMOUNT);
+        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
+
+        (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
+        assertEq(deposits, 0);
+        assertEq(withdrawals, 0);
+
+        (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 1);
+        assertEq(nonce, 1);
+    }
+
+    function testSubmitQueuedAssetsTwice() public {
+        _mockEscrowDeposit(erc20, 0, AMOUNT);
+        _mockEscrowWithdraw(erc20, 0, AMOUNT);
+        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 1);
+
+        vm.startPrank(AUTH);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
+        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20); // No message sent
+
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -453,7 +492,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
         (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 0);
-        assertEq(nonce, 1);
+        assertEq(nonce, 2);
     }
 }
 
@@ -464,7 +503,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         balanceSheet.submitQueuedShares(POOL_A, SC_1);
     }
 
-    function testSubmitQueuedAssetsEmpty(bool managerOrAuth) public {
+    function testSubmitQueuedSharesEmpty(bool managerOrAuth) public {
         // Does nothing, no mocks required
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         balanceSheet.submitQueuedShares(POOL_A, SC_1);
@@ -472,5 +511,18 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(queuedAssetCounter, 0);
         assertEq(nonce, 0);
+    }
+
+    function testSubmitQueuedSharesWithDeltaPositive() public {
+        _mockShareMint(AMOUNT);
+        _mockSendUpdateShares(AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.submitQueuedShares(POOL_A, SC_1);
+
+        (uint128 delta,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, 0);
+        assertEq(nonce, 1);
     }
 }
