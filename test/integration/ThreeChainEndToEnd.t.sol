@@ -53,12 +53,12 @@ contract ThreeChainEndToEndDeployment is EndToEndUtils {
         vm.label(address(adapterCToA), "AdapterCToA");
     }
 
-    /// @param sameChain Whether the chain A equals chain B, such that sB points to Centrifuge ID A == 5
+    /// @param sameChain Whether the chain B equals chain C, such that sB points to Centrifuge ID C == 7
     function _setSpokeB(bool sameChain) internal {
         if (sameChain) {
-            _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
+            _setSpoke(deployC, CENTRIFUGE_ID_C, sB);
         } else {
-            _setSpoke(deployA, CENTRIFUGE_ID_A, sB);
+            _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
         }
     }
 }
@@ -70,13 +70,16 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
     using MessageLib for *;
 
     /// @notice Configure the third chain (C) with assets
-    /// @param sameChain Whether the chain A equals chain B, such that sB points to Centrifuge ID A == 5
+    /// @param sameChain Whether the chain B equals chain C, such that sB points to Centrifuge ID C == 7
     /// forge-config: default.isolate = true
     function testConfigureAssets(bool sameChain) public {
         _setSpokeB(sameChain);
 
         _configureAsset(sB);
-        _configureAsset(sC);
+
+        if (!sameChain) {
+            _configureAsset(sC);
+        }
     }
 
     /// @notice Configure a pool with support for all three chains
@@ -85,12 +88,26 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
         _setSpokeB(sameChain);
 
         _configurePool(sB);
-        _configurePool(sC);
+
+        if (!sameChain) {
+            _configurePool(sC);
+        }
     }
 
     /// @notice Test transferring shares between Chain B and Chain C via Hub A
     /// forge-config: default.isolate = true
-    function testCrossChainTransferShares(bool sameChain) public {
+    function testCrossChainTransferShares() public {
+        _testCrossChainTransferShares(false);
+    }
+
+    /// @notice Test transferring shares between Chain B and Chain C via Hub A
+    /// forge-config: default.isolate = true
+    function testCrossChainTransferSharesSameChain() public {
+        _testCrossChainTransferShares(true);
+    }
+
+    /// @notice Test transferring shares between Chain B and Chain C via Hub A
+    function _testCrossChainTransferShares(bool sameChain) internal {
         uint128 amount = 1e18;
 
         testConfigurePool(sameChain);
