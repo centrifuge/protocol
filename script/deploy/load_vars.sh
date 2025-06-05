@@ -44,17 +44,16 @@ get_api_key() {
     local key
     case "$key_type" in
     "ALCHEMY_API_KEY")
-        key=$(gcloud secrets versions access latest --secret=alchemy_api)
+        key=$(gcloud secrets versions access latest --project centrifuge-production-x --secret=alchemy_api)
         ;;
     "ETHERSCAN_API_KEY")
-        key=$(gcloud secrets versions access latest --secret=etherscan_api)
+        key=$(gcloud secrets versions access latest --project centrifuge-production-x --secret=etherscan_api)
         ;;
     "PRIVATE_KEY")
         if [ "$IS_TESTNET" = "true" ]; then
-            key=$(gcloud secrets versions access latest --secret=testnet-private-key)
+            key=$(gcloud secrets versions access latest --project centrifuge-production-x --secret=testnet-private-key)
         else
-            print_error "Mainnet private key not configured"
-            return 1
+            print_error "Mainnet detected, no private key loaded"
         fi
         ;;
     *)
@@ -70,9 +69,59 @@ get_api_key() {
     export "$key_type"="$key"
 }
 
+# Function to get Alchemy RPC URL
+get_alchemy_rpc_url() {
+    local network_config=$1
+    local api_key=$2
+
+    # Get network identifier from config
+    local network_id
+    network_id=$(jq -r '.network.network' "$network_config")
+
+    if [ "$network_id" = "null" ] || [ -z "$network_id" ]; then
+        print_error "Network identifier not found in config"
+        return 1
+    fi
+
+    # Map network names to Alchemy network identifiers
+    case "$network_id" in
+    "ethereum")
+        network_id="eth"
+        ;;
+    "arbitrum")
+        network_id="arb"
+        ;;
+    "base")
+        network_id="base"
+        ;;
+    "celo")
+        network_id="celo"
+        ;;
+    *)
+        print_error "Unsupported network for Alchemy: $network_id"
+        return 1
+        ;;
+    esac
+
+    # Get environment from config
+    local is_testnet
+    is_testnet=$(jq -r '.network.environment == "testnet"' "$network_config")
+
+    # Construct URL based on environment
+    if [ "$is_testnet" = "true" ]; then
+        # Special case for Celo testnet
+        if [ "$network_id" = "celo" ]; then
+            echo "https://${network_id}-alfajores.g.alchemy.com/v2/${api_key}"
+        else
+            echo "https://${network_id}-sepolia.g.alchemy.com/v2/${api_key}"
+        fi
+    else
+        echo "https://${network_id}-mainnet.g.alchemy.com/v2/${api_key}"
+    fi
+}
+
 load_env() {
     cleanup_env
-    print_section "Loading Environment"
     print_step "Network: $1"
     local network=$1
     local network_config="$ROOT_DIR/env/$network.json"
@@ -125,9 +174,8 @@ load_env() {
     print_step "Configuring Alchemy RPC"
     get_api_key "ALCHEMY_API_KEY"
     if [ -z "$RPC_URL" ] && [ -n "$ALCHEMY_API_KEY" ]; then
+        RPC_URL=$(get_alchemy_rpc_url "$network_config" "$ALCHEMY_API_KEY")
 
-        ALCHEMY_RPC="https://$network.g.alchemy.com/v2/"
-        RPC_URL="$ALCHEMY_RPC$ALCHEMY_API_KEY"
         if test_rpc_connection "$RPC_URL"; then
             print_success "Alchemy RPC connection verified"
         else
@@ -168,23 +216,12 @@ load_env() {
             return 1
         fi
     fi
+    # Check if catapulta_network exists in config and set CATAPULTA_NET
+    if [ -n "$(jq -r '.network.catapultaNetwork // empty' "$network_config")" ]; then
+        CATAPULTA_NET=$(jq -r '.network.catapultaNetwork' "$network_config")
+        print_success "Catapulta network configured: $CATAPULTA_NET"
+    fi
 
-    # Export the variables needed by forge script
-    print_info "Setting environment variables for forge script"
-    set -a
-    RPC_URL="$RPC_URL"
-    ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY"
-    ADMIN="$ADMIN"
-    PRIVATE_KEY="$PRIVATE_KEY"
-    set +a
-
-    print_info "Exporting environment variables to your local shell"
-    export RPC_URL
-    export ETHERSCAN_API_KEY
-    export ADMIN
-    export PRIVATE_KEY
-
-    print_section "Environment Loaded"
 }
 
 if [[ -z "$1" ]]; then
@@ -201,10 +238,42 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     print_info "Please use: source ./load_vars.sh $1"
     return 1
 else
-    load_env "$1"
+    # Check if .env file exists and contains required variables
+    if [ -f "$ROOT_DIR/.env" ] &&
+        grep -q "RPC_URL" "$ROOT_DIR/.env" &&
+        grep -q "ETHERSCAN_API_KEY" "$ROOT_DIR/.env" &&
+        grep -q "ADMIN" "$ROOT_DIR/.env" &&
+        grep -q "PRIVATE_KEY" "$ROOT_DIR/.env"; then
+        print_section "Loading Environment from .env file"
+        print_info "Environment variables found in .env file"
+        return 0
+    else
+        print_section "Loading Environment from Google Cloud"
+        print_info ".env does not contain all required variables. Trying Google Cloud secrets retrieval"
+        load_env "$1"
+    fi
+
+    # Export the variables needed by forge script
+    print_info "Setting environment variables for forge script"
+    set -a
+    RPC_URL="$RPC_URL"
+    ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY"
+    ADMIN="$ADMIN"
+    PRIVATE_KEY="$PRIVATE_KEY"
+    CATAPULTA_NET="$CATAPULTA_NET"
+    set +a
+
+    print_info "Exporting environment variables to your local shell"
+    export RPC_URL
+    export ETHERSCAN_API_KEY
+    export ADMIN
+    export PRIVATE_KEY
+    export CATAPULTA_NET
+
+    print_section "Environment Loaded"
 
     # Only set up cleanup timer if not sourced from deploy.sh
-    if [ "$skip_cleanup" = true ]; then
+    if [ "$skip_cleanup" != true ]; then
         print_info "Environment variables will be cleaned up in 30 minutes"
         # Run cleanup in background after 30 minutes
         (sleep 1800 && cleanup_env) &
