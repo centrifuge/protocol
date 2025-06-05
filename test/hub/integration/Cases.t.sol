@@ -116,7 +116,7 @@ contract TestCases is BaseTest {
                 hubRegistry.decimals(USDC_C2),
                 hubRegistry.decimals(poolId),
                 NAV_PER_SHARE.reciprocal()
-            ).toUint128()
+            )
         );
         assertEq(m2.cancelledAssetAmount, INVESTOR_AMOUNT - APPROVED_INVESTOR_AMOUNT);
     }
@@ -129,7 +129,7 @@ contract TestCases is BaseTest {
 
         uint128 revokedAssetAmount = PricingLib.convertWithPrice(
             APPROVED_SHARE_AMOUNT, hubRegistry.decimals(poolId), hubRegistry.decimals(USDC_C2), NAV_PER_SHARE
-        ).toUint128();
+        );
 
         vm.startPrank(FM);
         hub.approveRedeems(

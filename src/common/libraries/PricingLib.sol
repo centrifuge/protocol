@@ -85,8 +85,7 @@ library PricingLib {
         uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
-        return PricingLib.convertWithPrice(shareAmount, shareDecimals, assetDecimals, priceAssetPerShare_, rounding)
-            .toUint128();
+        return PricingLib.convertWithPrice(shareAmount, shareDecimals, assetDecimals, priceAssetPerShare_, rounding);
     }
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
@@ -121,7 +120,7 @@ library PricingLib {
         uint256 tokenId,
         uint128 assets,
         MathLib.Rounding rounding
-    ) internal view returns (uint256 priceAssetPerShare_) {
+    ) internal view returns (uint128 priceAssetPerShare_) {
         if (assets == 0 || shares == 0) {
             return 0;
         }
@@ -132,7 +131,7 @@ library PricingLib {
         // NOTE: More precise than utilizing D18
         return _toPriceDecimals(assets, assetDecimals).mulDiv(
             10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding
-        );
+        ).toUint128();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -143,7 +142,7 @@ library PricingLib {
     function convertWithPrice(uint256 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, D18 priceQuotePerBase)
         internal
         pure
-        returns (uint256 quoteAmount)
+        returns (uint128 quoteAmount)
     {
         return convertWithPrice(baseAmount, baseDecimals, quoteDecimals, priceQuotePerBase, MathLib.Rounding.Down);
     }
@@ -155,17 +154,15 @@ library PricingLib {
         uint8 quoteDecimals,
         D18 priceQuotePerBase,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 quoteAmount) {
+    ) internal pure returns (uint128 quoteAmount) {
         if (baseDecimals == quoteDecimals) {
-            return priceQuotePerBase.mulUint256(baseAmount, rounding);
+            return priceQuotePerBase.mulUint256(baseAmount, rounding).toUint128();
         }
 
         return MathLib.mulDiv(
-            priceQuotePerBase.raw(),
-            baseAmount * 10 ** quoteDecimals,
-            10 ** (baseDecimals + PRICE_DECIMALS), // cancel out exponentiation from D18 multiplication
-            rounding
-        );
+            priceQuotePerBase.raw(), baseAmount * 10 ** quoteDecimals, 10 ** (baseDecimals + PRICE_DECIMALS), rounding
+        ) // cancel out exponentiation from D18 multiplication
+            .toUint128();
     }
 
     /// @dev Converts an amount using decimals and reciprocal price.
@@ -177,19 +174,19 @@ library PricingLib {
         uint8 quoteDecimals,
         D18 priceBasePerQuote,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 quoteAmount) {
+    ) internal pure returns (uint128 quoteAmount) {
         require(priceBasePerQuote.raw() != 0, "PricingLib/division-by-zero");
 
         if (baseDecimals == quoteDecimals) {
-            return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding);
+            return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding).toUint128();
         }
 
         return MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals,
+            10 ** quoteDecimals * baseAmount,
             10 ** PRICE_DECIMALS,
             10 ** baseDecimals * priceBasePerQuote.raw(),
             rounding
-        );
+        ).toUint128();
     }
 
     /// @dev Converts an amount using decimals and two prices.
@@ -202,15 +199,15 @@ library PricingLib {
         D18 priceNumerator,
         D18 priceDenominator,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 quoteAmount) {
+    ) internal pure returns (uint128 quoteAmount) {
         require(priceDenominator.raw() != 0, "PricingLib/division-by-zero");
 
         return MathLib.mulDiv(
             priceNumerator.raw(),
-            baseAmount * 10 ** quoteDecimals,
+            10 ** quoteDecimals * baseAmount,
             10 ** baseDecimals * priceDenominator.raw(),
             rounding
-        );
+        ).toUint128();
     }
 
     /// @dev Converts asset amount to share amount.
@@ -223,7 +220,7 @@ library PricingLib {
         D18 pricePoolPerAsset,
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 shareAmount) {
+    ) internal pure returns (uint128 shareAmount) {
         return
             convertWithPrices(assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, rounding);
     }
@@ -238,7 +235,7 @@ library PricingLib {
         D18 pricePoolPerAsset,
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 assetAmount) {
+    ) internal pure returns (uint128 assetAmount) {
         return
             convertWithPrices(shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding);
     }
@@ -250,7 +247,7 @@ library PricingLib {
         uint8 assetDecimals,
         D18 pricePoolPerAsset,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 assetAmount) {
+    ) internal pure returns (uint128 assetAmount) {
         return convertWithReciprocalPrice(poolAmount, poolDecimals, assetDecimals, pricePoolPerAsset, rounding);
     }
 
