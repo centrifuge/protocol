@@ -13,7 +13,7 @@ verbosity = 3
 ffi = true
 fs_permissions = [
   { access = "read-write", path = ".forge-snapshots/" },
-  { access = "read-write", path = "./deployments" },
+  { access = "read-write", path = "./script/deploy/" },
   { access = "read", path = "./env" },
 ]
 
