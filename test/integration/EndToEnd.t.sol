@@ -157,7 +157,7 @@ contract EndToEndDeployment is Test {
     uint8 constant POOL_DECIMALS = 18;
     uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
 
-    uint256 constant NO_USED = 0;
+    uint256 constant PLACEHOLDER = 0;
 
     function setUp() public virtual {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
@@ -480,8 +480,8 @@ contract EndToEndUseCases is EndToEndFlows {
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);
         vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
-        vault.cancelDepositRequest(NO_USED, INVESTOR_A);
-        vault.claimCancelDepositRequest(NO_USED, INVESTOR_A, INVESTOR_A);
+        vault.cancelDepositRequest(PLACEHOLDER, INVESTOR_A);
+        vault.claimCancelDepositRequest(PLACEHOLDER, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(INVESTOR_A), USDC_AMOUNT_1, "expected assets");
@@ -533,8 +533,8 @@ contract EndToEndUseCases is EndToEndFlows {
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
-        vault.cancelRedeemRequest(NO_USED, INVESTOR_A);
-        vault.claimCancelRedeemRequest(NO_USED, INVESTOR_A, INVESTOR_A);
+        vault.cancelRedeemRequest(PLACEHOLDER, INVESTOR_A);
+        vault.claimCancelRedeemRequest(PLACEHOLDER, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
