@@ -38,32 +38,36 @@ test_rpc_connection() {
     fi
 }
 
-# Function to get API key from SOPS
+# Function to get secrets from Secret Manager
 get_api_key() {
     local key_type=$1
     local key
-    key=$(sops -d "$ROOT_DIR/script/deploy/secrets/api-keys.env" | grep "^$key_type=" | cut -d'=' -f2)
+    case "$key_type" in
+    "ALCHEMY_API_KEY")
+        key=$(gcloud secrets versions access latest --secret=alchemy_api)
+        ;;
+    "ETHERSCAN_API_KEY")
+        key=$(gcloud secrets versions access latest --secret=etherscan_api)
+        ;;
+    "PRIVATE_KEY")
+        if [ "$IS_TESTNET" = "true" ]; then
+            key=$(gcloud secrets versions access latest --secret=testnet-private-key)
+        else
+            print_error "Mainnet private key not configured"
+            return 1
+        fi
+        ;;
+    *)
+        print_error "Unknown key type: $key_type"
+        return 1
+        ;;
+    esac
+
     if [ -z "$key" ]; then
-        print_error "No $key_type found in the secrets file"
+        print_error "Could not fetch $key_type from Secret Manager"
         return 1
     fi
     export "$key_type"="$key"
-}
-
-# Function to get private key from Secret Manager
-get_testnet_private_key() {
-    local key
-    if [ "$IS_TESTNET" = "true" ]; then
-        key=$(gcloud secrets versions access latest --secret=testnet-private-key)
-        if [ -z "$key" ]; then
-            print_error "Could not fetch testnet private key from Secret Manager"
-            return 1
-        fi
-        PRIVATE_KEY="$key"
-    else
-        print_error "Mainnet private key not configured"
-        return 1
-    fi
 }
 
 load_env() {
@@ -121,6 +125,7 @@ load_env() {
     print_step "Configuring Alchemy RPC"
     get_api_key "ALCHEMY_API_KEY"
     if [ -z "$RPC_URL" ] && [ -n "$ALCHEMY_API_KEY" ]; then
+
         ALCHEMY_RPC="https://$network.g.alchemy.com/v2/"
         RPC_URL="$ALCHEMY_RPC$ALCHEMY_API_KEY"
         if test_rpc_connection "$RPC_URL"; then
@@ -144,7 +149,7 @@ load_env() {
 
     if [ "$IS_TESTNET" = "true" ]; then
         print_step "Loading Testnet Private Key"
-        get_testnet_private_key
+        get_api_key "PRIVATE_KEY"
         print_success "Private key loaded"
     fi
 
