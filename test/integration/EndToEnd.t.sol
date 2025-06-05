@@ -49,7 +49,7 @@ import {FullDeployer, HubDeployer, SpokeDeployer} from "script/FullDeployer.s.so
 import {CommonDeployer, MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
 
 /// End to end testing assuming two full deployments in two different chains
