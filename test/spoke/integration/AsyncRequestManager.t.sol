@@ -10,7 +10,6 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
@@ -59,7 +58,6 @@ contract AsyncRequestManagerTest is BaseTest {
         assertEq(address(asyncRequestManager.sender()), address(messageDispatcher));
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(asyncRequestManager.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(asyncRequestManager.wards(address(root)), 1);
@@ -87,8 +85,6 @@ contract AsyncRequestManagerTest is BaseTest {
         assertEq(address(asyncRequestManager.spoke()), randomUser);
         asyncRequestManager.file("balanceSheet", randomUser);
         assertEq(address(asyncRequestManager.balanceSheet()), randomUser);
-        asyncRequestManager.file("poolEscrowProvider", randomUser);
-        assertEq(address(asyncRequestManager.poolEscrowProvider()), randomUser);
 
         // remove self from wards
         asyncRequestManager.deny(self);

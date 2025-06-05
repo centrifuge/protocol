@@ -12,9 +12,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
@@ -27,7 +27,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     IEscrow public immutable globalEscrow;
 
     ISpoke public spoke;
-    IPoolEscrowProvider public poolEscrowProvider;
+    IBalanceSheet public balanceSheet;
 
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
 
@@ -43,7 +43,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     /// @inheritdoc IBaseRequestManager
     function file(bytes32 what, address data) external virtual auth {
         if (what == "spoke") spoke = ISpoke(data);
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
+        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -114,7 +114,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
-        return poolEscrowProvider.escrow(poolId);
+        return balanceSheet.escrow(poolId);
     }
 
     /// @inheritdoc IVaultManager

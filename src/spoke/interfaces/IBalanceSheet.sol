@@ -96,6 +96,14 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    /// @notice TODO
+    function reserveIncrease(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external;
+
+    /// @notice TODO
+    function reserveDecrease(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external;
+
     /// @notice Issue new share tokens. Increases the total issuance.
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 

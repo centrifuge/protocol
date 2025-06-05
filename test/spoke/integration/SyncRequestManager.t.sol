@@ -66,7 +66,6 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         // values set correctly
         assertEq(address(syncRequestManager.spoke()), address(spoke));
         assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(syncRequestManager.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(syncRequestManager.wards(address(root)), 1);
@@ -89,8 +88,6 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         syncRequestManager.file("spoke", randomUser);
         assertEq(address(syncRequestManager.spoke()), randomUser);
         syncRequestManager.file("balanceSheet", randomUser);
-        assertEq(address(syncRequestManager.balanceSheet()), randomUser);
-        syncRequestManager.file("poolEscrowProvider", randomUser);
         assertEq(address(syncRequestManager.balanceSheet()), randomUser);
 
         // remove self from wards
