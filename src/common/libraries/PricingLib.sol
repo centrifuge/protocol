@@ -253,12 +253,12 @@ library PricingLib {
 
     /// @dev Converts asset amount to pool amount.
     function assetToPoolAmount(
-        uint256 assetAmount,
+        uint128 assetAmount,
         uint8 assetDecimals,
         uint8 poolDecimals,
         D18 pricePoolPerAsset,
         MathLib.Rounding rounding
-    ) internal pure returns (uint256 poolAmount) {
+    ) internal pure returns (uint128 poolAmount) {
         return convertWithPrice(assetAmount, assetDecimals, poolDecimals, pricePoolPerAsset, rounding);
     }
 

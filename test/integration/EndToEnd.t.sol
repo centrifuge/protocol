@@ -257,25 +257,23 @@ contract EndToEndUtils is EndToEndDeployment {
     function assetToShare(uint128 assetAmount) public view returns (uint128 shareAmount) {
         return PricingLib.assetToShareAmount(
             assetAmount, USDC_DECIMALS, SHARE_DECIMALS, ASSET_PRICE, SHARE_PRICE, MathLib.Rounding.Down
-        ).toUint128();
+        );
     }
 
     function shareToAsset(uint128 shareAmount) public view returns (uint128 assetAmount) {
         return PricingLib.shareToAssetAmount(
             shareAmount, SHARE_DECIMALS, USDC_DECIMALS, ASSET_PRICE, SHARE_PRICE, MathLib.Rounding.Down
-        ).toUint128();
+        );
     }
 
     function assetToPool(uint128 assetAmount) public view returns (uint128 poolAmount) {
-        return PricingLib.assetToPoolAmount(
-            assetAmount, USDC_DECIMALS, POOL_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down
-        ).toUint128();
+        return
+            PricingLib.assetToPoolAmount(assetAmount, USDC_DECIMALS, POOL_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down);
     }
 
     function poolToAsset(uint128 poolAmount) public view returns (uint128 assetAmount) {
-        return PricingLib.poolToAssetAmount(
-            poolAmount, POOL_DECIMALS, USDC_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down
-        ).toUint128();
+        return
+            PricingLib.poolToAssetAmount(poolAmount, POOL_DECIMALS, USDC_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down);
     }
 
     function checkAccountValue(AccountId accountId, uint128 value, bool isPositive) public view {
