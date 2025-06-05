@@ -245,7 +245,9 @@ else
         grep -q "ADMIN" "$ROOT_DIR/.env" &&
         grep -q "PRIVATE_KEY" "$ROOT_DIR/.env"; then
         print_section "Loading Environment from .env file"
-        print_info "Environment variables found in .env file"
+        print_info "RPC_URL ETHERSCAN_API_KEY ADMIN PRIVATE_KEY are found in the .env file"
+        print_info "Foundry should automatically load the environment variables from the .env file"
+        print_section "Environment Loaded"
         return 0
     else
         print_section "Loading Environment from Google Cloud"
