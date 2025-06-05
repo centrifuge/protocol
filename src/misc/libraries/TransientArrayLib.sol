@@ -12,7 +12,7 @@ library TransientArrayLib {
         uint256 length_ = lengthSlot.tloadUint256();
         lengthSlot.tstore(length_ + 1);
 
-        uint256 baseSlot = uint256(keccak256(abi.encodePacked(key)));
+        uint256 baseSlot = uint256(lengthSlot);
         bytes32 slot = bytes32(baseSlot + length_ + 1);
         slot.tstore(value);
     }
