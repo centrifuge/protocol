@@ -4,51 +4,36 @@
     "environment": "testnet",
     "centrifugeId": 1,
     "network": "ethereum",
-    "connectsTo": [
-      "base-sepolia"
-    ]
-  },
-  "adapters": {
-    "wormhole": {
-      "wormholeId": 10002,
-      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470"
-    },
-    "axelar": {
-      "axelarId": "ethereum-sepolia",
-      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
-      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6"
-    }
+    "connectsTo": []
   },
   "contracts": {
-    "root": "0xDE3b0D943d92DC3C74AAC7A30CA22FdD3042DCfc",
+    "root": "0xAbB5fa546e539D9467B208084fD56D2Caa97BA47",
     "adminSafe": "0x423420Ae467df6e90291fd0252c0A8a637C1e03f",
-    "guardian": "0x8Ae16f382E2B8d27B069B269BBAA300f04DFAf4A",
-    "gasService": "0xfa257De996D58cc1ce74F6FCdCF0C2b6Fc50D85F",
-    "gateway": "0x31DA93591827FDb66C2Ee48a123BEDa1c1C66aE2",
-    "multiAdapter": "0xD22AE5Ca74285367d9759545f71BC9bE8DBbc542",
-    "messageProcessor": "0x314B0337b0f5CD4B1694fCb12aa19Cc86cd4958c",
-    "messageDispatcher": "0xdAE3a696208bAe713EaA31a9f09660Df67F0176D",
-    "hubRegistry": "0xB779FFa9CA587D950eB7C0941Ac49829142459Ba",
-    "accounting": "0x55DA386A6831E4776FB4c00350d26aB80538CE68",
-    "holdings": "0x23f46C746f4cA2BCbb5aD56D4e9104AebB9BdaEd",
-    "shareClassManager": "0x9D44A20d5b3360B55FE8e0CdE4E0cfFddCec6153",
-    "hub": "0xB78db9275EF0fDBA874886b31D34598488E213Fe",
-    "identityValuation": "0xad4731305be31dB296a577Ab6E42a0043de6AFF6",
-    "poolEscrowFactory": "0x2B2bC353c26d41637d687F9da4d5dF0301E2Ec32",
-    "routerEscrow": "0x5048869f2ad1768804CC71587adFfE44837f064a",
-    "globalEscrow": "0x121EFAd015D0f2BDCD161DE8F4F137624e75daC4",
-    "freezeOnlyHook": "0x30d9a7F4C01D9827788c7045c0A7e4b5DFBb0AeF",
-    "redemptionRestrictionsHook": "0x6B0A113070d27F09c1E290eDADc35Ad0d1ad3708",
-    "fullRestrictionsHook": "0x6AD8f9580B9110B3DA5Bc4D9290F1494Bd7Bc5D5",
-    "tokenFactory": "0x9E45Aaea2BFd470BDFf73F59c35b8A44A65c707a",
-    "asyncRequestManager": "0x5fA43f8eca50BE15586DA8307eAD24A96211E98b",
-    "syncRequestManager": "0x7F8d72A0c63218bf5aBfd75552D55Bad7261976C",
-    "asyncVaultFactory": "0xFF9376032F0b1152Ad8236D65cD3b2ab015DE073",
-    "syncDepositVaultFactory": "0xBAccaEBd3A39d37C005322ad3221f6D55474EA0c",
-    "spoke": "0x0f914c4213d77fFFC7C588bAf1aF431826bAF760",
-    "vaultRouter": "0xF04b50aE4484452f4b876Ea3559bcDC45af5d17B",
-    "balanceSheet": "0xCA948470AB7f310499333a9797385F08E5BDbDb0",
-    "wormholeAdapter": "0xD6EF6945cd99738E63B21f336d7A8437121C76B8",
-    "axelarAdapter": "0x6B794f0542F991C1073B289f7E5F9D821786CC7C"
+    "guardian": "0xc42599B62Faabe59Bc6150Aa132a928316AEa056",
+    "gasService": "0x9b6dd8a28EcA41a98d7F7e44659382387B00E296",
+    "gateway": "0x3A8d8571f4Dba3eEA6a3EE2C1cf452417517d1B0",
+    "multiAdapter": "0xF0d1F2D94fC1b2Ce1173AD2AE79F21e1eA3a4372",
+    "messageProcessor": "0x32C68E92307AaB77B68BA96AcE9FBf9904cFb041",
+    "messageDispatcher": "0x60798e67655F947Ea1b865d137364fB26a7a0A38",
+    "hubRegistry": "0x72f40A5758c3d2ae34137338725205790e0608D7",
+    "accounting": "0xd2278E10048E2fd9d7D0F7542B74cD29136C4E40",
+    "holdings": "0x33b109aeCf6079D9257DF4a3Da113333F33e14E6",
+    "shareClassManager": "0x0Ff041adf1920554548E28F68b0eFc48C4BD5cA5",
+    "hub": "0x624Fb7Fb6632BDdD4304eAe6C6e78067fb0685AA",
+    "identityValuation": "0x9DD64a4ECeAcfF9694B24d0d77D6243798EA2d87",
+    "poolEscrowFactory": "0x79AF9Fd74A9B6c75541DB3B81123AB2Ed6536F3b",
+    "routerEscrow": "0x892b7361675A2773e7ACD8a26feacaff447717A5",
+    "globalEscrow": "0xce04804b0B3155e325C78239610DeeB647cE7A30",
+    "freezeOnlyHook": "0xB7A2AcF9c69c92D2b14b219Ac4C99C54C2Ec290c",
+    "redemptionRestrictionsHook": "0xf230e06F45E92992340E9523870C6CAA41A2aC2d",
+    "fullRestrictionsHook": "0x81f3494b14BEDa3e90E4d812EBdF0Aebe5894c95",
+    "tokenFactory": "0x480693523c0362F2EC567B4fCEB3cd1a6386f277",
+    "asyncRequestManager": "0xe0eFE6b31a7114f7d74FBbfe7e25F93Cb47eBBAA",
+    "syncRequestManager": "0x0a3078B464601CcaA64De7176968ACa5c0709d4C",
+    "asyncVaultFactory": "0x9Ab2724Ff70Be10434468641FC689053159DC135",
+    "syncDepositVaultFactory": "0xE4b1C179c2100B46a6a37ae9F6f3bbE90285e478",
+    "spoke": "0xf66133010510c1C5A105E4Dce5057065E83E5a61",
+    "vaultRouter": "0x5e75f6b5141773b2550e3D5cfFb5D68A72D15428",
+    "balanceSheet": "0x984a40603DbEA0a97747e9286571545F6e31ff33"
   }
 }
