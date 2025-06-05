@@ -57,7 +57,8 @@ interface ISpoke {
         uint256 indexed tokenId,
         string name,
         string symbol,
-        uint8 decimals
+        uint8 decimals,
+        bool isInitialization
     );
     event File(bytes32 indexed what, address factory, bool status);
     event AddPool(PoolId indexed poolId);
@@ -71,7 +72,7 @@ interface ISpoke {
         IVault vault,
         VaultKind kind
     );
-    event PriceUpdate(
+    event UpdateAssetPrice(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address indexed asset,
@@ -79,7 +80,7 @@ interface ISpoke {
         uint256 price,
         uint64 computedAt
     );
-    event PriceUpdate(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
     event TransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
@@ -87,6 +88,9 @@ interface ISpoke {
         address indexed sender,
         bytes32 destinationAddress,
         uint128 amount
+    );
+    event ExecuteTransferShares(
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed receiver, uint128 amount
     );
     event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
     event LinkVault(

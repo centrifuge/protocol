@@ -17,10 +17,10 @@ contract PricingLibBaseTest is Test {
     uint8 constant MAX_ASSET_DECIMALS = 18;
     uint8 constant POOL_DECIMALS = 18;
     uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
-    uint128 constant MIN_PRICE = 1e14;
-    uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e20;
-    uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e20;
-    uint128 constant MAX_AMOUNT = type(uint128).max / MAX_PRICE_POOL_PER_SHARE;
+    uint128 constant MIN_PRICE = 1; // NOTE: 0 prices are handled separately
+    uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e30;
+    uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e30;
+    uint128 constant MAX_AMOUNT = 1e24;
 }
 
 contract ConvertWithPriceTest is PricingLibBaseTest {
@@ -33,7 +33,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         uint128 baseAmount = 4e10;
         D18 priceQuotePerBase = d18(2e10);
 
-        uint256 expected = priceQuotePerBase.inner() * baseAmount * 10 ** (quoteDecimals - baseDecimals) / 1e18;
+        uint256 expected = priceQuotePerBase.raw() * baseAmount * 10 ** (quoteDecimals - baseDecimals) / 1e18;
 
         assertEq(expected, 8e18);
         assertEq(
@@ -59,9 +59,9 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         uint8 quoteDecimals,
         uint128 priceRaw
     ) public pure {
-        baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
         baseDecimals = uint8(bound(baseDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         quoteDecimals = uint8(bound(quoteDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        baseAmount = uint128(bound(baseAmount, 1, MAX_AMOUNT / (10 ** quoteDecimals)));
         D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
 
         uint256 scaledBase;
@@ -73,10 +73,10 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
 
         uint256 underestimate = price.mulUint256(scaledBase, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, price.inner(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Down
+            baseAmount * 10 ** quoteDecimals, price.raw(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, price.inner(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Up
+            baseAmount * 10 ** quoteDecimals, price.raw(), 10 ** baseDecimals * 1e18, MathLib.Rounding.Up
         );
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
 
@@ -113,7 +113,7 @@ contract ConvertWithPriceEdgeCasesTest is PricingLibBaseTest {
     }
 
     function testEdgeCaseWithPriceMaxAmounts() public view {
-        uint256 maxBaseAmount = type(uint128).max;
+        uint128 maxBaseAmount = type(uint64).max;
         D18 price = d18(type(uint64).max);
         uint256 result = PricingLib.convertWithPrice(maxBaseAmount, baseDecimals, quoteDecimals, price);
         uint256 expected =
@@ -137,7 +137,7 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         uint128 baseAmount = 8e10;
         D18 priceBasePerQuote = d18(2e10);
 
-        uint256 expected = baseAmount * 10 ** quoteDecimals * 1e18 / (10 ** baseDecimals * priceBasePerQuote.inner());
+        uint256 expected = baseAmount * 10 ** quoteDecimals * 1e18 / (10 ** baseDecimals * priceBasePerQuote.raw());
 
         assertEq(expected, 4e34);
         assertEq(
@@ -149,8 +149,8 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
     }
 
     function testConvertWithReciprocalPriceSameDecimals(uint128 baseAmount, uint128 priceRaw) public pure {
-        baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
-        D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        baseAmount = uint128(bound(baseAmount, 0, type(uint128).max / (10 ** 18)));
+        D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, type(uint128).max / (10 ** 18))));
 
         uint256 expected = price.reciprocalMulUint256(baseAmount, MathLib.Rounding.Down);
         uint256 result = PricingLib.convertWithReciprocalPrice(baseAmount, 18, 18, price, MathLib.Rounding.Down);
@@ -163,10 +163,12 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         uint8 quoteDecimals,
         uint128 priceRaw
     ) public pure {
-        baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
         baseDecimals = uint8(bound(baseDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         quoteDecimals = uint8(bound(quoteDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        baseAmount = uint128(bound(baseAmount, 0, type(uint128).max / (10 ** quoteDecimals)));
+        D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, type(uint128).max / (10 ** baseDecimals))));
+
+        vm.assume(10 ** (18 + quoteDecimals) * baseAmount < type(uint128).max * 10 ** baseDecimals * price.raw());
 
         uint256 scaledBase;
         if (baseDecimals > quoteDecimals) {
@@ -174,17 +176,15 @@ contract ConvertWithReciprocalPriceTest is PricingLibBaseTest {
         } else {
             scaledBase = baseAmount * (10 ** (quoteDecimals - baseDecimals));
         }
-
         uint256 underestimate = price.reciprocalMulUint256(scaledBase, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.inner(), MathLib.Rounding.Down
+            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
-            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.inner(), MathLib.Rounding.Up
+            baseAmount * 10 ** quoteDecimals, 1e18, 10 ** baseDecimals * price.raw(), MathLib.Rounding.Up
         );
         uint256 result =
             PricingLib.convertWithReciprocalPrice(baseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down);
-
         assertGe(result, underestimate, "convertWithReciprocalPrice should be at least as large as underestimate");
         assertEq(result, expectedDown, "convertWithReciprocalPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
@@ -228,8 +228,8 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
     }
 
     function testEdgeCaseWithReciprocalPriceMaxAmounts() public view {
-        uint256 maxBaseAmount = type(uint128).max;
-        D18 price = d18(type(uint64).max);
+        uint256 maxBaseAmount = type(uint64).max;
+        D18 price = d18(type(uint128).max);
         uint256 result = PricingLib.convertWithReciprocalPrice(
             maxBaseAmount, baseDecimals, quoteDecimals, price, MathLib.Rounding.Down
         );
@@ -257,7 +257,7 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         D18 priceDenominator = d18(8e10);
 
         uint256 expected =
-            priceNumerator.inner() * baseAmount * 10 ** quoteDecimals / (10 ** baseDecimals * priceDenominator.inner());
+            priceNumerator.raw() * baseAmount * 10 ** quoteDecimals / (10 ** baseDecimals * priceDenominator.raw());
 
         assertEq(expected, 1e26);
         assertEq(
@@ -268,17 +268,22 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         );
     }
 
-    function testConvertWithPricesSameDecimals(
-        uint128 baseAmount,
-        uint128 priceNumeratorRaw,
-        uint128 priceDenominatorRaw
-    ) public pure {
+    function testConvertWithPricesSameDecimals(uint128 baseAmount, uint128 priceNumerator_, uint128 priceDenominator_)
+        public
+        pure
+    {
         baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
-        D18 priceNumerator = d18(uint128(bound(priceNumeratorRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 priceDenominator = d18(uint128(bound(priceDenominatorRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        D18 priceDenominator = d18(uint128(bound(priceDenominator_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        D18 priceNumerator = d18(
+            uint128(
+                bound(
+                    priceNumerator_, MIN_PRICE, uint256(type(uint128).max) / (baseAmount + 1) * priceDenominator.raw()
+                )
+            )
+        );
 
         uint256 expected =
-            MathLib.mulDiv(priceNumerator.inner(), baseAmount, priceDenominator.inner(), MathLib.Rounding.Down);
+            MathLib.mulDiv(priceNumerator.raw(), baseAmount, priceDenominator.raw(), MathLib.Rounding.Down);
         uint256 result =
             PricingLib.convertWithPrices(baseAmount, 18, 18, priceNumerator, priceDenominator, MathLib.Rounding.Down);
         assertEq(result, expected);
@@ -288,36 +293,43 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
         uint128 baseAmount,
         uint8 baseDecimals,
         uint8 quoteDecimals,
-        uint128 priceNumeratorRaw,
-        uint128 priceDenominatorRaw
+        uint128 priceNumerator_,
+        uint128 priceDenominator_
     ) public pure {
-        baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
         baseDecimals = uint8(bound(baseDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         quoteDecimals = uint8(bound(quoteDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        D18 priceNumerator = d18(uint128(bound(priceNumeratorRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 priceDenominator = d18(uint128(bound(priceDenominatorRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-
+        baseAmount = uint128(bound(baseAmount, 1, type(uint128).max / (10 ** quoteDecimals)));
+        D18 priceDenominator = d18(uint128(bound(priceDenominator_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        D18 priceNumerator = d18(
+            uint128(
+                bound(
+                    priceNumerator_,
+                    0,
+                    10 ** baseDecimals * 1e28 / (10 ** quoteDecimals * (baseAmount + 1)) * priceDenominator.raw()
+                )
+            )
+        );
         uint256 scaledBase;
         if (baseDecimals > quoteDecimals) {
             scaledBase = baseAmount / (10 ** (baseDecimals - quoteDecimals));
         } else {
             scaledBase = baseAmount * (10 ** (quoteDecimals - baseDecimals));
         }
-
         uint256 underestimate =
-            MathLib.mulDiv(priceNumerator.inner(), scaledBase, priceDenominator.inner(), MathLib.Rounding.Down);
-        uint256 expectedDown = MathLib.mulDiv(
-            priceNumerator.inner(),
-            baseAmount * 10 ** quoteDecimals,
-            10 ** baseDecimals * priceDenominator.inner(),
-            MathLib.Rounding.Down
-        );
+            MathLib.mulDiv(priceNumerator.raw(), scaledBase, priceDenominator.raw(), MathLib.Rounding.Down);
         uint256 expectedUp = MathLib.mulDiv(
-            priceNumerator.inner(),
-            baseAmount * 10 ** quoteDecimals,
-            10 ** baseDecimals * priceDenominator.inner(),
+            priceNumerator.raw(),
+            10 ** quoteDecimals * baseAmount,
+            10 ** baseDecimals * priceDenominator.raw(),
             MathLib.Rounding.Up
         );
+        uint256 expectedDown = MathLib.mulDiv(
+            priceNumerator.raw(),
+            uint256(baseAmount) * 10 ** quoteDecimals,
+            10 ** baseDecimals * uint256(priceDenominator.raw()),
+            MathLib.Rounding.Down
+        );
+
         uint256 result = PricingLib.convertWithPrices(
             baseAmount, baseDecimals, quoteDecimals, priceNumerator, priceDenominator, MathLib.Rounding.Down
         );
@@ -371,7 +383,7 @@ contract ConvertWithPricesEdgeCasesTest is PricingLibBaseTest {
     }
 
     function testEdgeCaseWithPricesMaxAmounts() public view {
-        uint256 maxBaseAmount = type(uint128).max;
+        uint256 maxBaseAmount = type(uint64).max;
 
         D18 priceNumerator = d18(type(uint64).max);
         D18 priceDenominator = d18(type(uint64).max);
@@ -395,38 +407,58 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
     using PricingLib for *;
     using MathLib for uint256;
 
+    function _setUpBounds(
+        uint128 assetAmount_,
+        uint8 assetDecimals_,
+        uint128 pricePoolPerAsset_,
+        uint128 pricePoolPerShare_
+    )
+        internal
+        pure
+        returns (
+            uint128 assetAmount,
+            uint8 assetDecimals,
+            D18 pricePoolPerAsset,
+            D18 pricePoolPerShare,
+            uint256 poolAmount
+        )
+    {
+        assetDecimals = uint8(bound(assetDecimals_, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        assetAmount = uint128(bound(assetAmount_, 0, type(uint128).max / (10 ** assetDecimals)));
+        pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
+
+        poolAmount = pricePoolPerAsset.mulUint256(
+            uint256(assetAmount).mulDiv(10 ** SHARE_DECIMALS, 10 ** assetDecimals), MathLib.Rounding.Down
+        );
+        vm.assume(poolAmount < type(uint128).max / 1e18);
+    }
+
     function testAssetToShareAmount(
-        uint128 assetAmount,
-        uint8 assetDecimals,
+        uint128 assetAmount_,
+        uint8 assetDecimals_,
         uint128 pricePoolPerAsset_,
         uint128 pricePoolPerShare_
     ) public pure {
-        assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        assetAmount = uint128(bound(assetAmount, 10 ** assetDecimals, MAX_AMOUNT));
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
+        (uint128 assetAmount, uint8 assetDecimals, D18 pricePoolPerAsset, D18 pricePoolPerShare, uint256 poolAmount) =
+            _setUpBounds(assetAmount_, assetDecimals_, pricePoolPerAsset_, pricePoolPerShare_);
 
-        uint256 underestimate = pricePoolPerShare.reciprocalMulUint256(
-            pricePoolPerAsset.mulUint256(
-                uint256(assetAmount).mulDiv(10 ** SHARE_DECIMALS, 10 ** assetDecimals), MathLib.Rounding.Down
-            ),
-            MathLib.Rounding.Down
-        );
+        uint256 underestimate = pricePoolPerShare.reciprocalMulUint256(poolAmount, MathLib.Rounding.Down);
         uint256 expectedDown = MathLib.mulDiv(
             assetAmount * 10 ** SHARE_DECIMALS,
-            pricePoolPerAsset.inner(),
-            10 ** assetDecimals * pricePoolPerShare.inner(),
+            pricePoolPerAsset.raw(),
+            10 ** assetDecimals * pricePoolPerShare.raw(),
             MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
             assetAmount * 10 ** SHARE_DECIMALS,
-            pricePoolPerAsset.inner(),
-            10 ** assetDecimals * pricePoolPerShare.inner(),
+            pricePoolPerAsset.raw(),
+            10 ** assetDecimals * pricePoolPerShare.raw(),
             MathLib.Rounding.Up
         );
 
         uint256 result = PricingLib.assetToShareAmount(
-            assetAmount, assetDecimals, SHARE_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+            assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
 
         assertGe(result, underestimate, "assetToShareAmount should be at least as large as underestimate");
@@ -434,16 +466,15 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
 
+    /// NOTE: Precision is horrible with fuzzed inputs but still reflects a worst case which is better than nothing
     function testAssetToShareToAssetRoundTrip(
-        uint128 assetAmount,
-        uint8 assetDecimals,
+        uint128 assetAmount_,
+        uint8 assetDecimals_,
         uint64 pricePoolPerAsset_,
         uint64 pricePoolPerShare_
     ) public pure {
-        assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        assetAmount = uint128(bound(assetAmount, 10 ** assetDecimals, MAX_AMOUNT));
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
+        (uint128 assetAmount, uint8 assetDecimals, D18 pricePoolPerAsset, D18 pricePoolPerShare,) =
+            _setUpBounds(assetAmount_, assetDecimals_, pricePoolPerAsset_, pricePoolPerShare_);
 
         uint256 shareAmount = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
@@ -452,7 +483,7 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
 
-        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e7, "Asset->Share->Asset roundtrip target precision excess");
+        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e20, "Asset->Share->Asset roundtrip target precision excess");
     }
 }
 
@@ -460,7 +491,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
     using PricingLib for *;
     using MathLib for uint256;
 
-    /// NOTE: Solely serves to represent the horrible precision for this round trip due to reciprocal multiplication
+    /// NOTE: Precision is horrible with fuzzed inputs but still reflects a worst case which is better than nothing
     function testShareToAssetToShareRoundTrip(
         uint128 shareAmount,
         uint8 assetDecimals,
@@ -468,9 +499,18 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint64 pricePoolPerShare_
     ) public pure {
         assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
+        shareAmount = uint128(bound(shareAmount, 0, (type(uint128).max / 10 ** assetDecimals)));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
-        shareAmount = uint128(bound(shareAmount, 10 ** assetDecimals, MAX_AMOUNT));
+        D18 pricePoolPerShare = d18(
+            uint128(
+                bound(
+                    pricePoolPerShare_,
+                    MIN_PRICE,
+                    (10 ** 18 * pricePoolPerAsset.raw() * uint256(type(uint128).max))
+                        / (10 ** assetDecimals * (shareAmount + 1))
+                )
+            )
+        );
 
         uint256 assetAmount = PricingLib.shareToAssetAmount(
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
@@ -478,7 +518,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint256 shareRoundTrip = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
-        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e19, "Share->Asset->Share roundtrip target precision excess");
+        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e36, "Share->Asset->Share roundtrip target precision excess");
     }
 
     function testShareToAssetAmount(
@@ -488,10 +528,18 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint64 pricePoolPerAsset_
     ) public pure {
         assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        shareAmount = uint128(bound(shareAmount, 1e18, MAX_AMOUNT));
+        shareAmount = uint128(bound(shareAmount, 0, (type(uint128).max / 10 ** assetDecimals)));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, MAX_PRICE_POOL_PER_SHARE)));
-
+        D18 pricePoolPerShare = d18(
+            uint128(
+                bound(
+                    pricePoolPerShare_,
+                    MIN_PRICE,
+                    (10 ** 18 * pricePoolPerAsset.raw() * uint256(type(uint128).max))
+                        / (10 ** assetDecimals * (shareAmount + 1))
+                )
+            )
+        );
         uint256 underestimate = pricePoolPerAsset.reciprocalMulUint256(
             pricePoolPerShare.mulUint256(
                 uint256(shareAmount).mulDiv(10 ** assetDecimals, 10 ** SHARE_DECIMALS), MathLib.Rounding.Down
@@ -500,14 +548,14 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         );
         uint256 expectedDown = MathLib.mulDiv(
             shareAmount * 10 ** assetDecimals,
-            pricePoolPerShare.inner(),
-            10 ** SHARE_DECIMALS * pricePoolPerAsset.inner(),
+            pricePoolPerShare.raw(),
+            10 ** SHARE_DECIMALS * pricePoolPerAsset.raw(),
             MathLib.Rounding.Down
         );
         uint256 expectedUp = MathLib.mulDiv(
             shareAmount * 10 ** assetDecimals,
-            pricePoolPerShare.inner(),
-            10 ** SHARE_DECIMALS * pricePoolPerAsset.inner(),
+            pricePoolPerShare.raw(),
+            10 ** SHARE_DECIMALS * pricePoolPerAsset.raw(),
             MathLib.Rounding.Up
         );
 
@@ -549,18 +597,19 @@ contract PoolToAssetAmountTest is PricingLibBaseTest {
 
     function testPoolToAssetAmount(uint128 poolAmount, uint8 assetDecimals, uint64 pricePoolPerAsset_) public pure {
         assetDecimals = uint8(bound(assetDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
-        poolAmount = uint128(bound(poolAmount, 10 ** POOL_DECIMALS, MAX_AMOUNT));
         D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
+        poolAmount =
+            uint128(bound(poolAmount, 0, type(uint128).max / (10 ** (assetDecimals + 18) * pricePoolPerAsset.raw())));
 
         uint256 underestimate = pricePoolPerAsset.reciprocalMulUint256(
             uint256(poolAmount).mulDiv(10 ** assetDecimals, 10 ** POOL_DECIMALS, MathLib.Rounding.Down),
             MathLib.Rounding.Down
         );
         uint256 expectedDown = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.inner(), MathLib.Rounding.Down
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Down
         );
         uint256 expectedUp = uint256(poolAmount).mulDiv(
-            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.inner(), MathLib.Rounding.Up
+            10 ** (assetDecimals + 18), 10 ** POOL_DECIMALS * pricePoolPerAsset.raw(), MathLib.Rounding.Up
         );
 
         uint256 result = PricingLib.poolToAssetAmount(
@@ -588,8 +637,8 @@ contract CalcPriceAssetPerShareTest is Test {
         vm.mockCall(shareToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(SHARE_DECIMALS));
     }
 
-    function _assertPrice(uint256 shares, uint256 assets, uint256 expected, MathLib.Rounding rounding) internal view {
-        uint256 calculated = PricingLib.calculatePriceAssetPerShare(
+    function _assertPrice(uint256 shares, uint256 assets, uint128 expected, MathLib.Rounding rounding) internal view {
+        uint128 calculated = PricingLib.calculatePriceAssetPerShare(
             shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding
         );
         assertEq(calculated, expected);
@@ -598,7 +647,7 @@ contract CalcPriceAssetPerShareTest is Test {
     function testIdentityPrice() public view {
         uint256 shares = 10 ** SHARE_DECIMALS;
         uint256 assets = 10 ** ASSET_DECIMALS;
-        uint256 expected = 1e18;
+        uint128 expected = 1e18;
 
         _assertPrice(shares, assets, expected, MathLib.Rounding.Down);
     }
@@ -606,7 +655,7 @@ contract CalcPriceAssetPerShareTest is Test {
     function testManual() public view {
         uint256 shares = 2e18;
         uint256 assets = 51;
-        uint256 expected = 25.5e10; // 1e18 * 51 * 1e12 / 2e18 * 1e2
+        uint128 expected = 25.5e10; // 1e18 * 51 * 1e12 / 2e18 * 1e2
 
         _assertPrice(shares, assets, expected, MathLib.Rounding.Down);
     }
@@ -627,13 +676,13 @@ contract CalcPriceAssetPerShareTest is Test {
         _assertPrice(1e18, 1, 1e10, MathLib.Rounding.Down);
 
         // Large assets, small shares
-        _assertPrice(1, 1e18, 1e46, MathLib.Rounding.Down);
+        _assertPrice(1, 1e10, 1e38, MathLib.Rounding.Down);
     }
 
     function testRoundingModes() public view {
         uint256 shares = 3;
         uint256 assets = 10;
-        uint256 expected = 10 ** 29;
+        uint128 expected = 10 ** 29;
 
         // Rounding.Down
         _assertPrice(shares, assets, expected / 3, MathLib.Rounding.Down);

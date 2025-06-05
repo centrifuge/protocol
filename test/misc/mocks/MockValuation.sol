@@ -30,6 +30,6 @@ contract MockValuation is BaseValuation, ReentrancyProtection {
         D18 price_ = price[base][quote];
         require(D18.unwrap(price_) != 0, "Price not set");
 
-        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price_).toUint128();
+        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price_);
     }
 }
