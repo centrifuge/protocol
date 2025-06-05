@@ -61,11 +61,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.reserveIncrease(scId, asset, tokenId, 100);
+        escrow.reserve(scId, asset, tokenId, 100);
 
         vm.expectEmit();
         emit IPoolEscrow.IncreaseReserve(asset, tokenId, poolId, scId, 100, 100);
-        escrow.reserveIncrease(scId, asset, tokenId, 100);
+        escrow.reserve(scId, asset, tokenId, 100);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
 
@@ -84,9 +84,9 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.reserveIncrease(scId, asset, tokenId, 100);
+        escrow.reserve(scId, asset, tokenId, 100);
 
-        escrow.reserveIncrease(scId, asset, tokenId, 100);
+        escrow.reserve(scId, asset, tokenId, 100);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
 
@@ -99,11 +99,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 200, "300 - 100 = 200");
 
         vm.expectRevert(IPoolEscrow.InsufficientReservedAmount.selector);
-        escrow.reserveDecrease(scId, asset, tokenId, 200);
+        escrow.unreserve(scId, asset, tokenId, 200);
 
         vm.expectEmit();
         emit IPoolEscrow.DecreaseReserve(asset, tokenId, poolId, scId, 100, 0);
-        escrow.reserveDecrease(scId, asset, tokenId, 100);
+        escrow.unreserve(scId, asset, tokenId, 100);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "300 - 0 = 300");
     }
 
@@ -115,7 +115,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.deposit(scId, asset, tokenId, 1000);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 1000, "initial holdings should be 1000");
 
-        escrow.reserveIncrease(scId, asset, tokenId, 500);
+        escrow.reserve(scId, asset, tokenId, 500);
 
         vm.expectRevert(abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, asset, tokenId, 600, 500));
         escrow.withdraw(scId, asset, tokenId, 600);
@@ -139,11 +139,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
 
         escrow.deposit(scId, asset, tokenId, 500);
 
-        escrow.reserveIncrease(scId, asset, tokenId, 200);
+        escrow.reserve(scId, asset, tokenId, 200);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "Should be 300 after reserve increase");
 
-        escrow.reserveIncrease(scId, asset, tokenId, 300);
+        escrow.reserve(scId, asset, tokenId, 300);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Should be zero if pendingWithdraw >= holdings");
     }
 }

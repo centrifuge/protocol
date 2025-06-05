@@ -189,7 +189,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     ) external auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        balanceSheet.reserveIncrease(poolId, scId, asset, tokenId, assetAmount);
+        balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount);
 
         globalEscrow.authTransferTo(address(spoke.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
@@ -376,7 +376,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        balanceSheet.reserveDecrease(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
+        balanceSheet.unreserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 

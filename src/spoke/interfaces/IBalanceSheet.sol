@@ -114,13 +114,14 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
-    /// @notice TODO
-    function reserveIncrease(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external;
+    /// @notice Increase the reserved balance of the pool. These assets are removed from the available balance
+    ///         and cannot be withdrawn before they are unreserved.
+    ///
+    ///         It is possible to reserve more than the current balance, to lock future expected assets.
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
-    /// @notice TODO
-    function reserveDecrease(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        external;
+    /// @notice Decrease the reserved balance of the pool. These assets are re-added to the available balance.
+    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
 
     /// @notice Issue new share tokens. Increases the total issuance.
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
