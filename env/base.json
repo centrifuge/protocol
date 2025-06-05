@@ -3,6 +3,7 @@
         "chainId": 8453,
         "environment": "mainnet",
         "centrifugeId": 6,
+        "network": "base",
         "connectsTo": [
             "ethereum",
             "arbitrum"

@@ -16,14 +16,11 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
     function run() public {
         vm.startBroadcast();
         uint16 centrifugeId;
-        bool isTestnet;
 
         try vm.envString("NETWORK") returns (string memory network) {
             string memory configFile = string.concat("env/", network, ".json");
             string memory config = vm.readFile(configFile);
             centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-            string memory environment = vm.parseJsonString(config, "$.network.environment");
-            isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
         } catch {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
             revert("NETWORK environment variable is required");

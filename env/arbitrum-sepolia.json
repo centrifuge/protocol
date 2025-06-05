@@ -3,6 +3,8 @@
         "chainId": 421614,
         "environment": "testnet",
         "centrifugeId": 4,
+        "network": "arbitrum",
+        "catapultaNetwork": "arbitrumSepolia",
         "connectsTo": [
             "sepolia",
             "base-sepolia"

@@ -8,7 +8,7 @@ broadcast/
 lcov.info
 .vscode
 **/latest
-
+**.zip
 ## Recon
 /medusa
 /crytic-export

@@ -3,6 +3,8 @@
     "chainId": 84532,
     "environment": "testnet",
     "centrifugeId": 2,
+    "network": "base",
+    "catapultaNetwork": "baseSepolia",
     "connectsTo": [
       "sepolia"
     ]
