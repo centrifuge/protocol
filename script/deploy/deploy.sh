@@ -10,23 +10,23 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Source the helper scripts
 source "$SCRIPT_DIR/formathelper.sh"
 
-# Usage: ./deploy.sh <network> <step> [forge_args...]
-# Example: ./deploy.sh sepolia deploy:full
-# Example: ./deploy.sh base-sepolia deploy:adapters --priority-gas-price 2
-# Example: ./deploy.sh sepolia test --nonce 4765
+# Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]
+# Example: ./deploy.sh eth-sepolia deploy:full
+# Example: ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2
+# Example: ./deploy.sh eth-sepolia test --nonce 4765
 
 if [[ -z "$1" || -z "$2" ]]; then
-    echo "Usage: ./deploy.sh <network> <step> [forge_args...]"
+    echo "Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
     echo "  deploy:full      - Deploy everything (hub, spoke, adapters)"
     echo "  deploy:adapters  - Deploy only adapters"
     echo "  wire:adapters    - Wire adapters to hub/spoke"
-    echo "  deploy:test             - Deploy test data"
+    echo "  deploy:test      - Deploy test data"
     echo
     echo "Examples:"
     echo "  ./deploy.sh sepolia deploy:full"
-    echo "  ./deploy.sh base-sepolia deploy:adapters --priority-gas-price 2"
+    echo "  ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2"
     echo "  ./deploy.sh sepolia test --nonce 4765"
     exit 1
 fi
@@ -35,10 +35,25 @@ fi
 CI_MODE=${CI_MODE:-false}
 NETWORK=$1
 STEP=$2
-shift 2 # Remove the first two arguments, leaving any additional forge args
+shift 2 # Remove the first two arguments
 
-# Capture any additional forge arguments
-FORGE_ARGS=("$@")
+# Check for --catapulta flag
+USE_CATAPULTA=false
+FORGE_ARGS=()
+
+# Process remaining arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --catapulta)
+        USE_CATAPULTA=true
+        shift
+        ;;
+    *)
+        FORGE_ARGS+=("$1")
+        shift
+        ;;
+    esac
+done
 
 # Validate step
 case "$STEP" in
@@ -58,8 +73,8 @@ run_forge_script() {
     print_info "Chain ID: $CHAIN_ID"
 
     # Construct the forge command
-    FORGE_CMD="cd \"$ROOT_DIR\" && forge script \
-        \"script/$script.s.sol\" \
+    FORGE_CMD="NETWORK=$NETWORK forge script \
+        \"$ROOT_DIR/script/$script.s.sol\" \
         --optimize \
         --rpc-url \"$RPC_URL\" \
         --private-key \"$PRIVATE_KEY\" \
@@ -69,13 +84,25 @@ run_forge_script() {
         --etherscan-api-key \"$ETHERSCAN_API_KEY\" \
         ${FORGE_ARGS[*]}"
 
-    print_step "Executing Forge Command"
+    CATAPULTA_CMD="NETWORK=$NETWORK DEPLOYMENT_SALT=$DEPLOYMENT_SALT catapulta script $script \"$ROOT_DIR/script/$script.s.sol\" --network ${CATAPULTA_NET:-$NETWORK} --private-key $PRIVATE_KEY"
 
-    # Execute the command
-    if ! eval "$FORGE_CMD"; then
-        print_error "Failed to run $script"
-        print_info "Command: $FORGE_CMD"
-        exit 1
+    print_step "Executing Command"
+
+    # Execute the appropriate command
+    if [ "$USE_CATAPULTA" = true ]; then
+        print_info "Using Catapulta deployment"
+        if ! eval "$CATAPULTA_CMD"; then
+            print_error "Failed to run $script with Catapulta"
+            print_info "Command: $CATAPULTA_CMD"
+            exit 1
+        fi
+    else
+        print_info "Using Forge deployment"
+        if ! eval "$FORGE_CMD"; then
+            print_error "Failed to run $script with Forge"
+            print_info "Command: $FORGE_CMD"
+            exit 1
+        fi
     fi
     print_section "Deployment Complete"
 }
@@ -115,6 +142,12 @@ update_network_config() {
 # Load environment variables
 if ! source "$SCRIPT_DIR/load_vars.sh" "$NETWORK"; then
     print_error "Failed to load environment variables"
+    exit 1
+fi
+
+if [ -z "$PRIVATE_KEY" ] || [ -z "$RPC_URL" ] || [ -z "$ETHERSCAN_API_KEY" ] || [ -z "$ADMIN" ]; then
+    print_error "Error: loading variables failed"
+    print_error "Run ./load_vars.sh $NETWORK to load variables and check for errors before running this script"
     exit 1
 fi
 
