@@ -57,7 +57,7 @@ done
 
 # Validate step
 case "$STEP" in
-"deploy:full" | "deploy:adapters" | "wire:adapters" | "test") ;;
+"deploy:full" | "deploy:adapters" | "wire:adapters" | "deploy:test") ;;
 *)
     echo "Invalid step: $STEP"
     echo "Valid steps are: deploy:full, deploy:adapters, wire:adapters, test"
