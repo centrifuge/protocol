@@ -94,8 +94,8 @@ library PricingLib {
         uint128 shareAmount,
         address asset,
         uint256 tokenId,
-        D18 pricePoolPerAsset,
         D18 pricePoolPerShare,
+        D18 pricePoolPerAsset,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
         if (shareAmount == 0 || pricePoolPerShare.raw() == 0 || pricePoolPerAsset.raw() == 0) {
@@ -107,7 +107,7 @@ library PricingLib {
 
         // NOTE: Pool and share denomination are always equal by design
         return PricingLib.shareToAssetAmount(
-            shareAmount, shareDecimals, assetDecimals, pricePoolPerAsset, pricePoolPerShare, rounding
+            shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, rounding
         ).toUint128();
     }
 
@@ -232,8 +232,8 @@ library PricingLib {
         uint256 shareAmount,
         uint8 shareDecimals,
         uint8 assetDecimals,
-        D18 pricePoolPerAsset,
         D18 pricePoolPerShare,
+        D18 pricePoolPerAsset,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 assetAmount) {
         return
