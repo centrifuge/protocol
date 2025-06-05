@@ -275,6 +275,12 @@ contract EndToEndUtils is EndToEndDeployment {
             poolAmount, POOL_DECIMALS, USDC_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down
         ).toUint128();
     }
+
+    function checkAccountValue(AccountId accountId, uint128 value, bool isPositive) public view {
+        (bool accountIsPositive, uint128 accountValue) = h.accounting.accountValue(POOL_A, accountId);
+        assertEq(accountValue, value);
+        assertEq(accountIsPositive, isPositive);
+    }
 }
 
 /// Common and generic flows ready to be used in different tests
@@ -419,11 +425,7 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testAsyncRedeem(bool sameChain, bool afterAsyncDeposit) public {
-        if (afterAsyncDeposit) {
-            testAsyncDeposit(sameChain);
-        } else {
-            testSyncDeposit(sameChain);
-        }
+        (afterAsyncDeposit) ? testAsyncDeposit(sameChain) : testSyncDeposit(sameChain);
 
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A));
@@ -466,26 +468,25 @@ contract EndToEndUseCases is EndToEndFlows {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 / 5);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId);
 
         // CHECKS
-        assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 / 5);
-        assertEq(s.balanceSheet.escrow(POOL_A).availableBalanceOf(SC_1, address(s.usdc), 0), USDC_AMOUNT_1 * 4 / 5);
+        assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
+        assertEq(s.balanceSheet.escrow(POOL_A).availableBalanceOf(SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
 
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
-        assertEq(amount, USDC_AMOUNT_1 * 4 / 5);
-        assertEq(value, assetToPool(USDC_AMOUNT_1 * 4 / 5));
+        assertEq(amount, USDC_AMOUNT_1 / 5);
+        assertEq(value, assetToPool(USDC_AMOUNT_1 / 5));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+
+        checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
+        checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
     }
 
     function testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit) public {
-        if (afterAsyncDeposit) {
-            testAsyncDeposit(sameChain);
-        } else {
-            testSyncDeposit(sameChain);
-        }
+        (afterAsyncDeposit) ? testAsyncDeposit(sameChain) : testSyncDeposit(sameChain);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId);
@@ -497,6 +498,9 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(value, assetToPool(USDC_AMOUNT_1));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+
+        checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
+        checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
     }
 
     function testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
@@ -512,5 +516,8 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(value, assetToPool(0));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+
+        checkAccountValue(ASSET_ACCOUNT, assetToPool(0), true);
+        checkAccountValue(EQUITY_ACCOUNT, assetToPool(0), true);
     }
 }
