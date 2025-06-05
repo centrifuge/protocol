@@ -188,7 +188,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
 
-        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
+        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 1;
         emit SubmitQueuedAssets(
             poolId,
             scId,
@@ -199,29 +199,18 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             isSnapshot,
             shareQueue.nonce
         );
-        if (assetQueue.deposits > assetQueue.withdrawals) {
-            sender.sendUpdateHoldingAmount(
-                poolId,
-                scId,
-                assetId,
-                assetQueue.deposits - assetQueue.withdrawals,
-                pricePoolPerAsset,
-                true,
-                isSnapshot,
-                shareQueue.nonce
-            );
-        } else if (assetQueue.withdrawals > assetQueue.deposits) {
-            sender.sendUpdateHoldingAmount(
-                poolId,
-                scId,
-                assetId,
-                assetQueue.withdrawals - assetQueue.deposits,
-                pricePoolPerAsset,
-                false,
-                isSnapshot,
-                shareQueue.nonce
-            );
-        }
+        sender.sendUpdateHoldingAmount(
+            poolId,
+            scId,
+            assetId,
+            (assetQueue.deposits >= assetQueue.withdrawals)
+                ? assetQueue.deposits - assetQueue.withdrawals
+                : assetQueue.withdrawals - assetQueue.deposits,
+            pricePoolPerAsset,
+            assetQueue.deposits >= assetQueue.withdrawals,
+            isSnapshot,
+            shareQueue.nonce
+        );
 
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
