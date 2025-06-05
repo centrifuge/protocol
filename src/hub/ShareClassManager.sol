@@ -301,8 +301,8 @@ contract ShareClassManager is Auth, IShareClassManager {
             epochAmounts.approvedShareAmount,
             hubRegistry.decimals(poolId),
             hubRegistry.decimals(payoutAssetId),
-            epochAmounts.pricePoolPerAsset,
             epochAmounts.navPoolPerShare,
+            epochAmounts.pricePoolPerAsset,
             MathLib.Rounding.Down
         );
         revokedShareAmount = epochAmounts.approvedShareAmount;
@@ -496,8 +496,8 @@ contract ShareClassManager is Auth, IShareClassManager {
                 paymentShareAmount,
                 hubRegistry.decimals(poolId),
                 hubRegistry.decimals(payoutAssetId),
-                epochAmounts.pricePoolPerAsset,
                 epochAmounts.navPoolPerShare,
+                epochAmounts.pricePoolPerAsset,
                 MathLib.Rounding.Down
             ).toUint128();
 

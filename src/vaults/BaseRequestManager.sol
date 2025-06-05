@@ -158,8 +158,8 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
             shares.toUint128(),
             vaultDetails.asset,
             vaultDetails.tokenId,
-            pricePoolPerAsset,
             pricePoolPerShare,
+            pricePoolPerAsset,
             rounding
         );
     }

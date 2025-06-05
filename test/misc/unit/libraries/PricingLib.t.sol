@@ -480,7 +480,7 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
         uint256 assetRoundTrip = PricingLib.shareToAssetAmount(
-            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
         );
 
         assertApproxEqAbs(assetRoundTrip, assetAmount, 1e20, "Asset->Share->Asset roundtrip target precision excess");
@@ -513,7 +513,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         );
 
         uint256 assetAmount = PricingLib.shareToAssetAmount(
-            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
         );
         uint256 shareRoundTrip = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
@@ -560,7 +560,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         );
 
         uint256 result = PricingLib.shareToAssetAmount(
-            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+            shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
         );
 
         assertGe(result, underestimate, "shareToAssetAmount should be at least as large as underestimate");
@@ -578,11 +578,11 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         assertEq(result, 0, "Zero share amount should return 0");
 
         // Test zero pricePoolPerShare
-        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(1e18), d18(0), MathLib.Rounding.Down);
+        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(0), d18(1e18), MathLib.Rounding.Down);
         assertEq(result, 0, "Zero pricePoolPerShare should return 0");
 
         // Test zero pricePoolPerAsset
-        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(0), d18(1e18), MathLib.Rounding.Down);
+        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(1e18), d18(0), MathLib.Rounding.Down);
         assertEq(result, 0, "Zero pricePoolPerAsset should return 0");
 
         // Test all zeros
