@@ -251,6 +251,17 @@ library PricingLib {
         return convertWithReciprocalPrice(poolAmount, poolDecimals, assetDecimals, pricePoolPerAsset, rounding);
     }
 
+    /// @dev Converts asset amount to pool amount.
+    function assetToPoolAmount(
+        uint256 assetAmount,
+        uint8 assetDecimals,
+        uint8 poolDecimals,
+        D18 pricePoolPerAsset,
+        MathLib.Rounding rounding
+    ) internal pure returns (uint256 poolAmount) {
+        return convertWithPrice(assetAmount, assetDecimals, poolDecimals, pricePoolPerAsset, rounding);
+    }
+
     /// @dev Returns the asset price per share denominated in ASSET_UNIT/SHARE_UNIT
     ///
     ///      NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
