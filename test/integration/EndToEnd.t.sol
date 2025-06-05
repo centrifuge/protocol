@@ -262,7 +262,7 @@ contract EndToEndUtils is EndToEndDeployment {
 
     function shareToAsset(uint128 shareAmount) public view returns (uint128 assetAmount) {
         return PricingLib.shareToAssetAmount(
-            shareAmount, SHARE_DECIMALS, USDC_DECIMALS, ASSET_PRICE, SHARE_PRICE, MathLib.Rounding.Down
+            shareAmount, SHARE_DECIMALS, USDC_DECIMALS, SHARE_PRICE, ASSET_PRICE, MathLib.Rounding.Down
         );
     }
 
