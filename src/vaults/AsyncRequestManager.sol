@@ -27,7 +27,6 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
@@ -42,7 +41,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using MathLib for uint256;
 
     ISpokeMessageSender public sender;
-    IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -58,7 +56,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -170,7 +167,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
         balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
-        address poolEscrow = address(poolEscrowProvider.escrow(poolId));
+        address poolEscrow = address(balanceSheet.escrow(poolId));
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
@@ -192,7 +189,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     ) external auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
+        balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount);
 
         globalEscrow.authTransferTo(address(spoke.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
@@ -379,7 +376,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        poolEscrowProvider.escrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
+        balanceSheet.unreserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 

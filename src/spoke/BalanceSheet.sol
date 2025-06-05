@@ -129,6 +129,22 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        public
+        authOrManager(poolId)
+    {
+        escrow(poolId).reserve(scId, asset, tokenId, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        public
+        authOrManager(poolId)
+    {
+        escrow(poolId).unreserve(scId, asset, tokenId, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 

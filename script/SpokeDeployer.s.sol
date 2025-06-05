@@ -180,20 +180,16 @@ contract SpokeDeployer is CommonDeployer {
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         syncRequestManager.file("spoke", address(spoke));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
-        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
-        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(spoke);
