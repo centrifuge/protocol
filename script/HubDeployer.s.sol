@@ -87,6 +87,7 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(root));
         hub.rely(address(root));
         identityValuation.rely(address(root));
+        hubHelpers.rely(address(root));
     }
 
     function _poolsFile() private {
@@ -113,7 +114,7 @@ contract HubDeployer is CommonDeployer {
         holdings.deny(deployer);
         shareClassManager.deny(deployer);
         hub.deny(deployer);
-
+        hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
     }
 }
