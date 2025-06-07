@@ -7,7 +7,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -88,14 +87,17 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
 
         state.pendingDepositRequest += assets_;
-        sender.sendRequest(
-            poolId,
-            scId,
-            vaultDetails.assetId,
-            RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize()
-        );
+        _sendDepositRequest(poolId, scId, vaultDetails.assetId, controller, assets_);
 
         return true;
+    }
+
+    function _sendDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address controller, uint128 assets)
+        internal
+    {
+        sender.sendRequest(
+            poolId, scId, assetId, RequestMessageLib.DepositRequest(controller.toBytes32(), assets).serialize()
+        );
     }
 
     /// @inheritdoc IAsyncRedeemManager
@@ -123,14 +125,17 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
 
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
-        sender.sendRequest(
-            poolId,
-            scId,
-            vaultDetails.assetId,
-            RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize()
-        );
+        _sendRedeemRequest(poolId, scId, vaultDetails.assetId, controller, shares_);
 
         return true;
+    }
+
+    function _sendRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address controller, uint128 shares)
+        internal
+    {
+        sender.sendRequest(
+            poolId, scId, assetId, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares).serialize()
+        );
     }
 
     /// @inheritdoc IAsyncDepositManager
