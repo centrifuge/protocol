@@ -14,6 +14,7 @@ enum RequestType {
 }
 
 // TODO: remove poolId and scId from all sub messages
+// TODO: add assetId to higher level RequestCallback message
 
 library RequestMessageLib {
     using RequestMessageLib for bytes;
