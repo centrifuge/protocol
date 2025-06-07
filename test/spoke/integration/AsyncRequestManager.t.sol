@@ -46,8 +46,7 @@ contract AsyncRequestManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(messageDispatcher)
-                && nonWard != address(messageProcessor) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncRequestManager)
                 && nonWard != address(this)
         );
 
@@ -55,19 +54,15 @@ contract AsyncRequestManagerTest is BaseTest {
         new AsyncRequestManager(globalEscrow, address(root), address(this));
 
         // values set correctly
-        assertEq(address(asyncRequestManager.sender()), address(messageDispatcher));
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
 
         // permissions set correctly
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
-        assertEq(asyncRequestManager.wards(address(messageProcessor)), 1);
-        assertEq(asyncRequestManager.wards(address(messageDispatcher)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         assertEq(balanceSheet.wards(address(asyncRequestManager)), 1);
-        assertEq(messageDispatcher.wards(address(asyncRequestManager)), 1);
     }
 
     // --- Administration ---
@@ -78,8 +73,6 @@ contract AsyncRequestManagerTest is BaseTest {
 
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         // success
-        asyncRequestManager.file("sender", randomUser);
-        assertEq(address(asyncRequestManager.sender()), randomUser);
         asyncRequestManager.file("spoke", randomUser);
         assertEq(address(asyncRequestManager.spoke()), randomUser);
         asyncRequestManager.file("balanceSheet", randomUser);

@@ -166,7 +166,6 @@ contract SpokeDeployer is CommonDeployer {
         spoke.file("vaultFactory", address(asyncVaultFactory), true);
         spoke.file("vaultFactory", address(syncDepositVaultFactory), true);
 
-        asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
 

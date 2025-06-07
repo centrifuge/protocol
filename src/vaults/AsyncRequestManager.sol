@@ -7,7 +7,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -32,7 +31,7 @@ import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
-/// @title  Investment Manager
+/// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
@@ -41,8 +40,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using MathLib for uint256;
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
-
-    ISpokeMessageSender public sender;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -55,8 +52,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "sender") sender = ISpokeMessageSender(data);
-        else if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -95,7 +91,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     function _sendDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address controller, uint128 assets)
         internal
     {
-        sender.sendRequest(
+        spoke.request(
             poolId, scId, assetId, RequestMessageLib.DepositRequest(controller.toBytes32(), assets).serialize()
         );
     }
@@ -133,7 +129,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     function _sendRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, address controller, uint128 shares)
         internal
     {
-        sender.sendRequest(
+        spoke.request(
             poolId, scId, assetId, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares).serialize()
         );
     }
@@ -146,7 +142,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.pendingCancelDepositRequest = true;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        sender.sendRequest(
+        spoke.request(
             vault_.poolId(),
             vault_.scId(),
             vaultDetails.assetId,
@@ -165,7 +161,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.pendingCancelRedeemRequest = true;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        sender.sendRequest(
+        spoke.request(
             vault_.poolId(),
             vault_.scId(),
             vaultDetails.assetId,
