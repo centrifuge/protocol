@@ -5,8 +5,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 interface IRequestManager {
-    error UnknownRequestType();
+    error UnknownRequestCallbackType();
 
     /// @notice TODO
-    function handleRequest(PoolId poolId, ShareClassId scId, bytes calldata payload) external;
+    function callback(PoolId poolId, ShareClassId scId, bytes calldata payload) external;
 }

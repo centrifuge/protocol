@@ -82,6 +82,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
+        } else if (kind == MessageType.Request) {
+            MessageLib.Request memory m = MessageLib.deserializeRequest(message);
+            hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
             spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {
@@ -123,9 +126,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
             spoke.updateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
-        } else if (kind == MessageType.Request) {
-            MessageLib.Request memory m = MessageLib.deserializeRequest(message);
-            spoke.handleRequest(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
+        } else if (kind == MessageType.RequestCallback) {
+            MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
+            spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.UpdateVault) {
             MessageLib.UpdateVault memory m = MessageLib.deserializeUpdateVault(message);
             spoke.updateVault(

@@ -82,9 +82,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendRequest(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload) external;
-
-    /// @notice Creates and send the message
     function sendUpdateVault(
         PoolId poolId,
         ShareClassId scId,
@@ -113,6 +110,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
+
+    /// @notice Creates and send the message
+    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -150,4 +150,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         bool isSnapshot,
         uint64 nonce
     ) external;
+
+    /// @notice Creates and send the message
+    function sendRequest(PoolId poolId, ShareClassId scId, bytes calldata payload) external;
 }

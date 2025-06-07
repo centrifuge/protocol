@@ -305,11 +305,20 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     // Vault management
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ISpokeGatewayHandler
-    function handleRequest(PoolId poolId, ShareClassId scId, bytes memory request) public auth {
+    /// @inheritdoc ISpoke
+    function sendRequest(PoolId poolId, ShareClassId scId, bytes memory payload) external {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        IRequestManager(shareClass.requestManager).update(poolId, scId, request);
-        // emit UpdateContract(poolId, scId, target, update);
+        require(msg.sender == address(shareClass.requestManager), NotAuthorized());
+
+        sender.sendRequest(poolId, scId, payload);
+        // emit Request(poolId, scId, payload);
+    }
+
+    /// @inheritdoc ISpokeGatewayHandler
+    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        IRequestManager(shareClass.requestManager).callback(poolId, scId, assetId, payload);
+        // emit RequestCallback(poolId, scId, assetId, payload);
     }
 
     /// @inheritdoc ISpokeGatewayHandler

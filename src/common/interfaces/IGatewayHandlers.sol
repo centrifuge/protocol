@@ -65,6 +65,9 @@ interface IHubGatewayHandler {
         bool isSnapshot,
         uint64 nonce
     ) external;
+
+    /// TODO
+    function request(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable;
 }
 
 /// -----------------------------------------------------
@@ -169,7 +172,7 @@ interface ISpokeGatewayHandler {
     function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 
     /// @notice TODO
-    function handleRequest(PoolId poolId, ShareClassId scId, bytes memory update) external;
+    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 }
 
 /// @notice Interface for Vaults methods related to async investments called by messages

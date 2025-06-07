@@ -17,7 +17,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
-import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -33,7 +33,7 @@ import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuardianActions {
     using MathLib for uint256;
-    using RequestMessageLib for *;
+    using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
 
@@ -124,11 +124,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            sender.sendRequest(
-                assetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledDepositRequest(
+                assetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(
                     poolId.raw(),
                     scId.raw(),
                     investor,
@@ -151,11 +151,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            sender.sendRequest(
-                assetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledRedeemRequest(
+                assetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(
                     poolId.raw(),
                     scId.raw(),
                     investor,
@@ -335,11 +335,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
 
-        sender.sendRequest(
-            depositAssetId.centrifugeId(),
+        sender.sendRequestCallback(
             poolId,
             scId,
-            RequestMessageLib.ApprovedDeposits(
+            depositAssetId,
+            RequestCallbackMessageLib.ApprovedDeposits(
                 poolId.raw(), scId.raw(), depositAssetId.raw(), approvedAssetAmount, pricePoolPerAsset.raw()
             ).serialize()
         );
@@ -378,11 +378,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
 
-        sender.sendRequest(
-            depositAssetId.centrifugeId(),
+        sender.sendRequestCallback(
             poolId,
             scId,
-            RequestMessageLib.IssuedShares(poolId.raw(), scId.raw(), issuedShareAmount, navPoolPerShare.raw()).serialize()
+            depositAssetId,
+            RequestCallbackMessageLib.IssuedShares(poolId.raw(), scId.raw(), issuedShareAmount, navPoolPerShare.raw())
+                .serialize()
         );
     }
 
@@ -404,12 +405,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
 
-        sender.sendRequest(
-            payoutAssetId.centrifugeId(),
+        sender.sendRequestCallback(
             poolId,
             scId,
-            RequestMessageLib.RevokedShares(
-                poolId.raw(), scId.raw(), payoutAssetId.raw(), payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw()
+            payoutAssetId,
+            RequestCallbackMessageLib.RevokedShares(
+                poolId.raw(),
+                scId.raw(),
+                payoutAssetId.raw(),
+                payoutAssetAmount,
+                revokedShareAmount,
+                navPoolPerShare.raw()
             ).serialize()
         );
     }
@@ -427,11 +433,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            sender.sendRequest(
-                depositAssetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledDepositRequest(
+                depositAssetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(
                     poolId.raw(), scId.raw(), investor, depositAssetId.raw(), 0, 0, cancelledAssetAmount
                 ).serialize()
             );
@@ -450,11 +456,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            sender.sendRequest(
-                payoutAssetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledRedeemRequest(
+                payoutAssetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(
                     poolId.raw(), scId.raw(), investor, payoutAssetId.raw(), 0, 0, cancelledShareAmount
                 ).serialize()
             );
@@ -508,17 +514,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function request(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
-        external
-        payable
-        payTransaction
-    {
+    function request(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
-        // emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendRequest(centrifugeId, poolId, scId, payload);
+        // TODO: parse requset payload
     }
 
     /// @inheritdoc IHub
@@ -683,11 +684,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            sender.sendRequest(
-                depositAssetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledDepositRequest(
+                depositAssetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(
                     poolId.raw(), scId.raw(), investor, depositAssetId.raw(), 0, 0, cancelledAssetAmount
                 ).serialize()
             );
@@ -702,11 +703,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            sender.sendRequest(
-                payoutAssetId.centrifugeId(),
+            sender.sendRequestCallback(
                 poolId,
                 scId,
-                RequestMessageLib.FulfilledRedeemRequest(
+                payoutAssetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(
                     poolId.raw(), scId.raw(), investor, payoutAssetId.raw(), 0, 0, cancelledShareAmount
                 ).serialize()
             );

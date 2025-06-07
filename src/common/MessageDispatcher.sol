@@ -223,17 +223,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendRequest(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload) external auth {
-        if (centrifugeId == localCentrifugeId) {
-            spoke.handleRequest(poolId, scId, payload);
-        } else {
-            gateway.send(
-                centrifugeId, MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
     function sendUpdateVault(
         PoolId poolId,
         ShareClassId scId,
@@ -468,6 +457,38 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 centrifugeId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    function sendRequest(PoolId poolId, ShareClassId scId, bytes calldata payload) external auth {
+        if (poolId.centrifugeId() == localCentrifugeId) {
+            hub.request(poolId, scId, payload);
+        } else {
+            gateway.send(
+                poolId.centrifugeId(),
+                MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload)
+        external
+        auth
+    {
+        if (assetId.centrifugeId() == localCentrifugeId) {
+            hub.request(poolId, scId, payload);
+        } else {
+            gateway.send(
+                assetId.centrifugeId(),
+                MessageLib.RequestCallback({
+                    poolId: poolId.raw(),
+                    scId: scId.raw(),
+                    assetId: assetId.raw(),
+                    payload: payload
+                }).serialize()
             );
         }
     }

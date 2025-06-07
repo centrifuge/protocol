@@ -47,7 +47,8 @@ enum MessageType {
     TriggerSubmitQueuedAssets,
     MaxAssetPriceAge,
     MaxSharePriceAge,
-    Request
+    Request,
+    RequestCallback
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -106,7 +107,8 @@ library MessageLib {
         (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (49  << (uint8(MessageType.MaxAssetPriceAge) - 32) * 8) +
         (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8) +
-        (25  << (uint8(MessageType.Request) - 32) * 8);
+        (25  << (uint8(MessageType.Request) - 32) * 8) +
+        (41  << (uint8(MessageType.RequestCallback) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -130,6 +132,8 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UpdateContract)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.Request)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.RequestCallback)) {
             length += 2 + message.toUint16(length); //payloadLength
         }
     }
@@ -531,6 +535,34 @@ library MessageLib {
 
     function serialize(Request memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.Request, t.poolId, t.scId, uint16(t.payload.length), t.payload);
+    }
+
+    //---------------------------------------
+    //    RequestCallback
+    //---------------------------------------
+
+    struct RequestCallback {
+        uint64 poolId;
+        bytes16 scId;
+        uint128 assetId;
+        bytes payload; // As sequence of bytes
+    }
+
+    function deserializeRequestCallback(bytes memory data) internal pure returns (RequestCallback memory) {
+        require(messageType(data) == MessageType.RequestCallback, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(25);
+        return RequestCallback({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(27),
+            payload: data.slice(45, payloadLength)
+        });
+    }
+
+    function serialize(RequestCallback memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            MessageType.RequestCallback, t.poolId, t.scId, t.assetId, uint16(t.payload.length), t.payload
+        );
     }
 
     //---------------------------------------
