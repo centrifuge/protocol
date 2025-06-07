@@ -167,6 +167,9 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  maxPriceAge new max price age value
     function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
+
+    /// @notice TODO
+    function handleRequest(PoolId poolId, ShareClassId scId, bytes memory update) external;
 }
 
 /// @notice Interface for Vaults methods related to async investments called by messages

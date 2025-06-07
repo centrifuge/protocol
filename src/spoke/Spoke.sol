@@ -32,6 +32,7 @@ import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spo
 import {Price} from "src/spoke/types/Price.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
@@ -303,6 +304,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
     // Vault management
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISpokeGatewayHandler
+    function handleRequest(PoolId poolId, ShareClassId scId, bytes memory request) public auth {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        IRequestManager(shareClass.requestManager).update(poolId, scId, request);
+        // emit UpdateContract(poolId, scId, target, update);
+    }
 
     /// @inheritdoc ISpokeGatewayHandler
     function updateVault(

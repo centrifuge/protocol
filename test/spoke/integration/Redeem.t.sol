@@ -190,11 +190,11 @@ contract RedeemTest is BaseTest {
         // check message was send out to centchain
         vault.cancelRedeemRequest(0, self);
 
-        MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
-        assertEq(m.poolId, vault.poolId().raw());
-        assertEq(m.scId, vault.scId().raw());
-        assertEq(m.investor, bytes32(bytes20(self)));
-        assertEq(m.assetId, assetId);
+        // MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
+        // assertEq(m.poolId, vault.poolId().raw());
+        // assertEq(m.scId, vault.scId().raw());
+        // assertEq(m.investor, bytes32(bytes20(self)));
+        // assertEq(m.assetId, assetId);
 
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 

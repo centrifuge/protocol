@@ -11,6 +11,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {Price} from "src/spoke/types/Price.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -20,6 +21,7 @@ struct Pool {
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
+    IRequestManager requestManager;
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;

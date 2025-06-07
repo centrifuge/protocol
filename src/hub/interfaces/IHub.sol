@@ -274,6 +274,9 @@ interface IHub {
         bytes calldata payload
     ) external payable;
 
+    /// TODO
+    function request(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload) external payable;
+
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
     /// @param pricePoolPerShare The new price per share

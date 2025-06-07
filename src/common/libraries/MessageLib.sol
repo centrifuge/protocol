@@ -40,22 +40,14 @@ enum MessageType {
     UpdateContract,
     UpdateVault,
     UpdateBalanceSheetManager,
-    ApprovedDeposits,
-    IssuedShares,
-    RevokedShares,
-    DepositRequest,
-    RedeemRequest,
-    CancelDepositRequest,
-    CancelRedeemRequest,
-    FulfilledDepositRequest,
-    FulfilledRedeemRequest,
     UpdateHoldingAmount,
     UpdateShares,
     TriggerIssueShares,
     TriggerSubmitQueuedShares,
     TriggerSubmitQueuedAssets,
     MaxAssetPriceAge,
-    MaxSharePriceAge
+    MaxSharePriceAge,
+    Request
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -104,25 +96,17 @@ library MessageLib {
         (57  << uint8(MessageType.UpdateContract) * 8) +
         (74  << uint8(MessageType.UpdateVault) * 8) +
         (42  << uint8(MessageType.UpdateBalanceSheetManager) * 8) +
-        (73  << uint8(MessageType.ApprovedDeposits) * 8) +
-        (57  << uint8(MessageType.IssuedShares) * 8) +
-        (89  << uint8(MessageType.RevokedShares) * 8) +
-        (89  << uint8(MessageType.DepositRequest) * 8);
+        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (59  << uint8(MessageType.UpdateShares) * 8) +
+        (73  << uint8(MessageType.TriggerIssueShares) * 8) +
+        (25  << uint8(MessageType.TriggerSubmitQueuedShares) * 8);
 
     // forgefmt: disable-next-item
     uint256 constant MESSAGE_LENGTHS_2 =
-        (89  << (uint8(MessageType.RedeemRequest) - 32) * 8) +
-        (73  << (uint8(MessageType.CancelDepositRequest) - 32) * 8) +
-        (73  << (uint8(MessageType.CancelRedeemRequest) - 32) * 8) +
-        (121 << (uint8(MessageType.FulfilledDepositRequest) - 32) * 8) +
-        (121 << (uint8(MessageType.FulfilledRedeemRequest) - 32) * 8) +
-        (91  << (uint8(MessageType.UpdateHoldingAmount) - 32) * 8) +
-        (59  << (uint8(MessageType.UpdateShares) - 32) * 8) +
-        (73  << (uint8(MessageType.TriggerIssueShares) - 32) * 8) +
-        (25  << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
         (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (49  << (uint8(MessageType.MaxAssetPriceAge) - 32) * 8) +
-        (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8);
+        (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8) +
+        (25  << (uint8(MessageType.Request) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -144,6 +128,8 @@ library MessageLib {
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateContract)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
         }
     }
@@ -168,8 +154,6 @@ library MessageLib {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.RegisterAsset)) {
             return AssetId.wrap(message.toUint128(1)).centrifugeId();
-        } else if (kind >= uint8(MessageType.DepositRequest) && kind <= uint8(MessageType.CancelRedeemRequest)) {
-            return AssetId.wrap(message.toUint128(57)).centrifugeId();
         } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
             return AssetId.wrap(message.toUint128(25)).centrifugeId();
         } else {
@@ -530,6 +514,26 @@ library MessageLib {
     }
 
     //---------------------------------------
+    //    Request
+    //---------------------------------------
+
+    struct Request {
+        uint64 poolId;
+        bytes16 scId;
+        bytes payload; // As sequence of bytes
+    }
+
+    function deserializeRequest(bytes memory data) internal pure returns (Request memory) {
+        require(messageType(data) == MessageType.Request, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(25);
+        return Request({poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)});
+    }
+
+    function serialize(Request memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.Request, t.poolId, t.scId, uint16(t.payload.length), t.payload);
+    }
+
+    //---------------------------------------
     //   VaultUpdate
     //---------------------------------------
 
@@ -577,198 +581,6 @@ library MessageLib {
 
     function serialize(UpdateBalanceSheetManager memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.UpdateBalanceSheetManager, t.poolId, t.who, t.canManage);
-    }
-
-    //---------------------------------------
-    //    DepositRequest
-    //---------------------------------------
-
-    struct DepositRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 amount;
-    }
-
-    function deserializeDepositRequest(bytes memory data) internal pure returns (DepositRequest memory) {
-        require(messageType(data) == MessageType.DepositRequest, UnknownMessageType());
-        return DepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            amount: data.toUint128(73)
-        });
-    }
-
-    function serialize(DepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.DepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
-    }
-
-    //---------------------------------------
-    //    RedeemRequest
-    //---------------------------------------
-
-    struct RedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 amount;
-    }
-
-    function deserializeRedeemRequest(bytes memory data) internal pure returns (RedeemRequest memory) {
-        require(messageType(data) == MessageType.RedeemRequest, UnknownMessageType());
-        return RedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            amount: data.toUint128(73)
-        });
-    }
-
-    function serialize(RedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.RedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
-    }
-
-    //---------------------------------------
-    //    CancelDepositRequest
-    //---------------------------------------
-
-    struct CancelDepositRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-    }
-
-    function deserializeCancelDepositRequest(bytes memory data) internal pure returns (CancelDepositRequest memory) {
-        require(messageType(data) == MessageType.CancelDepositRequest, UnknownMessageType());
-        return CancelDepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57)
-        });
-    }
-
-    function serialize(CancelDepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.CancelDepositRequest, t.poolId, t.scId, t.investor, t.assetId);
-    }
-
-    //---------------------------------------
-    //    CancelRedeemRequest
-    //---------------------------------------
-
-    struct CancelRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-    }
-
-    function deserializeCancelRedeemRequest(bytes memory data) internal pure returns (CancelRedeemRequest memory) {
-        require(messageType(data) == MessageType.CancelRedeemRequest, UnknownMessageType());
-        return CancelRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57)
-        });
-    }
-
-    function serialize(CancelRedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.CancelRedeemRequest, t.poolId, t.scId, t.investor, t.assetId);
-    }
-
-    //---------------------------------------
-    //    FulfilledDepositRequest
-    //---------------------------------------
-
-    struct FulfilledDepositRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 fulfilledAssetAmount;
-        uint128 fulfilledShareAmount;
-        uint128 cancelledAssetAmount;
-    }
-
-    function deserializeFulfilledDepositRequest(bytes memory data)
-        internal
-        pure
-        returns (FulfilledDepositRequest memory)
-    {
-        require(messageType(data) == MessageType.FulfilledDepositRequest, UnknownMessageType());
-        return FulfilledDepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            fulfilledAssetAmount: data.toUint128(73),
-            fulfilledShareAmount: data.toUint128(89),
-            cancelledAssetAmount: data.toUint128(105)
-        });
-    }
-
-    function serialize(FulfilledDepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.FulfilledDepositRequest,
-            t.poolId,
-            t.scId,
-            t.investor,
-            t.assetId,
-            t.fulfilledAssetAmount,
-            t.fulfilledShareAmount,
-            t.cancelledAssetAmount
-        );
-    }
-
-    //---------------------------------------
-    //    FulfilledRedeemRequest
-    //---------------------------------------
-
-    struct FulfilledRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 investor;
-        uint128 assetId;
-        uint128 fulfilledAssetAmount;
-        uint128 fulfilledShareAmount;
-        uint128 cancelledShareAmount;
-    }
-
-    function deserializeFulfilledRedeemRequest(bytes memory data)
-        internal
-        pure
-        returns (FulfilledRedeemRequest memory)
-    {
-        require(messageType(data) == MessageType.FulfilledRedeemRequest, UnknownMessageType());
-        return FulfilledRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            fulfilledAssetAmount: data.toUint128(73),
-            fulfilledShareAmount: data.toUint128(89),
-            cancelledShareAmount: data.toUint128(105)
-        });
-    }
-
-    function serialize(FulfilledRedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.FulfilledRedeemRequest,
-            t.poolId,
-            t.scId,
-            t.investor,
-            t.assetId,
-            t.fulfilledAssetAmount,
-            t.fulfilledShareAmount,
-            t.cancelledShareAmount
-        );
     }
 
     //---------------------------------------
@@ -849,94 +661,6 @@ library MessageLib {
     function serialize(UpdateShares memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
             MessageType.UpdateShares, t.poolId, t.scId, t.shares, t.timestamp, t.isIssuance, t.isSnapshot, t.nonce
-        );
-    }
-
-    //---------------------------------------
-    //    ApprovedDeposits
-    //---------------------------------------
-
-    struct ApprovedDeposits {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-        uint128 assetAmount;
-        uint128 pricePoolPerAsset;
-    }
-
-    function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
-        require(messageType(data) == MessageType.ApprovedDeposits, UnknownMessageType());
-
-        return ApprovedDeposits({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41),
-            pricePoolPerAsset: data.toUint128(57)
-        });
-    }
-
-    function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount, t.pricePoolPerAsset
-        );
-    }
-
-    //---------------------------------------
-    //    IssuedShares
-    //---------------------------------------
-
-    struct IssuedShares {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 shareAmount;
-        uint128 pricePoolPerShare;
-    }
-
-    function deserializeIssuedShares(bytes memory data) internal pure returns (IssuedShares memory) {
-        require(messageType(data) == MessageType.IssuedShares, UnknownMessageType());
-
-        return IssuedShares({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            shareAmount: data.toUint128(25),
-            pricePoolPerShare: data.toUint128(41)
-        });
-    }
-
-    function serialize(IssuedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.IssuedShares, t.poolId, t.scId, t.shareAmount, t.pricePoolPerShare);
-    }
-
-    //---------------------------------------
-    //    RevokedShares
-    //---------------------------------------
-
-    struct RevokedShares {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-        uint128 shareAmount;
-        uint128 pricePoolPerShare;
-        uint128 assetAmount;
-    }
-
-    function deserializeRevokedShares(bytes memory data) internal pure returns (RevokedShares memory) {
-        require(messageType(data) == MessageType.RevokedShares, UnknownMessageType());
-
-        return RevokedShares({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41),
-            shareAmount: data.toUint128(57),
-            pricePoolPerShare: data.toUint128(73)
-        });
-    }
-
-    function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount, t.shareAmount, t.pricePoolPerShare
         );
     }
 
