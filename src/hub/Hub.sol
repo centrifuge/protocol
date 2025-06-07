@@ -129,13 +129,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
-                    poolId.raw(),
-                    scId.raw(),
-                    investor,
-                    assetId.raw(),
-                    totalPaymentAssetAmount,
-                    totalPayoutShareAmount,
-                    cancelledAssetAmount
+                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
                 ).serialize()
             );
         }
@@ -156,13 +150,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
-                    poolId.raw(),
-                    scId.raw(),
-                    investor,
-                    assetId.raw(),
-                    totalPayoutAssetAmount,
-                    totalPaymentShareAmount,
-                    cancelledShareAmount
+                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
                 ).serialize()
             );
         }
@@ -339,9 +327,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId,
             scId,
             depositAssetId,
-            RequestCallbackMessageLib.ApprovedDeposits(
-                poolId.raw(), scId.raw(), depositAssetId.raw(), approvedAssetAmount, pricePoolPerAsset.raw()
-            ).serialize()
+            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize()
         );
     }
 
@@ -382,8 +368,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId,
             scId,
             depositAssetId,
-            RequestCallbackMessageLib.IssuedShares(poolId.raw(), scId.raw(), issuedShareAmount, navPoolPerShare.raw())
-                .serialize()
+            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize()
         );
     }
 
@@ -409,14 +394,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId,
             scId,
             payoutAssetId,
-            RequestCallbackMessageLib.RevokedShares(
-                poolId.raw(),
-                scId.raw(),
-                payoutAssetId.raw(),
-                payoutAssetAmount,
-                revokedShareAmount,
-                navPoolPerShare.raw()
-            ).serialize()
+            RequestCallbackMessageLib.RevokedShares(payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw())
+                .serialize()
         );
     }
 
@@ -437,9 +416,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 depositAssetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(
-                    poolId.raw(), scId.raw(), investor, depositAssetId.raw(), 0, 0, cancelledAssetAmount
-                ).serialize()
+                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize()
             );
         }
     }
@@ -460,9 +437,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 payoutAssetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(
-                    poolId.raw(), scId.raw(), investor, payoutAssetId.raw(), 0, 0, cancelledShareAmount
-                ).serialize()
+                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize()
             );
         }
     }
@@ -511,15 +486,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
         sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload);
-    }
-
-    /// @inheritdoc IHub
-    function request(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable payTransaction {
-        _isManager(poolId);
-
-        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
-
-        // TODO: parse requset payload
     }
 
     /// @inheritdoc IHub
@@ -657,6 +623,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHubGatewayHandler
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable {
+        _auth();
+
+        // TODO: parse requset payload
+    }
+
+    /// @inheritdoc IHubGatewayHandler
     function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
         external
     {
@@ -688,9 +661,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 depositAssetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(
-                    poolId.raw(), scId.raw(), investor, depositAssetId.raw(), 0, 0, cancelledAssetAmount
-                ).serialize()
+                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize()
             );
         }
     }
@@ -707,9 +678,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 payoutAssetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(
-                    poolId.raw(), scId.raw(), investor, payoutAssetId.raw(), 0, 0, cancelledShareAmount
-                ).serialize()
+                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize()
             );
         }
     }

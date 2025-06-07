@@ -261,12 +261,32 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testRequest(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
-        MessageLib.Request memory a = MessageLib.Request({poolId: poolId, scId: scId, payload: payload});
+    function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+        MessageLib.Request memory a =
+            MessageLib.Request({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
         MessageLib.Request memory b = MessageLib.deserializeRequest(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.payload, b.payload);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+    }
+
+    function testRequestCallback(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+        MessageLib.RequestCallback memory a =
+            MessageLib.RequestCallback({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
+        MessageLib.RequestCallback memory b = MessageLib.deserializeRequestCallback(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
         assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);

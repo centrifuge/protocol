@@ -32,26 +32,17 @@ library RequestMessageLib {
     //---------------------------------------
 
     struct DepositRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
         uint128 amount;
     }
 
     function deserializeDepositRequest(bytes memory data) internal pure returns (DepositRequest memory) {
         require(requestType(data) == RequestType.DepositRequest, UnknownRequestType());
-        return DepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            amount: data.toUint128(73)
-        });
+        return DepositRequest({investor: data.toBytes32(1), amount: data.toUint128(33)});
     }
 
     function serialize(DepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(RequestType.DepositRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
+        return abi.encodePacked(RequestType.DepositRequest, t.investor, t.amount);
     }
 
     //---------------------------------------
@@ -59,26 +50,17 @@ library RequestMessageLib {
     //---------------------------------------
 
     struct RedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
         uint128 amount;
     }
 
     function deserializeRedeemRequest(bytes memory data) internal pure returns (RedeemRequest memory) {
         require(requestType(data) == RequestType.RedeemRequest, UnknownRequestType());
-        return RedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            amount: data.toUint128(73)
-        });
+        return RedeemRequest({investor: data.toBytes32(1), amount: data.toUint128(33)});
     }
 
     function serialize(RedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(RequestType.RedeemRequest, t.poolId, t.scId, t.investor, t.assetId, t.amount);
+        return abi.encodePacked(RequestType.RedeemRequest, t.investor, t.amount);
     }
 
     //---------------------------------------
@@ -86,24 +68,16 @@ library RequestMessageLib {
     //---------------------------------------
 
     struct CancelDepositRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
     }
 
     function deserializeCancelDepositRequest(bytes memory data) internal pure returns (CancelDepositRequest memory) {
         require(requestType(data) == RequestType.CancelDepositRequest, UnknownRequestType());
-        return CancelDepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57)
-        });
+        return CancelDepositRequest({investor: data.toBytes32(1)});
     }
 
     function serialize(CancelDepositRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(RequestType.CancelDepositRequest, t.poolId, t.scId, t.investor, t.assetId);
+        return abi.encodePacked(RequestType.CancelDepositRequest, t.investor);
     }
 
     //---------------------------------------
@@ -111,23 +85,15 @@ library RequestMessageLib {
     //---------------------------------------
 
     struct CancelRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
     }
 
     function deserializeCancelRedeemRequest(bytes memory data) internal pure returns (CancelRedeemRequest memory) {
         require(requestType(data) == RequestType.CancelRedeemRequest, UnknownRequestType());
-        return CancelRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57)
-        });
+        return CancelRedeemRequest({investor: data.toBytes32(1)});
     }
 
     function serialize(CancelRedeemRequest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(RequestType.CancelRedeemRequest, t.poolId, t.scId, t.investor, t.assetId);
+        return abi.encodePacked(RequestType.CancelRedeemRequest, t.investor);
     }
 }

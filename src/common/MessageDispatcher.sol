@@ -40,7 +40,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
-    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(
@@ -64,7 +63,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
@@ -462,13 +460,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendRequest(PoolId poolId, ShareClassId scId, bytes calldata payload) external auth {
+    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.request(poolId, scId, payload);
+            hub.request(poolId, scId, assetId, payload);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
-                MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
+                MessageLib.Request({poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), payload: payload})
+                    .serialize()
             );
         }
     }
@@ -479,7 +478,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            hub.request(poolId, scId, payload);
+            hub.request(poolId, scId, assetId, payload);
         } else {
             gateway.send(
                 assetId.centrifugeId(),

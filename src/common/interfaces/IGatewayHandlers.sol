@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 import {D18} from "src/misc/types/D18.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
@@ -67,7 +66,7 @@ interface IHubGatewayHandler {
     ) external;
 
     /// TODO
-    function request(PoolId poolId, ShareClassId scId, bytes calldata payload) external payable;
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
 }
 
 /// -----------------------------------------------------

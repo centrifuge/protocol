@@ -33,9 +33,6 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct ApprovedDeposits {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
         uint128 assetAmount;
         uint128 pricePoolPerAsset;
     }
@@ -43,19 +40,11 @@ library RequestCallbackMessageLib {
     function deserializeApprovedDeposits(bytes memory data) internal pure returns (ApprovedDeposits memory) {
         require(requestCallbackType(data) == RequestCallbackType.ApprovedDeposits, UnknownRequestCallbackType());
 
-        return ApprovedDeposits({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41),
-            pricePoolPerAsset: data.toUint128(57)
-        });
+        return ApprovedDeposits({assetAmount: data.toUint128(1), pricePoolPerAsset: data.toUint128(17)});
     }
 
     function serialize(ApprovedDeposits memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            RequestCallbackType.ApprovedDeposits, t.poolId, t.scId, t.assetId, t.assetAmount, t.pricePoolPerAsset
-        );
+        return abi.encodePacked(RequestCallbackType.ApprovedDeposits, t.assetAmount, t.pricePoolPerAsset);
     }
 
     //---------------------------------------
@@ -63,8 +52,6 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct IssuedShares {
-        uint64 poolId;
-        bytes16 scId;
         uint128 shareAmount;
         uint128 pricePoolPerShare;
     }
@@ -72,16 +59,11 @@ library RequestCallbackMessageLib {
     function deserializeIssuedShares(bytes memory data) internal pure returns (IssuedShares memory) {
         require(requestCallbackType(data) == RequestCallbackType.IssuedShares, UnknownRequestCallbackType());
 
-        return IssuedShares({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            shareAmount: data.toUint128(25),
-            pricePoolPerShare: data.toUint128(41)
-        });
+        return IssuedShares({shareAmount: data.toUint128(1), pricePoolPerShare: data.toUint128(17)});
     }
 
     function serialize(IssuedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(RequestCallbackType.IssuedShares, t.poolId, t.scId, t.shareAmount, t.pricePoolPerShare);
+        return abi.encodePacked(RequestCallbackType.IssuedShares, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------
@@ -89,9 +71,6 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct RevokedShares {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
         uint128 shareAmount;
         uint128 pricePoolPerShare;
         uint128 assetAmount;
@@ -101,25 +80,14 @@ library RequestCallbackMessageLib {
         require(requestCallbackType(data) == RequestCallbackType.RevokedShares, UnknownRequestCallbackType());
 
         return RevokedShares({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            assetAmount: data.toUint128(41),
-            shareAmount: data.toUint128(57),
-            pricePoolPerShare: data.toUint128(73)
+            assetAmount: data.toUint128(1),
+            shareAmount: data.toUint128(17),
+            pricePoolPerShare: data.toUint128(33)
         });
     }
 
     function serialize(RevokedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(
-            RequestCallbackType.RevokedShares,
-            t.poolId,
-            t.scId,
-            t.assetId,
-            t.assetAmount,
-            t.shareAmount,
-            t.pricePoolPerShare
-        );
+        return abi.encodePacked(RequestCallbackType.RevokedShares, t.assetAmount, t.shareAmount, t.pricePoolPerShare);
     }
 
     //---------------------------------------
@@ -127,10 +95,7 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct FulfilledDepositRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
         uint128 fulfilledAssetAmount;
         uint128 fulfilledShareAmount;
         uint128 cancelledAssetAmount;
@@ -143,23 +108,17 @@ library RequestCallbackMessageLib {
     {
         require(requestCallbackType(data) == RequestCallbackType.FulfilledDepositRequest, UnknownRequestCallbackType());
         return FulfilledDepositRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            fulfilledAssetAmount: data.toUint128(73),
-            fulfilledShareAmount: data.toUint128(89),
-            cancelledAssetAmount: data.toUint128(105)
+            investor: data.toBytes32(1),
+            fulfilledAssetAmount: data.toUint128(33),
+            fulfilledShareAmount: data.toUint128(49),
+            cancelledAssetAmount: data.toUint128(65)
         });
     }
 
     function serialize(FulfilledDepositRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
             RequestCallbackType.FulfilledDepositRequest,
-            t.poolId,
-            t.scId,
             t.investor,
-            t.assetId,
             t.fulfilledAssetAmount,
             t.fulfilledShareAmount,
             t.cancelledAssetAmount
@@ -171,10 +130,7 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct FulfilledRedeemRequest {
-        uint64 poolId;
-        bytes16 scId;
         bytes32 investor;
-        uint128 assetId;
         uint128 fulfilledAssetAmount;
         uint128 fulfilledShareAmount;
         uint128 cancelledShareAmount;
@@ -187,23 +143,17 @@ library RequestCallbackMessageLib {
     {
         require(requestCallbackType(data) == RequestCallbackType.FulfilledRedeemRequest, UnknownRequestCallbackType());
         return FulfilledRedeemRequest({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            investor: data.toBytes32(25),
-            assetId: data.toUint128(57),
-            fulfilledAssetAmount: data.toUint128(73),
-            fulfilledShareAmount: data.toUint128(89),
-            cancelledShareAmount: data.toUint128(105)
+            investor: data.toBytes32(1),
+            fulfilledAssetAmount: data.toUint128(33),
+            fulfilledShareAmount: data.toUint128(49),
+            cancelledShareAmount: data.toUint128(65)
         });
     }
 
     function serialize(FulfilledRedeemRequest memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
             RequestCallbackType.FulfilledRedeemRequest,
-            t.poolId,
-            t.scId,
             t.investor,
-            t.assetId,
             t.fulfilledAssetAmount,
             t.fulfilledShareAmount,
             t.cancelledShareAmount

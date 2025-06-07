@@ -34,7 +34,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
-    IRequestManagerGatewayHandler public investmentManager;
     IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
@@ -50,7 +49,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
-        else if (what == "investmentManager") investmentManager = IRequestManagerGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
@@ -84,7 +82,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
-            hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
+            hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
         } else if (kind == MessageType.NotifyPool) {
             spoke.addPool(PoolId.wrap(MessageLib.deserializeNotifyPool(message).poolId));
         } else if (kind == MessageType.NotifyShareClass) {

@@ -107,7 +107,7 @@ library MessageLib {
         (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (49  << (uint8(MessageType.MaxAssetPriceAge) - 32) * 8) +
         (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8) +
-        (25  << (uint8(MessageType.Request) - 32) * 8) +
+        (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
@@ -524,17 +524,23 @@ library MessageLib {
     struct Request {
         uint64 poolId;
         bytes16 scId;
+        uint128 assetId;
         bytes payload; // As sequence of bytes
     }
 
     function deserializeRequest(bytes memory data) internal pure returns (Request memory) {
         require(messageType(data) == MessageType.Request, UnknownMessageType());
         uint16 payloadLength = data.toUint16(25);
-        return Request({poolId: data.toUint64(1), scId: data.toBytes16(9), payload: data.slice(27, payloadLength)});
+        return Request({
+            poolId: data.toUint64(1),
+            scId: data.toBytes16(9),
+            assetId: data.toUint128(27),
+            payload: data.slice(45, payloadLength)
+        });
     }
 
     function serialize(Request memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.Request, t.poolId, t.scId, uint16(t.payload.length), t.payload);
+        return abi.encodePacked(MessageType.Request, t.poolId, t.scId, t.assetId, uint16(t.payload.length), t.payload);
     }
 
     //---------------------------------------

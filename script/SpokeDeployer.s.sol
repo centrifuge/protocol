@@ -92,7 +92,6 @@ contract SpokeDeployer is CommonDeployer {
         root.endorse(address(vaultRouter));
         root.endorse(address(globalEscrow));
         root.endorse(address(balanceSheet));
-        root.endorse(address(asyncRequestManager));
     }
 
     function _spokeRely() private {
@@ -110,8 +109,6 @@ contract SpokeDeployer is CommonDeployer {
         gateway.rely(address(spoke));
 
         // Rely async requests manager
-        balanceSheet.rely(address(asyncRequestManager));
-        messageDispatcher.rely(address(asyncRequestManager));
         globalEscrow.rely(address(asyncRequestManager));
 
         // Rely sync requests manager
@@ -145,12 +142,10 @@ contract SpokeDeployer is CommonDeployer {
 
         // Rely messageProcessor
         spoke.rely(address(messageProcessor));
-        asyncRequestManager.rely(address(messageProcessor));
         balanceSheet.rely(address(messageProcessor));
 
         // Rely messageDispatcher
         spoke.rely(address(messageDispatcher));
-        asyncRequestManager.rely(address(messageDispatcher));
         balanceSheet.rely(address(messageDispatcher));
 
         // Rely VaultRouter
@@ -160,11 +155,9 @@ contract SpokeDeployer is CommonDeployer {
 
     function _spokeFile() public {
         messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("investmentManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
 
         messageProcessor.file("spoke", address(spoke));
-        messageProcessor.file("investmentManager", address(asyncRequestManager));
         messageProcessor.file("balanceSheet", address(balanceSheet));
 
         spoke.file("gateway", address(gateway));

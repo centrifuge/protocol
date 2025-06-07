@@ -306,11 +306,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
-    function sendRequest(PoolId poolId, ShareClassId scId, bytes memory payload) external {
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(msg.sender == address(shareClass.requestManager), NotAuthorized());
 
-        sender.sendRequest(poolId, scId, payload);
+        sender.sendRequest(poolId, scId, assetId, payload);
         // emit Request(poolId, scId, payload);
     }
 

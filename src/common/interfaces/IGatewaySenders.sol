@@ -152,5 +152,5 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendRequest(PoolId poolId, ShareClassId scId, bytes calldata payload) external;
+    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }

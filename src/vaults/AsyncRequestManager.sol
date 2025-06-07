@@ -91,9 +91,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         sender.sendRequest(
             poolId,
             scId,
-            RequestMessageLib.DepositRequest(
-                poolId.raw(), scId.raw(), controller.toBytes32(), vaultDetails.assetId.raw(), assets_
-            ).serialize()
+            vaultDetails.assetId,
+            RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize()
         );
 
         return true;
@@ -127,9 +126,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         sender.sendRequest(
             poolId,
             scId,
-            RequestMessageLib.RedeemRequest(
-                poolId.raw(), scId.raw(), controller.toBytes32(), vaultDetails.assetId.raw(), shares_
-            ).serialize()
+            vaultDetails.assetId,
+            RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize()
         );
 
         return true;
@@ -146,9 +144,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         sender.sendRequest(
             vault_.poolId(),
             vault_.scId(),
-            RequestMessageLib.CancelDepositRequest(
-                vault_.poolId().raw(), vault_.scId().raw(), controller.toBytes32(), vaultDetails.assetId.raw()
-            ).serialize()
+            vaultDetails.assetId,
+            RequestMessageLib.CancelDepositRequest(controller.toBytes32()).serialize()
         );
     }
 
@@ -166,9 +163,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         sender.sendRequest(
             vault_.poolId(),
             vault_.scId(),
-            RequestMessageLib.CancelRedeemRequest(
-                vault_.poolId().raw(), vault_.scId().raw(), controller.toBytes32(), vaultDetails.assetId.raw()
-            ).serialize()
+            vaultDetails.assetId,
+            RequestMessageLib.CancelRedeemRequest(controller.toBytes32()).serialize()
         );
     }
 
