@@ -97,7 +97,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address)
+    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address sender_)
         public
         auth
         returns (bool)
@@ -123,6 +123,8 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
         _sendRedeemRequest(poolId, scId, vaultDetails.assetId, controller, shares_);
 
+        _executeRedeemTransfer(poolId, scId, sender_, owner, address(globalEscrow), shares_);
+
         return true;
     }
 
@@ -132,6 +134,17 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         spoke.request(
             poolId, scId, assetId, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares).serialize()
         );
+    }
+
+    function _executeRedeemTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender_,
+        address owner,
+        address to,
+        uint128 shares
+    ) internal {
+        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, to, shares);
     }
 
     /// @inheritdoc IAsyncDepositManager
