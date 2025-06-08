@@ -722,12 +722,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.name(), tokenName, "share class token name mismatch");
         assertEq(shareToken.symbol(), tokenSymbol, "share class token symbol mismatch");
         assertEq(shareToken.decimals(), decimals, "share class token decimals mismatch");
-
-        if (isLinked) {
-            assertEq(shareToken.wards(vaultAddress), 1);
-        } else {
-            assertEq(shareToken.wards(vaultAddress), 0, "Vault auth on Share set up in linkVault");
-        }
     }
 
     function _assertDeployedVault(address vaultAddress, AssetId assetId, address asset, uint256 tokenId, bool isLinked)

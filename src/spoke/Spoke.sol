@@ -369,7 +369,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = true;
-        IAuth(address(shareClass.shareToken)).rely(address(vault));
 
         if (assetIdKey.tokenId == 0) {
             shareClass.shareToken.updateVault(assetIdKey.asset, address(vault));
@@ -387,7 +386,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = false;
-        IAuth(address(shareClass.shareToken)).deny(address(vault));
 
         if (assetIdKey.tokenId == 0) {
             shareClass.shareToken.updateVault(assetIdKey.asset, address(0));
