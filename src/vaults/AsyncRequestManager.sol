@@ -122,7 +122,14 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         return true;
     }
 
-    function _executeRedeemTransfer(PoolId poolId, ShareClassId scId, address sender_, address owner, address to, uint128 shares) internal {
+    function _executeRedeemTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender_,
+        address owner,
+        address to,
+        uint128 shares
+    ) internal {
         balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, to, shares);
     }
 

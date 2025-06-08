@@ -712,7 +712,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         }
     }
 
-    function _assertShareSetup(address vaultAddress, bool isLinked) private view {
+    function _assertShareSetup() private view {
         IShareToken token_ = spoke.shareToken(poolId, scId);
         ShareToken shareToken = ShareToken(address(token_));
 
@@ -729,7 +729,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         view
     {
         _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
-        _assertShareSetup(vaultAddress, isLinked);
+        _assertShareSetup();
     }
 
     function testDeployVaultWithoutLinkERC20(
