@@ -244,7 +244,6 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
-        IShareToken(share).authTransferFrom(sender, owner, address(baseManager.globalEscrow()), shares);
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;

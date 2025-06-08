@@ -444,14 +444,18 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
+        balanceSheet.transferSharesFrom(
+            POOL_A, defaultTypedShareClassId, address(this), address(this), address(1), defaultAmount
+        );
 
         vm.expectRevert(IBalanceSheet.CannotTransferFromEndorsedContract.selector);
         balanceSheet.transferSharesFrom(
-            POOL_A, defaultTypedShareClassId, address(globalEscrow), address(1), defaultAmount
+            POOL_A, defaultTypedShareClassId, address(globalEscrow), address(globalEscrow), address(1), defaultAmount
         );
 
-        balanceSheet.transferSharesFrom(POOL_A, defaultTypedShareClassId, address(this), address(1), defaultAmount);
+        balanceSheet.transferSharesFrom(
+            POOL_A, defaultTypedShareClassId, address(this), address(this), address(1), defaultAmount
+        );
 
         assertEq(token.balanceOf(address(this)), defaultAmount * 2);
         assertEq(token.balanceOf(address(1)), defaultAmount);
