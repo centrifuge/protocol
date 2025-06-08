@@ -530,12 +530,12 @@ library MessageLib {
 
     function deserializeRequest(bytes memory data) internal pure returns (Request memory) {
         require(messageType(data) == MessageType.Request, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(25);
+        uint16 payloadLength = data.toUint16(41);
         return Request({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            assetId: data.toUint128(27),
-            payload: data.slice(45, payloadLength)
+            assetId: data.toUint128(25),
+            payload: data.slice(43, payloadLength)
         });
     }
 
@@ -556,12 +556,12 @@ library MessageLib {
 
     function deserializeRequestCallback(bytes memory data) internal pure returns (RequestCallback memory) {
         require(messageType(data) == MessageType.RequestCallback, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(25);
+        uint16 payloadLength = data.toUint16(41);
         return RequestCallback({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
-            assetId: data.toUint128(27),
-            payload: data.slice(45, payloadLength)
+            assetId: data.toUint128(25),
+            payload: data.slice(43, payloadLength)
         });
     }
 
