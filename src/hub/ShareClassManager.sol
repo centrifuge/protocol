@@ -250,14 +250,16 @@ contract ShareClassManager is Auth, IShareClassManager {
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowIssueEpochId];
         epochAmounts.navPoolPerShare = navPoolPerShare;
 
-        issuedShareAmount = PricingLib.assetToShareAmount(
-            epochAmounts.approvedAssetAmount,
-            hubRegistry.decimals(depositAssetId),
-            hubRegistry.decimals(poolId),
-            epochAmounts.pricePoolPerAsset,
-            navPoolPerShare,
-            MathLib.Rounding.Down
-        ).toUint128();
+        issuedShareAmount = (navPoolPerShare.raw() != 0)
+            ? PricingLib.assetToShareAmount(
+                epochAmounts.approvedAssetAmount,
+                hubRegistry.decimals(depositAssetId),
+                hubRegistry.decimals(poolId),
+                epochAmounts.pricePoolPerAsset,
+                navPoolPerShare,
+                MathLib.Rounding.Down
+            )
+            : 0;
 
         epochAmounts.issuedAt = block.timestamp.toUint64();
         epochId[scId_][depositAssetId].issue = nowIssueEpochId;
@@ -271,7 +273,9 @@ contract ShareClassManager is Auth, IShareClassManager {
             depositAssetId,
             nowIssueEpochId,
             navPoolPerShare,
-            PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset),
+            (epochAmounts.pricePoolPerAsset.raw() != 0)
+                ? PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset)
+                : d18(0),
             issuedShareAmount
         );
     }
@@ -297,14 +301,16 @@ contract ShareClassManager is Auth, IShareClassManager {
         // NOTE: shares and pool currency have the same decimals - no conversion needed!
         payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
 
-        payoutAssetAmount = PricingLib.shareToAssetAmount(
-            epochAmounts.approvedShareAmount,
-            hubRegistry.decimals(poolId),
-            hubRegistry.decimals(payoutAssetId),
-            epochAmounts.navPoolPerShare,
-            epochAmounts.pricePoolPerAsset,
-            MathLib.Rounding.Down
-        );
+        payoutAssetAmount = (epochAmounts.pricePoolPerAsset.raw() != 0)
+            ? PricingLib.shareToAssetAmount(
+                epochAmounts.approvedShareAmount,
+                hubRegistry.decimals(poolId),
+                hubRegistry.decimals(payoutAssetId),
+                epochAmounts.navPoolPerShare,
+                epochAmounts.pricePoolPerAsset,
+                MathLib.Rounding.Down
+            )
+            : 0;
         revokedShareAmount = epochAmounts.approvedShareAmount;
 
         epochAmounts.payoutAssetAmount = payoutAssetAmount;
@@ -317,7 +323,9 @@ contract ShareClassManager is Auth, IShareClassManager {
             payoutAssetId,
             nowRevokeEpochId,
             navPoolPerShare,
-            PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset),
+            (epochAmounts.pricePoolPerAsset.raw() != 0)
+                ? PricingLib.priceAssetPerShare(epochAmounts.navPoolPerShare, epochAmounts.pricePoolPerAsset)
+                : d18(0),
             epochAmounts.approvedShareAmount,
             payoutAssetAmount,
             payoutPoolAmount
@@ -424,14 +432,16 @@ contract ShareClassManager is Auth, IShareClassManager {
         // tokens corresponding to the approved share amount (instead of equality). I.e., it is possible for an epoch to
         // have an excess of a share class tokens which cannot be claimed by anyone.
         if (paymentAssetAmount > 0) {
-            payoutShareAmount = PricingLib.assetToShareAmount(
-                paymentAssetAmount,
-                hubRegistry.decimals(depositAssetId),
-                hubRegistry.decimals(poolId),
-                epochAmounts.pricePoolPerAsset,
-                epochAmounts.navPoolPerShare,
-                MathLib.Rounding.Down
-            );
+            payoutShareAmount = (epochAmounts.navPoolPerShare.raw() != 0)
+                ? PricingLib.assetToShareAmount(
+                    paymentAssetAmount,
+                    hubRegistry.decimals(depositAssetId),
+                    hubRegistry.decimals(poolId),
+                    epochAmounts.pricePoolPerAsset,
+                    epochAmounts.navPoolPerShare,
+                    MathLib.Rounding.Down
+                )
+                : 0;
 
             userOrder.pending -= paymentAssetAmount;
         }
@@ -492,14 +502,16 @@ contract ShareClassManager is Auth, IShareClassManager {
         // corresponding to the approved share class (instead of equality). I.e., it is possible for an epoch to
         // have an excess of payout assets which cannot be claimed by anyone.
         if (paymentShareAmount > 0) {
-            payoutAssetAmount = PricingLib.shareToAssetAmount(
-                paymentShareAmount,
-                hubRegistry.decimals(poolId),
-                hubRegistry.decimals(payoutAssetId),
-                epochAmounts.navPoolPerShare,
-                epochAmounts.pricePoolPerAsset,
-                MathLib.Rounding.Down
-            ).toUint128();
+            payoutAssetAmount = (epochAmounts.pricePoolPerAsset.raw() != 0)
+                ? PricingLib.shareToAssetAmount(
+                    paymentShareAmount,
+                    hubRegistry.decimals(poolId),
+                    hubRegistry.decimals(payoutAssetId),
+                    epochAmounts.navPoolPerShare,
+                    epochAmounts.pricePoolPerAsset,
+                    MathLib.Rounding.Down
+                )
+                : 0;
 
             userOrder.pending -= paymentShareAmount;
         }

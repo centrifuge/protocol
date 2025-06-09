@@ -212,11 +212,12 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
 
-        return super._assetToShareAmount(
-            vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, MathLib.Rounding.Down
-        );
+        D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+
+        return
+            super._assetToShareAmount(vault_, vaultDetails, assets, poolPerAsset, poolPerShare, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IBaseRequestManager
