@@ -21,6 +21,6 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContrac
     error NotRelayer();
     error ERC6909NotSupported();
 
-    function poolId() external view returns(PoolId);
-    function scId() external view returns(ShareClassId);
+    function poolId() external view returns (PoolId);
+    function scId() external view returns (ShareClassId);
 }
