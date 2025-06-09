@@ -16,11 +16,9 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {OnOfframpManager} from "src/managers/OnOfframpManager.sol";
+import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
 import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
 import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
-
-// TODO: approval tests + factory tests
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -32,7 +30,8 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
     AssetId assetId;
     ShareClassId defaultTypedShareClassId;
 
-    OnOfframpManager manager;
+    OnOfframpManagerFactory factory;
+    IOnOfframpManager manager;
 
     address relayer = makeAddr("relayer");
     address receiver = makeAddr("receiver");
@@ -70,7 +69,8 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             }).serialize()
         );
 
-        manager = new OnOfframpManager(POOL_A, defaultTypedShareClassId, address(spoke), balanceSheet);
+        factory = new OnOfframpManagerFactory(address(spoke), balanceSheet);
+        manager = factory.newManager(POOL_A, defaultTypedShareClassId);
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
     }
 
