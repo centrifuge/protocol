@@ -387,14 +387,14 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
     }
 
-    function testSubmitQueuedAssetsEmpty(bool managerOrAuth) public {
-        // Does nothing, no mocks required
+    function testSubmitQueuedAssets(bool managerOrAuth) public {
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
+
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
-        (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
-        assertEq(queuedAssetCounter, 0);
-        assertEq(nonce, 0);
+        (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(nonce, 1);
     }
 
     function testSubmitQueuedAssetsWithMoreDepositAmount() public {
@@ -405,6 +405,9 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT * 3);
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
+
+        vm.expectEmit();
+        emit IBalanceSheet.SubmitQueuedAssets(POOL_A, SC_1, ASSET_20, AMOUNT * 3, AMOUNT, ASSET_PRICE, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -474,24 +477,13 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssetsTwice() public {
-        _mockEscrowDeposit(erc20, 0, AMOUNT);
-        _mockEscrowWithdraw(erc20, 0, AMOUNT);
         _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 1);
 
         vm.startPrank(AUTH);
-        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
-        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20); // No message sent
-
-        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20);
 
-        (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
-        assertEq(deposits, 0);
-        assertEq(withdrawals, 0);
-
-        (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
-        assertEq(queuedAssetCounter, 0);
+        (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 2);
     }
 }
@@ -503,14 +495,14 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         balanceSheet.submitQueuedShares(POOL_A, SC_1);
     }
 
-    function testSubmitQueuedSharesEmpty(bool managerOrAuth) public {
-        // Does nothing, no mocks required
+    function testSubmitQueuedShares(bool managerOrAuth) public {
+        _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
+
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         balanceSheet.submitQueuedShares(POOL_A, SC_1);
 
-        (,, uint32 queuedAssetCounter, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
-        assertEq(queuedAssetCounter, 0);
-        assertEq(nonce, 0);
+        (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(nonce, 1);
     }
 
     function testSubmitQueuedSharesWithDeltaPositive() public {
@@ -519,10 +511,46 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         vm.startPrank(AUTH);
         balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+
+        vm.expectEmit();
+        emit IBalanceSheet.SubmitQueuedShares(POOL_A, SC_1, AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedShares(POOL_A, SC_1);
 
-        (uint128 delta,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
+        assertEq(isPositive, true);
         assertEq(nonce, 1);
+    }
+
+    function testSubmitQueuedSharesWithDeltaNegative() public {
+        _mockShareBurn(AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockSendUpdateShares(AMOUNT, !IS_ISSUANCE, IS_SNAPSHOT, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+        balanceSheet.submitQueuedShares(POOL_A, SC_1);
+    }
+
+    function testSubmitQueuedSharesAfterUpdateAssets() public {
+        _mockShareMint(AMOUNT);
+        _mockSendUpdateShares(AMOUNT, IS_ISSUANCE, !IS_SNAPSHOT, 0);
+        _mockEscrowDeposit(erc20, 0, AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.submitQueuedShares(POOL_A, SC_1);
+    }
+
+    function testSubmitQueuedSharesTwice() public {
+        _mockSendUpdateShares(0, IS_ISSUANCE, IS_SNAPSHOT, 2);
+
+        vm.startPrank(AUTH);
+        balanceSheet.submitQueuedShares(POOL_A, SC_1);
+        balanceSheet.submitQueuedShares(POOL_A, SC_1);
+
+        (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(nonce, 2);
     }
 }

@@ -201,12 +201,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     /// @inheritdoc IBalanceSheet
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
-        if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) return;
-
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
 
-        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 1;
+        uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
+        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter;
+
         emit SubmitQueuedAssets(
             poolId,
             scId,
@@ -233,13 +233,12 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
-        shareQueue.queuedAssetCounter--;
+        shareQueue.queuedAssetCounter -= assetCounter;
     }
 
     /// @inheritdoc IBalanceSheet
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (shareQueue.delta == 0) return;
 
         bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
         emit SubmitQueuedShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);

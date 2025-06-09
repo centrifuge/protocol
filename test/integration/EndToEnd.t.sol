@@ -570,7 +570,7 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(amount, 0);
         assertEq(value, assetToPool(0));
 
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 2);
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(0), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(0), true);
