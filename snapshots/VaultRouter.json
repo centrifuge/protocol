@@ -1,5 +1,7 @@
 {
+  "claimDeposit": "1190649",
   "enable": "60953",
   "lockDepositRequest": "95688",
-  "requestDeposit": "577725"
+  "requestDeposit": "577725",
+  "requestRedeem": "2151932"
 }

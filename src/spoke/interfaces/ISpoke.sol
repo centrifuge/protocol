@@ -132,6 +132,7 @@ interface ISpoke {
     error CrossChainTransferNotAllowed();
     error ShareTokenTransferFailed();
     error TransferFromFailed();
+    error InvalidRequestManager();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist

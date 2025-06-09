@@ -248,7 +248,7 @@ contract MockCentrifugeChain is Test {
     ) public {
         // NOTE: Currently, hardcoding pricePoolPerAsset to 1
         isApprovedDeposits(poolId, scId, assetId, fulfilledAssetAmount, d18(1, 1));
-        isIssuedShares(poolId, scId, fulfilledShareAmount, d18(1, 1));
+        isIssuedShares(poolId, scId, assetId, fulfilledShareAmount, d18(1, 1));
 
         execute(
             MessageLib.RequestCallback(
@@ -310,17 +310,17 @@ contract MockCentrifugeChain is Test {
     }
 
     /// @dev Impicitly called by isFulfilledDepositRequest
-    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 shares, D18 pricePoolPerShare) public {
+    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 shares, D18 pricePoolPerShare)
+        public
+    {
         execute(
             MessageLib.RequestCallback(
                 poolId,
                 scId,
-                0,
+                assetId,
                 RequestCallbackMessageLib.IssuedShares({shareAmount: shares, pricePoolPerShare: pricePoolPerShare.raw()})
                     .serialize()
-            ) // TODO
-                    // TODO
-                .serialize()
+            ).serialize()
         );
     }
 

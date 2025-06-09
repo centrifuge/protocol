@@ -194,6 +194,7 @@ contract BaseTest is SpokeDeployer, Test {
         }
 
         spoke.updateRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+        balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

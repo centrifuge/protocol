@@ -323,7 +323,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        IRequestCallback(shareClass.manager[assetId]).callback(poolId, scId, assetId, payload);
+        IRequestCallback manager = shareClass.manager[assetId];
+        require(address(manager) != address(0), InvalidRequestManager());
+
+        manager.callback(poolId, scId, assetId, payload);
         // emit RequestCallback(poolId, scId, assetId, payload);
     }
 
