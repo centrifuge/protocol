@@ -45,7 +45,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
 
 contract AsyncRequestManagerTest is BaseTest {
     // Deployment
-    function testDeployment(address nonWard) public {
+    function testDeploymentAsync(address nonWard) public {
         vm.assume(
             nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncRequestManager)
                 && nonWard != address(this)
@@ -62,8 +62,6 @@ contract AsyncRequestManagerTest is BaseTest {
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
-
-        assertEq(balanceSheet.wards(address(asyncRequestManager)), 1);
     }
 
     // --- Administration ---

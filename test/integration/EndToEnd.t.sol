@@ -338,6 +338,9 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(
             s_.centrifugeId, POOL_A, address(s.asyncRequestManager).toBytes32(), true
         );
+        h.hub.updateBalanceSheetManager{value: GAS}(
+            s_.centrifugeId, POOL_A, address(s.syncRequestManager).toBytes32(), true
+        );
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
