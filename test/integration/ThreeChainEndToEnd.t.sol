@@ -28,7 +28,7 @@ enum CrossChainDirection {
 ///         Hub is on Chain A, with spokes on Chains B and C
 ///         C is considered the source chain, B the destination chain
 ///         Depending on the cross chain direction, the hub is either on A or B or C
-contract ThreeChainEndToEndDeployment is EndToEndUtils {
+contract ThreeChainEndToEndDeployment is EndToEndFlows {
     using CastLib for *;
     using MessageLib for *;
 
