@@ -35,11 +35,6 @@ function mulD18(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(MathLib.mulDiv(D18.unwrap(d1), D18.unwrap(d2), 1e18).toUint128());
 }
 
-/// @dev sugar for getting the inner representation of a D18
-function inner(D18 d1) pure returns (uint128) {
-    return D18.unwrap(d1);
-}
-
 /// @dev Returns the reciprocal of a D18 decimal, i.e. 1 / d.
 ///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
 function reciprocal(D18 d) pure returns (D18) {
@@ -70,7 +65,7 @@ function mulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure return
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
 function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) pure returns (uint128) {
-    return MathLib.mulDiv(value, 1e18, d.inner(), rounding).toUint128();
+    return MathLib.mulDiv(value, 1e18, d.raw(), rounding).toUint128();
 }
 
 /// @dev  Divides an integer by a decimal, i.e.
@@ -79,7 +74,7 @@ function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) p
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
 function reciprocalMulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure returns (uint256) {
-    return MathLib.mulDiv(value, 1e18, d.inner(), rounding);
+    return MathLib.mulDiv(value, 1e18, d.raw(), rounding);
 }
 
 /// @dev Easy way to construct a decimal number
@@ -104,7 +99,6 @@ using {
     add as +,
     sub as -,
     divD18 as /,
-    inner,
     eq,
     mulD18 as *,
     mulUint128,

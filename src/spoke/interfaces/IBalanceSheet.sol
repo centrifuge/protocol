@@ -33,6 +33,7 @@ interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event UpdateManager(PoolId indexed poolId, address who, bool canManage);
+    event SetQueue(PoolId indexed poolId, ShareClassId indexed scId, bool enabled);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -42,7 +43,8 @@ interface IBalanceSheet {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(
+    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
+    event NoteDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address asset,
@@ -52,6 +54,27 @@ interface IBalanceSheet {
     );
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event TransferSharesFrom(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address indexed from,
+        address to,
+        uint256 amount
+    );
+    event SubmitQueuedShares(
+        PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance, bool isSnapshot, uint64 nonce
+    );
+    event SubmitQueuedAssets(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed assetId,
+        uint128 deposits,
+        uint128 withdrawals,
+        D18 pricePoolPerAsset,
+        bool isSnapshot,
+        uint64 nonce
+    );
 
     // --- Errors ---
     error FileUnrecognizedParam();
@@ -96,6 +119,15 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    /// @notice Increase the reserved balance of the pool. These assets are removed from the available balance
+    ///         and cannot be withdrawn before they are unreserved.
+    ///
+    ///         It is possible to reserve more than the current balance, to lock future expected assets.
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+
+    /// @notice Decrease the reserved balance of the pool. These assets are re-added to the available balance.
+    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+
     /// @notice Issue new share tokens. Increases the total issuance.
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
@@ -109,7 +141,14 @@ interface IBalanceSheet {
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
 
     /// @notice Force-transfers share tokens.
-    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+    function transferSharesFrom(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender,
+        address from,
+        address to,
+        uint256 amount
+    ) external;
 
     /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.

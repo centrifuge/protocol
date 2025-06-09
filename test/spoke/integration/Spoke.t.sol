@@ -712,7 +712,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         }
     }
 
-    function _assertShareSetup(address vaultAddress, bool isLinked) private view {
+    function _assertShareSetup() private view {
         IShareToken token_ = spoke.shareToken(poolId, scId);
         ShareToken shareToken = ShareToken(address(token_));
 
@@ -722,12 +722,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.name(), tokenName, "share class token name mismatch");
         assertEq(shareToken.symbol(), tokenSymbol, "share class token symbol mismatch");
         assertEq(shareToken.decimals(), decimals, "share class token decimals mismatch");
-
-        if (isLinked) {
-            assertEq(shareToken.wards(vaultAddress), 1);
-        } else {
-            assertEq(shareToken.wards(vaultAddress), 0, "Vault auth on Share set up in linkVault");
-        }
     }
 
     function _assertDeployedVault(address vaultAddress, AssetId assetId, address asset, uint256 tokenId, bool isLinked)
@@ -735,7 +729,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         view
     {
         _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
-        _assertShareSetup(vaultAddress, isLinked);
+        _assertShareSetup();
     }
 
     function testDeployVaultWithoutLinkERC20(
@@ -840,7 +834,7 @@ contract SpokeRegisterAssetTest is BaseTest {
 
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -889,7 +883,8 @@ contract SpokeRegisterAssetTest is BaseTest {
             tokenId,
             erc6909.name(tokenId),
             erc6909.symbol(tokenId),
-            erc6909.decimals(tokenId)
+            erc6909.decimals(tokenId),
+            true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -919,7 +914,7 @@ contract SpokeRegisterAssetTest is BaseTest {
     function testRegisterAssetTwice() public {
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));

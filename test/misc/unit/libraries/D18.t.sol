@@ -12,14 +12,14 @@ contract D18Test is Test {
         vm.assume(b <= type(uint128).max / 2);
 
         D18 c = d18(a) + d18(b);
-        assertEqDecimal(c.inner(), a + b, 18);
+        assertEqDecimal(c.raw(), a + b, 18);
     }
 
     function testFuzzSub(uint128 a, uint128 b) public pure {
         vm.assume(a >= b);
 
         D18 c = d18(a) - d18(b);
-        assertEqDecimal(c.inner(), a - b, 18);
+        assertEqDecimal(c.raw(), a - b, 18);
     }
 
     function testMulUint128() public pure {
@@ -86,7 +86,7 @@ contract D18Test is Test {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
 
-        uint128 expectedDown = multiplier * 1e18 / divisor.inner();
+        uint128 expectedDown = multiplier * 1e18 / divisor.raw();
         uint128 expectedUp = (multiplier * 1e18 % divisor.raw()) == 0 ? expectedDown : expectedDown + 1;
 
         assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Down), expectedDown);
@@ -105,7 +105,7 @@ contract D18Test is Test {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = bound(multiplier, 0, type(uint256).max / 1e18);
 
-        uint256 expectedDown = multiplier * 1e18 / divisor.inner();
+        uint256 expectedDown = multiplier * 1e18 / divisor.raw();
         uint256 expectedUp = (multiplier * 1e18 % divisor.raw()) == 0 ? expectedDown : expectedDown + 1;
 
         assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Down), expectedDown);
@@ -116,28 +116,28 @@ contract D18Test is Test {
         D18 left = d18(50e18);
         D18 right = d18(2e19);
 
-        assertEq(mulD18(left, right).inner(), 100e19);
+        assertEq(mulD18(left, right).raw(), 100e19);
     }
 
     function testFuzzMulD18(uint128 left_, uint128 right_) public pure {
         D18 left = d18(uint128(bound(left_, 1, type(uint128).max)));
-        D18 right = d18(uint128(bound(right_, 0, type(uint128).max / left.inner())));
+        D18 right = d18(uint128(bound(right_, 0, type(uint128).max / left.raw())));
 
-        assertEq(mulD18(left, right).inner(), left.inner() * right.inner() / 1e18);
+        assertEq(mulD18(left, right).raw(), left.raw() * right.raw() / 1e18);
     }
 
     function testDivD18() public pure {
         D18 numerator = d18(50e18);
         D18 denominator = d18(2e19);
 
-        assertEq(divD18(numerator, denominator).inner(), 25e17);
+        assertEq(divD18(numerator, denominator).raw(), 25e17);
     }
 
     function testFuzzDivD18(uint128 numerator_, uint128 denominator_) public pure {
         D18 numerator = d18(uint128(bound(numerator_, 1, 1e20)));
         D18 denominator = d18(uint128(bound(denominator_, 1, 1e20)));
 
-        assertEq(divD18(numerator, denominator).inner(), numerator.inner() * 1e18 / denominator.inner());
+        assertEq(divD18(numerator, denominator).raw(), numerator.raw() * 1e18 / denominator.raw());
     }
 
     function testEqD18() public pure {
@@ -164,18 +164,18 @@ contract D18ReciprocalTest is Test {
         D18 result = input.reciprocal();
 
         uint128 expected = 1e36 / val;
-        assertApproxEqAbs(result.inner(), expected, 1, "Reciprocal calculation mismatch");
+        assertApproxEqAbs(result.raw(), expected, 1, "Reciprocal calculation mismatch");
 
         D18 roundTrip = input * result;
         uint128 tolerance = 1e3; // very small relative error (~1e-15)
-        assertApproxEqAbs(roundTrip.inner(), 1e18, tolerance, "Round-trip multiplication failed");
+        assertApproxEqAbs(roundTrip.raw(), 1e18, tolerance, "Round-trip multiplication failed");
     }
 
     /// @dev Explicitly test edge case for reciprocal(1e18) == 1e18
     function testReciprocalOne() public pure {
         D18 one = D18.wrap(1e18);
         D18 result = one.reciprocal();
-        assertEq(result.inner(), 1e18, "Reciprocal of 1e18 should be 1e18");
+        assertEq(result.raw(), 1e18, "Reciprocal of 1e18 should be 1e18");
     }
 
     /// @dev Explicitly test rounding edge cases close to 1
@@ -186,7 +186,7 @@ contract D18ReciprocalTest is Test {
         D18 resultUp = almostOneUp.reciprocal();
         D18 resultDown = almostOneDown.reciprocal();
 
-        assertApproxEqAbs(resultUp.inner(), 1e18 - 1, 1, "Rounding error (upward case)");
-        assertApproxEqAbs(resultDown.inner(), 1e18 + 1, 1, "Rounding error (downward case)");
+        assertApproxEqAbs(resultUp.raw(), 1e18 - 1, 1, "Rounding error (upward case)");
+        assertApproxEqAbs(resultDown.raw(), 1e18 + 1, 1, "Rounding error (downward case)");
     }
 }

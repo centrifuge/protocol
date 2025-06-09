@@ -19,10 +19,7 @@ import "test/spoke/BaseTest.sol";
 
 contract SyncRequestManagerBaseTest is BaseTest {
     function _assumeUnauthorizedCaller(address nonWard) internal view {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncDepositVaultFactory)
-                && nonWard != address(this)
-        );
+        vm.assume(nonWard != address(root) && nonWard != address(spoke) && nonWard != address(this));
     }
 
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)
@@ -34,14 +31,10 @@ contract SyncRequestManagerBaseTest is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.raw(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId().raw(),
-            syncVault.scId().raw(),
-            assetId,
-            pricePoolPerAsset.inner(),
-            uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), assetId, pricePoolPerAsset.raw(), uint64(block.timestamp)
         );
     }
 
@@ -66,12 +59,10 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         // values set correctly
         assertEq(address(syncRequestManager.spoke()), address(spoke));
         assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(syncRequestManager.poolEscrowProvider()), address(poolEscrowFactory));
 
         // permissions set correctly
         assertEq(syncRequestManager.wards(address(root)), 1);
         assertEq(syncRequestManager.wards(address(spoke)), 1);
-        assertEq(syncRequestManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
         assertEq(syncRequestManager.wards(nonWard), 0);
     }
@@ -89,8 +80,6 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         syncRequestManager.file("spoke", randomUser);
         assertEq(address(syncRequestManager.spoke()), randomUser);
         syncRequestManager.file("balanceSheet", randomUser);
-        assertEq(address(syncRequestManager.balanceSheet()), randomUser);
-        syncRequestManager.file("poolEscrowProvider", randomUser);
         assertEq(address(syncRequestManager.balanceSheet()), randomUser);
 
         // remove self from wards
@@ -202,15 +191,15 @@ contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
 contract SyncRequestManagerPrices is SyncRequestManagerBaseTest {
     function testPricesWithoutValuation(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e6, 1e24)));
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e4, pricePoolPerShare.inner())));
+        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e4, pricePoolPerShare.raw())));
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
 
         Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
-        assertEq(prices.assetPerShare.inner(), priceAssetPerShare.inner(), "priceAssetPerShare mismatch");
-        assertEq(prices.poolPerShare.inner(), pricePoolPerShare.inner(), "pricePoolPerShare mismatch");
-        assertEq(prices.poolPerAsset.inner(), pricePoolPerAsset.inner(), "pricePoolPerAsset mismatch");
+        assertEq(prices.assetPerShare.raw(), priceAssetPerShare.raw(), "priceAssetPerShare mismatch");
+        assertEq(prices.poolPerShare.raw(), pricePoolPerShare.raw(), "pricePoolPerShare mismatch");
+        assertEq(prices.poolPerAsset.raw(), pricePoolPerAsset.raw(), "pricePoolPerAsset mismatch");
     }
 }
 
@@ -236,12 +225,12 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
 
         D18 pricePost = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
-        assertNotEq(prePoolPerShare.inner(), pricePost.inner(), "Price should be changed by valuation");
-        assertEq(expected.poolPerShare.inner(), prices.poolPerShare.inner(), "poolPerShare mismatch");
-        assertEq(expected.poolPerShare.inner(), pricePost.inner(), "poolPerShare vs pricePost mismatch");
+        assertNotEq(prePoolPerShare.raw(), pricePost.raw(), "Price should be changed by valuation");
+        assertEq(expected.poolPerShare.raw(), prices.poolPerShare.raw(), "poolPerShare mismatch");
+        assertEq(expected.poolPerShare.raw(), pricePost.raw(), "poolPerShare vs pricePost mismatch");
 
-        assertEq(expected.poolPerAsset.inner(), prices.poolPerAsset.inner(), "poolPerAsset mismatch");
-        assertEq(expected.assetPerShare.inner(), prices.assetPerShare.inner(), "assetPerShare mismatch");
+        assertEq(expected.poolPerAsset.raw(), prices.poolPerAsset.raw(), "poolPerAsset mismatch");
+        assertEq(expected.assetPerShare.raw(), prices.assetPerShare.raw(), "assetPerShare mismatch");
     }
 
     function testSetValuationERC20() public {
@@ -280,10 +269,10 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         uint8 multiplier_
     ) public {
         D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e8, 1e24)));
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e6, pricePoolPerShare.inner())));
+        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e6, pricePoolPerShare.raw())));
         D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
         uint128 multiplier = uint128(bound(multiplier_, 2, 10));
-        vm.assume(priceAssetPerShare.inner() % multiplier == 0);
+        vm.assume(priceAssetPerShare.raw() % multiplier == 0);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
         D18 pricePre = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
@@ -291,7 +280,7 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         _setValuation(syncVault, valuation_);
 
         // Change pricePoolPerShare
-        pricePoolPerShare = d18(pricePoolPerShare.inner() * multiplier);
+        pricePoolPerShare = d18(pricePoolPerShare.raw() * multiplier);
         priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
 
         // Mock valuation and perform checks

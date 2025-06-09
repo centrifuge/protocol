@@ -24,7 +24,7 @@ import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;

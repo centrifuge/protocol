@@ -116,7 +116,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param asset The address of the asset to be reserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to reserve
-    function reserveIncrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
 
     /// @notice Decreases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
     /// @dev MUST fail if `value` is greater than the current reserved amount
@@ -124,7 +124,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param asset The address of the asset to be reserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to decrease
-    function reserveDecrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
 
     /// @notice Provides the available balance of `asset` in underlying `poolId` and given `scId`
     /// @dev MUST return the balance minus the reserved amount

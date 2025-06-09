@@ -13,9 +13,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;
 
     address public gateway;
-    address public spoke;
     address public balanceSheet;
-    address public asyncRequestManager;
 
     constructor(address root_, address deployer) Auth(deployer) {
         root = root_;
@@ -23,10 +21,8 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
     /// @inheritdoc IPoolEscrowFactory
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = data;
-        else if (what == "gateway") gateway = data;
+        if (what == "gateway") gateway = data;
         else if (what == "balanceSheet") balanceSheet = data;
-        else if (what == "asyncRequestManager") asyncRequestManager = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -37,9 +33,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
         escrow_.rely(root);
         escrow_.rely(gateway);
-        escrow_.rely(spoke);
         escrow_.rely(balanceSheet);
-        escrow_.rely(asyncRequestManager);
 
         escrow_.deny(address(this));
 
