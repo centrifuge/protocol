@@ -53,12 +53,10 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         assertEq(result, expected);
     }
 
-    function testConvertWithPriceDifferentDecimals(
-        uint128 baseAmount,
-        uint8 baseDecimals,
-        uint8 quoteDecimals,
-        uint128 priceRaw
-    ) public pure {
+    function testConvertWithPrice(uint128 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, uint128 priceRaw)
+        public
+        pure
+    {
         baseDecimals = uint8(bound(baseDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         quoteDecimals = uint8(bound(quoteDecimals, MIN_ASSET_DECIMALS, MAX_ASSET_DECIMALS));
         baseAmount = uint128(bound(baseAmount, 1, MAX_AMOUNT / (10 ** quoteDecimals)));
@@ -83,6 +81,17 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         assertGe(result, underestimate, "convertWithPrice should be at least as large as underestimate");
         assertEq(result, expectedDown, "convertWithPrice failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
+    }
+
+    function testConvertWithPriceZeroValues() public pure {
+        uint256 result = PricingLib.convertWithPrice(0, 6, 18, d18(1e18), MathLib.Rounding.Down);
+        assertEq(result, 0, "Zero asset amount should return 0");
+
+        result = PricingLib.convertWithPrice(1e6, 6, 18, d18(0), MathLib.Rounding.Down);
+        assertEq(result, 0, "Zero pricePoolPerAsset should return 0");
+
+        result = PricingLib.convertWithPrice(0, 6, 18, d18(0), MathLib.Rounding.Down);
+        assertEq(result, 0, "All zeros should return 0");
     }
 }
 
@@ -619,6 +628,28 @@ contract PoolToAssetAmountTest is PricingLibBaseTest {
         assertGe(result, underestimate, "shareToAssetAmount should be at least as large as underestimate");
         assertEq(result, expectedDown, "poolToAssetAmount failed");
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
+    }
+}
+
+contract AssetToPoolAmountTest is ConvertWithPriceTest {
+    using PricingLib for *;
+    using MathLib for uint256;
+
+    function testAssetToPoolAmount(
+        uint128 assetAmount,
+        uint8 assetDecimals,
+        uint8 poolDecimals,
+        uint128 pricePoolPerAsset
+    ) public pure {
+        testConvertWithPrice(assetAmount, assetDecimals, poolDecimals, pricePoolPerAsset);
+    }
+
+    function testAssetToPoolAmountSameDecimals(uint128 baseAmount, uint128 pricePoolPerAsset) public pure {
+        testConvertWithPriceSameDecimals(baseAmount, pricePoolPerAsset);
+    }
+
+    function testAssetToPoolAmountZeroValues() public pure {
+        testConvertWithPriceZeroValues();
     }
 }
 
