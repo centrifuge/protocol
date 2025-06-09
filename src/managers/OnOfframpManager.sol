@@ -49,7 +49,7 @@ contract OnOfframpManager is IOnOfframpManager {
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId_, ShareClassId, /* scId */ bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
-        require(msg.sender == spoke, NotAuthorized());
+        require(msg.sender == spoke, NotSpoke());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
@@ -98,7 +98,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
-        require(relayer[msg.sender], NotAuthorized());
+        require(relayer[msg.sender], NotRelayer());
         require(receiver != address(0) && receiver == offramp[asset], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
