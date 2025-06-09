@@ -7,7 +7,6 @@ import {Auth} from "src/misc/Auth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
@@ -32,7 +31,7 @@ import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spo
 import {Price} from "src/spoke/types/Price.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
@@ -202,6 +201,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
+    function updateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        shareClass.manager[assetId] = IRequestCallback(manager);
+        emit UpdateRequestManager(poolId, scId, assetId, IRequestCallback(manager));
+    }
+
+    /// @inheritdoc ISpokeGatewayHandler
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory name, string memory symbol)
         public
         auth
@@ -308,7 +314,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpoke
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        // require(msg.sender == address(shareClass.requestManager), NotAuthorized());
+        require(msg.sender == address(shareClass.manager[assetId]), NotAuthorized());
 
         sender.sendRequest(poolId, scId, assetId, payload);
         // emit Request(poolId, scId, payload);
@@ -317,7 +323,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        IRequestManager(shareClass.requestManager).callback(poolId, scId, assetId, payload);
+        IRequestCallback(shareClass.manager[assetId]).callback(poolId, scId, assetId, payload);
         // emit RequestCallback(poolId, scId, assetId, payload);
     }
 

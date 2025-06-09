@@ -6,11 +6,12 @@ import {D18} from "src/misc/types/D18.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+
+import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
 
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 interface IDepositManager is IBaseRequestManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
@@ -276,7 +277,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManagerGatewayHandler {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestCallback {
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
@@ -304,4 +305,71 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRe
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
         );
+
+    /// @notice Signal from the Hub that an asynchronous investment order has been approved
+    ///
+    /// @dev This message needs to trigger making the asset amounts available to the pool-share-class.
+    function approvedDeposits(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        D18 pricePoolPerAsset
+    ) external;
+
+    /// @notice Signal from the Hub that an asynchronous investment order has been finalized. Shares have been issued.
+    ///
+    /// @dev This message needs to trigger minting the new amount of shares.
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external;
+
+    /// @notice Signal from the Hub that an asynchronous redeem order has been finalized.
+    ///
+    /// @dev This messages needs to trigger reserving the asset amount for claims of redemptions by users.
+    function revokedShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        D18 pricePoolPerShare
+    ) external;
+
+    // --- Deposits ---
+    /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
+    ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
+    ///         The maxMint and claimableCancelDepositRequest bookkeeping values are updated.
+    ///         The request fulfillment can be partial.
+    /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
+    ///         and mint calls.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
+    function fulfillDepositRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        address user,
+        AssetId assetId,
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledAssetAmount
+    ) external;
+
+    // --- Redeems ---
+    /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
+    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
+    ///         return is locked in the escrow contract.
+    ///         The maxWithdraw and claimableCancelRedeemRequest bookkeeping values are updated.
+    ///         The request fulfillment can be partial.
+    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
+    ///         and withdraw calls.
+    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
+    ///         Otherwise, either of the two must always be zero.
+    function fulfillRedeemRequest(
+        PoolId poolId,
+        ShareClassId scId,
+        address user,
+        AssetId assetId,
+        uint128 fulfilledAssetAmount,
+        uint128 fulfilledShareAmount,
+        uint128 cancelledShareAmount
+    ) external;
 }

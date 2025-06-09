@@ -193,6 +193,8 @@ contract BaseTest is SpokeDeployer, Test {
             );
         }
 
+        spoke.updateRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 
         spoke.updateVault(

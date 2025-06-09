@@ -91,6 +91,9 @@ interface ISpokeGatewayHandler {
         address hook
     ) external;
 
+    /// @notice TODO
+    function updateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     /// @dev      The function can only be executed by the gateway contract.
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)
@@ -172,76 +175,6 @@ interface ISpokeGatewayHandler {
 
     /// @notice TODO
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
-}
-
-/// @notice Interface for Vaults methods related to async investments called by messages
-interface IRequestManagerGatewayHandler {
-    /// @notice Signal from the Hub that an asynchronous investment order has been approved
-    ///
-    /// @dev This message needs to trigger making the asset amounts available to the pool-share-class.
-    function approvedDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        D18 pricePoolPerAsset
-    ) external;
-
-    /// @notice Signal from the Hub that an asynchronous investment order has been finalized. Shares have been issued.
-    ///
-    /// @dev This message needs to trigger minting the new amount of shares.
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external;
-
-    /// @notice Signal from the Hub that an asynchronous redeem order has been finalized.
-    ///
-    /// @dev This messages needs to trigger reserving the asset amount for claims of redemptions by users.
-    function revokedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external;
-
-    // --- Deposits ---
-    /// @notice Fulfills pending deposit requests after successful epoch execution on Hub.
-    ///         The amount of shares that can be claimed by the user is minted and moved to the escrow contract.
-    ///         The maxMint and claimableCancelDepositRequest bookkeeping values are updated.
-    ///         The request fulfillment can be partial.
-    /// @dev    The shares in the escrow are reserved for the user and are transferred to the user on deposit
-    ///         and mint calls.
-    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
-    ///         Otherwise, either of the two must always be zero.
-    function fulfillDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        address user,
-        AssetId assetId,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledAssetAmount
-    ) external;
-
-    // --- Redeems ---
-    /// @notice Fulfills pending redeem requests after successful epoch execution on Hub.
-    ///         The amount of redeemed shares is burned. The amount of assets that can be claimed by the user in
-    ///         return is locked in the escrow contract.
-    ///         The maxWithdraw and claimableCancelRedeemRequest bookkeeping values are updated.
-    ///         The request fulfillment can be partial.
-    /// @dev    The assets in the escrow are reserved for the user and are transferred to the user on redeem
-    ///         and withdraw calls.
-    /// @dev    The cancelled and fulfilled amounts are both non-zero iff the cancellation was queued.
-    ///         Otherwise, either of the two must always be zero.
-    function fulfillRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        address user,
-        AssetId assetId,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledShareAmount
-    ) external;
 }
 
 /// @notice Interface for Vaults methods related to epoch called by messages

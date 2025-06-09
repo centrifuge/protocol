@@ -7,29 +7,30 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {RequestCallbackType, RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
+
 import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
@@ -185,14 +186,53 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
+        uint8 kind = uint8(RequestCallbackMessageLib.requestCallbackType(payload));
+
+        if (kind == uint8(RequestCallbackType.ApprovedDeposits)) {
+            RequestCallbackMessageLib.ApprovedDeposits memory m = payload.deserializeApprovedDeposits();
+            approvedDeposits(poolId, scId, assetId, m.assetAmount, D18.wrap(m.pricePoolPerAsset));
+        } else if (kind == uint8(RequestCallbackType.IssuedShares)) {
+            RequestCallbackMessageLib.IssuedShares memory m = payload.deserializeIssuedShares();
+            issuedShares(poolId, scId, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+        } else if (kind == uint8(RequestCallbackType.RevokedShares)) {
+            RequestCallbackMessageLib.RevokedShares memory m = payload.deserializeRevokedShares();
+            revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+        } else if (kind == uint8(RequestCallbackType.FulfilledDepositRequest)) {
+            RequestCallbackMessageLib.FulfilledDepositRequest memory m = payload.deserializeFulfilledDepositRequest();
+            fulfillDepositRequest(
+                poolId,
+                scId,
+                m.investor.toAddress(),
+                assetId,
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledAssetAmount
+            );
+        } else if (kind == uint8(RequestCallbackType.FulfilledRedeemRequest)) {
+            RequestCallbackMessageLib.FulfilledRedeemRequest memory m = payload.deserializeFulfilledRedeemRequest();
+            fulfillRedeemRequest(
+                poolId,
+                scId,
+                m.investor.toAddress(),
+                assetId,
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledShareAmount
+            );
+        } else {
+            revert IRequestCallback.UnknownRequestCallbackType();
+        }
+    }
+
+    /// @inheritdoc IAsyncRequestManager
     function approvedDeposits(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 assetAmount,
         D18 pricePoolPerAsset
-    ) external auth {
+    ) public auth {
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
         // Note deposit and transfer from global escrow into the pool escrow,
@@ -205,14 +245,14 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
+    /// @inheritdoc IAsyncRequestManager
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) public auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function revokedShares(
         PoolId poolId,
         ShareClassId scId,
@@ -220,7 +260,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint128 assetAmount,
         uint128 shareAmount,
         D18 pricePoolPerShare
-    ) external auth {
+    ) public auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
         balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount);
@@ -231,7 +271,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -264,7 +304,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         if (cancelledAssets > 0) vault_.onCancelDepositClaimable(user, cancelledAssets);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,

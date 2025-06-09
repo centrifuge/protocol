@@ -15,8 +15,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IRequestManagerGatewayHandler
+    IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";

@@ -11,7 +11,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {Price} from "src/spoke/types/Price.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -21,10 +21,11 @@ struct Pool {
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
-    IRequestManager requestManager;
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
+    /// @dev Manager that can send requests, and handles the request callbacks.
+    mapping(AssetId assetId => IRequestCallback) manager;
     /// @dev Each share class can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
@@ -73,6 +74,9 @@ interface ISpoke {
         IVaultFactory factory,
         IVault vault,
         VaultKind kind
+    );
+    event UpdateRequestManager(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestCallback manager
     );
     event UpdateAssetPrice(
         PoolId indexed poolId,

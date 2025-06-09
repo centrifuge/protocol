@@ -14,9 +14,6 @@ enum RequestCallbackType {
     FulfilledRedeemRequest
 }
 
-// TODO: remove poolId and scId from all sub messages
-// TODO: add assetId to higher level RequestCallback message
-
 library RequestCallbackMessageLib {
     using RequestCallbackMessageLib for bytes;
     using BytesLib for bytes;
