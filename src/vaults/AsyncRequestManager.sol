@@ -122,7 +122,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
 
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
         _sendRedeemRequest(poolId, scId, vaultDetails.assetId, controller, shares_);
-
         _executeRedeemTransfer(poolId, scId, sender_, owner, address(globalEscrow), shares_);
 
         return true;

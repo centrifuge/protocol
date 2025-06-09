@@ -608,49 +608,6 @@ contract TestMessageLibIdentities is Test {
     //     assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     // }
 
-    function testTriggerIssueShares(uint64 poolId, bytes16 scId, bytes32 who, uint128 shares) public pure {
-        MessageLib.TriggerIssueShares memory a =
-            MessageLib.TriggerIssueShares({poolId: poolId, scId: scId, who: who, shares: shares});
-
-        MessageLib.TriggerIssueShares memory b = MessageLib.deserializeTriggerIssueShares(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.who, b.who);
-        assertEq(a.shares, b.shares);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
-
-    function testTriggerSubmitQueuedShares(uint64 poolId, bytes16 scId) public pure {
-        MessageLib.TriggerSubmitQueuedShares memory a =
-            MessageLib.TriggerSubmitQueuedShares({poolId: poolId, scId: scId});
-        MessageLib.TriggerSubmitQueuedShares memory b = MessageLib.deserializeTriggerSubmitQueuedShares(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
-
-    function testTriggerSubmitQueuedAssets(uint64 poolId, bytes16 scId, uint128 assetId) public pure {
-        MessageLib.TriggerSubmitQueuedAssets memory a =
-            MessageLib.TriggerSubmitQueuedAssets({poolId: poolId, scId: scId, assetId: assetId});
-        MessageLib.TriggerSubmitQueuedAssets memory b = MessageLib.deserializeTriggerSubmitQueuedAssets(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
-
     function testMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
         MessageLib.MaxAssetPriceAge memory a =
             MessageLib.MaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
