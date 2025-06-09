@@ -51,9 +51,6 @@ enum MessageType {
     FulfilledRedeemRequest,
     UpdateHoldingAmount,
     UpdateShares,
-    TriggerIssueShares,
-    TriggerSubmitQueuedShares,
-    TriggerSubmitQueuedAssets,
     MaxAssetPriceAge,
     MaxSharePriceAge
 }
@@ -118,9 +115,6 @@ library MessageLib {
         (121 << (uint8(MessageType.FulfilledRedeemRequest) - 32) * 8) +
         (91  << (uint8(MessageType.UpdateHoldingAmount) - 32) * 8) +
         (59  << (uint8(MessageType.UpdateShares) - 32) * 8) +
-        (73  << (uint8(MessageType.TriggerIssueShares) - 32) * 8) +
-        (25  << (uint8(MessageType.TriggerSubmitQueuedShares) - 32) * 8) +
-        (41  << (uint8(MessageType.TriggerSubmitQueuedAssets) - 32) * 8) +
         (49  << (uint8(MessageType.MaxAssetPriceAge) - 32) * 8) +
         (33  << (uint8(MessageType.MaxSharePriceAge) - 32) * 8);
 
@@ -938,78 +932,6 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.RevokedShares, t.poolId, t.scId, t.assetId, t.assetAmount, t.shareAmount, t.pricePoolPerShare
         );
-    }
-
-    //---------------------------------------
-    //    TriggerIssueShares
-    //---------------------------------------
-
-    struct TriggerIssueShares {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 who;
-        uint128 shares;
-    }
-
-    function deserializeTriggerIssueShares(bytes memory data) internal pure returns (TriggerIssueShares memory) {
-        require(messageType(data) == MessageType.TriggerIssueShares, UnknownMessageType());
-
-        return TriggerIssueShares({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            who: data.toBytes32(25),
-            shares: data.toUint128(57)
-        });
-    }
-
-    function serialize(TriggerIssueShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerIssueShares, t.poolId, t.scId, t.who, t.shares);
-    }
-
-    //---------------------------------------
-    //    TriggerSubmitQueuedShares
-    //---------------------------------------
-
-    struct TriggerSubmitQueuedShares {
-        uint64 poolId;
-        bytes16 scId;
-    }
-
-    function deserializeTriggerSubmitQueuedShares(bytes memory data)
-        internal
-        pure
-        returns (TriggerSubmitQueuedShares memory)
-    {
-        require(messageType(data) == MessageType.TriggerSubmitQueuedShares, UnknownMessageType());
-        return TriggerSubmitQueuedShares({poolId: data.toUint64(1), scId: data.toBytes16(9)});
-    }
-
-    function serialize(TriggerSubmitQueuedShares memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerSubmitQueuedShares, t.poolId, t.scId);
-    }
-
-    //---------------------------------------
-    //    TriggerSubmitQueuedAssets
-    //---------------------------------------
-
-    struct TriggerSubmitQueuedAssets {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-    }
-
-    function deserializeTriggerSubmitQueuedAssets(bytes memory data)
-        internal
-        pure
-        returns (TriggerSubmitQueuedAssets memory)
-    {
-        require(messageType(data) == MessageType.TriggerSubmitQueuedAssets, UnknownMessageType());
-        return
-            TriggerSubmitQueuedAssets({poolId: data.toUint64(1), scId: data.toBytes16(9), assetId: data.toUint128(25)});
-    }
-
-    function serialize(TriggerSubmitQueuedAssets memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.TriggerSubmitQueuedAssets, t.poolId, t.scId, t.assetId);
     }
 
     //---------------------------------------
