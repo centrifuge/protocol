@@ -496,7 +496,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            hub.request(poolId, scId, assetId, payload);
+            spoke.requestCallback(poolId, scId, assetId, payload);
         } else {
             gateway.send(
                 assetId.centrifugeId(),

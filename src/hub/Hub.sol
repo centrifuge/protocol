@@ -17,6 +17,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {RequestMessageLib, RequestType} from "src/common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
@@ -33,6 +34,7 @@ import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuardianActions {
     using MathLib for uint256;
+    using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
@@ -637,60 +639,43 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable {
         _auth();
 
-        // TODO: parse requset payload
-    }
+        uint8 kind = uint8(RequestMessageLib.requestType(payload));
 
-    /// @inheritdoc IHubGatewayHandler
-    function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external
-    {
-        _auth();
+        if (kind == uint8(RequestType.DepositRequest)) {
+            RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
+            shareClassManager.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
+        } else if (kind == uint8(RequestType.RedeemRequest)) {
+            RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
+            shareClassManager.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
+        } else if (kind == uint8(RequestType.CancelDepositRequest)) {
+            RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
+            uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
 
-        shareClassManager.requestDeposit(poolId, scId, amount, investor, depositAssetId);
-    }
+            // Cancellation might have been queued such that it will be executed in the future during claiming
+            if (cancelledAssetAmount > 0) {
+                sender.sendRequestCallback(
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
+                    )
+                );
+            }
+        } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
+            RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
+            uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, m.investor, assetId);
 
-    /// @inheritdoc IHubGatewayHandler
-    function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external
-    {
-        _auth();
-
-        shareClassManager.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-    {
-        _auth();
-
-        uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledAssetAmount > 0) {
-            sender.sendRequestCallback(
-                poolId,
-                scId,
-                depositAssetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize()
-            );
-        }
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external {
-        _auth();
-
-        uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledShareAmount > 0) {
-            sender.sendRequestCallback(
-                poolId,
-                scId,
-                payoutAssetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize()
-            );
+            // Cancellation might have been queued such that it will be executed in the future during claiming
+            if (cancelledShareAmount > 0) {
+                sender.sendRequestCallback(
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize()
+                );
+            }
+        } else {
+            revert UnknownRequestType();
         }
     }
 

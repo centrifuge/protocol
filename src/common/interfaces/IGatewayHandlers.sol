@@ -14,23 +14,13 @@ import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
+    error UnknownRequestType();
+
     /// @notice Tells that an asset was already registered in Vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
-    /// @notice Perform a deposit that was requested from Vaults.
-    function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external;
-
-    /// @notice Perform a redeem that was requested from Vaults.
-    function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external;
-
-    /// @notice Perform a deposit cancellation that was requested from Vaults.
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external;
-
-    /// @notice Perform a redeem cancellation that was requested from Vaults.
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external;
+    /// TODO
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
 
     /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
@@ -64,9 +54,6 @@ interface IHubGatewayHandler {
         bool isSnapshot,
         uint64 nonce
     ) external;
-
-    /// TODO
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
 }
 
 /// -----------------------------------------------------
