@@ -545,6 +545,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _isManager(poolId);
 
+        require(accounting.exists(poolId, accountId), IAccounting.AccountDoesNotExist());
+
         holdings.setAccountId(poolId, scId, assetId, kind, accountId);
     }
 
