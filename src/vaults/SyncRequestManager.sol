@@ -241,13 +241,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         }
     }
 
-    /// @inheritdoc ISyncRequestManager
-    function prices(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (Prices memory priceData) {
-        priceData.poolPerShare = pricePoolPerShare(poolId, scId);
-        priceData.poolPerAsset = spoke.pricePoolPerAsset(poolId, scId, assetId, true);
-        priceData.assetPerShare = PricingLib.priceAssetPerShare(priceData.poolPerShare, priceData.poolPerAsset);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Internal
     //----------------------------------------------------------------------------------------------
@@ -291,9 +284,10 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        Prices memory prices_ = prices(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
-        return super._shareToAssetAmount(
-            vault_, vaultDetails, assets, prices_.poolPerAsset, prices_.poolPerShare, rounding
-        );
+
+        D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
+        D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
+
+        return super._shareToAssetAmount(vault_, vaultDetails, assets, poolPerAsset, poolPerShare, rounding);
     }
 }

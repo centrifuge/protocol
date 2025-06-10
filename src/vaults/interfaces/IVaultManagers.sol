@@ -237,17 +237,6 @@ interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUp
     /// @param maxReserve The amount of maximum reserve
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
-
-    /// @notice Returns the all three prices for a given pool, share class, asset, and asset id.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id corresponding to the asset and tokenId
-    /// @return priceData The asset price per share, pool price per asset, and pool price per share
-    function prices(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (Prices memory priceData);
 }
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
