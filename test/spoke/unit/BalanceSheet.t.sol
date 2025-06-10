@@ -45,7 +45,6 @@ contract BalanceSheetTest is Test {
     address immutable MANAGER = makeAddr("MANAGER");
 
     uint128 constant AMOUNT = 100;
-    D18 immutable IDENTITY_PRICE = d18(1, 1);
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
     AssetId constant ASSET_20 = AssetId.wrap(3);
@@ -55,6 +54,7 @@ contract BalanceSheetTest is Test {
     bool constant IS_DEPOSIT = true;
     bool constant IS_SNAPSHOT = true;
 
+    D18 immutable IDENTITY_PRICE = d18(1, 1);
     D18 immutable ASSET_PRICE = d18(2, 1);
     D18 immutable SHARE_PRICE = d18(3, 1);
 
@@ -552,5 +552,40 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 2);
+    }
+}
+
+contract BalanceSheetTestOverridePricePoolPerAsset is BalanceSheetTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
+    }
+
+    function testManagerOrAuth(bool managerOrAuth) public {
+        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
+    }
+
+    function testOverrideNoteDepositPricePoolPerAsset() public {
+        _mockEscrowDeposit(erc20, 0, AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
+
+        vm.expectEmit();
+        emit IBalanceSheet.NoteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT, IDENTITY_PRICE); // <- override
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+
+    function testOverrideWithdrawPricePoolPerAsset() public {
+        _mockEscrowWithdraw(erc20, 0, AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
+
+        vm.expectEmit();
+        emit IBalanceSheet.Withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT, IDENTITY_PRICE); // override
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, RECEIVER, AMOUNT);
     }
 }
