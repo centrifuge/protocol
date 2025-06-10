@@ -127,7 +127,7 @@ interface IShareClassManager {
         uint128 revokedPoolAmount
     );
     event RemoteRevokeShares(
-        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount
+        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedShareAmount
     );
     event ClaimDeposit(
         PoolId indexed poolId,
