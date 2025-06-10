@@ -185,7 +185,11 @@ interface ISpoke {
 
     function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
 
-    /// @notice TODO
+    /// @notice Handles a request originating from the Spoke side.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  payload The request payload to be processed
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 
     /// @notice Deploys a new vault

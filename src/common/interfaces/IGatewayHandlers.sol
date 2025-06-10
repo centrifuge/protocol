@@ -19,7 +19,11 @@ interface IHubGatewayHandler {
     /// @notice Tells that an asset was already registered in Vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
-    /// TODO
+    /// @notice Handles a request originating from the Spoke side.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  payload The request payload to be processed
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
 
     /// @notice Update a holding by request from Vaults.
@@ -63,11 +67,10 @@ interface IHubGatewayHandler {
 /// @notice Interface for Vaults methods related to pools called by messages
 interface ISpokeGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
-    /// @dev       The function can only be executed by the gateway contract.
+    /// @param     poolId The pool id
     function addPool(PoolId poolId) external;
 
     /// @notice     New share class details from an existing Centrifuge pool are added.
-    /// @dev        The function can only be executed by the gateway contract.
     function addShareClass(
         PoolId poolId,
         ShareClassId scId,
@@ -78,16 +81,18 @@ interface ISpokeGatewayHandler {
         address hook
     ) external;
 
-    /// @notice TODO
+    /// @notice Updates the request manager for a specific asset
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  manager The new request manager address
     function updateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
-    /// @dev      The function can only be executed by the gateway contract.
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)
         external;
 
     /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
-    /// @dev     The function can only be executed by the gateway contract.
     /// @param  poolId The pool id
     /// @param  scId The share class id
     /// @param  price The price of pool currency per share class token as factor.
@@ -95,7 +100,6 @@ interface ISpokeGatewayHandler {
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) external;
 
     /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
-    /// @dev     The function can only be executed by the gateway contract.
     /// @param  poolId The pool id
     /// @param  scId The share class id
     /// @param  assetId The asset id
@@ -123,7 +127,6 @@ interface ISpokeGatewayHandler {
     function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) external;
 
     /// @notice Mints share class tokens to a recipient
-    /// @dev    The function can only be executed internally or by the gateway contract.
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external;
 
     /// @notice Updates a vault based on VaultUpdateKind
@@ -160,7 +163,12 @@ interface ISpokeGatewayHandler {
     /// @param  maxPriceAge new max price age value
     function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 
-    /// @notice TODO
+    /// @notice Handles a request callback originating from the Hub side.
+    /// @dev    Results from a Spoke-to-Hub-request as second order callback from the Hub.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  payload The payload to be processed by the request callback
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 }
 
