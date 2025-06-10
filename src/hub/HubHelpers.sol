@@ -143,7 +143,7 @@ contract HubHelpers is Auth, IHubHelpers {
         accounting.unlock(poolId);
 
         // Save a diff=0 update gas cost
-        if (isPositive && diff > 0) {
+        if (isPositive) {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
                 accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
@@ -151,7 +151,7 @@ contract HubHelpers is Auth, IHubHelpers {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
                 accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
             }
-        } else if (diff > 0) {
+        } else {
             if (holdings.isLiability(poolId, scId, assetId)) {
                 accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
                 accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
