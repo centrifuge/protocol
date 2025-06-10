@@ -120,6 +120,7 @@ contract SpokeDeployer is CommonDeployer {
 
         // Rely BalanceSheet
         messageDispatcher.rely(address(balanceSheet));
+        gateway.rely(address(balanceSheet));
 
         // Rely Root
         vaultRouter.rely(address(root));
@@ -182,6 +183,7 @@ contract SpokeDeployer is CommonDeployer {
 
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
+        balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
         poolEscrowFactory.file("gateway", address(gateway));
