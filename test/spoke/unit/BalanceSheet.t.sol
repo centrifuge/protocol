@@ -9,6 +9,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -16,12 +17,12 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 
 import {BalanceSheet, IBalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

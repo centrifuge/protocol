@@ -18,7 +18,7 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  VaultRouter

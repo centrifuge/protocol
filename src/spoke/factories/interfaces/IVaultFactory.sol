@@ -5,7 +5,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 interface IVaultFactory {

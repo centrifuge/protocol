@@ -27,7 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 

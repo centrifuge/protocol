@@ -6,7 +6,7 @@ import {Root} from "src/common/Root.sol";
 
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
-import {Escrow} from "src/spoke/Escrow.sol";
+import {Escrow} from "src/misc/Escrow.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 

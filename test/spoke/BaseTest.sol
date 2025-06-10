@@ -21,7 +21,7 @@ import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 // core contracts
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
-import {Escrow} from "src/spoke/Escrow.sol";
+import {Escrow} from "src/misc/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";

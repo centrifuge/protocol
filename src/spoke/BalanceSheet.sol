@@ -19,13 +19,12 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:

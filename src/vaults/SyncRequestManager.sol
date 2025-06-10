@@ -24,7 +24,7 @@ import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/int
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";

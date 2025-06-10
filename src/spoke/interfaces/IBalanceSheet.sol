@@ -8,10 +8,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares

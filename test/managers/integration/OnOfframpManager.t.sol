@@ -11,7 +11,7 @@ import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";

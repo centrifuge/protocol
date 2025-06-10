@@ -17,9 +17,9 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {Escrow} from "src/spoke/Escrow.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
+import {Escrow} from "src/misc/Escrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
