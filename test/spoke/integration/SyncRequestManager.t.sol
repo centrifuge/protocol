@@ -19,10 +19,7 @@ import "test/spoke/BaseTest.sol";
 
 contract SyncRequestManagerBaseTest is BaseTest {
     function _assumeUnauthorizedCaller(address nonWard) internal view {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncDepositVaultFactory)
-                && nonWard != address(this)
-        );
+        vm.assume(nonWard != address(root) && nonWard != address(spoke) && nonWard != address(this));
     }
 
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)
@@ -66,7 +63,6 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         // permissions set correctly
         assertEq(syncRequestManager.wards(address(root)), 1);
         assertEq(syncRequestManager.wards(address(spoke)), 1);
-        assertEq(syncRequestManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
         assertEq(syncRequestManager.wards(nonWard), 0);
     }

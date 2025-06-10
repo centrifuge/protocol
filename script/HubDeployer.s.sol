@@ -33,6 +33,7 @@ contract HubDeployer is CommonDeployer {
     // Data
     uint8 constant ISO4217_DECIMALS = 18;
     AssetId public immutable USD_ID = newAssetId(840);
+    AssetId public immutable EUR_ID = newAssetId(978);
 
     function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
@@ -86,6 +87,7 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(root));
         hub.rely(address(root));
         identityValuation.rely(address(root));
+        hubHelpers.rely(address(root));
     }
 
     function _poolsFile() private {
@@ -101,6 +103,7 @@ contract HubDeployer is CommonDeployer {
 
     function _poolsInitialConfig() private {
         hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
+        hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
 
     function removeHubDeployerAccess(address deployer) public {
@@ -111,7 +114,7 @@ contract HubDeployer is CommonDeployer {
         holdings.deny(deployer);
         shareClassManager.deny(deployer);
         hub.deny(deployer);
-
+        hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
     }
 }

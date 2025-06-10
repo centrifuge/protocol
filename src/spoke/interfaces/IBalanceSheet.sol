@@ -55,7 +55,12 @@ interface IBalanceSheet {
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
     event TransferSharesFrom(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed from, address to, uint256 amount
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address indexed from,
+        address to,
+        uint256 amount
     );
     event SubmitQueuedShares(
         PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance, bool isSnapshot, uint64 nonce
@@ -136,7 +141,14 @@ interface IBalanceSheet {
     function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
 
     /// @notice Force-transfers share tokens.
-    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+    function transferSharesFrom(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender,
+        address from,
+        address to,
+        uint256 amount
+    ) external;
 
     /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.

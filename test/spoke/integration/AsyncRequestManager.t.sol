@@ -46,9 +46,9 @@ contract AsyncRequestManagerTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(gateway) && nonWard != address(spoke)
-                && nonWard != address(messageDispatcher) && nonWard != address(messageProcessor)
-                && nonWard != address(syncRequestManager) && nonWard != address(this)
+            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(messageDispatcher)
+                && nonWard != address(messageProcessor) && nonWard != address(syncRequestManager)
+                && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
@@ -61,7 +61,6 @@ contract AsyncRequestManagerTest is BaseTest {
 
         // permissions set correctly
         assertEq(asyncRequestManager.wards(address(root)), 1);
-        assertEq(asyncRequestManager.wards(address(gateway)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
         assertEq(asyncRequestManager.wards(address(messageProcessor)), 1);
         assertEq(asyncRequestManager.wards(address(messageDispatcher)), 1);
