@@ -20,6 +20,8 @@ contract BalanceSheetTest is BaseTest {
     using UpdateRestrictionMessageLib for *;
     using CastLib for *;
 
+    uint128 constant EXTRA_GAS = 0;
+
     uint128 defaultAmount;
     D18 defaultPricePoolPerShare;
     D18 defaultPricePoolPerAsset;
@@ -292,9 +294,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId, EXTRA_GAS);
 
-        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId, EXTRA_GAS);
 
         (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
         assertEq(deltaAfter, 0);
@@ -315,9 +317,9 @@ contract BalanceSheetTest is BaseTest {
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId, EXTRA_GAS);
 
-        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId);
+        balanceSheet.submitQueuedAssets(POOL_A, defaultTypedShareClassId, assetId, EXTRA_GAS);
 
         (uint128 increaseAfter,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
         assertEq(increaseAfter, 0);
@@ -383,7 +385,7 @@ contract BalanceSheetTest is BaseTest {
 
         // Submit with queue disabled
         balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
-        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId);
+        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId, EXTRA_GAS);
 
         // Shares should be submitted even if disabled
         (increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);

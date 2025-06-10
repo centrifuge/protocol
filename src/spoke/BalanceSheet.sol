@@ -162,7 +162,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             }
         } else {
             bool isSnapshot = shareQueue.queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot, shareQueue.nonce);
+            sender.sendUpdateShares(poolId, scId, shares, true, isSnapshot, shareQueue.nonce, 0 /*TODO*/ );
             shareQueue.nonce++;
         }
 
@@ -187,7 +187,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             }
         } else {
             bool isSnapshot = shareQueue.queuedAssetCounter == 0;
-            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot, shareQueue.nonce);
+            sender.sendUpdateShares(poolId, scId, shares, false, isSnapshot, shareQueue.nonce, 0 /*TODO*/ );
             shareQueue.nonce++;
         }
 
@@ -197,13 +197,15 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
+        external
+        authOrManager(poolId)
+    {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
 
         uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
-        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter;
 
         emit SubmitQueuedAssets(
             poolId,
@@ -212,7 +214,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
             assetQueue.deposits,
             assetQueue.withdrawals,
             pricePoolPerAsset,
-            isSnapshot,
+            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
             shareQueue.nonce
         );
         sender.sendUpdateHoldingAmount(
@@ -224,8 +226,9 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
                 : assetQueue.withdrawals - assetQueue.deposits,
             pricePoolPerAsset,
             assetQueue.deposits >= assetQueue.withdrawals,
-            isSnapshot,
-            shareQueue.nonce
+            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
+            shareQueue.nonce,
+            extraGasLimit
         );
 
         assetQueue.deposits = 0;
@@ -235,12 +238,17 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     }
 
     /// @inheritdoc IBalanceSheet
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
+        external
+        authOrManager(poolId)
+    {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
         bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
         emit SubmitQueuedShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
-        sender.sendUpdateShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
+        sender.sendUpdateShares(
+            poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce, extraGasLimit
+        );
 
         shareQueue.delta = 0;
         shareQueue.isPositive = true;
@@ -343,7 +351,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
         } else {
             bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == 0;
             sender.sendUpdateHoldingAmount(
-                poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce
+                poolId, scId, assetId, amount, pricePoolPerAsset, isDeposit, isSnapshot, shareQueue.nonce, 0 /*TODO*/
             );
 
             shareQueue.nonce++;
