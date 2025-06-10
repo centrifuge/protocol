@@ -19,7 +19,6 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/misc/Escrow.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
@@ -29,7 +28,6 @@ contract SpokeDeployer is CommonDeployer {
     BalanceSheet public balanceSheet;
     SyncRequestManager public syncRequestManager;
     AsyncRequestManager public asyncRequestManager;
-    PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
     Escrow public globalEscrow;
     VaultRouter public vaultRouter;
@@ -45,7 +43,6 @@ contract SpokeDeployer is CommonDeployer {
     function deploySpoke(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
         deployCommon(centrifugeId, adminSafe_, deployer, isTests);
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
         routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
         globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
@@ -72,7 +69,6 @@ contract SpokeDeployer is CommonDeployer {
     }
 
     function _spokeRegister() private {
-        register("poolEscrowFactory", address(poolEscrowFactory));
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));
         register("freezeOnlyHook", address(freezeOnlyHook));
@@ -128,7 +124,6 @@ contract SpokeDeployer is CommonDeployer {
         asyncRequestManager.rely(address(root));
         syncRequestManager.rely(address(root));
         balanceSheet.rely(address(root));
-        poolEscrowFactory.rely(address(root));
         routerEscrow.rely(address(root));
         globalEscrow.rely(address(root));
         IAuth(asyncVaultFactory).rely(address(root));
@@ -186,7 +181,6 @@ contract SpokeDeployer is CommonDeployer {
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
-        poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
 
         address[] memory tokenWards = new address[](2);
@@ -209,7 +203,6 @@ contract SpokeDeployer is CommonDeployer {
         syncRequestManager.deny(deployer);
         spoke.deny(deployer);
         balanceSheet.deny(deployer);
-        poolEscrowFactory.deny(deployer);
         routerEscrow.deny(deployer);
         globalEscrow.deny(deployer);
         vaultRouter.deny(deployer);

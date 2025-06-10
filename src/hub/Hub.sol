@@ -17,6 +17,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {IPoolEscrow, IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
@@ -41,6 +42,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     IAccounting public accounting;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
+    IPoolEscrowProvider public poolEscrowProvider;
 
     constructor(
         IGateway gateway_,
@@ -79,6 +81,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -106,6 +109,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
         hubRegistry.registerPool(poolId, admin, currency);
+
+        IPoolEscrow escrow = poolEscrowProvider.escrow(poolId);
+        gateway.setRefundAddress(poolId, escrow);
     }
 
     //----------------------------------------------------------------------------------------------

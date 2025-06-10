@@ -95,6 +95,7 @@ contract HubDeployer is CommonDeployer {
         messageDispatcher.file("hub", address(hub));
 
         hub.file("sender", address(messageDispatcher));
+        hub.file("poolEscrowProvider", address(poolEscrowFactory));
 
         guardian.file("hub", address(hub));
 
