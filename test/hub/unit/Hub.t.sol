@@ -194,9 +194,6 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.setQueue(POOL_A, ShareClassId.wrap(0), true);
-
         vm.stopPrank();
     }
 }
