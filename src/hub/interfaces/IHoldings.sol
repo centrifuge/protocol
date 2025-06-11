@@ -23,7 +23,10 @@ struct HoldingAccount {
 }
 
 struct Snapshot {
+    /// @notice Indicates if the current accounting state is a correct snapshot of the balance sheet state, i.e. asset
+    /// and/or share amounts are in sync between Hub and Spoke
     bool isSnapshot;
+    /// @notice The nonce of the snapshot. Incremented after each snapshot is taken.
     uint64 nonce;
 }
 
