@@ -76,6 +76,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
 
+    /// @notice Set an extra gas to the gas limit of the message
+    function setExtraGasLimit(uint128 gas) external;
+
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 

@@ -128,6 +128,7 @@ contract GatewayTest is Test {
 
     uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
     uint256 constant MAX_BATCH_SIZE = 50.0 gwei;
+    uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
@@ -348,6 +349,19 @@ contract GatewayTestRetry is GatewayTest {
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
         assertEq(processor.processed(REMOTE_CENT_ID, 1), batch);
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+    }
+}
+
+contract GatewayTestSetExtraGasLimit is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.setExtraGasLimit(0);
+    }
+
+    function testCorrectSetExtraGasLimit() public {
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
+        assertEq(gateway.extraGasLimit(), EXTRA_GAS_LIMIT);
     }
 }
 
@@ -612,6 +626,25 @@ contract GatewayTestSend is GatewayTest {
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
         gateway.send(REMOTE_CENT_ID, message);
+    }
+
+    function testMessageWithExtraGasLimit() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+
+        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT, TRANSIENT_REFUND);
+
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
+        gateway.send(REMOTE_CENT_ID, message);
+    }
+
+    function testMessageBatchedWithExtraGasLimit() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
+        gateway.startBatching();
+        gateway.send(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
     }
 }
 

@@ -148,13 +148,13 @@ contract TestMainMethodsChecks is TestCommon {
         hub.forceCancelRedeemRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
+        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink);
+        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));
+        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
