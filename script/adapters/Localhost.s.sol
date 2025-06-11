@@ -84,7 +84,7 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
+        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0);
 
         hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -126,7 +126,8 @@ contract LocalhostDeployer is FullDeployer {
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
                 user: bytes32(bytes20(msg.sender)),
                 validUntil: type(uint64).max
-            }).serialize()
+            }).serialize(),
+            0
         );
 
         // Submit redeem request
@@ -171,7 +172,7 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         hub.updateVault(
-            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
         );
 
         hub.updateSharePrice(poolId, scId, navPerShare);
