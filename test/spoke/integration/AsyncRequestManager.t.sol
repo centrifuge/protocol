@@ -29,6 +29,10 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
         view
         returns (uint256 price)
     {
+        if (shares == 0) {
+            return 0;
+        }
+
         if (address(vault) == address(0)) {
             return
                 PricingLib.calculatePriceAssetPerShare(address(0), shares, address(0), 0, assets, MathLib.Rounding.Down);

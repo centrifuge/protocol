@@ -134,15 +134,17 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 shares) {
-        return PricingLib.assetToShareAmount(
-            vault_.share(),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            assets.toUint128(),
-            pricePoolPerAsset,
-            pricePoolPerShare,
-            rounding
-        );
+        return pricePoolPerShare.raw() == 0
+            ? 0
+            : PricingLib.assetToShareAmount(
+                vault_.share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                assets.toUint128(),
+                pricePoolPerAsset,
+                pricePoolPerShare,
+                rounding
+            );
     }
 
     function _shareToAssetAmount(
@@ -153,14 +155,16 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 assets) {
-        return PricingLib.shareToAssetAmount(
-            vault_.share(),
-            shares.toUint128(),
-            vaultDetails.asset,
-            vaultDetails.tokenId,
-            pricePoolPerShare,
-            pricePoolPerAsset,
-            rounding
-        );
+        return pricePoolPerAsset.raw() == 0
+            ? 0
+            : PricingLib.shareToAssetAmount(
+                vault_.share(),
+                shares.toUint128(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                pricePoolPerShare,
+                pricePoolPerAsset,
+                rounding
+            );
     }
 }

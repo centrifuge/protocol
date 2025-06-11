@@ -524,9 +524,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
-        return PricingLib.assetToShareAmount(
-            shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, d18(priceAssetPerShare.toUint128()), rounding
-        );
+        return priceAssetPerShare == 0
+            ? 0
+            : PricingLib.assetToShareAmount(
+                shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, d18(priceAssetPerShare.toUint128()), rounding
+            );
     }
 
     function _shareToAssetAmount(
@@ -538,9 +540,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
-        return PricingLib.shareToAssetAmount(
-            shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, d18(priceAssetPerShare.toUint128()), rounding
-        );
+        return priceAssetPerShare == 0
+            ? 0
+            : PricingLib.shareToAssetAmount(
+                shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, d18(priceAssetPerShare.toUint128()), rounding
+            );
     }
 
     function _calculatePriceAssetPerShare(IBaseVault vault_, uint128 shares, uint128 assets, MathLib.Rounding rounding)
@@ -551,8 +555,10 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
-        return PricingLib.calculatePriceAssetPerShare(
-            shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, rounding
-        );
+        return shares == 0
+            ? 0
+            : PricingLib.calculatePriceAssetPerShare(
+                shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, rounding
+            );
     }
 }

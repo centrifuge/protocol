@@ -577,6 +577,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testShareToAssetAmountZeroValues() public {
         address asset = makeAddr("Asset");
         address shareToken = makeAddr("ShareToken");
@@ -586,15 +587,15 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
             PricingLib.shareToAssetAmount(shareToken, 0, asset, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down);
         assertEq(result, 0, "Zero share amount should return 0");
 
-        // Test zero pricePoolPerShare
+        // Test zero pricePoolPerShare - should return 0 gracefully
         result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(0), d18(1e18), MathLib.Rounding.Down);
         assertEq(result, 0, "Zero pricePoolPerShare should return 0");
 
-        // Test zero pricePoolPerAsset
-        result = PricingLib.shareToAssetAmount(shareToken, 1e18, asset, 0, d18(1e18), d18(0), MathLib.Rounding.Down);
-        assertEq(result, 0, "Zero pricePoolPerAsset should return 0");
+        // Test zero pricePoolPerAsset - consumers should handle this case before calling but let's test it anyway
+        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        PricingLib.shareToAssetAmount(1e18, 18, 6, d18(1e18), d18(0), MathLib.Rounding.Down);
 
-        // Test all zeros
+        // Test all zeros - should return 0 gracefully
         result = PricingLib.shareToAssetAmount(shareToken, 0, asset, 0, d18(0), d18(0), MathLib.Rounding.Down);
         assertEq(result, 0, "All zeros should return 0");
     }
@@ -669,9 +670,9 @@ contract CalcPriceAssetPerShareTest is Test {
     }
 
     function _assertPrice(uint256 shares, uint256 assets, uint128 expected, MathLib.Rounding rounding) internal view {
-        uint128 calculated = PricingLib.calculatePriceAssetPerShare(
-            shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding
-        );
+        uint128 calculated = shares == 0
+            ? 0
+            : PricingLib.calculatePriceAssetPerShare(shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding);
         assertEq(calculated, expected);
     }
 

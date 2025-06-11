@@ -19,6 +19,7 @@ library PricingLib {
     //----------------------------------------------------------------------------------------------
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
+    /// @dev Assumes handling of zero denominator price (priceAssetPerShare_) by consumer.
     ///
     ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
     ///      Fulfilled* message amounts. Any other codepath must use the variant with pricePoolPerAsset
@@ -31,7 +32,7 @@ library PricingLib {
         D18 priceAssetPerShare_,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        if (assetAmount == 0 || priceAssetPerShare_.raw() == 0) {
+        if (assetAmount == 0) {
             return 0;
         }
 
@@ -44,6 +45,7 @@ library PricingLib {
     }
 
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerShare) by consumer.
     function assetToShareAmount(
         address shareToken,
         address asset,
@@ -53,7 +55,7 @@ library PricingLib {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        if (assetAmount == 0 || pricePoolPerShare.raw() == 0 || pricePoolPerAsset.raw() == 0) {
+        if (assetAmount == 0 || pricePoolPerAsset.raw() == 0) {
             return 0;
         }
 
@@ -89,6 +91,7 @@ library PricingLib {
     }
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
     function shareToAssetAmount(
         address shareToken,
         uint128 shareAmount,
@@ -98,7 +101,7 @@ library PricingLib {
         D18 pricePoolPerAsset,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        if (shareAmount == 0 || pricePoolPerShare.raw() == 0 || pricePoolPerAsset.raw() == 0) {
+        if (shareAmount == 0 || pricePoolPerShare.raw() == 0) {
             return 0;
         }
 
@@ -113,6 +116,7 @@ library PricingLib {
 
     /// @dev Calculates the asset price per share returns the value in price decimals
     ///      Denominated in ASSET_UNIT/SHARE_UNIT
+    /// @dev Assumes handling of zero denominator (shares == 0) by consumer.
     function calculatePriceAssetPerShare(
         address shareToken,
         uint128 shares,
@@ -121,7 +125,7 @@ library PricingLib {
         uint128 assets,
         MathLib.Rounding rounding
     ) internal view returns (uint128 priceAssetPerShare_) {
-        if (assets == 0 || shares == 0) {
+        if (assets == 0) {
             return 0;
         }
 
@@ -166,6 +170,7 @@ library PricingLib {
     }
 
     /// @dev Converts an amount using decimals and reciprocal price.
+    /// @dev Assumes handling of zero denominator price (priceBasePerQuote) by consumer.
     ///
     ///      NOTE: More precise than convertWithPrice(,,,price.reciprocal,)
     function convertWithReciprocalPrice(
@@ -190,6 +195,7 @@ library PricingLib {
     }
 
     /// @dev Converts an amount using decimals and two prices.
+    /// @dev Assumes handling of zero denominator price (priceDenominator) by consumer.
     ///
     ///      NOTE: More precise than custom math with one price and convertWith{Reciprocal}Price for the other
     function convertWithPrices(
@@ -211,6 +217,7 @@ library PricingLib {
     }
 
     /// @dev Converts asset amount to share amount.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerShare) by consumer.
     ///
     ///      NOTE: Pool and share denomination are always equal by design
     function assetToShareAmount(
@@ -226,6 +233,7 @@ library PricingLib {
     }
 
     /// @dev Converts share amount to asset asset amount.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
     ///
     ///      NOTE: Pool and share denomination are always equal by design
     function shareToAssetAmount(
@@ -241,6 +249,7 @@ library PricingLib {
     }
 
     /// @dev Converts pool amount to asset amount.
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
     function poolToAssetAmount(
         uint256 poolAmount,
         uint8 poolDecimals,
@@ -263,6 +272,7 @@ library PricingLib {
     }
 
     /// @dev Returns the asset price per share denominated in ASSET_UNIT/SHARE_UNIT
+    /// @dev Assumes handling of zero denominator price (pricePoolPerAsset) by consumer.
     ///
     ///      NOTE: Should never be used for calculating amounts due to precision loss. Instead, please refer to
     ///      conversion relying on pricePoolPerShare and pricePoolPerAsset.
