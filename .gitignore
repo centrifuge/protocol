@@ -13,6 +13,7 @@ lcov.info
 /medusa
 /crytic-export
 /echidna
+**/*.log
 
 ## Recon Separate Configs
 /medusa-core
