@@ -134,7 +134,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 shares) {
-        return pricePoolPerShare.raw() == 0
+        return pricePoolPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
                 vault_.share(),
@@ -155,7 +155,7 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint256 assets) {
-        return pricePoolPerAsset.raw() == 0
+        return pricePoolPerAsset.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
                 vault_.share(),

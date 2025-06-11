@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 pragma abicoder v2;
 
+import {d18, D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
@@ -27,10 +28,10 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
         view
-        returns (uint256 price)
+        returns (D18 price)
     {
         if (shares == 0) {
-            return 0;
+            return d18(0);
         }
 
         if (address(vault) == address(0)) {
@@ -110,7 +111,7 @@ contract AsyncRequestManagerTest is BaseTest {
     // --- Price calculations ---
     function testPrice() public {
         AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(root), address(this));
-        assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0), 0);
-        assertEq(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1), 0);
+        assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
+        assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
     }
 }

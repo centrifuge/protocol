@@ -515,48 +515,46 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         return share.checkTransferRestriction(from, to, value);
     }
 
-    function _assetToShareAmount(
-        IBaseVault vault_,
-        uint128 assets,
-        uint256 priceAssetPerShare,
-        MathLib.Rounding rounding
-    ) internal view returns (uint128 shares) {
+    function _assetToShareAmount(IBaseVault vault_, uint128 assets, D18 priceAssetPerShare, MathLib.Rounding rounding)
+        internal
+        view
+        returns (uint128 shares)
+    {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
-        return priceAssetPerShare == 0
+        return priceAssetPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
-                shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, d18(priceAssetPerShare.toUint128()), rounding
+                shareToken, vaultDetails.asset, vaultDetails.tokenId, assets, priceAssetPerShare, rounding
             );
     }
 
-    function _shareToAssetAmount(
-        IBaseVault vault_,
-        uint128 shares,
-        uint256 priceAssetPerShare,
-        MathLib.Rounding rounding
-    ) internal view returns (uint128 assets) {
+    function _shareToAssetAmount(IBaseVault vault_, uint128 shares, D18 priceAssetPerShare, MathLib.Rounding rounding)
+        internal
+        view
+        returns (uint128 assets)
+    {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
-        return priceAssetPerShare == 0
+        return priceAssetPerShare.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
-                shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, d18(priceAssetPerShare.toUint128()), rounding
+                shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, priceAssetPerShare, rounding
             );
     }
 
     function _calculatePriceAssetPerShare(IBaseVault vault_, uint128 shares, uint128 assets, MathLib.Rounding rounding)
         internal
         view
-        returns (uint256 price)
+        returns (D18 price)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return shares == 0
-            ? 0
+            ? d18(0)
             : PricingLib.calculatePriceAssetPerShare(
                 shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, rounding
             );

@@ -55,7 +55,7 @@ library PricingLib {
         D18 pricePoolPerShare,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        if (assetAmount == 0 || pricePoolPerAsset.raw() == 0) {
+        if (assetAmount == 0 || pricePoolPerAsset.isZero()) {
             return 0;
         }
 
@@ -80,7 +80,7 @@ library PricingLib {
         D18 priceAssetPerShare_,
         MathLib.Rounding rounding
     ) internal view returns (uint128 assets) {
-        if (shareAmount == 0 || priceAssetPerShare_.raw() == 0) {
+        if (shareAmount == 0 || priceAssetPerShare_.isZero()) {
             return 0;
         }
 
@@ -101,7 +101,7 @@ library PricingLib {
         D18 pricePoolPerAsset,
         MathLib.Rounding rounding
     ) internal view returns (uint128 shares) {
-        if (shareAmount == 0 || pricePoolPerShare.raw() == 0) {
+        if (shareAmount == 0 || pricePoolPerShare.isZero()) {
             return 0;
         }
 
@@ -124,18 +124,20 @@ library PricingLib {
         uint256 tokenId,
         uint128 assets,
         MathLib.Rounding rounding
-    ) internal view returns (uint128 priceAssetPerShare_) {
+    ) internal view returns (D18 priceAssetPerShare_) {
         if (assets == 0) {
-            return 0;
+            return d18(0);
         }
 
         uint8 assetDecimals = _getAssetDecimals(asset, tokenId);
         uint8 shareDecimals = IERC20Metadata(shareToken).decimals();
 
         // NOTE: More precise than utilizing D18
-        return _toPriceDecimals(assets, assetDecimals).mulDiv(
-            10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding
-        ).toUint128();
+        return d18(
+            _toPriceDecimals(assets, assetDecimals).mulDiv(
+                10 ** PRICE_DECIMALS, _toPriceDecimals(shares, shareDecimals), rounding
+            ).toUint128()
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -180,7 +182,7 @@ library PricingLib {
         D18 priceBasePerQuote,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 quoteAmount) {
-        require(priceBasePerQuote.raw() != 0, "PricingLib/division-by-zero");
+        require(priceBasePerQuote.isNotZero(), "PricingLib/division-by-zero");
 
         if (baseDecimals == quoteDecimals) {
             return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding).toUint128();
@@ -206,7 +208,7 @@ library PricingLib {
         D18 priceDenominator,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 quoteAmount) {
-        require(priceDenominator.raw() != 0, "PricingLib/division-by-zero");
+        require(priceDenominator.isNotZero(), "PricingLib/division-by-zero");
 
         return MathLib.mulDiv(
             priceNumerator.raw(),

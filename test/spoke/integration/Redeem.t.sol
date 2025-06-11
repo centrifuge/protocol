@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
@@ -12,6 +12,8 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;
@@ -241,8 +243,8 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, uint128(investmentAmount), shares, 0
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(depositPrice, 1000000000000000000);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
+        assertEq(depositPrice.raw(), 1000000000000000000);
 
         // assert deposit & mint values adjusted
         assertApproxEqAbs(vault.maxDeposit(self), investmentAmount, 2);
@@ -266,8 +268,8 @@ contract RedeemTest is BaseTest {
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2, 0
         );
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1500000000000000000);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
+        assertEq(redeemPrice.raw(), 1500000000000000000);
 
         // trigger second executed collectRedeem at a price of 1.0
         // user has 50 share class tokens left, at 1.0 price, 50 asset is paid out
@@ -278,7 +280,7 @@ contract RedeemTest is BaseTest {
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1250000000000000000);
+        assertEq(redeemPrice.raw(), 1250000000000000000);
     }
 
     function partialRedeem(ShareClassId scId, AsyncVault vault, ERC20 asset) public {
@@ -308,8 +310,8 @@ contract RedeemTest is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1100000000000000000);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
+        assertEq(redeemPrice.raw(), 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
@@ -324,7 +326,7 @@ contract RedeemTest is BaseTest {
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1200000000000000000);
+        assertEq(redeemPrice.raw(), 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);
         assertEq(vault.maxRedeem(self), redeemAmount);

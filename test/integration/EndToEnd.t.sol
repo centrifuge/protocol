@@ -260,14 +260,14 @@ contract EndToEndUtils is EndToEndDeployment {
     using MathLib for *;
 
     function assetToShare(uint128 assetAmount) public view returns (uint128 shareAmount) {
-        if (currentSharePrice.raw() == 0) return 0;
+        if (currentSharePrice.isZero()) return 0;
         return PricingLib.assetToShareAmount(
             assetAmount, USDC_DECIMALS, SHARE_DECIMALS, currentAssetPrice, currentSharePrice, MathLib.Rounding.Down
         );
     }
 
     function shareToAsset(uint128 shareAmount) public view returns (uint128 assetAmount) {
-        if (currentAssetPrice.raw() == 0) return 0;
+        if (currentAssetPrice.isZero()) return 0;
         return PricingLib.shareToAssetAmount(
             shareAmount, SHARE_DECIMALS, USDC_DECIMALS, currentSharePrice, currentAssetPrice, MathLib.Rounding.Down
         );
@@ -280,7 +280,7 @@ contract EndToEndUtils is EndToEndDeployment {
     }
 
     function poolToAsset(uint128 poolAmount) public view returns (uint128 assetAmount) {
-        if (currentAssetPrice.raw() == 0) return 0;
+        if (currentAssetPrice.isZero()) return 0;
         return PricingLib.poolToAssetAmount(
             poolAmount, POOL_DECIMALS, USDC_DECIMALS, currentAssetPrice, MathLib.Rounding.Down
         );

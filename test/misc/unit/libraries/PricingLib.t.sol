@@ -670,10 +670,10 @@ contract CalcPriceAssetPerShareTest is Test {
     }
 
     function _assertPrice(uint256 shares, uint256 assets, uint128 expected, MathLib.Rounding rounding) internal view {
-        uint128 calculated = shares == 0
-            ? 0
+        D18 calculated = shares == 0
+            ? d18(0)
             : PricingLib.calculatePriceAssetPerShare(shareToken, shares.toUint128(), asset, 0, assets.toUint128(), rounding);
-        assertEq(calculated, expected);
+        assertEq(calculated.raw(), expected);
     }
 
     function testIdentityPrice() public view {

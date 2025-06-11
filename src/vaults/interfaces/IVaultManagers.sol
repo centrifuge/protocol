@@ -247,10 +247,10 @@ struct AsyncInvestmentState {
     uint128 maxWithdraw;
     /// @dev Weighted average price of deposits, used to convert maxMint to maxDeposit
     /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
-    uint256 depositPrice;
+    D18 depositPrice;
     /// @dev Weighted average price of redemptions, used to convert maxWithdraw to maxRedeem
     /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
-    uint256 redeemPrice;
+    D18 redeemPrice;
     /// @dev Remaining deposit request in assets
     uint128 pendingDepositRequest;
     /// @dev Remaining redeem request in shares
@@ -284,8 +284,8 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRe
         returns (
             uint128 maxMint,
             uint128 maxWithdraw,
-            uint256 depositPrice,
-            uint256 redeemPrice,
+            D18 depositPrice,
+            D18 redeemPrice,
             uint128 pendingDepositRequest,
             uint128 pendingRedeemRequest,
             uint128 claimableCancelDepositRequest,
