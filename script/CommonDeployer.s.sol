@@ -75,7 +75,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
 
     function _commonRegister() private {
         register("root", address(root));
-        register("adminSafe", address(adminSafe));
+        // Already present in load_vars.sh and not needed to be registered
+        // register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
