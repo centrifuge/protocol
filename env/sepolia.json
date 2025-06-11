@@ -4,6 +4,7 @@
     "environment": "testnet",
     "centrifugeId": 1,
     "network": "ethereum",
+    "etherscanUrl": "https://api-sepolia.etherscan.io/api",
     "connectsTo": []
   },
   "contracts": {

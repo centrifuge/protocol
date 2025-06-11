@@ -5,6 +5,7 @@
     "centrifugeId": 2,
     "network": "base",
     "catapultaNetwork": "baseSepolia",
+    "etherscanUrl": "https://api-sepolia.basescan.org/api",
     "connectsTo": [
       "sepolia"
     ]

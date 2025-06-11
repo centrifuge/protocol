@@ -2,8 +2,9 @@
     "network": {
         "chainId": 42161,
         "environment": "mainnet",
-        "centrifugeId": 3,
+        "centrifugeId": 4,
         "network": "arbitrum",
+        "etherscanUrl": "https://api.arbiscan.io/api",
         "connectsTo": [
             "ethereum",
             "base"

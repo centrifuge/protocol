@@ -2,8 +2,9 @@
     "network": {
         "chainId": 421614,
         "environment": "testnet",
-        "centrifugeId": 4,
+        "centrifugeId": 3,
         "network": "arbitrum",
+        "etherscanUrl": "https://api-sepolia.arbiscan.io/api",
         "catapultaNetwork": "arbitrumSepolia",
         "connectsTo": [
             "sepolia",
