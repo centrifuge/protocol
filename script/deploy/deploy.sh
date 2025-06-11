@@ -13,7 +13,7 @@ source "$SCRIPT_DIR/formathelper.sh"
 # Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]
 # Example: ./deploy.sh eth-sepolia deploy:full
 # Example: ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2
-# Example: ./deploy.sh eth-sepolia test --nonce 4765
+# Example: ./deploy.sh eth-sepolia deploy:test --nonce 4765
 
 if [[ -z "$1" || -z "$2" ]]; then
     echo "Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]"
@@ -27,7 +27,7 @@ if [[ -z "$1" || -z "$2" ]]; then
     echo "Examples:"
     echo "  ./deploy.sh sepolia deploy:full"
     echo "  ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2"
-    echo "  ./deploy.sh sepolia test --nonce 4765"
+    echo "  ./deploy.sh sepolia deploy:test --nonce 4765"
     exit 1
 fi
 
@@ -60,7 +60,7 @@ case "$STEP" in
 "deploy:full" | "deploy:adapters" | "wire:adapters" | "deploy:test") ;;
 *)
     echo "Invalid step: $STEP"
-    echo "Valid steps are: deploy:full, deploy:adapters, wire:adapters, test"
+    echo "Valid steps are: deploy:full, deploy:adapters, wire:adapters, deploy:test"
     exit 1
     ;;
 esac
