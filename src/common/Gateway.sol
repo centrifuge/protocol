@@ -16,6 +16,7 @@ import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
@@ -34,6 +35,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Dependencies
     IRoot public immutable root;
+    ITokenRecoverer public immutable tokenRecoverer;
     IGasService public gasService;
     IMessageProcessor public processor;
     IAdapter public adapter;
@@ -49,8 +51,9 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, IGasService gasService_, address deployer) Auth(deployer) {
         root = root_;
+        tokenRecoverer = tokenRecoverer_;
         gasService = gasService_;
 
         subsidy[GLOBAL_POT].refund = IRecoverable(address(this));
@@ -219,7 +222,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             if (refundBalance == 0) return;
 
             // Send to the gateway GLOBAL_POT
-            refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
+            tokenRecoverer.withdrawTokens(refund, ETH_ADDRESS, 0, address(this), refundBalance);
 
             // Extract from the GLOBAL_POT
             subsidy[GLOBAL_POT].value -= uint96(refundBalance);

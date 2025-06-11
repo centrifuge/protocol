@@ -12,7 +12,7 @@ import {PoolEscrow} from "src/spoke/Escrow.sol";
 contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;
 
-    address public gateway;
+    address public tokenRecoverer;
     address public balanceSheet;
 
     constructor(address root_, address deployer) Auth(deployer) {
@@ -21,7 +21,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
     /// @inheritdoc IPoolEscrowFactory
     function file(bytes32 what, address data) external auth {
-        if (what == "gateway") gateway = data;
+        if (what == "tokenRecoverer") tokenRecoverer = data;
         else if (what == "balanceSheet") balanceSheet = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -32,7 +32,7 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
         PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId.raw()))}(poolId, address(this));
 
         escrow_.rely(root);
-        escrow_.rely(gateway);
+        escrow_.rely(tokenRecoverer);
         escrow_.rely(balanceSheet);
 
         escrow_.deny(address(this));

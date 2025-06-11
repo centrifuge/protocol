@@ -16,13 +16,13 @@ contract PoolEscrowFactoryTest is Test {
 
     address deployer = address(this);
     address root = makeAddr("root");
-    address gateway = makeAddr("gateway");
+    address tokenRecoverer = makeAddr("tokenRecoverer");
     address balanceSheet = makeAddr("balanceSheet");
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
         factory = new PoolEscrowFactory(root, deployer);
-        factory.file("gateway", gateway);
+        factory.file("tokenRecoverer", tokenRecoverer);
         factory.file("balanceSheet", balanceSheet);
     }
 
@@ -40,13 +40,13 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testEscrowHasCorrectPermissions(PoolId poolId, address nonWard) public {
-        vm.assume(nonWard != root && nonWard != gateway && nonWard != balanceSheet);
+        vm.assume(nonWard != root && nonWard != tokenRecoverer && nonWard != balanceSheet);
         address escrowAddr = address(factory.newEscrow(poolId));
 
         PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
 
         assertEq(escrow.wards(root), 1, "root not authorized");
-        assertEq(escrow.wards(gateway), 1, "gateway not authorized");
+        assertEq(escrow.wards(tokenRecoverer), 1, "tokenRecoverer not authorized");
         assertEq(escrow.wards(balanceSheet), 1, "balanceSheet not authorized");
 
         assertEq(escrow.wards(address(factory)), 0, "factory still authorized");

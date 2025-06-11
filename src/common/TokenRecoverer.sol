@@ -22,14 +22,21 @@ contract TokenRecoverer is Auth, ITokenRecoverer {
     {
         root.relyContract(address(target), address(this));
 
+        withdrawTokens(target, token, tokenId, to, amount);
+
+        root.denyContract(address(target), address(this));
+
+        emit RecoverTokens(target, token, tokenId, to, amount);
+    }
+
+    function withdrawTokens(IRecoverable target, address token, uint256 tokenId, address to, uint256 amount)
+        public
+        auth
+    {
         if (tokenId == 0) {
             target.recoverTokens(token, to, amount);
         } else {
             target.recoverTokens(token, tokenId, to, amount);
         }
-
-        root.denyContract(address(target), address(this));
-
-        emit RecoverTokens(target, token, tokenId, to, amount);
     }
 }

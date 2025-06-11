@@ -186,7 +186,7 @@ contract SpokeDeployer is CommonDeployer {
         balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
-        poolEscrowFactory.file("gateway", address(gateway));
+        poolEscrowFactory.file("tokenRecoverer", address(tokenRecoverer));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
 
         address[] memory tokenWards = new address[](2);

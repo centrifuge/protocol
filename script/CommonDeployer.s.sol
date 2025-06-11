@@ -60,7 +60,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
 
         gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(root, gasService, deployer);
+        gateway = new Gateway(root, tokenRecoverer, gasService, deployer);
         multiAdapter = new MultiAdapter(centrifugeId, gateway, deployer);
 
         messageDispatcher = new MessageDispatcher(centrifugeId, root, gateway, tokenRecoverer, deployer);
@@ -103,6 +103,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor.rely(address(gateway));
         tokenRecoverer.rely(address(messageDispatcher));
         tokenRecoverer.rely(address(messageProcessor));
+        tokenRecoverer.rely(address(gateway));
     }
 
     function _commonFile() private {

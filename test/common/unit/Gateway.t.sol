@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {Auth, IAuth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
+import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
 import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
@@ -17,6 +17,7 @@ import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
@@ -92,12 +93,20 @@ contract MockPoolRefund is Recoverable {
     receive() external payable {}
 }
 
+contract MockTokenRecoverer {
+    function withdrawTokens(IRecoverable target, address token, uint256 tokenId, address to, uint256 amount) external {
+        target.recoverTokens(token, tokenId, to, amount);
+    }
+}
+
 // -----------------------------------------
 //     GATEWAY EXTENSION
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(IRoot root_, IGasService gasService_, address deployer) Gateway(root_, gasService_, deployer) {}
+    constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, IGasService gasService_, address deployer)
+        Gateway(root_, tokenRecoverer_, gasService_, deployer)
+    {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -132,14 +141,15 @@ contract GatewayTest is Test {
 
     IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
+    ITokenRecoverer tokenRecoverer = ITokenRecoverer(address(new MockTokenRecoverer()));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(root, tokenRecoverer, gasService, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
-    IRecoverable immutable POOL_REFUND = new MockPoolRefund(address(gateway));
+    IRecoverable immutable POOL_REFUND = new MockPoolRefund(address(tokenRecoverer));
 
     function _mockAdapter(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund) internal {
         vm.mockCall(
