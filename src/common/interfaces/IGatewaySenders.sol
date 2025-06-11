@@ -151,9 +151,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
-
-    /// @notice Creates and send the message
     function sendExecuteTransferShares(
         uint16 centrifugeId,
         PoolId poolId,

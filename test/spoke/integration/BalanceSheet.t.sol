@@ -135,8 +135,6 @@ contract BalanceSheetTest is BaseTest {
 
     // --- IBalanceSheet ---
     function testDeposit() public {
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
-
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
@@ -214,8 +212,6 @@ contract BalanceSheetTest is BaseTest {
     }
 
     function testIssue() public {
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
-
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
@@ -323,73 +319,6 @@ contract BalanceSheetTest is BaseTest {
 
         (uint128 increaseAfter,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
         assertEq(increaseAfter, 0);
-    }
-
-    function testAssetsQueueDisabled() public {
-        vm.mockCall(
-            address(balanceSheet.sender()),
-            abi.encodeWithSelector(ISpokeMessageSender.sendUpdateHoldingAmount.selector, defaultAmount, true),
-            abi.encode()
-        );
-
-        erc20.mint(address(this), defaultAmount);
-        erc20.approve(address(balanceSheet), defaultAmount);
-
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
-        balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, defaultAmount);
-
-        (uint128 increase,) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
-        assertEq(increase, 0);
-
-        vm.mockCall(
-            address(balanceSheet.sender()),
-            abi.encodeWithSelector(ISpokeMessageSender.sendUpdateHoldingAmount.selector, defaultAmount / 2, false),
-            abi.encode()
-        );
-
-        balanceSheet.withdraw(
-            POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, address(this), defaultAmount / 2
-        );
-
-        (, uint128 decrease) = balanceSheet.queuedAssets(POOL_A, defaultTypedShareClassId, assetId);
-        assertEq(decrease, 0);
-    }
-
-    function testSharesQueueDisabled() public {
-        vm.mockCall(
-            address(balanceSheet.sender()),
-            abi.encodeWithSelector(ISpokeMessageSender.sendUpdateShares.selector, defaultAmount, true),
-            abi.encode()
-        );
-
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
-
-        (uint128 increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(increase, 0);
-    }
-
-    function testSubmitWithQueueDisabled() public {
-        vm.mockCall(
-            address(balanceSheet.sender()),
-            abi.encodeWithSelector(ISpokeMessageSender.sendUpdateShares.selector, defaultAmount, true),
-            abi.encode()
-        );
-
-        // Issue with queue enabled
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
-        balanceSheet.issue(POOL_A, defaultTypedShareClassId, address(this), defaultAmount);
-
-        (uint128 increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(increase, defaultAmount);
-
-        // Submit with queue disabled
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, false);
-        balanceSheet.submitQueuedShares(POOL_A, defaultTypedShareClassId, EXTRA_GAS);
-
-        // Shares should be submitted even if disabled
-        (increase,,,) = balanceSheet.queuedShares(POOL_A, defaultTypedShareClassId);
-        assertEq(increase, 0);
     }
 
     function testTransferSharesFrom() public {
