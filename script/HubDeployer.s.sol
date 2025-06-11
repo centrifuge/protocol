@@ -70,6 +70,7 @@ contract HubDeployer is CommonDeployer {
         gateway.rely(address(hub));
         messageDispatcher.rely(address(hub));
         hubHelpers.rely(address(hub));
+        poolEscrowFactory.rely(address(hub));
 
         // Rely hub helpers
         accounting.rely(address(hubHelpers));
@@ -95,7 +96,7 @@ contract HubDeployer is CommonDeployer {
         messageDispatcher.file("hub", address(hub));
 
         hub.file("sender", address(messageDispatcher));
-        hub.file("poolEscrowProvider", address(poolEscrowFactory));
+        hub.file("poolEscrowFactory", address(poolEscrowFactory));
 
         guardian.file("hub", address(hub));
 
