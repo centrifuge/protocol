@@ -97,20 +97,13 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
-        uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
-
-        balanceSheet.setQueue(vault.poolId(), vault.scId(), false);
 
         erc20.approve(address(vault_), amount);
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
-        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        vaultRouter.deposit(vault, amount, self, self);
 
         erc20.approve(address(vaultRouter), amount);
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.deposit{value: gas - 1}(vault, amount, self, self);
-
-        erc20.approve(address(vaultRouter), amount);
-        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        vaultRouter.deposit(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 

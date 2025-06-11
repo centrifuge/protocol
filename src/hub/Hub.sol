@@ -238,13 +238,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) public payable {
-        _isManager(poolId);
-
-        sender.sendSetQueue(poolId, scId, enabled);
-    }
-
-    /// @inheritdoc IHub
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
         _isManager(poolId);
 
