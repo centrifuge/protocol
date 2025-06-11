@@ -20,16 +20,15 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract SpokeDeployer is CommonDeployer {
-    BalanceSheet public balanceSheet;
-    AsyncRequestManager public asyncRequestManager;
-    SyncRequestManager public syncRequestManager;
     Spoke public spoke;
+    BalanceSheet public balanceSheet;
+    SyncRequestManager public syncRequestManager;
+    AsyncRequestManager public asyncRequestManager;
     PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
     Escrow public globalEscrow;
@@ -118,10 +117,10 @@ contract SpokeDeployer is CommonDeployer {
         // Rely sync requests manager
         balanceSheet.rely(address(syncRequestManager));
         asyncRequestManager.rely(address(syncRequestManager));
-        globalEscrow.rely(address(syncRequestManager));
 
         // Rely BalanceSheet
         messageDispatcher.rely(address(balanceSheet));
+        gateway.rely(address(balanceSheet));
 
         // Rely Root
         vaultRouter.rely(address(root));
@@ -140,12 +139,10 @@ contract SpokeDeployer is CommonDeployer {
         IAuth(redemptionRestrictionsHook).rely(address(root));
 
         // Rely gateway
-        asyncRequestManager.rely(address(gateway));
         spoke.rely(address(gateway));
 
         // Rely others
         routerEscrow.rely(address(vaultRouter));
-        syncRequestManager.rely(address(syncDepositVaultFactory));
 
         // Rely messageProcessor
         spoke.rely(address(messageProcessor));
@@ -180,20 +177,17 @@ contract SpokeDeployer is CommonDeployer {
         asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         syncRequestManager.file("spoke", address(spoke));
         syncRequestManager.file("balanceSheet", address(balanceSheet));
-        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
+        balanceSheet.file("gateway", address(gateway));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
-        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
 
         address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(spoke);

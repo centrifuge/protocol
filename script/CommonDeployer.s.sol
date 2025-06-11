@@ -26,8 +26,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
     uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
 
-    IAdapter[] adapters;
-
     ISafe public adminSafe;
     Root public root;
     TokenRecoverer public tokenRecoverer;
@@ -113,10 +111,13 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     // Use WireAdapters.s.sol for automatic wiring of live multi-chains adapters
 
     function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
-        adapters.push(adapter);
-        multiAdapter.file("adapters", centrifugeId_, adapters);
         IAuth(address(adapter)).rely(address(root));
         IAuth(address(adapter)).deny(deployer);
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+
+        multiAdapter.file("adapters", centrifugeId_, adapters);
     }
 
     function removeCommonDeployerAccess(address deployer) public {

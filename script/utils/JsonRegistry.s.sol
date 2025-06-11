@@ -31,19 +31,15 @@ contract JsonRegistry is Script {
         }
 
         // Save with timestamp for history
-        string memory timestampedPath = string(
-            abi.encodePacked(
-                dir, vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"
-            )
-        );
+        string memory timestampedPath =
+            string(abi.encodePacked(dir, vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"));
         deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
         vm.writeFile(timestampedPath, deploymentOutput);
         console.log("Contract addresses saved to: %s", timestampedPath);
 
         // Save as latest
-        string memory latestPath =
-            string(abi.encodePacked(dir, vm.toString(block.chainid), "-latest.json"));
-        
+        string memory latestPath = string(abi.encodePacked(dir, vm.toString(block.chainid), "-latest.json"));
+
         vm.writeFile(latestPath, deploymentOutput);
         console.log("Contract addresses also saved to: %s", latestPath);
     }

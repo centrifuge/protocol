@@ -30,11 +30,6 @@ contract Escrow is Auth, IEscrow {
 
         emit AuthTransferTo(asset, tokenId, receiver, amount);
     }
-
-    /// @inheritdoc IEscrow
-    function authTransferTo(address asset, address receiver, uint256 amount) external auth {
-        authTransferTo(asset, 0, receiver, amount);
-    }
 }
 
 /// @title  Escrow
@@ -71,7 +66,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveIncrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
         uint128 newValue = holding[scId][asset][tokenId].reserved + value;
         holding[scId][asset][tokenId].reserved = newValue;
 
@@ -79,7 +74,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserveDecrease(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external auth {
         uint128 prevValue = holding[scId][asset][tokenId].reserved;
         uint128 value_ = value;
         require(prevValue >= value_, InsufficientReservedAmount());

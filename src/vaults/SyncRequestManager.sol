@@ -25,7 +25,6 @@ import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
@@ -38,8 +37,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     using CastLib for *;
     using UpdateContractMessageLib for *;
     using BytesLib for bytes;
-
-    IBalanceSheet public balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
@@ -57,7 +54,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -278,7 +274,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     {
         if (!spoke.isLinked(vault_)) return 0;
 
-        uint128 availableBalance = poolEscrowProvider.escrow(poolId).availableBalanceOf(scId, asset, tokenId);
+        uint128 availableBalance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
         uint128 maxReserve_ = maxReserve[poolId][scId][asset][tokenId];
 
         if (maxReserve_ < availableBalance) {

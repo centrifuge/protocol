@@ -112,7 +112,7 @@ contract TestData is Script {
         );
 
         contracts.hub.updateVault(
-            poolId, scId, assetId, address(contracts.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+            poolId, scId, assetId, address(contracts.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
         );
 
         contracts.hub.updateSharePrice(poolId, scId, navPerShare);
@@ -159,7 +159,8 @@ contract TestData is Script {
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
                 user: bytes32(bytes20(msg.sender)),
                 validUntil: type(uint64).max
-            }).serialize()
+            }).serialize(),
+            0
         );
 
         // Submit redeem request
@@ -212,7 +213,12 @@ contract TestData is Script {
         );
 
         contracts.hub.updateVault(
-            poolId, scId, assetId, address(contracts.syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+            poolId,
+            scId,
+            assetId,
+            address(contracts.syncDepositVaultFactory).toBytes32(),
+            VaultUpdateKind.DeployAndLink,
+            0
         );
 
         contracts.hub.updateSharePrice(poolId, scId, navPerShare);

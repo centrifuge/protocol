@@ -261,13 +261,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
-        external
-        auth
-    {
+    function sendUpdateRestriction(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateRestriction(poolId, scId, payload);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 centrifugeId,
                 MessageLib.UpdateRestriction({poolId: poolId.raw(), scId: scId.raw(), payload: payload}).serialize()
@@ -281,11 +285,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.updateContract(poolId, scId, target.toAddress(), payload);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 centrifugeId,
                 MessageLib.UpdateContract({poolId: poolId.raw(), scId: scId.raw(), target: target, payload: payload})
@@ -300,11 +306,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 extraGasLimit
     ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.UpdateVault({
@@ -626,13 +634,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateHoldingAmount(
                 localCentrifugeId, poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, isSnapshot, nonce
             );
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateHoldingAmount({
@@ -657,11 +667,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 shares,
         bool isIssuance,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.UpdateShares({

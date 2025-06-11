@@ -27,7 +27,6 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
@@ -42,7 +41,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using MathLib for uint256;
 
     ISpokeMessageSender public sender;
-    IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -58,7 +56,6 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -94,7 +91,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address)
+    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address sender_)
         public
         auth
         returns (bool)
@@ -120,7 +117,20 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
         sender.sendRedeemRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, shares_);
 
+        _executeRedeemTransfer(poolId, scId, sender_, owner, address(globalEscrow), shares_);
+
         return true;
+    }
+
+    function _executeRedeemTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender_,
+        address owner,
+        address to,
+        uint128 shares
+    ) internal {
+        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, to, shares);
     }
 
     /// @inheritdoc IAsyncDepositManager
@@ -170,7 +180,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
         balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
-        address poolEscrow = address(poolEscrowProvider.escrow(poolId));
+        address poolEscrow = address(balanceSheet.escrow(poolId));
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
@@ -192,7 +202,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     ) external auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
-        poolEscrowProvider.escrow(poolId).reserveIncrease(scId, asset, tokenId, assetAmount);
+        balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount);
 
         globalEscrow.authTransferTo(address(spoke.shareToken(poolId, scId)), 0, address(this), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
@@ -315,7 +325,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.maxMint = state.maxMint > sharesUp ? state.maxMint - sharesUp : 0;
 
         if (sharesDown > 0) {
-            globalEscrow.authTransferTo(vault_.share(), receiver, sharesDown);
+            globalEscrow.authTransferTo(vault_.share(), 0, receiver, sharesDown);
         }
     }
 
@@ -379,7 +389,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        poolEscrowProvider.escrow(poolId).reserveDecrease(scId, vaultDetails.asset, vaultDetails.tokenId, assets);
+        balanceSheet.unreserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
         balanceSheet.withdraw(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets);
     }
 
@@ -420,7 +430,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         state.claimableCancelRedeemRequest = 0;
 
         if (shares > 0) {
-            globalEscrow.authTransferTo(vault_.share(), receiver, shares);
+            globalEscrow.authTransferTo(vault_.share(), 0, receiver, shares);
         }
     }
 

@@ -42,6 +42,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     bool public transient isBatching;
     uint256 public transient fuel;
     address public transient transactionRefund;
+    uint128 public transient extraGasLimit;
     mapping(PoolId => Funds) public subsidy;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
@@ -126,12 +127,15 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         emit PrepareMessage(centrifugeId, poolId, message);
 
+        uint128 gasLimit = gasService.gasLimit(centrifugeId, message) + extraGasLimit;
+        extraGasLimit = 0;
+
         if (isBatching) {
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
 
             bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
-            uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasService.gasLimit(centrifugeId, message);
+            uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasLimit;
             require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
@@ -141,7 +145,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            _send(centrifugeId, poolId, message, gasService.gasLimit(centrifugeId, message));
+            _send(centrifugeId, poolId, message, gasLimit);
         }
     }
 
@@ -221,6 +225,11 @@ contract Gateway is Auth, Recoverable, IGateway {
             subsidy[GLOBAL_POT].value -= uint96(refundBalance);
             _subsidizePool(poolId, address(refund), refundBalance);
         }
+    }
+
+    /// @inheritdoc IGateway
+    function setExtraGasLimit(uint128 gas) public auth {
+        extraGasLimit = gas;
     }
 
     /// @inheritdoc IGateway
