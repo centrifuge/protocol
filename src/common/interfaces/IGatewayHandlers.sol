@@ -242,6 +242,4 @@ interface IRequestManagerGatewayHandler {
 /// @notice Interface for Vaults methods related to epoch called by messages
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;
-
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 }

@@ -176,21 +176,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         );
 
         if (snap) {
-            vm.startSnapshotGas("SyncDepositVault", "deposit_withoutQueue");
+            vm.startSnapshotGas("SyncDepositVault", "deposit");
         }
         // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount / 2, self);
-        if (snap) {
-            vm.stopSnapshotGas();
-        }
-
-        balanceSheet.setQueue(syncVault.poolId(), syncVault.scId(), true);
-
-        if (snap) {
-            vm.startSnapshotGas("SyncDepositVault", "deposit_withQueue");
-        }
-        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount / 2, self);
+        syncVault.deposit(amount, self);
         if (snap) {
             vm.stopSnapshotGas();
         }
