@@ -4,10 +4,10 @@ pragma abicoder v2;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";

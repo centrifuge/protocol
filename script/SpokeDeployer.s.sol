@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Escrow} from "src/misc/Escrow.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
@@ -17,8 +19,6 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {Escrow} from "src/misc/Escrow.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import "forge-std/Script.sol";
 import {CommonDeployer} from "script/CommonDeployer.s.sol";

@@ -8,6 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
@@ -18,7 +19,6 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  VaultRouter
