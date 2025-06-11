@@ -10,6 +10,7 @@ import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -17,6 +18,7 @@ import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandler
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "src/spoke/interfaces/IBalanceSheet.sol";
@@ -33,7 +35,7 @@ import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFac
 ///
 ///         Share and asset updates to the Hub are optionally queued, to reduce the cost
 ///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
-contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
+contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
     using MathLib for *;
     using CastLib for bytes32;
 
@@ -42,6 +44,7 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     ISpoke public spoke;
     ISpokeMessageSender public sender;
     IPoolEscrowProvider public poolEscrowProvider;
+    IGateway public gateway;
 
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId poolId => mapping(ShareClassId scId => bool)) public queueDisabled;
@@ -67,10 +70,26 @@ contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayH
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
+    }
+
+    /// @inheritdoc IMulticall
+    /// @notice performs a multicall but all messages sent in the process will be batched
+    function multicall(bytes[] calldata data) public payable override {
+        bool wasBatching = gateway.isBatching();
+        if (!wasBatching) {
+            gateway.startBatching();
+        }
+
+        super.multicall(data);
+
+        if (!wasBatching) {
+            gateway.endBatching();
+        }
     }
 
     //----------------------------------------------------------------------------------------------
