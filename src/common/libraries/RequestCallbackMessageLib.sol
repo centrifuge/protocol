@@ -68,9 +68,9 @@ library RequestCallbackMessageLib {
     //---------------------------------------
 
     struct RevokedShares {
+        uint128 assetAmount;
         uint128 shareAmount;
         uint128 pricePoolPerShare;
-        uint128 assetAmount;
     }
 
     function deserializeRevokedShares(bytes memory data) internal pure returns (RevokedShares memory) {
