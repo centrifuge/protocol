@@ -270,7 +270,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         address to,
         uint256 amount
     ) external authOrManager(poolId) {
-        require(!root.endorsed(from), CannotTransferFromEndorsedContract()); // mainly from the escrow
+        require(!root.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
