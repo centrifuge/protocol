@@ -1,18 +1,23 @@
 @startuml
 left to right direction
-collections Common_Adapter
-collections CP_Managers
-collections CV_Managers
+collections Adapters <<common>>
+collections HubManagers <<hub>> as "Managers"
+collections SpokeManagers <<spoke>> as "Managers"
+rectangle MessageProcessor <<common>>
+rectangle MessageDispatcher <<common>>
+rectangle Gateway <<common>>
+rectangle MultiAdapter <<common>>
 
-[CP_Managers] <-left- [Common_MessageProcessor]
-[CP_Managers] <-right-> [Common_MessageDispatcher]
+HubManagers <-left- MessageProcessor
+HubManagers <-right-> MessageDispatcher
 
-[CV_Managers] <-- [Common_MessageProcessor]
-[CV_Managers] <--> [Common_MessageDispatcher]
+SpokeManagers <-- MessageProcessor
+SpokeManagers <--> MessageDispatcher
 
-[Common_MessageProcessor] <-down- [Common_Gateway]
-[Common_MessageDispatcher] -down-> [Common_Gateway]
+MessageProcessor <-down- Gateway
+MessageDispatcher -down-> Gateway
 
-[Common_Gateway] <-down-> Common_Adapter
+Gateway <-down-> MultiAdapter
+MultiAdapter <-down-> Adapters
 
 @enduml
