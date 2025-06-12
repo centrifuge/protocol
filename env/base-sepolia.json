@@ -23,7 +23,6 @@
   },
   "contracts": {
     "root": "0x56b8854529869a444Cb0897f021B0494ADb2eA5D",
-    "adminSafe": "0x423420Ae467df6e90291fd0252c0A8a637C1e03f",
     "guardian": "0xd848267C7C64a5FB3b32a493c12027B08EcaAFc1",
     "gasService": "0x021D6f44df4048E642B4D282c3817177b6d7e8a2",
     "gateway": "0x94bE7D33Cab1418BC11F9E141130dd688aa75C77",
