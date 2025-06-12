@@ -5,8 +5,12 @@
     "centrifugeId": 1,
     "network": "ethereum",
     "etherscanUrl": "https://api-sepolia.etherscan.io/api",
-    "connectsTo": []
+    "connectsTo": [
+      "arbitrum-sepolia",
+      "base-sepolia"
+    ]
   },
+  "adapters": {},
   "contracts": {
     "root": "0x3d573E796b6Cf0D7E2fb4BE41876c8322f7f9CC4",
     "guardian": "0x63c3eDFcCA59cCE56bD5393c8441AE7a21E1ae69",
