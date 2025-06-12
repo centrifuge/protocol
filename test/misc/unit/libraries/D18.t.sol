@@ -153,6 +153,16 @@ contract D18Test is Test {
 
         assertEq(raw(a), a_);
     }
+
+    function testIsZero() public pure {
+        assertEq(d18(0).isZero(), true);
+        assertEq(d18(123).isZero(), false);
+    }
+
+    function testIsNotZero() public pure {
+        assertEq(d18(0).isNotZero(), false);
+        assertEq(d18(123).isNotZero(), true);
+    }
 }
 
 contract D18ReciprocalTest is Test {

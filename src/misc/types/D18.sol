@@ -91,6 +91,14 @@ function eq(D18 a, D18 b) pure returns (bool) {
     return D18.unwrap(a) == D18.unwrap(b);
 }
 
+function isZero(D18 a) pure returns (bool) {
+    return D18.unwrap(a) == 0;
+}
+
+function isNotZero(D18 a) pure returns (bool) {
+    return D18.unwrap(a) != 0;
+}
+
 function raw(D18 d) pure returns (uint128) {
     return D18.unwrap(d);
 }
@@ -106,5 +114,7 @@ using {
     reciprocalMulUint128,
     reciprocalMulUint256,
     reciprocal,
-    raw
+    raw,
+    isZero,
+    isNotZero
 } for D18 global;

@@ -237,17 +237,6 @@ interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUp
     /// @param maxReserve The amount of maximum reserve
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
-
-    /// @notice Returns the all three prices for a given pool, share class, asset, and asset id.
-    ///
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id corresponding to the asset and tokenId
-    /// @return priceData The asset price per share, pool price per asset, and pool price per share
-    function prices(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (Prices memory priceData);
 }
 
 /// @dev Vault requests and deposit/redeem bookkeeping per user
@@ -258,10 +247,10 @@ struct AsyncInvestmentState {
     uint128 maxWithdraw;
     /// @dev Weighted average price of deposits, used to convert maxMint to maxDeposit
     /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
-    uint256 depositPrice;
+    D18 depositPrice;
     /// @dev Weighted average price of redemptions, used to convert maxWithdraw to maxRedeem
     /// @dev Represents priceAssetPerShare, i.e. ASSET_UNIT/SHARE_UNIT
-    uint256 redeemPrice;
+    D18 redeemPrice;
     /// @dev Remaining deposit request in assets
     uint128 pendingDepositRequest;
     /// @dev Remaining redeem request in shares
@@ -295,8 +284,8 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRe
         returns (
             uint128 maxMint,
             uint128 maxWithdraw,
-            uint256 depositPrice,
-            uint256 redeemPrice,
+            D18 depositPrice,
+            D18 redeemPrice,
             uint128 pendingDepositRequest,
             uint128 pendingRedeemRequest,
             uint128 claimableCancelDepositRequest,

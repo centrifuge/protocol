@@ -188,21 +188,6 @@ contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
     }
 }
 
-contract SyncRequestManagerPrices is SyncRequestManagerBaseTest {
-    function testPricesWithoutValuation(uint128 pricePoolPerShare_, uint128 pricePoolPerAsset_) public {
-        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, 1e6, 1e24)));
-        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, 1e4, pricePoolPerShare.raw())));
-        D18 priceAssetPerShare = pricePoolPerShare / pricePoolPerAsset;
-
-        (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-
-        Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
-        assertEq(prices.assetPerShare.raw(), priceAssetPerShare.raw(), "priceAssetPerShare mismatch");
-        assertEq(prices.poolPerShare.raw(), pricePoolPerShare.raw(), "pricePoolPerShare mismatch");
-        assertEq(prices.poolPerAsset.raw(), pricePoolPerAsset.raw(), "pricePoolPerAsset mismatch");
-    }
-}
-
 contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
     using MathLib for uint256;
 
@@ -218,19 +203,19 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         );
     }
 
-    function _assertPrices(SyncDepositVault syncVault, D18 prePoolPerShare, Prices memory expected, uint128 assetId)
-        internal
-        view
-    {
-        Prices memory prices = syncRequestManager.prices(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId));
+    function _assertPrices(
+        SyncDepositVault syncVault,
+        D18 prePoolPerShare,
+        D18 expectedPoolPerAsset,
+        D18 expectedPoolPerShare,
+        uint128 assetId
+    ) internal view {
+        D18 poolPerShare = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 poolPerAsset = spoke.pricePoolPerAsset(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), true);
 
-        D18 pricePost = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
-        assertNotEq(prePoolPerShare.raw(), pricePost.raw(), "Price should be changed by valuation");
-        assertEq(expected.poolPerShare.raw(), prices.poolPerShare.raw(), "poolPerShare mismatch");
-        assertEq(expected.poolPerShare.raw(), pricePost.raw(), "poolPerShare vs pricePost mismatch");
-
-        assertEq(expected.poolPerAsset.raw(), prices.poolPerAsset.raw(), "poolPerAsset mismatch");
-        assertEq(expected.assetPerShare.raw(), prices.assetPerShare.raw(), "assetPerShare mismatch");
+        assertNotEq(prePoolPerShare.raw(), expectedPoolPerShare.raw(), "Price should be changed by valuation");
+        assertEq(poolPerShare.raw(), expectedPoolPerShare.raw(), "poolPerShare mismatch");
+        assertEq(poolPerAsset.raw(), expectedPoolPerAsset.raw(), "poolPerAsset mismatch");
     }
 
     function testSetValuationERC20() public {
@@ -255,12 +240,7 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
 
         // Mock valuation and perform checks
         _mockValuation(syncVault, pricePoolPerShare);
-        _assertPrices(
-            syncVault,
-            pricePre,
-            Prices({assetPerShare: priceAssetPerShare, poolPerAsset: pricePoolPerAsset, poolPerShare: pricePoolPerShare}),
-            assetId
-        );
+        _assertPrices(syncVault, pricePre, pricePoolPerAsset, pricePoolPerShare, assetId);
     }
 
     function testFuzzedPricesWithValuationERC20(
@@ -285,11 +265,6 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
 
         // Mock valuation and perform checks
         _mockValuation(syncVault, pricePoolPerShare);
-        _assertPrices(
-            syncVault,
-            pricePre,
-            Prices({assetPerShare: priceAssetPerShare, poolPerAsset: pricePoolPerAsset, poolPerShare: pricePoolPerShare}),
-            assetId
-        );
+        _assertPrices(syncVault, pricePre, pricePoolPerAsset, pricePoolPerShare, assetId);
     }
 }
