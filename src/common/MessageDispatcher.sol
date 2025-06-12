@@ -415,12 +415,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external auth {
-        // Forced to be to the same chain
-        balanceSheet.setQueue(poolId, scId, enabled);
-    }
-
-    /// @inheritdoc IHubMessageSender
     function sendMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
         external
         auth
