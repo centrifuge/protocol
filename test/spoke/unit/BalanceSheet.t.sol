@@ -370,6 +370,38 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
     }
 }
 
+contract BalanceSheetTestReserve is BalanceSheetTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.reserve(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+
+    function testReserve(bool managerOrAuth) public {
+        vm.mockCall(escrow, abi.encodeWithSelector(IPoolEscrow.reserve.selector, SC_1, erc20, 0, AMOUNT), abi.encode());
+
+        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        balanceSheet.reserve(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+}
+
+contract BalanceSheetTestUnreserve is BalanceSheetTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        balanceSheet.unreserve(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+
+    function testReserve(bool managerOrAuth) public {
+        vm.mockCall(
+            escrow, abi.encodeWithSelector(IPoolEscrow.unreserve.selector, SC_1, erc20, 0, AMOUNT), abi.encode()
+        );
+
+        vm.prank(managerOrAuth ? MANAGER : AUTH);
+        balanceSheet.unreserve(POOL_A, SC_1, erc20, 0, AMOUNT);
+    }
+}
+
 contract BalanceSheetTestIssue is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
