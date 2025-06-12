@@ -271,7 +271,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         uint256 amount
     ) external authOrManager(poolId) {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
-        IShareToken token = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
     }
