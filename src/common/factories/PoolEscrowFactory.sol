@@ -29,22 +29,20 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
     /// @inheritdoc IPoolEscrowFactory
     function newEscrow(PoolId poolId) public auth returns (IPoolEscrow) {
-        try new PoolEscrow{salt: bytes32(uint256(poolId.raw()))}(poolId, address(this)) returns (PoolEscrow escrow_) {
-            escrow_.rely(root);
-            escrow_.rely(gateway);
-            escrow_.rely(balanceSheet);
+        PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId.raw()))}(poolId, address(this));
 
-            escrow_.deny(address(this));
+        escrow_.rely(root);
+        escrow_.rely(gateway);
+        escrow_.rely(balanceSheet);
 
-            emit DeployPoolEscrow(poolId, address(escrow_));
-            return IPoolEscrow(escrow_);
-        } catch {
-            return escrow(poolId);
-        }
+        escrow_.deny(address(this));
+
+        emit DeployPoolEscrow(poolId, address(escrow_));
+        return IPoolEscrow(escrow_);
     }
 
     /// @inheritdoc IPoolEscrowProvider
-    function escrow(PoolId poolId) public view returns (IPoolEscrow) {
+    function escrow(PoolId poolId) external view returns (IPoolEscrow) {
         bytes32 salt = bytes32(uint256(poolId.raw()));
         bytes32 hash = keccak256(
             abi.encodePacked(

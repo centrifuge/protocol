@@ -165,7 +165,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(pool.createdAt == 0, PoolAlreadyAdded());
         pool.createdAt = block.timestamp;
 
-        IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
+        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
+        if (address(escrow).code.length == 0) {
+            poolEscrowFactory.newEscrow(poolId);
+        }
+
         gateway.setRefundAddress(poolId, escrow);
 
         emit AddPool(poolId);

@@ -32,8 +32,9 @@ contract PoolEscrowFactoryTest is Test {
         assertEq(expectedEscrow, actual, "Escrow address mismatch");
     }
 
-    function testDeployEscrowTwiceDoesNotRevert(PoolId poolId) public {
+    function testDeployEscrowTwiceReverts(PoolId poolId) public {
         factory.newEscrow(poolId);
+        vm.expectRevert();
         factory.newEscrow(poolId);
     }
 
