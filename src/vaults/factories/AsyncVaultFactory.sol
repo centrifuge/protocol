@@ -8,7 +8,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";

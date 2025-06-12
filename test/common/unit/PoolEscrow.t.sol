@@ -6,12 +6,11 @@ import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Escrow, IEscrow} from "src/misc/Escrow.sol";
 
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-
-import {Escrow, PoolEscrow} from "src/spoke/Escrow.sol";
-import {IEscrow, IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {PoolEscrow, IPoolEscrow} from "src/common/PoolEscrow.sol";
 
 contract EscrowTestBase is Test {
     address spender = makeAddr("spender");

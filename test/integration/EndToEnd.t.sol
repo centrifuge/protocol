@@ -327,7 +327,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
         h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
 
-        vm.stopPrank();
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _configurePool(CSpoke memory s_) internal {
@@ -347,24 +348,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
-        vm.startPrank(BSM);
+        vm.startPrank(ANY);
         s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-
-        vm.stopPrank();
-    }
-
-    function _configurePool(bool sameChain) internal {
-        _setSpoke(sameChain);
-        _configurePool(s);
-
-        /// We subsidize the hub using the local spoke deployment
-        if (s.centrifugeId != h.centrifugeId) {
-            vm.startPrank(FM);
-            h.hub.notifyPool{value: GAS}(POOL_A, h.centrifugeId);
-
-            vm.startPrank(BSM);
-            h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-        }
     }
 
     function _configurePrices(D18 assetPrice, D18 sharePrice) internal {
@@ -394,12 +379,14 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        _configurePool(sameChain);
+        _setSpoke(sameChain);
+        _configurePool(s);
     }
 
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
-        _configurePool(sameChain);
+        _setSpoke(sameChain);
+        _configurePool(s);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(DEPLOYER);
@@ -428,7 +415,7 @@ contract EndToEndUseCases is EndToEndFlows {
     /// forge-config: default.isolate = true
     function testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(sameChain);
+        _configurePool(s);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
@@ -465,7 +452,7 @@ contract EndToEndUseCases is EndToEndFlows {
     /// forge-config: default.isolate = true
     function testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(sameChain);
+        _configurePool(s);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
@@ -486,7 +473,7 @@ contract EndToEndUseCases is EndToEndFlows {
     /// forge-config: default.isolate = true
     function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(sameChain);
+        _configurePool(s);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
