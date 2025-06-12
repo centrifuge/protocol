@@ -33,7 +33,6 @@ interface IBalanceSheet {
     // --- Events ---
     event File(bytes32 indexed what, address data);
     event UpdateManager(PoolId indexed poolId, address who, bool canManage);
-    event SetQueue(PoolId indexed poolId, ShareClassId indexed scId, bool enabled);
     event Withdraw(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -86,7 +85,6 @@ interface IBalanceSheet {
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
-    function queueDisabled(PoolId poolId, ShareClassId scId) external view returns (bool);
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
@@ -135,10 +133,10 @@ interface IBalanceSheet {
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external;
 
     /// @notice Sends the queued updated holding amount to the Hub
-    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit) external;
 
     /// @notice Sends the queued updated shares changed to the Hub
-    function submitQueuedShares(PoolId poolId, ShareClassId scId) external;
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit) external;
 
     /// @notice Force-transfers share tokens.
     function transferSharesFrom(

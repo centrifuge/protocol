@@ -252,13 +252,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) public payable {
-        _isManager(poolId);
-
-        sender.sendSetQueue(poolId, scId, enabled);
-    }
-
-    /// @inheritdoc IHub
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
         _isManager(poolId);
 
@@ -456,17 +449,19 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
-        external
-        payable
-        payTransaction
-    {
+    function updateRestriction(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint128 gasLimit
+    ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
-        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload);
+        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload, gasLimit);
     }
 
     /// @inheritdoc IHub
@@ -475,14 +470,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 gasLimit
     ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
-        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
+        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind, gasLimit);
     }
 
     /// @inheritdoc IHub
@@ -491,14 +487,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         ShareClassId scId,
         uint16 centrifugeId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 gasLimit
     ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload);
+        sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload, gasLimit);
     }
 
     /// @inheritdoc IHub

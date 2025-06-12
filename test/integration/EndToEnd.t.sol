@@ -158,6 +158,11 @@ contract EndToEndDeployment is Test {
     uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
 
     uint256 constant PLACEHOLDER = 0;
+    uint128 constant EXTRA_GAS = 0;
+
+    // Set by _configurePrices and read by pricing utilities
+    D18 currentAssetPrice = IDENTITY_PRICE;
+    D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
@@ -255,25 +260,30 @@ contract EndToEndUtils is EndToEndDeployment {
     using MathLib for *;
 
     function assetToShare(uint128 assetAmount) public view returns (uint128 shareAmount) {
+        if (currentSharePrice.isZero()) return 0;
         return PricingLib.assetToShareAmount(
-            assetAmount, USDC_DECIMALS, SHARE_DECIMALS, ASSET_PRICE, SHARE_PRICE, MathLib.Rounding.Down
+            assetAmount, USDC_DECIMALS, SHARE_DECIMALS, currentAssetPrice, currentSharePrice, MathLib.Rounding.Down
         );
     }
 
     function shareToAsset(uint128 shareAmount) public view returns (uint128 assetAmount) {
+        if (currentAssetPrice.isZero()) return 0;
         return PricingLib.shareToAssetAmount(
-            shareAmount, SHARE_DECIMALS, USDC_DECIMALS, SHARE_PRICE, ASSET_PRICE, MathLib.Rounding.Down
+            shareAmount, SHARE_DECIMALS, USDC_DECIMALS, currentSharePrice, currentAssetPrice, MathLib.Rounding.Down
         );
     }
 
     function assetToPool(uint128 assetAmount) public view returns (uint128 poolAmount) {
-        return
-            PricingLib.assetToPoolAmount(assetAmount, USDC_DECIMALS, POOL_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down);
+        return PricingLib.assetToPoolAmount(
+            assetAmount, USDC_DECIMALS, POOL_DECIMALS, currentAssetPrice, MathLib.Rounding.Down
+        );
     }
 
     function poolToAsset(uint128 poolAmount) public view returns (uint128 assetAmount) {
-        return
-            PricingLib.poolToAssetAmount(poolAmount, POOL_DECIMALS, USDC_DECIMALS, ASSET_PRICE, MathLib.Rounding.Down);
+        if (currentAssetPrice.isZero()) return 0;
+        return PricingLib.poolToAssetAmount(
+            poolAmount, POOL_DECIMALS, USDC_DECIMALS, currentAssetPrice, MathLib.Rounding.Down
+        );
     }
 
     function checkAccountValue(AccountId accountId, uint128 value, bool isPositive) public view {
@@ -358,7 +368,6 @@ contract EndToEndFlows is EndToEndUtils {
         if (s.centrifugeId != h.centrifugeId) {
             vm.startPrank(FM);
             h.hub.notifyPool{value: GAS}(POOL_A, h.centrifugeId);
-            h.hub.updateBalanceSheetManager{value: GAS}(h.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
             vm.startPrank(BSM);
             h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
@@ -372,6 +381,9 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateSharePrice(POOL_A, SC_1, sharePrice);
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
         h.hub.notifyAssetPrice{value: GAS}(POOL_A, SC_1, s.usdcId);
+
+        currentAssetPrice = assetPrice;
+        currentSharePrice = sharePrice;
     }
 
     function _testAsyncDeposit(bool sameChain) internal {
@@ -380,7 +392,9 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
 
         IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
 
@@ -413,7 +427,9 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
 
         IBaseVault vault = IBaseVault(address(s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
 
@@ -429,7 +445,9 @@ contract EndToEndFlows is EndToEndUtils {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
 
         vm.startPrank(FM);
-        h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A));
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS
+        );
 
         IAsyncRedeemVault vault =
             IAsyncRedeemVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
@@ -461,7 +479,9 @@ contract EndToEndFlows is EndToEndUtils {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
 
         vm.startPrank(FM);
-        h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A));
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS
+        );
 
         IAsyncRedeemVault vault =
             IAsyncRedeemVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
@@ -480,8 +500,8 @@ contract EndToEndFlows is EndToEndUtils {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -498,8 +518,8 @@ contract EndToEndFlows is EndToEndUtils {
         _testAsyncRedeem(sameChain, afterAsyncDeposit);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -542,11 +562,11 @@ contract EndToEndUseCases is EndToEndFlows {
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
-        assertEq(s.balanceSheet.escrow(POOL_A).availableBalanceOf(SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
+        assertEq(s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
 
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, USDC_AMOUNT_1 / 5);
@@ -569,13 +589,15 @@ contract EndToEndUseCases is EndToEndFlows {
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncDepositCancel(bool sameChain) public {
+    function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
         _configurePool(sameChain);
-        _configurePrices(ASSET_PRICE, SHARE_PRICE);
+        nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
 
         IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
 

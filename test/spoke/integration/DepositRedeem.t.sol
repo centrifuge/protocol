@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18} from "src/misc/types/D18.sol";
+
 import "test/spoke/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
@@ -43,8 +45,8 @@ contract DepositRedeem is BaseTest {
             poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout, 0
         );
 
-        (,, uint256 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(depositPrice, 1400000000000000000);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
+        assertEq(depositPrice.raw(), 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
         uint128 secondSharePayout = 41666666666666666666; // 50 * 10**18 / 1.2, rounded down
@@ -53,7 +55,7 @@ contract DepositRedeem is BaseTest {
         );
 
         (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(depositPrice, 1292307679384615384);
+        assertEq(depositPrice.raw(), 1292307679384615384);
 
         // assert deposit & mint values adjusted
         assertApproxEqAbs(vault.maxDeposit(self), assets * 2, 2);
@@ -86,8 +88,8 @@ contract DepositRedeem is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1100000000000000000);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
+        assertEq(redeemPrice.raw(), 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
         uint128 secondCurrencyPayout = 32500000; // (25000000000000000000/10**18) * 10**6 * 1.3
@@ -96,7 +98,7 @@ contract DepositRedeem is BaseTest {
         );
 
         (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
-        assertEq(redeemPrice, 1200000000000000000);
+        assertEq(redeemPrice.raw(), 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);
         assertEq(vault.maxRedeem(self), redeemAmount);

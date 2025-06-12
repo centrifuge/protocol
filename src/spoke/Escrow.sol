@@ -30,11 +30,6 @@ contract Escrow is Auth, IEscrow {
 
         emit AuthTransferTo(asset, tokenId, receiver, amount);
     }
-
-    /// @inheritdoc IEscrow
-    function authTransferTo(address asset, address receiver, uint256 amount) external auth {
-        authTransferTo(asset, 0, receiver, amount);
-    }
 }
 
 /// @title  Escrow

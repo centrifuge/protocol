@@ -241,17 +241,18 @@ interface IHub {
         external
         payable;
 
-    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    /// @dev    Can only be disabled on the local chain. On remote chains, queuing is enforced to reduce
-    ///         issues with asynchronous updates of the state.
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external payable;
-
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
-        external
-        payable;
+    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
+    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
+    function updateRestriction(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external payable;
 
     /// @notice Updates a vault based on VaultUpdateKind
     /// @param  poolId The centrifuge pool id
@@ -259,24 +260,30 @@ interface IHub {
     /// @param  assetId The asset id
     /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param  kind The kind of action applied
+    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
+    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateVault(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 extraGasLimit
     ) external payable;
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param payload content of the update to execute.
+    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
+    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateContract(
         PoolId poolId,
         ShareClassId scId,
         uint16 centrifugeId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external payable;
 
     /// @notice Update the price per share of a share class

@@ -69,8 +69,13 @@ interface IHubMessageSender is ILocalCentrifugeId {
         external;
 
     /// @notice Creates and send the message
-    function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
-        external;
+    function sendUpdateRestriction(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external;
 
     /// @notice Creates and send the message
     function sendUpdateContract(
@@ -78,7 +83,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -87,7 +93,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -95,9 +102,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external;
-
-    /// @notice Creates and send the message
-    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
@@ -141,7 +145,8 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -151,7 +156,8 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         uint128 shares,
         bool isIssuance,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message

@@ -71,7 +71,6 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
 
         factory = new OnOfframpManagerFactory(address(spoke), balanceSheet);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {

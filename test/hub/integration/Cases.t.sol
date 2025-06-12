@@ -47,7 +47,7 @@ contract TestCases is BaseTest {
                 LOSS_ACCOUNT
             );
         }
-        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink);
+        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
