@@ -442,6 +442,120 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
     }
 }
 
+contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
+    function testIssueAndThenRevokeSameAmount() public {
+        _mockShareMint(AMOUNT);
+        _mockShareBurn(AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+
+        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, 0);
+    }
+
+    function testIssueAndThenRevokeAndThenIssueSameAmount() public {
+        _mockShareMint(AMOUNT);
+        _mockShareBurn(AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT);
+        assertEq(isPositive, true);
+    }
+
+    function testIssueAndThenRevokeWithLessAmount() public {
+        _mockShareMint(AMOUNT);
+        _mockShareBurn(AMOUNT / 4);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT / 4);
+
+        vm.startPrank(AUTH);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT / 4);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT * 3 / 4);
+        assertEq(isPositive, true);
+    }
+
+    function testIssueAndThenRevokeWithMoreAmount() public {
+        _mockShareMint(AMOUNT);
+        _mockShareBurn(2 * AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), 2 * AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.revoke(POOL_A, SC_1, 2 * AMOUNT);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT);
+        assertEq(isPositive, false);
+    }
+
+    function testRevokeAndThenIssueAndThenRevokeSameAmount() public {
+        _mockShareBurn(AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareMint(AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT);
+        assertEq(isPositive, false);
+    }
+
+    function testRevokeAndThenIssueSameAmount() public {
+        _mockShareBurn(AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT);
+        _mockShareMint(AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+
+        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, 0);
+    }
+
+    function testRevokeAndThenIssueWithLessAmount() public {
+        _mockShareBurn(AMOUNT / 4);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), AMOUNT / 4);
+        _mockShareMint(AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.revoke(POOL_A, SC_1, AMOUNT / 4);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT * 3 / 4);
+        assertEq(isPositive, true);
+    }
+
+    function testRevokeAndThenIssueWithMoreAmount() public {
+        _mockShareBurn(2 * AMOUNT);
+        _mockShareAuthTransferFrom(AUTH, address(balanceSheet), 2 * AMOUNT);
+        _mockShareMint(AMOUNT);
+
+        vm.startPrank(AUTH);
+        balanceSheet.revoke(POOL_A, SC_1, 2 * AMOUNT);
+        balanceSheet.issue(POOL_A, SC_1, RECEIVER, AMOUNT);
+
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(delta, AMOUNT);
+        assertEq(isPositive, false);
+    }
+}
+
 contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
