@@ -20,7 +20,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
@@ -221,7 +221,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
                 m.cancelledShareAmount
             );
         } else {
-            revert IRequestCallback.UnknownRequestCallbackType();
+            revert IRequestManager.UnknownRequestCallbackType();
         }
     }
 

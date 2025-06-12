@@ -11,7 +11,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {Price} from "src/spoke/types/Price.sol";
-import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -25,7 +25,7 @@ struct ShareClassDetails {
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
     /// @dev Manager that can send requests, and handles the request callbacks.
-    mapping(AssetId assetId => IRequestCallback) manager;
+    mapping(AssetId assetId => IRequestManager) manager;
     /// @dev Each share class can have multiple vaults deployed,
     ///      multiple vaults can be linked to the same asset.
     ///      A vault in this storage DOES NOT mean the vault can be used
@@ -75,8 +75,8 @@ interface ISpoke {
         IVault vault,
         VaultKind kind
     );
-    event UpdateRequestManager(
-        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestCallback manager
+    event InitializeRequestManager(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestManager manager
     );
     event UpdateAssetPrice(
         PoolId indexed poolId,
@@ -133,6 +133,9 @@ interface ISpoke {
     error ShareTokenTransferFailed();
     error TransferFromFailed();
     error InvalidRequestManager();
+    error RequestManagerAlreadySet();
+    error RequestManagerNotSet();
+    error InvalidManager();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist

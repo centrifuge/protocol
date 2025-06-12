@@ -163,7 +163,7 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Allow/disallow an account to interact as request manager
-    function updateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
+    function initializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
         external
         payable;
 

@@ -31,7 +31,7 @@ import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spo
 import {Price} from "src/spoke/types/Price.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
@@ -201,10 +201,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
+    function initializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        shareClass.manager[assetId] = IRequestCallback(manager);
-        emit UpdateRequestManager(poolId, scId, assetId, IRequestCallback(manager));
+        require(address(shareClass.manager[assetId]) == address(0), RequestManagerAlreadySet());
+        shareClass.manager[assetId] = IRequestManager(manager);
+        emit InitializeRequestManager(poolId, scId, assetId, IRequestManager(manager));
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -323,7 +324,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        IRequestCallback manager = shareClass.manager[assetId];
+        IRequestManager manager = shareClass.manager[assetId];
         require(address(manager) != address(0), InvalidRequestManager());
 
         manager.callback(poolId, scId, assetId, payload);
@@ -391,7 +392,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
+        address requestManager = address(shareClass.manager[assetId]);
+        require(requestManager != address(0), RequestManagerNotSet());
+
         IVaultManager manager = vault.manager();
+        require(address(manager) == requestManager, InvalidManager());
         manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = true;

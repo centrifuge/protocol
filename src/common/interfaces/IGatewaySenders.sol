@@ -98,7 +98,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external;
+    function sendInitializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
+        external;
 
     /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external;

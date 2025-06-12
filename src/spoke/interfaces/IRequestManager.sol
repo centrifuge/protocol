@@ -5,7 +5,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-interface IRequestCallback {
+interface IRequestManager {
     error UnknownRequestCallbackType();
 
     /// @notice Handles a request callback originating from the Hub side.

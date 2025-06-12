@@ -46,7 +46,7 @@ enum MessageType {
     MaxSharePriceAge,
     Request,
     RequestCallback,
-    UpdateRequestManager
+    InitializeRequestManager
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -104,7 +104,7 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_2 =
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
-        (73  << (uint8(MessageType.UpdateRequestManager) - 32) * 8);
+        (73  << (uint8(MessageType.InitializeRequestManager) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -597,19 +597,23 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   UpdateRequestManager
+    //   InitializeRequestManager
     //---------------------------------------
 
-    struct UpdateRequestManager {
+    struct InitializeRequestManager {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
         bytes32 manager;
     }
 
-    function deserializeUpdateRequestManager(bytes memory data) internal pure returns (UpdateRequestManager memory) {
-        require(messageType(data) == MessageType.UpdateRequestManager, UnknownMessageType());
-        return UpdateRequestManager({
+    function deserializeInitializeRequestManager(bytes memory data)
+        internal
+        pure
+        returns (InitializeRequestManager memory)
+    {
+        require(messageType(data) == MessageType.InitializeRequestManager, UnknownMessageType());
+        return InitializeRequestManager({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -617,8 +621,8 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateRequestManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateRequestManager, t.poolId, t.scId, t.assetId, t.manager);
+    function serialize(InitializeRequestManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.InitializeRequestManager, t.poolId, t.scId, t.assetId, t.manager);
     }
 
     //---------------------------------------

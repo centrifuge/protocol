@@ -8,7 +8,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IRequestCallback} from "src/spoke/interfaces/IRequestCallback.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
@@ -266,7 +266,7 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestCallback {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManager {
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
