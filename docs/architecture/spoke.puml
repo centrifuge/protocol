@@ -6,6 +6,13 @@ package common {
     class MessageDispatcher
 }
 
+package managers {
+    class OnOfframpManager
+    class MerkleProofManager
+}
+
+class Hidden
+
 class Spoke
 class Escrow
 class PoolEscrow
@@ -29,11 +36,26 @@ Spoke --> MessageDispatcher
 BalanceSheet -up-> PoolEscrowFactory
 BalanceSheet --> MessageDispatcher
 BalanceSheet -right-> Spoke
+BalanceSheet --> Gateway
 
-PoolEscrowFactory -left-> PoolEscrow
+PoolEscrowFactory .right.> PoolEscrow
 PoolEscrow -up-|> Escrow
 
 ShareToken -up-> IVault
 IVault --> IVaultManager
+
+OnOfframpManager -down-> BalanceSheet
+MerkleProofManager -up-> BalanceSheet
+
+TokenFactory ...> ShareToken
+IVaultFactory ..> IVault
+
+' Hidden stuff to make things more visual
+
+hide Hidden
+
+OnOfframpManager -down[hidden]-> MerkleProofManager
+MerkleProofManager -down-> Hidden
+Hidden -up-> BalanceSheet
 
 @enduml

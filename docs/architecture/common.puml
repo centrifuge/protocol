@@ -9,11 +9,13 @@ package hub {
     class Hub
 }
 
-package vaults {
-    class PoolEscrow
+package spoke {
     class Spoke
-    class AsyncRequestManager
     class BalanceSheet
+}
+
+package vaults {
+    class AsyncRequestManager
 }
 
 interface IAdapter
@@ -58,8 +60,6 @@ Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
 Gateway -down-->"n" IAdapter
-Gateway --> PoolEscrow
 
-note bottom of PoolEscrow: Used as refund address
 
 @enduml
