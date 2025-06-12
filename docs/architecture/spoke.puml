@@ -1,9 +1,15 @@
 @startuml
 hide empty members
 
+package misc {
+    abstract Recoverable
+    class Escrow
+}
+
 package common {
     class Gateway
     class MessageDispatcher
+    class PoolEscrow
 }
 
 package managers {
@@ -14,8 +20,6 @@ package managers {
 class Hidden
 
 class Spoke
-class Escrow
-class PoolEscrow
 class ShareToken
 class BalanceSheet
 class PoolEscrowFactory
@@ -25,30 +29,31 @@ interface IVaultFactory
 interface IVault
 interface IVaultManager
 
-Spoke -up-> TokenFactory
-Spoke -up-> PoolEscrowFactory
+Spoke -left-> TokenFactory
+Spoke -down-> PoolEscrowFactory
 Spoke -up->"n" IVaultFactory
-Spoke -->"n" ShareToken
-Spoke -right->"n" IVault
-Spoke --> Gateway
-Spoke --> MessageDispatcher
+Spoke -up->"n" ShareToken
+Spoke -up->"n" IVault
+Spoke ---> Gateway
+Spoke ---> MessageDispatcher
 
-BalanceSheet -up-> PoolEscrowFactory
+BalanceSheet -right-> PoolEscrowFactory
+BalanceSheet -left--> Spoke
 BalanceSheet --> MessageDispatcher
-BalanceSheet -right-> Spoke
 BalanceSheet --> Gateway
 
 PoolEscrowFactory .right.> PoolEscrow
-PoolEscrow -up-|> Escrow
+PoolEscrow -right-|> Escrow
+Escrow -right-|> Recoverable
 
-ShareToken -up-> IVault
-IVault --> IVaultManager
+ShareToken -right-> IVault
+IVault -up-> IVaultManager
 
 OnOfframpManager -down-> BalanceSheet
 MerkleProofManager -up-> BalanceSheet
 
-TokenFactory ...> ShareToken
-IVaultFactory ..> IVault
+TokenFactory .up.> ShareToken
+IVaultFactory .left.> IVault
 
 ' Hidden stuff to make things more visual
 
