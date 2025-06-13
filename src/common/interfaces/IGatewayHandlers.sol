@@ -14,8 +14,6 @@ import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// @notice Interface for Hub methods called by messages
 interface IHubGatewayHandler {
-    error UnknownRequestType();
-
     /// @notice Tells that an asset was already registered in Vaults, in order to perform the corresponding register.
     function registerAsset(AssetId assetId, uint8 decimals) external;
 
