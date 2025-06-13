@@ -197,10 +197,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(1, self);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
     }
 }
