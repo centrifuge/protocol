@@ -356,7 +356,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        IVault vault = IVaultFactory(factory).newVault(
+        IVault vault = factory.newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
         );
         registerVault(poolId, scId, assetId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);

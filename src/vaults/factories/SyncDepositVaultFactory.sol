@@ -11,7 +11,7 @@ import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -39,7 +39,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) public auth returns (IBaseVault) {
+    ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
         SyncDepositVault vault =
             new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
