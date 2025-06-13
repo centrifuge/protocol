@@ -23,7 +23,7 @@ contract DepositTest is BaseTest {
     using CastLib for *;
     using MathLib for uint256;
 
-    function _checkCancelDepositRequestMessage(MockAdapter adapter, IBaseVault vault, uint128 assetId) internal {
+    function _checkCancelDepositRequestMessage(MockAdapter adapter, IBaseVault vault, uint128 assetId) internal view {
         MessageLib.Request memory m = adapter.values_bytes("send").deserializeRequest();
         assertEq(m.poolId, vault.poolId().raw());
         assertEq(m.scId, vault.scId().raw());
