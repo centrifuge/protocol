@@ -558,39 +558,29 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        uint128 assets_ = assets.toUint128();
+        VaultDetails memory vd = spoke.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
         return pricePoolPerShare.isZero()
             ? 0
             : PricingLib.assetToShareAmount(
-                vault_.share(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                assets.toUint128(),
-                pricePoolPerAsset,
-                pricePoolPerShare,
-                MathLib.Rounding.Down
+                vault_.share(), vd.asset, vd.tokenId, assets_, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
             );
     }
 
     /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        uint128 shares_ = shares.toUint128();
+        VaultDetails memory vd = spoke.vaultDetails(vault_);
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
 
         return pricePoolPerAsset.isZero()
             ? 0
             : PricingLib.shareToAssetAmount(
-                vault_.share(),
-                shares.toUint128(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                pricePoolPerShare,
-                pricePoolPerAsset,
-                MathLib.Rounding.Down
+                vault_.share(), shares_, vd.asset, vd.tokenId, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
             );
     }
 

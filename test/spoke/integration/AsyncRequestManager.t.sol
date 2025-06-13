@@ -23,9 +23,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, address deployer)
-        AsyncRequestManager(globalEscrow, deployer)
-    {}
+    constructor(IEscrow globalEscrow, address deployer) AsyncRequestManager(globalEscrow, deployer) {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
