@@ -217,12 +217,12 @@ contract AdminTest is BaseTest {
         vm.warp(block.timestamp + DELAY + 1 hours);
         root.executeScheduledRely(address(this));
 
-        assertEq(asyncRequestManager.wards(address(this)), 1);
-        root.denyContract(address(asyncRequestManager), address(this));
-        assertEq(asyncRequestManager.wards(address(this)), 0);
+        assertEq(asyncManager.wards(address(this)), 1);
+        root.denyContract(address(asyncManager), address(this));
+        assertEq(asyncManager.wards(address(this)), 0);
 
-        root.relyContract(address(asyncRequestManager), address(this));
-        assertEq(asyncRequestManager.wards(address(this)), 1);
+        root.relyContract(address(asyncManager), address(this));
+        assertEq(asyncManager.wards(address(this)), 1);
     }
 
     //Endorsements

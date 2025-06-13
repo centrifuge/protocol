@@ -16,11 +16,11 @@ import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 /// @dev    Utility for deploying new vault contracts
 contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    IAsyncRequestManager public immutable asyncRequestManager;
+    IAsyncRequestManager public immutable asyncManager;
 
-    constructor(address root_, IAsyncRequestManager asyncRequestManager_, address deployer) Auth(deployer) {
+    constructor(address root_, IAsyncRequestManager asyncManager_, address deployer) Auth(deployer) {
         root = root_;
-        asyncRequestManager = asyncRequestManager_;
+        asyncManager = asyncManager_;
     }
 
     /// @inheritdoc IVaultFactory
@@ -33,10 +33,10 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address[] calldata wards_
     ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequestManager);
+        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncManager);
 
         vault.rely(root);
-        vault.rely(address(asyncRequestManager));
+        vault.rely(address(asyncManager));
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
             vault.rely(wards_[i]);

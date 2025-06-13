@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -47,6 +48,8 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         vault.rely(root);
         vault.rely(address(syncDepositManager));
         vault.rely(address(asyncRedeemManager));
+
+        IAuth(address(syncDepositManager)).rely(address(vault));
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

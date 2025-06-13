@@ -17,17 +17,15 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {ISyncRequestManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-/// @title  Sync Investment Manager
-/// @notice This is the main contract vaults interact with for
-///         both incoming and outgoing investment transactions.
-contract SyncRequestManager is Auth, Recoverable, ISyncRequestManager {
+/// @title  Sync Manager
+/// @notice This is the main contract for synchronous ERC-4626 deposits.
+contract SyncManager is Auth, Recoverable, ISyncManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
@@ -52,7 +50,7 @@ contract SyncRequestManager is Auth, Recoverable, ISyncRequestManager {
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IBaseRequestManager
+    /// @inheritdoc ISyncManager
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
@@ -84,14 +82,14 @@ contract SyncRequestManager is Auth, Recoverable, ISyncRequestManager {
         }
     }
 
-    /// @inheritdoc ISyncRequestManager
+    /// @inheritdoc ISyncManager
     function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
         valuation[poolId][scId] = ISyncDepositValuation(valuation_);
 
         emit SetValuation(poolId, scId, address(valuation_));
     }
 
-    /// @inheritdoc ISyncRequestManager
+    /// @inheritdoc ISyncManager
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
         public
         auth
@@ -165,7 +163,7 @@ contract SyncRequestManager is Auth, Recoverable, ISyncRequestManager {
         return _maxDeposit(vault_.poolId(), vault_.scId(), vaultDetails.asset, vaultDetails.tokenId, vault_);
     }
 
-    /// @inheritdoc IBaseRequestManager
+    /// @inheritdoc ISyncManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view returns (uint256 shares) {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
@@ -185,7 +183,7 @@ contract SyncRequestManager is Auth, Recoverable, ISyncRequestManager {
             );
     }
 
-    /// @inheritdoc IBaseRequestManager
+    /// @inheritdoc ISyncManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view returns (uint256 assets) {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
     }

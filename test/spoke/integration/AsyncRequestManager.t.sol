@@ -14,6 +14,7 @@ import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 
@@ -22,9 +23,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, address root, address deployer)
-        AsyncRequestManager(globalEscrow, root, deployer)
-    {}
+    constructor(IEscrow globalEscrow, address root, address deployer) AsyncRequestManager(globalEscrow, root, deployer) {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
@@ -52,7 +51,7 @@ contract AsyncRequestManagerTest is BaseTest {
     // Deployment
     function testDeploymentAsync(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncManager)
                 && nonWard != address(this)
         );
 
@@ -60,33 +59,33 @@ contract AsyncRequestManagerTest is BaseTest {
         new AsyncRequestManager(globalEscrow, address(root), address(this));
 
         // values set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(asyncManager.spoke()), address(spoke));
+        assertEq(address(asyncManager.balanceSheet()), address(balanceSheet));
 
         // permissions set correctly
-        assertEq(asyncRequestManager.wards(address(root)), 1);
-        assertEq(asyncRequestManager.wards(address(spoke)), 1);
-        assertEq(asyncRequestManager.wards(nonWard), 0);
+        assertEq(asyncManager.wards(address(root)), 1);
+        assertEq(asyncManager.wards(address(spoke)), 1);
+        assertEq(asyncManager.wards(nonWard), 0);
     }
 
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
         vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
-        asyncRequestManager.file("random", self);
+        asyncManager.file("random", self);
 
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
+        assertEq(address(asyncManager.spoke()), address(spoke));
         // success
-        asyncRequestManager.file("spoke", randomUser);
-        assertEq(address(asyncRequestManager.spoke()), randomUser);
-        asyncRequestManager.file("balanceSheet", randomUser);
-        assertEq(address(asyncRequestManager.balanceSheet()), randomUser);
+        asyncManager.file("spoke", randomUser);
+        assertEq(address(asyncManager.spoke()), randomUser);
+        asyncManager.file("balanceSheet", randomUser);
+        assertEq(address(asyncManager.balanceSheet()), randomUser);
 
         // remove self from wards
-        asyncRequestManager.deny(self);
+        asyncManager.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        asyncRequestManager.file("spoke", randomUser);
+        asyncManager.file("spoke", randomUser);
     }
 
     // --- Simple Errors ---
@@ -96,8 +95,8 @@ contract AsyncRequestManagerTest is BaseTest {
 
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
-        asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
+        vm.expectRevert(IAsyncRequestManager.AssetNotAllowed.selector);
+        asyncManager.requestDeposit(vault, 1, address(0), address(0), address(0));
     }
 
     // --- Price calculations ---
