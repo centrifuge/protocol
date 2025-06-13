@@ -43,7 +43,7 @@ share=$(cast call $contract_address 'share()(address)' --rpc-url $RPC_URL)
 root=$(cast call $contract_address 'root()(address)' --rpc-url $RPC_URL)
 asyncRedeemManager=$(cast call $contract_address 'asyncRedeemManager()(address)' --rpc-url $RPC_URL)
 syncDepositManager=$(cast call $contract_address 'syncDepositManager()(address)' --rpc-url $RPC_URL)
-spoke=$(cast call $asyncManager 'spoke()(address)' --rpc-url $RPC_URL)
+spoke=$(cast call $asyncRequestManager 'spoke()(address)' --rpc-url $RPC_URL)
 decimals=$(cast call $share 'decimals()(uint8)' --rpc-url $RPC_URL)
 echo "poolId: $poolId"
 echo "shareClassId: $scId"

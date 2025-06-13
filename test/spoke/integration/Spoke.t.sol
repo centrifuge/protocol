@@ -90,7 +90,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
 
         // values set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
-        assertEq(address(asyncManager.spoke()), address(spoke));
+        assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(syncManager.spoke()), address(spoke));
 
         assertEq(address(spoke.poolEscrowFactory()), address(poolEscrowFactory));
@@ -545,11 +545,11 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         ShareClassId scId = oldVault.scId();
         address asset = address(oldVault.asset());
 
-        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncManager, address(this));
+        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, address(this));
 
         // rewire factory contracts
         newVaultFactory.rely(address(spoke));
-        asyncManager.rely(address(newVaultFactory));
+        asyncRequestManager.rely(address(newVaultFactory));
 
         // Unlink old vault
         spoke.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
@@ -670,21 +670,23 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             AsyncVault vault = AsyncVault(vault_);
-            assertEq(address(vault.manager()), address(asyncManager), "investment manager mismatch");
+            assertEq(address(vault.manager()), address(asyncRequestManager), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId().raw(), poolId.raw(), "poolId mismatch");
             assertEq(vault.scId().raw(), scId.raw(), "scId mismatch");
             assertEq(address(vault.share()), address(token_), "share class token mismatch");
 
-            assertEq(vault.wards(address(asyncManager)), 1);
+            assertEq(vault.wards(address(asyncRequestManager)), 1);
             assertEq(vault.wards(address(this)), 0);
-            assertEq(asyncManager.wards(vaultAddress), 1);
+            assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
             assert(!spoke.isLinked(IBaseVault(vaultAddress)));
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
-            assertEq(asyncManager.wards(vaultAddress), 0, "Vault auth on asyncManager set up in linkVault");
+            assertEq(
+                asyncRequestManager.wards(vaultAddress), 0, "Vault auth on asyncRequestManager set up in linkVault"
+            );
         }
     }
 

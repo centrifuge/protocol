@@ -88,7 +88,7 @@ contract DepositTest is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncManager.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares, 0);
+        asyncRequestManager.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares, 0);
 
         // success
         erc20.approve(vault_, amount);
@@ -194,7 +194,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout, 0
         );
 
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -203,7 +203,7 @@ contract DepositTest is BaseTest {
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, secondSharePayout, 0
         );
 
-        (,, depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -469,7 +469,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1200000000000000000, "depositPrice mismatch");
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -503,7 +503,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, D18 redeemPrice,,,,,,) = asyncManager.investments(vault, self);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice.raw(), 1492615384615384615, "redeemPrice mismatch");
     }
 
@@ -534,7 +534,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), firstSharePayout);
 
         // deposit price should be ~1.2*10**18
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1200000019200000307);
 
         // trigger executed collectInvest of the second 50% at a price of 1.4
@@ -567,7 +567,7 @@ contract DepositTest is BaseTest {
         );
 
         // redeem price should now be ~1.5*10**18.
-        (,,, D18 redeemPrice,,,,,,) = asyncManager.investments(vault, self);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice.raw(), 1492615411252828877);
 
         // collect the asset
@@ -610,7 +610,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1200000000000000000);
     }
 
@@ -649,7 +649,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares);
 
         // lp price is set to the deposit price
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1200000000000000000);
     }
 
@@ -673,7 +673,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(self)), 0);
 
         vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
-        asyncManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount));
+        asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount));
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
@@ -723,7 +723,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout, 0
         );
 
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -732,7 +732,7 @@ contract DepositTest is BaseTest {
             vault.poolId().raw(), scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout, 0
         );
 
-        (,, depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1292307679384615384);
 
         // assert deposit & mint values adjusted

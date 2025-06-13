@@ -45,7 +45,7 @@ contract DepositRedeem is BaseTest {
             poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, firstSharePayout, 0
         );
 
-        (,, D18 depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1400000000000000000);
 
         // second trigger executed collectInvest of the second 50% at a price of 1.2
@@ -54,7 +54,7 @@ contract DepositRedeem is BaseTest {
             poolId, scId, bytes32(bytes20(self)), assetId.raw(), assets, secondSharePayout, 0
         );
 
-        (,, depositPrice,,,,,,,) = asyncManager.investments(vault, self);
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(depositPrice.raw(), 1292307679384615384);
 
         // assert deposit & mint values adjusted
@@ -88,7 +88,7 @@ contract DepositRedeem is BaseTest {
 
         assertEq(vault.maxRedeem(self), firstShareRedeem);
 
-        (,,, D18 redeemPrice,,,,,,) = asyncManager.investments(vault, self);
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice.raw(), 1100000000000000000);
 
         // second trigger executed collectRedeem of the second 25 share class tokens at a price of 1.3
@@ -97,7 +97,7 @@ contract DepositRedeem is BaseTest {
             poolId, scId, bytes32(bytes20(self)), assetId.raw(), secondCurrencyPayout, secondShareRedeem, 0
         );
 
-        (,,, redeemPrice,,,,,,) = asyncManager.investments(vault, self);
+        (,,, redeemPrice,,,,,,) = asyncRequestManager.investments(vault, self);
         assertEq(redeemPrice.raw(), 1200000000000000000);
 
         assertApproxEqAbs(vault.maxWithdraw(self), firstCurrencyPayout + secondCurrencyPayout, 2);

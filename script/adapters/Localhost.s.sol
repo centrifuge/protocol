@@ -69,8 +69,8 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
-        hub.setRequestManager(poolId, scId, assetId, address(asyncManager).toBytes32());
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncManager).toBytes32(), true);
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -159,8 +159,8 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
-        hub.setRequestManager(poolId, scId, assetId, address(asyncManager).toBytes32());
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncManager).toBytes32(), true);
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);

@@ -121,7 +121,7 @@ contract BaseTest is SpokeDeployer, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(asyncManager), "AsyncRequestManager");
+        vm.label(address(asyncRequestManager), "AsyncRequestManager");
         vm.label(address(syncManager), "SyncManager");
         vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
@@ -145,7 +145,7 @@ contract BaseTest is SpokeDeployer, Test {
 
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
-        excludeContract(address(asyncManager));
+        excludeContract(address(asyncRequestManager));
         excludeContract(address(syncManager));
         excludeContract(address(balanceSheet));
         excludeContract(address(spoke));
@@ -193,9 +193,11 @@ contract BaseTest is SpokeDeployer, Test {
             );
         }
 
-        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncManager));
-        balanceSheet.updateManager(POOL_A, address(asyncManager), true);
+        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+        balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncManager), true);
+
+        syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

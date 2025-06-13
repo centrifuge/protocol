@@ -16,14 +16,14 @@ import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol
 contract AsyncVaultTest is BaseTest {
     // Deployment
     function testDeployment(bytes16 scId, uint128 assetId, address nonWard) public {
-        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncManager));
+        vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
         (uint64 poolId, address vault_,) = deployVault(VaultKind.Async, erc20.decimals(), scId);
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(asyncManager));
+        assertEq(address(vault.manager()), address(asyncRequestManager));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
         IShareToken token = spoke.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
@@ -31,7 +31,7 @@ contract AsyncVaultTest is BaseTest {
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
-        assertEq(vault.wards(address(asyncManager)), 1);
+        assertEq(vault.wards(address(asyncRequestManager)), 1);
         assertEq(vault.wards(nonWard), 0);
     }
 

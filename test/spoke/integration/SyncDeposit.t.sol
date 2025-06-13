@@ -76,7 +76,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
         vm.assume(
             nonWard != address(root) && nonWard != address(this) && nonWard != address(syncManager)
-                && nonWard != address(asyncManager)
+                && nonWard != address(asyncRequestManager)
         );
         address random = makeAddr("random");
         (SyncDepositVault vault,) = _deploySyncDepositVault(d18(0), d18(0));
