@@ -109,7 +109,6 @@ contract SpokeDeployer is CommonDeployer {
         globalEscrow.rely(address(asyncRequestManager));
 
         // Rely sync requests manager
-        balanceSheet.rely(address(syncRequestManager));
         asyncRequestManager.rely(address(syncRequestManager));
 
         // Rely BalanceSheet
