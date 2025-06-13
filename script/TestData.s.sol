@@ -27,18 +27,16 @@ contract TestData is Script {
 
     AssetId public immutable USD_ID = newAssetId(840); // USD currency code
 
-    struct Contracts {
-        address admin;
-        ISpoke spoke;
-        Hub hub;
-        IShareClassManager shareClassManager;
-        address redemptionRestrictionsHook;
-        IdentityValuation identityValuation;
-        address asyncVaultFactory;
-        address syncDepositVaultFactory;
-        BalanceSheet balanceSheet;
-        IHubRegistry hubRegistry;
-    }
+    address public admin;
+    ISpoke public spoke;
+    Hub public hub;
+    IShareClassManager public shareClassManager;
+    address public redemptionRestrictionsHook;
+    IdentityValuation public identityValuation;
+    address public asyncVaultFactory;
+    address public syncDepositVaultFactory;
+    BalanceSheet public balanceSheet;
+    IHubRegistry public hubRegistry;
 
     function run() public {
         string memory network = vm.envString("NETWORK");
@@ -47,112 +45,108 @@ contract TestData is Script {
 
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
 
-        Contracts memory contracts = Contracts({
-            admin: vm.parseJsonAddress(config, "$.contracts.adminSafe"),
-            spoke: ISpoke(vm.parseJsonAddress(config, "$.contracts.spoke")),
-            hub: Hub(vm.parseJsonAddress(config, "$.contracts.hub")),
-            shareClassManager: IShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager")),
-            redemptionRestrictionsHook: vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"),
-            identityValuation: IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation")),
-            asyncVaultFactory: vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"),
-            syncDepositVaultFactory: vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"),
-            balanceSheet: BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet")),
-            hubRegistry: IHubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"))
-        });
+        admin = vm.envAddress("ADMIN");
+        spoke = ISpoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
+        hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
+        shareClassManager = IShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
+        redemptionRestrictionsHook = vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook");
+        identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
+        asyncVaultFactory = vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory");
+        syncDepositVaultFactory = vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory");
+        balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
+        hubRegistry = IHubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
 
         vm.startBroadcast();
-        _configureTestData(centrifugeId, contracts);
+        _configureTestData(centrifugeId);
         vm.stopBroadcast();
     }
 
-    function _configureTestData(uint16 centrifugeId, Contracts memory contracts) internal {
+    function _configureTestData(uint16 centrifugeId) internal {
         // Deploy and register test USDC
         ERC20 token = new ERC20(6);
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        contracts.spoke.registerAsset(centrifugeId, address(token), 0);
+        spoke.registerAsset(centrifugeId, address(token), 0);
 
         AssetId assetId = newAssetId(centrifugeId, 1);
 
-        _deployAsyncVault(centrifugeId, token, assetId, contracts);
-        _deploySyncDepositVault(centrifugeId, token, assetId, contracts);
+        _deployAsyncVault(centrifugeId, token, assetId);
+        _deploySyncDepositVault(centrifugeId, token, assetId);
     }
 
-    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts)
-        internal
-    {
-        PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 1);
-        contracts.hub.createPool(poolId, msg.sender, USD_ID);
-        contracts.hub.updateHubManager(poolId, contracts.admin, true);
-        ShareClassId scId = contracts.shareClassManager.previewNextShareClassId(poolId);
+    function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
+        hub.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, admin, true);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
 
-        contracts.hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        contracts.hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
-        contracts.hub.notifyPool(poolId, centrifugeId);
-        contracts.hub.notifyShareClass(
-            poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook))
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
+        hub.notifyPool(poolId, centrifugeId);
+        hub.notifyShareClass(
+            poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook))
         );
 
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        contracts.hub.initializeHolding(
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
-            contracts.identityValuation,
+            identityValuation,
             AccountId.wrap(0x01),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
             AccountId.wrap(0x04)
         );
 
-        contracts.hub.updateVault(
-            poolId, scId, assetId, address(contracts.asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
+        hub.updateVault(
+            poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
         );
 
-        contracts.hub.updateSharePrice(poolId, scId, navPerShare);
-        contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
-        contracts.hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.updateSharePrice(poolId, scId, navPerShare);
+        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(contracts.spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         token.approve(address(vault), 1_000_000e6);
         vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        contracts.hub.approveDeposits(
-            poolId, scId, assetId, contracts.shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6
+        hub.approveDeposits(
+            poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6
         );
-        contracts.hub.issueShares(
-            poolId, scId, assetId, contracts.shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1)
+        hub.issueShares(
+            poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1)
         );
 
-        uint32 maxClaims = contracts.shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
-        contracts.hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
+        uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
+        hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
 
         // Claim deposit request
         vault.mint(1_000_000e18, msg.sender);
 
         // Withdraw principal
-        contracts.balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
+        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
 
         // Update price, deposit principal + yield
-        contracts.hub.updateSharePrice(poolId, scId, d18(11, 10));
-        contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
-        contracts.hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.updateSharePrice(poolId, scId, d18(11, 10));
+        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
 
-        token.approve(address(contracts.balanceSheet), 1_100_000e18);
-        contracts.balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
+        token.approve(address(balanceSheet), 1_100_000e18);
+        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Make sender a member to submit redeem request
-        contracts.hub.updateRestriction(
+        hub.updateRestriction(
             poolId,
             scId,
             centrifugeId,
@@ -167,66 +161,64 @@ contract TestData is Script {
         vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        contracts.hub.approveRedeems(
-            poolId, scId, assetId, contracts.shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18
+        hub.approveRedeems(
+            poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18
         );
-        contracts.hub.revokeShares(
-            poolId, scId, assetId, contracts.shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10)
+        hub.revokeShares(
+            poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10)
         );
 
-        contracts.hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
+        hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
         // Claim redeem request
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
     }
 
-    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId, Contracts memory contracts)
-        internal
-    {
-        PoolId poolId = contracts.hubRegistry.poolId(centrifugeId, 2);
-        contracts.hub.createPool(poolId, msg.sender, USD_ID);
-        contracts.hub.updateHubManager(poolId, contracts.admin, true);
-        ShareClassId scId = contracts.shareClassManager.previewNextShareClassId(poolId);
+    function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
+        PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
+        hub.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, admin, true);
+        ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
 
-        contracts.hub.setPoolMetadata(poolId, bytes("Testing pool"));
-        contracts.hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
-        contracts.hub.notifyPool(poolId, centrifugeId);
-        contracts.hub.notifyShareClass(
-            poolId, scId, centrifugeId, bytes32(bytes20(contracts.redemptionRestrictionsHook))
+        hub.setPoolMetadata(poolId, bytes("Testing pool"));
+        hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
+        hub.notifyPool(poolId, centrifugeId);
+        hub.notifyShareClass(
+            poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook))
         );
 
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x01), true);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x02), false);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x03), false);
-        contracts.hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        contracts.hub.initializeHolding(
+        hub.createAccount(poolId, AccountId.wrap(0x01), true);
+        hub.createAccount(poolId, AccountId.wrap(0x02), false);
+        hub.createAccount(poolId, AccountId.wrap(0x03), false);
+        hub.createAccount(poolId, AccountId.wrap(0x04), false);
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
-            contracts.identityValuation,
+            identityValuation,
             AccountId.wrap(0x01),
             AccountId.wrap(0x02),
             AccountId.wrap(0x03),
             AccountId.wrap(0x04)
         );
 
-        contracts.hub.updateVault(
+        hub.updateVault(
             poolId,
             scId,
             assetId,
-            address(contracts.syncDepositVaultFactory).toBytes32(),
+            address(syncDepositVaultFactory).toBytes32(),
             VaultUpdateKind.DeployAndLink,
             0
         );
 
-        contracts.hub.updateSharePrice(poolId, scId, navPerShare);
-        contracts.hub.notifySharePrice(poolId, scId, centrifugeId);
-        contracts.hub.notifyAssetPrice(poolId, scId, assetId);
+        hub.updateSharePrice(poolId, scId, navPerShare);
+        hub.notifySharePrice(poolId, scId, centrifugeId);
+        hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
-        IShareToken shareToken = IShareToken(contracts.spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;
