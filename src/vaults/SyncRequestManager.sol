@@ -287,7 +287,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         }
     }
 
-    function _shareToAssetAmount(IBaseVault vault_, uint256 assets, MathLib.Rounding rounding)
+    function _shareToAssetAmount(IBaseVault vault_, uint256 shares, MathLib.Rounding rounding)
         internal
         view
         returns (uint256 shares)
