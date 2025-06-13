@@ -16,11 +16,13 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
     function run() public {
         vm.startBroadcast();
         uint16 centrifugeId;
+        string memory environment;
 
         try vm.envString("NETWORK") returns (string memory network) {
             string memory configFile = string.concat("env/", network, ".json");
             string memory config = vm.readFile(configFile);
             centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+            environment = vm.parseJsonString(config, "$.network.environment");
         } catch {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
             revert("NETWORK environment variable is required");
@@ -31,21 +33,14 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
         vm.stopBroadcast();
+
+        removeFullDeployerAccess(msg.sender, environment);
     }
 
-    function removeFullDeployerAccess(address deployer) public {
-        bool isTestnet;
+    function removeFullDeployerAccess(address deployer, string memory environment) public {
+        bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
 
-        try vm.envString("NETWORK") returns (string memory network) {
-            string memory configFile = string.concat("env/", network, ".json");
-            string memory config = vm.readFile(configFile);
-            string memory environment = vm.parseJsonString(config, "$.network.environment");
-            isTestnet = keccak256(bytes(environment)) == keccak256(bytes("testnet"));
-        } catch {
-            console.log("NETWORK environment variable is not set, this must be a mocked test");
-        }
-
-        if (!isTestnet) {
+        if (!isNotMainnet) {
             removeHubDeployerAccess(deployer);
             removeSpokeDeployerAccess(deployer);
         }
