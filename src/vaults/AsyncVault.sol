@@ -45,9 +45,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         require(owner == msg.sender || isOperator[owner][msg.sender], InvalidOwner());
         require(IERC20(asset).balanceOf(owner) >= assets, InsufficientBalance());
 
-        require(
-            asyncRequestManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed()
-        );
+        require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
         SafeTransferLib.safeTransferFrom(asset, owner, address(baseManager.globalEscrow()), assets);
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
@@ -56,7 +54,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC7540Deposit
     function pendingDepositRequest(uint256, address controller) public view returns (uint256 pendingAssets) {
-        pendingAssets = asyncRequestManager().pendingDepositRequest(this, controller);
+        pendingAssets = asyncManager().pendingDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
@@ -71,18 +69,18 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     /// @inheritdoc IERC7887Deposit
     function cancelDepositRequest(uint256, address controller) external {
         _validateController(controller);
-        asyncRequestManager().cancelDepositRequest(this, controller, msg.sender);
+        asyncManager().cancelDepositRequest(this, controller, msg.sender);
         emit CancelDepositRequest(controller, REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IERC7887Deposit
     function pendingCancelDepositRequest(uint256, address controller) public view returns (bool isPending) {
-        isPending = asyncRequestManager().pendingCancelDepositRequest(this, controller);
+        isPending = asyncManager().pendingCancelDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7887Deposit
     function claimableCancelDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
-        claimableAssets = asyncRequestManager().claimableCancelDepositRequest(this, controller);
+        claimableAssets = asyncManager().claimableCancelDepositRequest(this, controller);
     }
 
     /// @inheritdoc IERC7887Deposit
@@ -91,7 +89,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         returns (uint256 assets)
     {
         _validateController(controller);
-        assets = asyncRequestManager().claimCancelDepositRequest(this, receiver, controller);
+        assets = asyncManager().claimCancelDepositRequest(this, receiver, controller);
         emit CancelDepositClaim(controller, receiver, REQUEST_ID, msg.sender, assets);
     }
 
@@ -111,13 +109,13 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC7575
     function maxDeposit(address controller) public view returns (uint256 maxAssets) {
-        maxAssets = asyncRequestManager().maxDeposit(this, controller);
+        maxAssets = asyncManager().maxDeposit(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
     function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
         _validateController(controller);
-        shares = asyncRequestManager().deposit(this, assets, receiver, controller);
+        shares = asyncManager().deposit(this, assets, receiver, controller);
         emit Deposit(controller, receiver, assets, shares);
     }
 
@@ -130,13 +128,13 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @inheritdoc IERC7575
     function maxMint(address controller) public view returns (uint256 maxShares) {
-        maxShares = asyncRequestManager().maxMint(this, controller);
+        maxShares = asyncManager().maxMint(this, controller);
     }
 
     /// @inheritdoc IERC7540Deposit
     function mint(uint256 shares, address receiver, address controller) public returns (uint256 assets) {
         _validateController(controller);
-        assets = asyncRequestManager().mint(this, shares, receiver, controller);
+        assets = asyncManager().mint(this, shares, receiver, controller);
         emit Deposit(controller, receiver, assets, shares);
     }
 
@@ -146,7 +144,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     }
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
-    function asyncRequestManager() public view returns (IAsyncRequestManager) {
+    function asyncManager() public view returns (IAsyncRequestManager) {
         return IAsyncRequestManager(address(IAsyncRedeemVault(this).asyncRedeemManager()));
     }
 
