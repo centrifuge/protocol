@@ -18,11 +18,12 @@ import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
+import {IEscrow, IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
-import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
@@ -30,33 +31,68 @@ import {IRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 
-/// @title  Async Request Manager
+/// @title  Async Vault Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
+contract AsyncVaultManager is Auth, IAsyncVaultManager {
     using CastLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
 
-    mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
+    address public immutable root;
+    IEscrow public immutable globalEscrow;
 
-    constructor(IEscrow globalEscrow_, address root_, address deployer)
-        BaseRequestManager(globalEscrow_, root_, deployer)
-    {}
+    ISpoke public spoke;
+    IBalanceSheet public balanceSheet;
+
+    mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
+
+    constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
+        globalEscrow = globalEscrow_;
+        root = root_;
+    }
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
-    function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
+    function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    /// @inheritdoc IVaultManager
+    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
+        external
+        auth
+    {
+        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
+        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
+
+        vault[poolId][scId][assetId] = IBaseVault(address(vault_));
+        rely(address(vault_));
+
+        emit AddVault(poolId, scId, assetId, vault_);
+    }
+
+    /// @inheritdoc IVaultManager
+    function removeVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
+        external
+        auth
+    {
+        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
+        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
+
+        delete vault[poolId][scId][assetId];
+        deny(address(vault_));
+
+        emit RemoveVault(poolId, scId, assetId, vault_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -221,11 +257,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
                 m.cancelledShareAmount
             );
         } else {
-            revert IRequestManager.UnknownRequestCallbackType();
+            revert IVaultManager.UnknownRequestCallbackType();
         }
     }
 
-    /// @inheritdoc IAsyncRequestManager
+    /// @inheritdoc IAsyncVaultManager
     function approvedDeposits(
         PoolId poolId,
         ShareClassId scId,
@@ -241,18 +277,17 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
         balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
 
-        address poolEscrow = address(balanceSheet.escrow(poolId));
-        globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
+        globalEscrow.authTransferTo(asset, tokenId, address(poolEscrow(poolId)), assetAmount);
     }
 
-    /// @inheritdoc IAsyncRequestManager
+    /// @inheritdoc IAsyncVaultManager
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) public auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IAsyncRequestManager
+    /// @inheritdoc IAsyncVaultManager
     function revokedShares(
         PoolId poolId,
         ShareClassId scId,
@@ -271,7 +306,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IAsyncRequestManager
+    /// @inheritdoc IAsyncVaultManager
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -304,7 +339,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         if (cancelledAssets > 0) vault_.onCancelDepositClaimable(user, cancelledAssets);
     }
 
-    /// @inheritdoc IAsyncRequestManager
+    /// @inheritdoc IAsyncVaultManager
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -499,6 +534,28 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     // View methods
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IBaseRequestManager
+    function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+
+        return _assetToShareAmount(
+            vault_, vaultDetails, assets, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
+    }
+
+    /// @inheritdoc IBaseRequestManager
+    function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
+            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
+
+        return _shareToAssetAmount(
+            vault_, vaultDetails, shares, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
+    }
+
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
         if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) {
@@ -565,6 +622,28 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         shares = investments[vault_][user].claimableCancelRedeemRequest;
     }
 
+    /// @inheritdoc IBaseRequestManager
+    function priceLastUpdated(IBaseVault vault_) public view virtual returns (uint64 lastUpdated) {
+        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+
+        (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(vault_.poolId(), vault_.scId());
+        (uint64 assetLastUpdated,,) =
+            spoke.markersPricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId);
+
+        // Choose the latest update to be the marker
+        lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
+    }
+    
+    /// @inheritdoc IBaseRequestManager
+    function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
+        return balanceSheet.escrow(poolId);
+    }
+
+    /// @inheritdoc IVaultManager
+    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IVault) {
+        return vault[poolId][scId][assetId];
+    }
+
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
@@ -574,6 +653,48 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     function _canTransfer(IBaseVault vault_, address from, address to, uint256 value) internal view returns (bool) {
         IShareToken share = IShareToken(vault_.share());
         return share.checkTransferRestriction(from, to, value);
+    }
+
+    function _assetToShareAmount(
+        IBaseVault vault_,
+        VaultDetails memory vaultDetails,
+        uint256 assets,
+        D18 pricePoolPerAsset,
+        D18 pricePoolPerShare,
+        MathLib.Rounding rounding
+    ) internal view returns (uint256 shares) {
+        return pricePoolPerShare.isZero()
+            ? 0
+            : PricingLib.assetToShareAmount(
+                vault_.share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                assets.toUint128(),
+                pricePoolPerAsset,
+                pricePoolPerShare,
+                rounding
+            );
+    }
+
+    function _shareToAssetAmount(
+        IBaseVault vault_,
+        VaultDetails memory vaultDetails,
+        uint256 shares,
+        D18 pricePoolPerAsset,
+        D18 pricePoolPerShare,
+        MathLib.Rounding rounding
+    ) internal view returns (uint256 assets) {
+        return pricePoolPerAsset.isZero()
+            ? 0
+            : PricingLib.shareToAssetAmount(
+                vault_.share(),
+                shares.toUint128(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                pricePoolPerShare,
+                pricePoolPerAsset,
+                rounding
+            );
     }
 
     function _assetToShareAmount(IBaseVault vault_, uint128 assets, D18 priceAssetPerShare, MathLib.Rounding rounding)

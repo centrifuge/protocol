@@ -21,7 +21,7 @@ library PricingLib {
     /// @dev Converts the given asset amount to share amount. Returned value is in share decimals.
     /// @dev Assumes handling of zero denominator price (priceAssetPerShare_) by consumer.
     ///
-    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      NOTE: MUST ONLY be used in AsyncVaultManager which rely on priceAssetPerShare that is derived from
     ///      Fulfilled* message amounts. Any other codepath must use the variant with pricePoolPerAsset
     ///      and pricePoolPerShare
     function assetToShareAmount(
@@ -69,7 +69,7 @@ library PricingLib {
 
     /// @dev Converts the given share amount to asset amount. Returned value is in share decimals.
     ///
-    ///      NOTE: MUST ONLY be used in AsyncRequestManager which rely on priceAssetPerShare that is derived from
+    ///      NOTE: MUST ONLY be used in AsyncVaultManager which rely on priceAssetPerShare that is derived from
     ///      Fulfilled*  message amounts. Any other codepath must use the variant with pricePoolPerAsset and
     ///      pricePoolPerShare
     function shareToAssetAmount(

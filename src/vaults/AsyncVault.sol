@@ -13,7 +13,7 @@ import {IAsyncRedeemVault, IAsyncVault} from "src/vaults/interfaces/IAsyncVault.
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault
@@ -33,7 +33,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         address asset_,
         IShareToken token_,
         address root_,
-        IAsyncRequestManager manager_
+        IAsyncVaultManager manager_
     ) BaseVault(poolId_, scId_, asset_, token_, root_, manager_) BaseAsyncRedeemVault(manager_) {}
 
     //----------------------------------------------------------------------------------------------
@@ -144,8 +144,8 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
     }
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
-    function asyncManager() public view returns (IAsyncRequestManager) {
-        return IAsyncRequestManager(address(IAsyncRedeemVault(this).asyncRedeemManager()));
+    function asyncManager() public view returns (IAsyncVaultManager) {
+        return IAsyncVaultManager(address(IAsyncRedeemVault(this).asyncRedeemManager()));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert

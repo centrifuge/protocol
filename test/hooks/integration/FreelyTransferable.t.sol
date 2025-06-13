@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import "test/spoke/BaseTest.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;
@@ -52,7 +52,7 @@ contract RedemptionRestrictionsTest is BaseTest {
         shareToken.transfer(investor2, amount / 2);
 
         // Not everyone can redeem
-        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.TransferNotAllowed.selector);
         vm.prank(investor);
         vault.requestRedeem(amount / 2, investor, investor);
 

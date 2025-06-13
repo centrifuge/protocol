@@ -8,6 +8,8 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 
 interface IVaultManager {
+    error UnknownRequestCallbackType();
+
     /// @notice Emitted when a new vault is added
     /// @param poolId The pool ID
     /// @param scId The share class ID
@@ -35,6 +37,13 @@ interface IVaultManager {
         address asset,
         uint256 tokenId
     ) external;
+
+    /// @notice Handles a request callback originating from the Hub side.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  payload The payload to be processed by the request callback
+    function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     /// @notice Returns the address of the vault for a given pool, share class and asset
     function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IVault vault);

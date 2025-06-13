@@ -98,7 +98,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendInitializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
+    function sendInitializeVaultManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
         external;
 
     /// @notice Creates and send the message

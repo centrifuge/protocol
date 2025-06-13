@@ -10,7 +10,7 @@ import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 
@@ -27,10 +27,10 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
         address asset_,
         IShareToken token_,
         address root_,
-        ISyncDepositManager syncDepositManager_,
+        ISyncManager syncDepositManager_,
         IAsyncRedeemManager asyncRedeemManager_
     )
-        BaseVault(poolId_, scId_, asset_, token_, root_, syncDepositManager_)
+        BaseVault(poolId_, scId_, asset_, token_, root_, IBaseRequestManager(address(asyncRedeemManager_)))
         BaseSyncDepositVault(syncDepositManager_)
         BaseAsyncRedeemVault(asyncRedeemManager_)
     {}
@@ -40,9 +40,8 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(BaseAsyncRedeemVault, BaseVault) auth {
-        if (what == "manager") baseManager = IBaseRequestManager(data);
-        else if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
-        else if (what == "syncDepositManager") syncDepositManager = ISyncDepositManager(data);
+        if (what == "asyncRedeemManager") asyncRedeemManager = IAsyncRedeemManager(data);
+        else if (what == "syncDepositManager") syncDepositManager = ISyncManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }

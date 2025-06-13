@@ -10,7 +10,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 
 contract AsyncVaultTest is BaseTest {
@@ -80,7 +80,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.withdraw(amount, randomUser, self);
 
-        vm.expectRevert(IAsyncRequestManager.ExceedsMaxRedeem.selector);
+        vm.expectRevert(IAsyncVaultManager.ExceedsMaxRedeem.selector);
         vault.redeem(amount, randomUser, self);
 
         erc20.mint(address(this), amount);

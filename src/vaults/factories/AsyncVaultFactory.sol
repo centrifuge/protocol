@@ -10,16 +10,16 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
 contract AsyncVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    IAsyncRequestManager public immutable asyncRequestManager;
+    IAsyncVaultManager public immutable asyncRequestManager;
 
-    constructor(address root_, IAsyncRequestManager asyncRequestManager_, address deployer) Auth(deployer) {
+    constructor(address root_, IAsyncVaultManager asyncRequestManager_, address deployer) Auth(deployer) {
         root = root_;
         asyncRequestManager = asyncRequestManager_;
     }

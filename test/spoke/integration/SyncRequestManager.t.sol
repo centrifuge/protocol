@@ -8,8 +8,8 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {ISyncManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
@@ -17,7 +17,7 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import "test/spoke/BaseTest.sol";
 
-contract SyncRequestManagerBaseTest is BaseTest {
+contract SyncManagerBaseTest is BaseTest {
     function _assumeUnauthorizedCaller(address nonWard) internal view {
         vm.assume(nonWard != address(root) && nonWard != address(spoke) && nonWard != address(this));
     }
@@ -40,13 +40,13 @@ contract SyncRequestManagerBaseTest is BaseTest {
 
     function _setValuation(SyncDepositVault vault, address valuation_) internal {
         vm.expectEmit();
-        emit ISyncRequestManager.SetValuation(vault.poolId(), vault.scId(), valuation_);
+        emit ISyncManager.SetValuation(vault.poolId(), vault.scId(), valuation_);
         syncRequestManager.setValuation(vault.poolId(), vault.scId(), valuation_);
         assertEq(address(syncRequestManager.valuation(vault.poolId(), vault.scId())), valuation_);
     }
 }
 
-contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
+contract SyncManagerTest is SyncManagerBaseTest {
     using MessageLib for *;
 
     // Deployment
@@ -54,7 +54,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequestManager(globalEscrow, address(root), address(this));
+        new SyncManager(globalEscrow, address(root), address(this));
 
         // values set correctly
         assertEq(address(syncRequestManager.spoke()), address(spoke));
@@ -94,7 +94,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(ISyncRequestManager.ExceedsMaxMint.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncRequestManager.mint(vault, 1, address(0), address(0));
     }
 
@@ -118,7 +118,7 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         vm.prank(address(root));
         vault.file("asyncRedeemManager", address(0));
 
-        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        vm.expectRevert(ISyncManager.SecondaryManagerDoesNotExist.selector);
         syncRequestManager.addVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
     }
 
@@ -132,12 +132,12 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         vm.prank(address(root));
         vault.file("asyncRedeemManager", address(0));
 
-        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
+        vm.expectRevert(ISyncManager.SecondaryManagerDoesNotExist.selector);
         syncRequestManager.removeVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
     }
 }
 
-contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
+contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
     function testFileUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
         syncRequestManager.file(bytes32(0), address(0));
@@ -188,7 +188,7 @@ contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
     }
 }
 
-contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
+contract SyncManagerUpdateValuation is SyncManagerBaseTest {
     using MathLib for uint256;
 
     address valuation_ = makeAddr("valuation");

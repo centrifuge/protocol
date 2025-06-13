@@ -17,7 +17,7 @@ import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -51,7 +51,7 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: 1 wei}(vault, amount, self, self);
 
         vaultRouter.enable(vault);
-        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.TransferNotAllowed.selector);
         vaultRouter.requestDeposit{value: 1 wei}(vault, amount, self, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 

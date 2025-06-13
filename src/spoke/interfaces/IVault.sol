@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-
 enum VaultKind {
     /// @dev Refers to AsyncVault
     Async,
@@ -15,9 +13,6 @@ enum VaultKind {
 /// @notice Interface for the all vault contracts
 /// @dev Must be implemented by all vaults
 interface IVault {
-    /// @notice Returns the associated manager.
-    function manager() external view returns (IVaultManager);
-
     /// @notice Checks whether the vault is partially (a)synchronous.
     ///
     /// @return vaultKind_ The kind of the vault

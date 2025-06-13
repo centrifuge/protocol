@@ -19,7 +19,7 @@ import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
@@ -360,9 +360,9 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 }
 
 abstract contract BaseSyncDepositVault is BaseVault {
-    ISyncDepositManager public syncDepositManager;
+    ISyncManager public syncDepositManager;
 
-    constructor(ISyncDepositManager syncRequestManager_) {
+    constructor(ISyncManager syncRequestManager_) {
         syncDepositManager = syncRequestManager_;
     }
 

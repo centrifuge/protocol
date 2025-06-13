@@ -321,10 +321,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testInitializeRequestManager(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 manager) public pure {
-        MessageLib.InitializeRequestManager memory a =
-            MessageLib.InitializeRequestManager({poolId: poolId, scId: scId, assetId: assetId, manager: manager});
-        MessageLib.InitializeRequestManager memory b = MessageLib.deserializeInitializeRequestManager(a.serialize());
+    function testInitializeVaultManager(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 manager) public pure {
+        MessageLib.InitializeVaultManager memory a =
+            MessageLib.InitializeVaultManager({poolId: poolId, scId: scId, assetId: assetId, manager: manager});
+        MessageLib.InitializeVaultManager memory b = MessageLib.deserializeInitializeVaultManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);

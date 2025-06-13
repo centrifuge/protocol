@@ -2,8 +2,6 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
@@ -11,17 +9,6 @@ import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 interface IBaseRequestManager is IVaultManager {
-    // --- Events ---
-    event File(bytes32 indexed what, address data);
-
-    error FileUnrecognizedParam();
-    error SenderNotVault();
-    error AssetNotAllowed();
-    error ExceedsMaxDeposit();
-    error AssetMismatch();
-    error VaultAlreadyExists();
-    error VaultDoesNotExist();
-
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'spoke'.
     /// @param data The new contract address.

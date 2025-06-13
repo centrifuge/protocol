@@ -11,47 +11,45 @@ import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IEscrow, IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 
-/// @title  Sync Investment Manager
-/// @notice This is the main contract vaults interact with for
-///         both incoming and outgoing investment transactions.
-contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
+/// @title  Sync Manager
+/// @notice This is the main management contract for ERC-4626 synchronous deposits.
+contract SyncManager is Auth, ISyncManager {
     using MathLib for *;
     using CastLib for *;
     using UpdateContractMessageLib for *;
     using BytesLib for bytes;
 
+    address public immutable root;
+    IEscrow public immutable globalEscrow;
+
+    ISpoke public spoke;
+    IBalanceSheet public balanceSheet;
+
     mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
 
-    constructor(IEscrow globalEscrow_, address root_, address deployer)
-        BaseRequestManager(globalEscrow_, root_, deployer)
-    {}
+    constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
+        globalEscrow = globalEscrow_;
+        root = root_;
+    }
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBaseRequestManager
-    function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
+    function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
@@ -82,55 +80,14 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         }
     }
 
-    /// @inheritdoc IVaultManager
-    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256 tokenId)
-        public
-        override(BaseRequestManager, IVaultManager)
-        auth
-    {
-        super.addVault(poolId, scId, assetId, vault_, asset_, tokenId);
-
-        (, uint256 tokenId_) = spoke.idToAsset(assetId);
-        setMaxReserve(poolId, scId, asset_, tokenId_, type(uint128).max);
-
-        VaultKind vaultKind_ = vault_.vaultKind();
-        if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
-            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
-            asyncRequestManager.addVault(poolId, scId, assetId, vault_, asset_, tokenId);
-        }
-    }
-
-    /// @inheritdoc IVaultManager
-    function removeVault(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        IVault vault_,
-        address asset_,
-        uint256 tokenId
-    ) public override(BaseRequestManager, IVaultManager) auth {
-        super.removeVault(poolId, scId, assetId, vault_, asset_, tokenId);
-
-        (, uint256 tokenId_) = spoke.idToAsset(assetId);
-        delete maxReserve[poolId][scId][asset_][tokenId_];
-
-        VaultKind vaultKind_ = vault_.vaultKind();
-        if (vaultKind_ == VaultKind.SyncDepositAsyncRedeem) {
-            IAsyncRedeemManager asyncRequestManager = IAsyncRedeemVault(address(vault_)).asyncRedeemManager();
-            require(address(asyncRequestManager) != address(0), SecondaryManagerDoesNotExist());
-            asyncRequestManager.removeVault(poolId, scId, assetId, vault_, asset_, tokenId);
-        }
-    }
-
-    /// @inheritdoc ISyncRequestManager
+    /// @inheritdoc ISyncManager
     function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
         valuation[poolId][scId] = ISyncDepositValuation(valuation_);
 
         emit SetValuation(poolId, scId, address(valuation_));
     }
 
-    /// @inheritdoc ISyncRequestManager
+    /// @inheritdoc ISyncManager
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
         public
         auth
@@ -172,7 +129,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ISyncDepositManager
+    /// @inheritdoc ISyncManager
     function previewMint(IBaseVault vault_, address, /* sender */ uint256 shares)
         public
         view
@@ -181,7 +138,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Up);
     }
 
-    /// @inheritdoc ISyncDepositManager
+    /// @inheritdoc ISyncManager
     function previewDeposit(IBaseVault vault_, address, /* sender */ uint256 assets)
         public
         view
@@ -208,7 +165,6 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     function convertToShares(IBaseVault vault_, uint256 assets)
         public
         view
-        override(IBaseRequestManager, BaseRequestManager)
         returns (uint256 shares)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
@@ -224,10 +180,14 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     function convertToAssets(IBaseVault vault_, uint256 shares)
         public
         view
-        override(IBaseRequestManager, BaseRequestManager)
         returns (uint256 assets)
     {
         return _shareToAssetAmount(vault_, shares, MathLib.Rounding.Down);
+    }
+
+    /// @inheritdoc IBaseRequestManager
+    function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
+        return balanceSheet.escrow(poolId);
     }
 
     /// @inheritdoc ISyncDepositValuation

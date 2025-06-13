@@ -16,7 +16,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
@@ -33,9 +33,9 @@ contract MockCentrifugeChain is Test {
 
     IAdapter[] public adapters;
     Spoke public spoke;
-    SyncRequestManager public syncRequestManager;
+    SyncManager public syncRequestManager;
 
-    constructor(IAdapter[] memory adapters_, Spoke spoke_, SyncRequestManager syncRequestManager_) {
+    constructor(IAdapter[] memory adapters_, Spoke spoke_, SyncManager syncRequestManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }

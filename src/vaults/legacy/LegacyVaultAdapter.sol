@@ -9,14 +9,14 @@ import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManage
 import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.
 ///
 /// @dev    This adapter acts as an `IInvestmentManager` for a single legacy `ILegacyVault` vault from Centrifuge V2.
-///         At the same time it acts like a new `IAsyncVault` for the `IAsyncRequestManager` manager of Centrifuge V3.
+///         At the same time it acts like a new `IAsyncVault` for the `IAsyncVaultManager` manager of Centrifuge V3.
 ///         The adapter needs to be deployed per legacy vault and allows a seamless interaction between Centrifuge V2
 ///         vaults and Centrifuge V3 infrastructure. Thereby, allowing to migrate existing vaults to the new system.
 contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManager {
@@ -33,7 +33,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         address asset,
         IShareToken token,
         address root,
-        IAsyncRequestManager manager
+        IAsyncVaultManager manager
     ) AsyncVault(poolId, scId, asset, token, root, manager) {
         require(legacyVault_.poolId() == legacyPoolId_, NotLegacyPoolId(legacyPoolId_, legacyVault_.poolId()));
         require(

@@ -21,9 +21,9 @@ interface VaultLike {
     function priceComputedAt() external view returns (uint64);
 }
 
-contract AsyncRequestManagerHarness is AsyncRequestManager {
+contract AsyncVaultManagerHarness is AsyncVaultManager {
     constructor(IEscrow globalEscrow, address root, address deployer)
-        AsyncRequestManager(globalEscrow, root, deployer)
+        AsyncVaultManager(globalEscrow, root, deployer)
     {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
@@ -48,7 +48,7 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
     }
 }
 
-contract AsyncRequestManagerTest is BaseTest {
+contract AsyncVaultManagerTest is BaseTest {
     // Deployment
     function testDeploymentAsync(address nonWard) public {
         vm.assume(
@@ -57,7 +57,7 @@ contract AsyncRequestManagerTest is BaseTest {
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequestManager(globalEscrow, address(root), address(this));
+        new AsyncVaultManager(globalEscrow, address(root), address(this));
 
         // values set correctly
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
@@ -102,7 +102,7 @@ contract AsyncRequestManagerTest is BaseTest {
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(root), address(this));
+        AsyncVaultManagerHarness harness = new AsyncVaultManagerHarness(globalEscrow, address(root), address(this));
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
     }

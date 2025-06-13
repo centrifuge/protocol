@@ -9,7 +9,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
@@ -17,12 +17,12 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 /// @dev    Utility for deploying new vault contracts
 contract SyncDepositVaultFactory is Auth, IVaultFactory {
     address public immutable root;
-    ISyncDepositManager public immutable syncDepositManager;
+    ISyncManager public immutable syncDepositManager;
     IAsyncRedeemManager public immutable asyncRedeemManager;
 
     constructor(
         address root_,
-        ISyncDepositManager syncDepositManager_,
+        ISyncManager syncDepositManager_,
         IAsyncRedeemManager asyncRedeemManager_,
         address deployer
     ) Auth(deployer) {

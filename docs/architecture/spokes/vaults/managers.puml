@@ -11,34 +11,34 @@ interface IDepositManager
 interface IRedeemManager
 
 interface IAsyncDepositManager
-interface ISyncDepositManager
+interface ISyncManager
 interface IAsyncRedeemManager
 
-interface IAsyncRequestManager
-interface ISyncRequestManager
+interface IAsyncVaultManager
+interface ISyncManager
 
 IBaseRequestManager -up-|> IVaultManager
 IDepositManager -up-|> IBaseRequestManager
 IRedeemManager -up-|> IBaseRequestManager
 
 IAsyncDepositManager -up-|> IDepositManager
-ISyncDepositManager -up-|> IDepositManager
+ISyncManager -up-|> IDepositManager
 IAsyncRedeemManager -up-|> IRedeemManager
 
-IAsyncRequestManager -up-|> IAsyncDepositManager
-IAsyncRequestManager -up-|> IAsyncRedeemManager
+IAsyncVaultManager -up-|> IAsyncDepositManager
+IAsyncVaultManager -up-|> IAsyncRedeemManager
 
-ISyncRequestManager -up-|> ISyncDepositManager
+ISyncManager -up-|> ISyncManager
 
 abstract BaseRequestManager
-class AsyncRequestManager
-class SyncRequestManager
+class AsyncVaultManager
+class SyncManager
 
-AsyncRequestManager -up-|> BaseRequestManager
-SyncRequestManager -up-|> BaseRequestManager
+AsyncVaultManager -up-|> BaseRequestManager
+SyncManager -up-|> BaseRequestManager
 
 BaseRequestManager -up-|> IBaseRequestManager
-AsyncRequestManager -up-|> IAsyncRequestManager
-SyncRequestManager -up-|> ISyncRequestManager
+AsyncVaultManager -up-|> IAsyncVaultManager
+SyncManager -up-|> ISyncManager
 
 @enduml

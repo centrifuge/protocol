@@ -12,7 +12,7 @@ package hub {
 package vaults {
     class PoolEscrow
     class Spoke
-    class AsyncRequestManager
+    class AsyncVaultManager
     class BalanceSheet
 }
 
@@ -38,7 +38,7 @@ MessageProcessor --up-> Root
 MessageProcessor --up-> TokenRecoverer
 MessageProcessor --up-> Hub
 MessageProcessor --up-> Spoke
-MessageProcessor --up-> AsyncRequestManager
+MessageProcessor --up-> AsyncVaultManager
 MessageProcessor --up-> BalanceSheet
 MessageProcessor --up-> Gateway
 
@@ -47,7 +47,7 @@ MessageDispatcher ---> TokenRecoverer
 MessageDispatcher ---> Gateway
 MessageDispatcher ---> Hub
 MessageDispatcher ---> Spoke
-MessageDispatcher ---> AsyncRequestManager
+MessageDispatcher ---> AsyncVaultManager
 MessageDispatcher ---> BalanceSheet
 
 Guardian ---> Hub

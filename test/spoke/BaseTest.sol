@@ -19,7 +19,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
 // core contracts
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultManager} from "src/vaults/AsyncVaultManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
@@ -121,8 +121,8 @@ contract BaseTest is SpokeDeployer, Test {
 
         // Label contracts
         vm.label(address(root), "Root");
-        vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncRequestManager), "SyncRequestManager");
+        vm.label(address(asyncRequestManager), "AsyncVaultManager");
+        vm.label(address(syncRequestManager), "SyncManager");
         vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -193,7 +193,7 @@ contract BaseTest is SpokeDeployer, Test {
             );
         }
 
-        spoke.initializeRequestManager(
+        spoke.initializeVaultManager(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager)
         );
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);

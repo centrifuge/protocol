@@ -6,7 +6,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/Guardian.sol";
 import {Gateway} from "src/common/Gateway.sol";
 
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultManager} from "src/vaults/AsyncVaultManager.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
@@ -14,7 +14,7 @@ import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFact
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Escrow} from "src/spoke/Escrow.sol";
@@ -27,8 +27,8 @@ import {CommonDeployer} from "script/CommonDeployer.s.sol";
 contract SpokeDeployer is CommonDeployer {
     Spoke public spoke;
     BalanceSheet public balanceSheet;
-    SyncRequestManager public syncRequestManager;
-    AsyncRequestManager public asyncRequestManager;
+    SyncManager public syncRequestManager;
+    AsyncVaultManager public asyncRequestManager;
     PoolEscrowFactory public poolEscrowFactory;
     Escrow public routerEscrow;
     Escrow public globalEscrow;
@@ -50,8 +50,8 @@ contract SpokeDeployer is CommonDeployer {
         globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
-        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        syncRequestManager = new SyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
+        asyncRequestManager = new AsyncVaultManager(IEscrow(globalEscrow), address(root), deployer);
+        syncRequestManager = new SyncManager(IEscrow(globalEscrow), address(root), deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
         syncDepositVaultFactory =
             new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, deployer);

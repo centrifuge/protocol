@@ -135,9 +135,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.vaultOrFactory.toAddress(),
                 VaultUpdateKind(m.kind)
             );
-        } else if (kind == MessageType.InitializeRequestManager) {
-            MessageLib.InitializeRequestManager memory m = MessageLib.deserializeInitializeRequestManager(message);
-            spoke.initializeRequestManager(
+        } else if (kind == MessageType.InitializeVaultManager) {
+            MessageLib.InitializeVaultManager memory m = MessageLib.deserializeInitializeVaultManager(message);
+            spoke.initializeVaultManager(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.manager.toAddress()
             );
         } else if (kind == MessageType.UpdateBalanceSheetManager) {

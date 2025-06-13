@@ -10,7 +10,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import "test/spoke/BaseTest.sol";
@@ -32,7 +32,7 @@ contract RedeemTest is BaseTest {
         );
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(IAsyncRequestManager.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.ZeroAmountNotAllowed.selector);
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
@@ -44,7 +44,7 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncVaultManager.NoPendingRequest.selector);
         asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), assets, uint128(amount), 0);
 
         // success
@@ -89,9 +89,9 @@ contract RedeemTest is BaseTest {
         assertTrue(vault.maxRedeem(self) <= 1);
 
         // withdrawing or redeeming more should revert
-        vm.expectRevert(IAsyncRequestManager.ExceedsRedeemLimits.selector);
+        vm.expectRevert(IAsyncVaultManager.ExceedsRedeemLimits.selector);
         vault.withdraw(2, investor, self);
-        vm.expectRevert(IAsyncRequestManager.ExceedsMaxRedeem.selector);
+        vm.expectRevert(IAsyncVaultManager.ExceedsMaxRedeem.selector);
         vault.redeem(2, investor, self);
     }
 
@@ -173,7 +173,7 @@ contract RedeemTest is BaseTest {
         IShareToken shareToken = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
 
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncVaultManager.NoPendingRequest.selector);
         vault.cancelRedeemRequest(0, self);
 
         vault.requestRedeem(amount, address(this), address(this));
@@ -181,7 +181,7 @@ contract RedeemTest is BaseTest {
         // will fail - user not member
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, uint64(block.timestamp));
         vm.warp(block.timestamp + 1);
-        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.TransferNotAllowed.selector);
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
@@ -201,10 +201,10 @@ contract RedeemTest is BaseTest {
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncVaultManager.CancellationIsPending.selector);
         vault.cancelRedeemRequest(0, self);
 
-        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncVaultManager.CancellationIsPending.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         centrifugeChain.isFulfilledRedeemRequest(

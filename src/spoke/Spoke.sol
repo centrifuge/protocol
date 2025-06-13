@@ -31,7 +31,6 @@ import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spo
 import {Price} from "src/spoke/types/Price.sol";
 import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
@@ -201,11 +200,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function initializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
+    function initializeVaultManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        require(address(shareClass.manager[assetId]) == address(0), RequestManagerAlreadySet());
-        shareClass.manager[assetId] = IRequestManager(manager);
-        emit InitializeRequestManager(poolId, scId, assetId, IRequestManager(manager));
+        require(address(shareClass.manager[assetId]) == address(0), VaultManagerAlreadySet());
+        shareClass.manager[assetId] = IVaultManager(manager);
+        emit InitializeVaultManager(poolId, scId, assetId, IVaultManager(manager));
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -324,8 +323,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        IRequestManager manager = shareClass.manager[assetId];
-        require(address(manager) != address(0), InvalidRequestManager());
+        IVaultManager manager = shareClass.manager[assetId];
+        require(address(manager) != address(0), InvalidVaultManager());
 
         manager.callback(poolId, scId, assetId, payload);
         // emit RequestCallback(poolId, scId, assetId, payload);
@@ -392,11 +391,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        address requestManager = address(shareClass.manager[assetId]);
-        require(requestManager != address(0), RequestManagerNotSet());
-
-        IVaultManager manager = vault.manager();
-        require(address(manager) == requestManager, InvalidManager());
+        address manager = address(shareClass.manager[assetId]);
+        require(manager != address(0), VaultManagerNotSet());
         manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = true;
@@ -413,8 +409,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        IVaultManager manager = vault.manager();
-        manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
+        address vaultManager = address(shareClass.manager[assetId]);
+        require(vaultManager != address(0), VaultManagerNotSet());
+        vaultManager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = false;
 

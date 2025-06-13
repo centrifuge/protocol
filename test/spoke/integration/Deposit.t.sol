@@ -11,7 +11,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import "test/spoke/BaseTest.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncVaultManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
@@ -48,7 +48,7 @@ contract DepositTest is BaseTest {
         erc20.mint(self, amount);
 
         // will fail - user not member: can not send funds
-        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.TransferNotAllowed.selector);
         vault.requestDeposit(amount, self, self);
 
         assertEq(vault.isPermissioned(self), false);
@@ -57,7 +57,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.isPermissioned(self), true);
 
         // will fail - user not member: can not receive share class
-        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.TransferNotAllowed.selector);
         vault.requestDeposit(amount, nonMember, self);
 
         // will fail - user did not give asset allowance to vault
@@ -65,7 +65,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // will fail - zero deposit not allowed
-        vm.expectRevert(IAsyncRequestManager.ZeroAmountNotAllowed.selector);
+        vm.expectRevert(IAsyncVaultManager.ZeroAmountNotAllowed.selector);
         vault.requestDeposit(0, self, self);
 
         // will fail - owner != msg.sender not allowed
@@ -76,7 +76,7 @@ contract DepositTest is BaseTest {
         uint128 shares = uint128((amount * 10 ** 18) / price); // sharePrice = 2$
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncVaultManager.NoPendingRequest.selector);
         asyncRequestManager.fulfillDepositRequest(poolId, scId, self, AssetId.wrap(assetId), uint128(amount), shares, 0);
 
         // success
@@ -147,7 +147,7 @@ contract DepositTest is BaseTest {
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
-        vm.expectRevert(IAsyncRequestManager.ExceedsDepositLimits.selector);
+        vm.expectRevert(IAsyncVaultManager.ExceedsDepositLimits.selector);
         vault.mint(1, self);
         vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(2, self, self);
@@ -661,7 +661,7 @@ contract DepositTest is BaseTest {
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(address(self)), 0);
 
-        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        vm.expectRevert(IAsyncVaultManager.NoPendingRequest.selector);
         asyncRequestManager.fulfillRedeemRequest(poolId, scId, self, AssetId.wrap(assetId), 0, 0, uint128(amount));
 
         // check message was send out to centchain
@@ -676,12 +676,12 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
         // Cannot cancel twice
-        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncVaultManager.CancellationIsPending.selector);
         vault.cancelDepositRequest(0, self);
 
         erc20.mint(self, amount);
         erc20.approve(vault_, amount);
-        vm.expectRevert(IAsyncRequestManager.CancellationIsPending.selector);
+        vm.expectRevert(IAsyncVaultManager.CancellationIsPending.selector);
         vault.requestDeposit(amount, self, self);
         erc20.burn(self, amount);
 

@@ -8,12 +8,11 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-interface IDepositManager is IBaseRequestManager {
+interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
     /// the deposit order
     ///         has been successfully processed (partial fulfillment possible).
@@ -100,7 +99,7 @@ interface IAsyncDepositManager is IDepositManager {
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
-interface IRedeemManager is IBaseRequestManager {
+interface IRedeemManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -212,12 +211,15 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+    event File(bytes32 indexed what, address data);
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
 
+    error FileUnrecognizedParam();
+    error ExceedsMaxDeposit();
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
@@ -266,7 +268,9 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManager {
+interface IAsyncVaultManager is IAsyncDepositManager, IAsyncRedeemManager, IBaseRequestManager {
+    event File(bytes32 indexed what, address data);
+
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
@@ -277,6 +281,13 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRe
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();
     error ExceedsRedeemLimits();
+    error FileUnrecognizedParam();
+    error SenderNotVault();
+    error AssetNotAllowed();
+    error ExceedsMaxDeposit();
+    error AssetMismatch();
+    error VaultAlreadyExists();
+    error VaultDoesNotExist();
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)
