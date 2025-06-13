@@ -1,11 +1,6 @@
 @startuml
 hide empty members
 
-package misc {
-    abstract Recoverable
-    class Escrow
-}
-
 package common {
     class Gateway
     class MessageDispatcher
@@ -43,8 +38,6 @@ BalanceSheet --> MessageDispatcher
 BalanceSheet --> Gateway
 
 PoolEscrowFactory .right.> PoolEscrow
-PoolEscrow -right-|> Escrow
-Escrow -right-|> Recoverable
 
 ShareToken -right-> IVault
 IVault -up-> IVaultManager

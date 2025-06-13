@@ -3,6 +3,7 @@ hide empty members
 
 package misc {
     abstract Recoverable
+    class Escrow
 }
 
 package hub {
@@ -29,6 +30,7 @@ class AxelarAdapter
 class WormholeAdapter
 class Guardian
 class GasService
+class PoolEscrow
 
 AxelarAdapter -up-|> IAdapter
 AxelarAdapter -up--> Gateway
@@ -60,6 +62,9 @@ Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
 Gateway -down-->"n" IAdapter
+Gateway -up->PoolEscrow
 
+PoolEscrow -up-|> Escrow
+Escrow -right-|> Recoverable
 
 @enduml
