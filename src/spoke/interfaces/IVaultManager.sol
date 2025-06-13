@@ -8,6 +8,9 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 
 interface IVaultManager {
+    error VaultAlreadyExists();
+    error VaultDoesNotExist();
+
     /// @notice Emitted when a new vault is added
     /// @param poolId The pool ID
     /// @param scId The share class ID

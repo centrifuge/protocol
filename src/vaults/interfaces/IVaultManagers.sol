@@ -9,11 +9,11 @@ import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-interface IDepositManager is IBaseRequestManager {
+interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
     /// the deposit order
     ///         has been successfully processed (partial fulfillment possible).
@@ -100,7 +100,7 @@ interface IAsyncDepositManager is IDepositManager {
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
-interface IRedeemManager is IBaseRequestManager {
+interface IRedeemManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -217,7 +217,10 @@ interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUp
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
+    event File(bytes32 indexed what, address data);
 
+    error ExceedsMaxDeposit();
+    error FileUnrecognizedParam();
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
@@ -266,7 +269,13 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManager {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManager, IVaultManager {
+    event File(bytes32 indexed what, address data);
+
+    error FileUnrecognizedParam();
+    error AssetNotAllowed();
+    error ExceedsMaxDeposit();
+    error AssetMismatch();
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();
