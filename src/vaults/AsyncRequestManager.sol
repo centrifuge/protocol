@@ -6,6 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
@@ -14,6 +15,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
@@ -27,8 +29,6 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Investment Manager

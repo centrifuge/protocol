@@ -4,9 +4,11 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrow, IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 

@@ -20,17 +20,17 @@ import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {Price} from "src/spoke/types/Price.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 /// @title  Spoke
@@ -165,8 +165,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(pool.createdAt == 0, PoolAlreadyAdded());
         pool.createdAt = block.timestamp;
 
-        IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
-        gateway.setRefundAddress(poolId, escrow);
+        IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
+        if (address(escrow).code.length == 0) {
+            poolEscrowFactory.newEscrow(poolId);
+            gateway.setRefundAddress(poolId, escrow);
+        }
 
         emit AddPool(poolId);
     }
