@@ -14,12 +14,14 @@
     "adapters": {
         "wormhole": {
             "wormholeId": "https://wormhole.com/docs/build/reference/chain-ids/",
-            "relayer": "https://wormhole.com/docs/build/reference/contract-addresses"
+            "relayer": "https://wormhole.com/docs/build/reference/contract-addresses",
+            "deploy": false
         },
         "axelar": {
             "axelarId": "Chain Name",
             "gateway": "0x...",
-            "gasService": "0x..."
+            "gasService": "0x...",
+            "deploy": false
         }
     },
     "contracts": {},

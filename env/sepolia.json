@@ -10,7 +10,19 @@
       "base-sepolia"
     ]
   },
-  "adapters": {},
+  "adapters": {
+    "wormhole": {
+      "wormholeId": "10002",
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "deploy": true
+    },
+    "axelar": {
+      "axelarId": "ethereum-sepolia",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    }
+  },
   "contracts": {
     "root": "0x3d573E796b6Cf0D7E2fb4BE41876c8322f7f9CC4",
     "guardian": "0x63c3eDFcCA59cCE56bD5393c8441AE7a21E1ae69",
@@ -38,6 +50,8 @@
     "syncDepositVaultFactory": "0x39fA3Ba89f2727A8DeA47B08246ec2900f8bcC61",
     "spoke": "0x16148152c265dDc2264F0AB7b83B446D913293c5",
     "vaultRouter": "0x35Ac419be06de7C8025BcE5E331a68F47035E6bA",
-    "balanceSheet": "0x4AB17317587A8d0B1301DC57a9C42462ce9E5dC3"
+    "balanceSheet": "0x4AB17317587A8d0B1301DC57a9C42462ce9E5dC3",
+    "wormholeAdapter": "0x55acfAC4500327594CECc81F5e49a3bfAE6b7C96",
+    "axelarAdapter": "0x9a7f887B717E50f0bb7520EB872344F276A9e56A"
   }
 }

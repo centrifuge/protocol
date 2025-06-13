@@ -33,7 +33,7 @@ contract Adapters is Script, JsonRegistry {
         startDeploymentOutput(false);
 
         // Deploy and save adapters in config file
-        if (vm.parseJsonUint(config, "$.adapters.wormhole.wormholeId") != 0) {
+        if (vm.parseJsonBool(config, "$.adapters.wormhole.deploy")) {
             address relayer = vm.parseJsonAddress(config, "$.adapters.wormhole.relayer");
             WormholeAdapter wormholeAdapter = new WormholeAdapter(multiAdapter, relayer, msg.sender);
             IAuth(address(wormholeAdapter)).rely(address(root));
@@ -44,7 +44,7 @@ contract Adapters is Script, JsonRegistry {
             console.log("WormholeAdapter deployed at:", address(wormholeAdapter));
         }
 
-        if (bytes(vm.parseJsonString(config, "$.adapters.axelar.axelarId")).length != 0) {
+        if (vm.parseJsonBool(config, "$.adapters.axelar.deploy")) {
             address gateway = vm.parseJsonAddress(config, "$.adapters.axelar.gateway");
             address gasService = vm.parseJsonAddress(config, "$.adapters.axelar.gasService");
             AxelarAdapter axelarAdapter = new AxelarAdapter(multiAdapter, gateway, gasService, msg.sender);

@@ -11,7 +11,6 @@ source "$SCRIPT_DIR/formathelper.sh"
 
 # Function to cleanup environment variables
 cleanup_env() {
-    print_info "Cleaning up environment variables"
     unset RPC_URL
     unset ETHERSCAN_API_KEY
     unset ADMIN

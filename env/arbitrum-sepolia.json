@@ -1,26 +1,57 @@
 {
-    "network": {
-        "chainId": 421614,
-        "environment": "testnet",
-        "centrifugeId": 3,
-        "network": "arbitrum",
-        "etherscanUrl": "https://api-sepolia.arbiscan.io/api",
-        "catapultaNetwork": "arbitrumSepolia",
-        "connectsTo": [
-            "sepolia",
-            "base-sepolia"
-        ]
+  "network": {
+    "chainId": 421614,
+    "environment": "testnet",
+    "centrifugeId": 3,
+    "network": "arbitrum",
+    "etherscanUrl": "https://api-sepolia.arbiscan.io/api",
+    "catapultaNetwork": "arbitrumSepolia",
+    "connectsTo": [
+      "sepolia",
+      "base-sepolia"
+    ]
+  },
+  "adapters": {
+    "wormhole": {
+      "wormholeId": "10003",
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "deploy": false
     },
-    "adapters": {
-        "wormhole": {
-            "wormholeId": "10003",
-            "relayer": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35"
-        },
-        "axelar": {
-            "axelarId": "arbitrum-sepolia",
-            "gateway": "0xe1cE95479C84e9809269227C7F8524aE051Ae77a",
-            "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6"
-        }
-    },
-    "contracts": {}
+    "axelar": {
+      "axelarId": "arbitrum-sepolia",
+      "gateway": "0xe1cE95479C84e9809269227C7F8524aE051Ae77a",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": "0x93E69a8BbbB5c70605a0f21901e2F09e3e08d3F1",
+    "guardian": "0xD8b81Efa6AF50d9C8651050Ba417C82446feB0ac",
+    "gasService": "0x1e6A466e565d76CF5Ced75db39C3cfBDE4D36EFe",
+    "gateway": "0x4EddF4b1968d6D29538D815F34f1d00307887cc7",
+    "multiAdapter": "0x9b44Ecd8e8bD8AC7483dF1fe64147dC2c6C82424",
+    "messageProcessor": "0x0A6db43764E5b59CbC14A5327cd5C15b79190D01",
+    "messageDispatcher": "0x206fC4426Ac5bf8bAB17191853b146Ad0486B8C2",
+    "hubRegistry": "0x1944297ad6b4AC59E1585C0b18d458FaB2B3bbC8",
+    "accounting": "0xD316744BF1eAEfaAcEfF40b78f6A2F2912f21B14",
+    "holdings": "0xd4F42B574A87f42601316CDFd7970F05bAFe5f29",
+    "shareClassManager": "0x8C288eCF5854510bC6d9D52935ef10725213a5E2",
+    "hub": "0x3C4Aa767aAdf637f590C410edc4e4b09a9719288",
+    "identityValuation": "0xA225DAe0c9E6c2163354a9d715FD84BBD4d1acFe",
+    "poolEscrowFactory": "0xECB116d28710c928F54f932D7De5d886F460cBB9",
+    "routerEscrow": "0x6a62aEDFa74ad2eB44D030DeF12b9E9AB9e91dd6",
+    "globalEscrow": "0xb7C9590098Baf4f5EAa44dD10A0FB995A46dAd56",
+    "freezeOnlyHook": "0x85E06BfE45580f8181C606FeC1B0a62881426a1A",
+    "redemptionRestrictionsHook": "0xF6e05AE9177E2C457e2A3609ce026492f251aEbd",
+    "fullRestrictionsHook": "0x3422C7ff73728E7fb981e60bFE67E73f67394f3D",
+    "tokenFactory": "0x91d5b16CE7b0514441BB0761f7e7c8D6F8E02951",
+    "asyncRequestManager": "0xC0Bc4CCDb5DE8f8C41806694416ad8C487b9a705",
+    "syncRequestManager": "0xB9d4836c04adFFDFB09530B65Faf7d9fA4f04d2c",
+    "asyncVaultFactory": "0xA6F0ae482bdcD75dD2eA8fdcC6c9dc9D947Cd263",
+    "syncDepositVaultFactory": "0x58ec94c4e66B130351ca169785Ed929E38275cdF",
+    "spoke": "0x80d60b9643C93706Ffcea40035599A5E3d5444A7",
+    "vaultRouter": "0x84d3E213b7df45e2d49D399339F9df2ae205db00",
+    "balanceSheet": "0xd236606F16496CC826A487520747994D0c33760C",
+    "axelarAdapter": "0x6C1ed9AdC0D684D59b3AC0b04feB6B7F85D900Ac"
+  }
 }
