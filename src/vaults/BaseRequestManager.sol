@@ -89,9 +89,17 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
             spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
-        return _assetToShareAmount(
-            vault_, vaultDetails, assets, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
-        );
+        return pricePoolPerShare.isZero()
+            ? 0
+            : PricingLib.assetToShareAmount(
+                vault_.share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                assets.toUint128(),
+                pricePoolPerAsset,
+                pricePoolPerShare,
+                MathLib.Rounding.Down
+            );
     }
 
     /// @inheritdoc IBaseRequestManager
@@ -100,9 +108,17 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
         (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
             spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vaultDetails.assetId, false);
 
-        return _shareToAssetAmount(
-            vault_, vaultDetails, shares, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
-        );
+        return pricePoolPerAsset.isZero()
+            ? 0
+            : PricingLib.shareToAssetAmount(
+                vault_.share(),
+                shares.toUint128(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                pricePoolPerShare,
+                pricePoolPerAsset,
+                MathLib.Rounding.Down
+            );
     }
 
     /// @inheritdoc IBaseRequestManager
@@ -125,47 +141,5 @@ abstract contract BaseRequestManager is Auth, Recoverable, IBaseRequestManager {
     /// @inheritdoc IVaultManager
     function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IVault) {
         return vault[poolId][scId][assetId];
-    }
-
-    function _assetToShareAmount(
-        IBaseVault vault_,
-        VaultDetails memory vaultDetails,
-        uint256 assets,
-        D18 pricePoolPerAsset,
-        D18 pricePoolPerShare,
-        MathLib.Rounding rounding
-    ) internal view returns (uint256 shares) {
-        return pricePoolPerShare.isZero()
-            ? 0
-            : PricingLib.assetToShareAmount(
-                vault_.share(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                assets.toUint128(),
-                pricePoolPerAsset,
-                pricePoolPerShare,
-                rounding
-            );
-    }
-
-    function _shareToAssetAmount(
-        IBaseVault vault_,
-        VaultDetails memory vaultDetails,
-        uint256 shares,
-        D18 pricePoolPerAsset,
-        D18 pricePoolPerShare,
-        MathLib.Rounding rounding
-    ) internal view returns (uint256 assets) {
-        return pricePoolPerAsset.isZero()
-            ? 0
-            : PricingLib.shareToAssetAmount(
-                vault_.share(),
-                shares.toUint128(),
-                vaultDetails.asset,
-                vaultDetails.tokenId,
-                pricePoolPerShare,
-                pricePoolPerAsset,
-                rounding
-            );
     }
 }

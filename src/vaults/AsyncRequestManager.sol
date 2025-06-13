@@ -77,14 +77,9 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
 
         AsyncInvestmentState storage state = investments[vault_][controller];
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
-
         state.pendingDepositRequest += assets_;
-        spoke.request(
-            vault_.poolId(),
-            vault_.scId(),
-            spoke.vaultDetails(vault_).assetId,
-            RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize()
-        );
+
+        _sendRequest(vault_, RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize());
 
         return true;
     }
@@ -106,29 +101,12 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
 
         AsyncInvestmentState storage state = investments[vault_][controller];
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
-
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
-        spoke.request(
-            vault_.poolId(),
-            vault_.scId(),
-            spoke.vaultDetails(vault_).assetId,
-            RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize()
-        );
 
-        _executeRedeemTransfer(vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_);
+        _sendRequest(vault_, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize());
+        balanceSheet.transferSharesFrom(vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_);
 
         return true;
-    }
-
-    function _executeRedeemTransfer(
-        PoolId poolId,
-        ShareClassId scId,
-        address sender_,
-        address owner,
-        address to,
-        uint128 shares
-    ) internal {
-        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, to, shares);
     }
 
     /// @inheritdoc IAsyncDepositManager
@@ -138,13 +116,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
         state.pendingCancelDepositRequest = true;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        spoke.request(
-            vault_.poolId(),
-            vault_.scId(),
-            vaultDetails.assetId,
-            RequestMessageLib.CancelDepositRequest(controller.toBytes32()).serialize()
-        );
+        _sendRequest(vault_, RequestMessageLib.CancelDepositRequest(controller.toBytes32()).serialize());
     }
 
     /// @inheritdoc IAsyncRedeemManager
@@ -157,13 +129,11 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
         state.pendingCancelRedeemRequest = true;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        spoke.request(
-            vault_.poolId(),
-            vault_.scId(),
-            vaultDetails.assetId,
-            RequestMessageLib.CancelRedeemRequest(controller.toBytes32()).serialize()
-        );
+        _sendRequest(vault_, RequestMessageLib.CancelRedeemRequest(controller.toBytes32()).serialize());
+    }
+
+    function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
+        spoke.request(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload);
     }
 
     //----------------------------------------------------------------------------------------------

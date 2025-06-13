@@ -81,9 +81,8 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(this)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher)
-                && nonWard != address(gateway)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(messageProcessor)
+                && nonWard != address(messageDispatcher) && nonWard != address(gateway)
         );
 
         // redeploying within test to increase coverage
