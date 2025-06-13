@@ -21,7 +21,6 @@ import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultM
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -32,7 +31,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using UpdateContractMessageLib for *;
 
     address public immutable root;
-    IEscrow public immutable globalEscrow;
 
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
@@ -41,8 +39,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
 
-    constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
-        globalEscrow = globalEscrow_;
+    constructor(address root_, address deployer) Auth(deployer) {
         root = root_;
     }
 

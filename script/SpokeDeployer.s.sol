@@ -48,7 +48,7 @@ contract SpokeDeployer is CommonDeployer {
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
         asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        syncManager = new SyncManager(IEscrow(globalEscrow), address(root), deployer);
+        syncManager = new SyncManager(address(root), deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
         syncDepositVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, deployer);
 
