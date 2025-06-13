@@ -6,6 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -18,7 +19,6 @@ import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
@@ -31,6 +31,7 @@ import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

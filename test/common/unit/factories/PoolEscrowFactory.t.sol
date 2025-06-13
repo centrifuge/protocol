@@ -4,12 +4,11 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
-
-import {IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
-import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
+import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 contract PoolEscrowFactoryTest is Test {
     PoolEscrowFactory factory;

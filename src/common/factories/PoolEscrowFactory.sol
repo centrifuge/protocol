@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
+import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;

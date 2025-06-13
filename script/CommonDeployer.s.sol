@@ -12,6 +12,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
+import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
@@ -35,6 +36,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MultiAdapter public multiAdapter;
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
+    PoolEscrowFactory public poolEscrowFactory;
 
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
@@ -70,6 +72,8 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         // deployer is not actually an implementation of ISafe but for deployment this is not an issue
         guardian = new Guardian(ISafe(deployer), multiAdapter, root, messageDispatcher);
 
+        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
+
         _commonRegister();
         _commonRely();
         _commonFile();
@@ -84,6 +88,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         register("multiAdapter", address(multiAdapter));
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
+        register("poolEscrowFactory", address(poolEscrowFactory));
     }
 
     function _commonRely() private {
@@ -103,11 +108,13 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         messageProcessor.rely(address(gateway));
         tokenRecoverer.rely(address(messageDispatcher));
         tokenRecoverer.rely(address(messageProcessor));
+        poolEscrowFactory.rely(address(root));
     }
 
     function _commonFile() private {
         gateway.file("processor", address(messageProcessor));
         gateway.file("adapter", address(multiAdapter));
+        poolEscrowFactory.file("gateway", address(gateway));
     }
 
     function wire(uint16 centrifugeId, IAdapter adapter, address deployer) public {
@@ -133,5 +140,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         tokenRecoverer.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
+        poolEscrowFactory.deny(deployer);
     }
 }
