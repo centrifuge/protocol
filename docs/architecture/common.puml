@@ -15,10 +15,6 @@ package spoke {
     class BalanceSheet
 }
 
-package vaults {
-    class AsyncRequestManager
-}
-
 interface IAdapter
 
 class TokenRecoverer
@@ -42,16 +38,14 @@ MessageProcessor --up-> Root
 MessageProcessor --up-> TokenRecoverer
 MessageProcessor --up-> Hub
 MessageProcessor --up-> Spoke
-MessageProcessor --up-> AsyncRequestManager
 MessageProcessor --up-> BalanceSheet
-MessageProcessor --up-> Gateway
+MessageProcessor <--up-> Gateway
 
 MessageDispatcher ---> Root
 MessageDispatcher ---> TokenRecoverer
 MessageDispatcher ---> Gateway
 MessageDispatcher ---> Hub
 MessageDispatcher ---> Spoke
-MessageDispatcher ---> AsyncRequestManager
 MessageDispatcher ---> BalanceSheet
 
 Guardian ---> Hub

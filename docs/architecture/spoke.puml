@@ -5,6 +5,7 @@ package common {
     class Gateway
     class MessageDispatcher
     class PoolEscrow
+    class PoolEscrowFactory
 }
 
 package managers {
@@ -17,20 +18,21 @@ class Hidden
 class Spoke
 class ShareToken
 class BalanceSheet
-class PoolEscrowFactory
 class TokenFactory
 
 interface IVaultFactory
 interface IVault
 interface IVaultManager
+interface IRequestManager
 
 Spoke -left-> TokenFactory
-Spoke -down-> PoolEscrowFactory
+Spoke -down--> PoolEscrowFactory
 Spoke -up->"n" IVaultFactory
 Spoke -up->"n" ShareToken
 Spoke -up->"n" IVault
 Spoke ---> Gateway
 Spoke ---> MessageDispatcher
+Spoke -right->"n" IRequestManager
 
 BalanceSheet -right-> PoolEscrowFactory
 BalanceSheet -left--> Spoke
