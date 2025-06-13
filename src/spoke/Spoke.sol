@@ -392,11 +392,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
-        address requestManager = address(shareClass.manager[assetId]);
-        require(requestManager != address(0), RequestManagerNotSet());
-
         IVaultManager manager = vault.manager();
-        require(address(manager) == requestManager, InvalidManager());
         manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
 
         _vaultDetails[vault].isLinked = true;
