@@ -221,7 +221,7 @@ run_forge_script() {
     local log_file="$logs_dir/${script}_${NETWORK}_${timestamp}.log"
 
     # Construct the forge command
-    FORGE_CMD="NETWORK=$NETWORK forge script \
+    FORGE_CMD="ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
         --optimize \
         --rpc-url \"$RPC_URL\" \
@@ -229,24 +229,24 @@ run_forge_script() {
         --verify \
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
-        --etherscan-api-key \"$ETHERSCAN_API_KEY\" \
-        # --slow \
-        # --delay 10 \
+        --verbosity 4 \
+        --delay 10 \
+        --slow \
         ${FORGE_ARGS[*]}"
 
     CATAPULTA_CMD="NETWORK=$NETWORK DEPLOYMENT_SALT=$DEPLOYMENT_SALT catapulta script $script \"$ROOT_DIR/script/$script.s.sol\" --network ${CATAPULTA_NET:-$NETWORK} --private-key $PRIVATE_KEY"
 
     print_step "Executing Command"
     short_log_file="${log_file/#$PWD\//}"
-    print_info "Output will be logged to: $short_log_file"
 
     # Execute the appropriate command with output redirection
     if [ "$USE_CATAPULTA" = true ]; then
         print_info "Using Catapulta deployment"
         print_info "Running: catapulta script $script ..."
         if [ "$VERBOSE" = true ]; then
-            eval "$CATAPULTA_CMD" 2>&1 | tee "$log_file"
+            eval "$CATAPULTA_CMD"
         else
+            print_info "Output will be logged to: $short_log_file"
             eval "$CATAPULTA_CMD" >"$log_file" 2>&1
         fi
         exit_code=${PIPESTATUS[0]}
@@ -259,8 +259,9 @@ run_forge_script() {
         print_info "Using Forge deployment"
         print_info "Running: forge script $script ..."
         if [ "$VERBOSE" = true ]; then
-            eval "$FORGE_CMD" 2>&1 | tee "$log_file"
+            eval "$FORGE_CMD"
         else
+            print_info "Output will be logged to: $short_log_file"
             eval "$FORGE_CMD" >"$log_file" 2>&1
         fi
         exit_code=${PIPESTATUS[0]}
@@ -420,6 +421,18 @@ case "$STEP" in
     print_section "Verifying Adapters contracts for $NETWORK"
     verify_contracts "Adapters" true
     print_section "Verification Complete"
+    ;;
+"forge:clean")
+    print_subtitle "Cleaning up forge files and folders"
+    print_step "Removing broadcast files"
+    rm -rf "$ROOT_DIR/broadcast"
+    print_step "Removing out files"
+    rm -rf "$ROOT_DIR/out"
+    print_step "Removing cache files"
+    rm -rf "$ROOT_DIR/cache"
+    print_step "Running forge clean"
+    forge clean
+    print_section "Forge files and folders cleaned"
     ;;
 *)
     echo "Invalid step: $STEP"

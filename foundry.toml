@@ -17,6 +17,9 @@ fs_permissions = [
   { access = "read", path = "env" },
 ]
 
+# Deployment specific settings
+gas_reports = ["*"]
+gas_reports_ignore = ["test/*", "script/*"]
 gas_snapshot_check = false
 
 # False-alarm warnings
