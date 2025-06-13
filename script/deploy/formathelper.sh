@@ -9,7 +9,7 @@ center_text() {
 
     # Create padding strings
     local left_padding=$(printf "%${padding}s" "")
-    local right_padding=$(printf "%$((width - text_length - padding - 2))s" "")
+    local right_padding=$(printf "%$((width - text_length - padding))s" "")
 
     echo "${left_padding}${text}${right_padding}"
 }
@@ -25,7 +25,7 @@ print_section() {
 
 print_subtitle() {
     local title="$1"
-    local box_width=58 # Width of the box (including borders and indentation)
+    local box_width=56 # Width of the box (including borders and indentation)
 
     echo "  ┌────────────────────────────────────────────────────────┐"
     echo "  │$(center_text "$title" $box_width)│"

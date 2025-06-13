@@ -238,41 +238,31 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     print_info "Please use: source ./load_vars.sh $1"
     return 1
 else
-    # Check if .env file exists and contains required variables
-    if [ -f "$ROOT_DIR/.env" ] &&
-        grep -q "RPC_URL" "$ROOT_DIR/.env" &&
-        grep -q "ETHERSCAN_API_KEY" "$ROOT_DIR/.env" &&
-        grep -q "ADMIN" "$ROOT_DIR/.env" &&
-        grep -q "PRIVATE_KEY" "$ROOT_DIR/.env"; then
-        print_section "Loading Environment from .env file"
-        print_info "RPC_URL ETHERSCAN_API_KEY ADMIN PRIVATE_KEY are found in the .env file"
-        print_info "Foundry should automatically load the environment variables from the .env file"
-        print_section "Environment Loaded"
-        return 0
+    # First check if variables are already set in the current shell
+    if [ -n "$RPC_URL" ] && [ -n "$ETHERSCAN_API_KEY" ] && [ -n "$ADMIN" ] && [ -n "$PRIVATE_KEY" ]; then
+        print_section "Using Existing Environment Variables"
+        print_info "Required variables are already set in the current shell"
     else
-        print_section "Loading Environment from Google Cloud"
-        print_info ".env does not contain all required variables. Trying Google Cloud secrets retrieval"
-        load_env "$1"
+        # Then check if .env file exists and contains required variables
+        if [ -f "$ROOT_DIR/.env" ] &&
+            grep -q "RPC_URL" "$ROOT_DIR/.env" &&
+            grep -q "ETHERSCAN_API_KEY" "$ROOT_DIR/.env" &&
+            grep -q "ADMIN" "$ROOT_DIR/.env" &&
+            grep -q "PRIVATE_KEY" "$ROOT_DIR/.env"; then
+            print_section "Loading Environment from .env file"
+            print_info "RPC_URL ETHERSCAN_API_KEY ADMIN PRIVATE_KEY are found in the .env file"
+            print_info "Foundry should automatically load the environment variables from the .env file"
+        else
+            print_section "Loading Environment from Google Cloud"
+            print_info ".env does not contain all required variables. Trying Google Cloud secrets retrieval"
+            load_env "$1"
+        fi
     fi
-
-    # Export the variables needed by forge script
-    print_info "Setting environment variables for forge script"
+    # The folloging is needed to make any of these variables available to the Solidity scripts through forge
     set -a
-    RPC_URL="$RPC_URL"
-    ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY"
+    # shellcheck disable=SC2269
     ADMIN="$ADMIN"
-    PRIVATE_KEY="$PRIVATE_KEY"
-    CATAPULTA_NET="$CATAPULTA_NET"
     set +a
-
-    print_info "Exporting environment variables to your local shell"
-    export RPC_URL
-    export ETHERSCAN_API_KEY
-    export ADMIN
-    export PRIVATE_KEY
-    export CATAPULTA_NET
-
-    print_section "Environment Loaded"
 
     # Only set up cleanup timer if not sourced from deploy.sh
     if [ "$skip_cleanup" != true ]; then

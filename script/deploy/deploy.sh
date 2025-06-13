@@ -237,42 +237,46 @@ run_forge_script() {
     CATAPULTA_CMD="NETWORK=$NETWORK DEPLOYMENT_SALT=$DEPLOYMENT_SALT catapulta script $script \"$ROOT_DIR/script/$script.s.sol\" --network ${CATAPULTA_NET:-$NETWORK} --private-key $PRIVATE_KEY"
 
     print_step "Executing Command"
-    print_info "Output will be logged to: $log_file"
+    short_log_file="${log_file/#$PWD\//}"
+    print_info "Output will be logged to: $short_log_file"
 
     # Execute the appropriate command with output redirection
     if [ "$USE_CATAPULTA" = true ]; then
         print_info "Using Catapulta deployment"
         print_info "Running: catapulta script $script ..."
-        if ! eval "$CATAPULTA_CMD" 2>&1 | tee "$log_file"; then
+        if [ "$VERBOSE" = true ]; then
+            eval "$CATAPULTA_CMD" 2>&1 | tee "$log_file"
+        else
+            eval "$CATAPULTA_CMD" >"$log_file" 2>&1
+        fi
+        exit_code=${PIPESTATUS[0]}
+        if [[ $exit_code -ne 0 ]]; then
             print_error "Failed to run $script with Catapulta"
-            print_error "Check the log file for details: $log_file"
-            print_info "Command: $CATAPULTA_CMD"
+            print_error "Check the log file for details: $short_log_file"
             exit 1
         fi
     else
         print_info "Using Forge deployment"
         print_info "Running: forge script $script ..."
-        if ! eval "$FORGE_CMD" 2>&1 | tee "$log_file"; then
+        if [ "$VERBOSE" = true ]; then
+            eval "$FORGE_CMD" 2>&1 | tee "$log_file"
+        else
+            eval "$FORGE_CMD" >"$log_file" 2>&1
+        fi
+        exit_code=${PIPESTATUS[0]}
+        if [[ $exit_code -ne 0 ]]; then
             print_error "Failed to run $script with Forge"
-            print_error "Check the log file for details: $log_file"
-            print_info "Command:"
-            # shellcheck disable=SC2016
-            print_error "NETWORK=$NETWORK forge script \
-            ""$ROOT_DIR"/script/"$script".s.sol" \
-            --optimize \
-            --rpc-url $RPC_URL \
-            --private-key $PRIVATE_KEY \
-            --verify \
-            --broadcast \
-            --chain-id $CHAIN_ID \
-            --etherscan-api-key $ETHERSCAN_API_KEY \
-            ${FORGE_ARGS[*]}"
+            print_error "Check the log file for details: $short_log_file"
+            print_error "Run the script again with --verbose to see the full output from forge on your terminal"
+            print_step "If you want to try and run the command manually:"
+            print_info "NETWORK=$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --rpc-url \$RPC_URL --private-key \$PRIVATE_KEY --verify --broadcast --chain-id $CHAIN_ID --etherscan-api-key \$ETHERSCAN_API_KEY ${FORGE_ARGS[*]}"
+            print_info "Do not forget to source the secrets using load_vars.sh first"
             exit 1
         fi
     fi
 
     print_success "Script execution completed successfully"
-    print_info "Full output available in: $log_file"
+    print_info "Full output available in: $short_log_file"
 }
 
 # Function to update network config with deployment output
@@ -308,13 +312,13 @@ update_network_config() {
     return 0
 }
 
-# Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]
+# Usage: ./deploy.sh <network> <step> [--catapulta] [--verbose] [forge_args...]
 # Example: ./deploy.sh eth-sepolia deploy:protocol
 # Example: ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2
 # Example: ./deploy.sh eth-sepolia deploy:test --nonce 4765
 
 if [[ -z "$1" || -z "$2" ]]; then
-    echo "Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]"
+    echo "Usage: ./deploy.sh <network> <step> [--catapulta] [--verbose] [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
     echo "  deploy:protocol  - Deploy core protocol contracts (hub, spoke)"
@@ -324,12 +328,16 @@ if [[ -z "$1" || -z "$2" ]]; then
     echo "  verify:protocol  - Verify core protocol contracts"
     echo "  verify:adapters  - Verify Adapters contracts"
     echo
+    echo "Options:"
+    echo "  --catapulta     - Use Catapulta for deployment"
+    echo "  --verbose       - Show forge output in terminal"
+    echo
     echo "Examples:"
     echo "  ./deploy.sh sepolia deploy:protocol"
     echo "  ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2"
     echo "  ./deploy.sh sepolia deploy:test --nonce 4765"
     echo "  ./deploy.sh sepolia verify:protocol"
-    echo "  ./deploy.sh arbitrum-sepolia verify:adapters"
+    echo "  ./deploy.sh arbitrum-sepolia verify:adapters --verbose"
     exit 1
 fi
 
@@ -342,12 +350,17 @@ shift 2 # Remove the first two arguments
 # Check for --catapulta flag
 USE_CATAPULTA=false
 FORGE_ARGS=()
+VERBOSE=false
 
 # Process remaining arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --catapulta)
         USE_CATAPULTA=true
+        shift
+        ;;
+    --verbose)
+        VERBOSE=true
         shift
         ;;
     *)
@@ -360,12 +373,6 @@ done
 # Load environment variables
 if ! source "$SCRIPT_DIR/load_vars.sh" "$NETWORK"; then
     print_error "Failed to load environment variables"
-    exit 1
-fi
-
-if [ -z "$PRIVATE_KEY" ] || [ -z "$RPC_URL" ] || [ -z "$ETHERSCAN_API_KEY" ] || [ -z "$ADMIN" ]; then
-    print_error "Error: loading variables failed"
-    print_error "Run ./load_vars.sh $NETWORK to load variables and check for errors before running this script"
     exit 1
 fi
 
