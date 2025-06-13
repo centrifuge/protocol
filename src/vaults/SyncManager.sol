@@ -30,8 +30,6 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using BytesLib for bytes;
     using UpdateContractMessageLib for *;
 
-    address public immutable root;
-
     ISpoke public spoke;
     IBalanceSheet public balanceSheet;
 
@@ -39,9 +37,7 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
         public maxReserve;
 
-    constructor(address root_, address deployer) Auth(deployer) {
-        root = root_;
-    }
+    constructor(address deployer) Auth(deployer) {}
 
     //----------------------------------------------------------------------------------------------
     // Administration

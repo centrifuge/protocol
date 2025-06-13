@@ -47,8 +47,8 @@ contract SpokeDeployer is CommonDeployer {
         globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
-        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        syncManager = new SyncManager(address(root), deployer);
+        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), deployer);
+        syncManager = new SyncManager(deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
         syncDepositVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, deployer);
 

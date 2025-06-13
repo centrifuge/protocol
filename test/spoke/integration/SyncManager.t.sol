@@ -54,7 +54,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncManager(address(root), address(this));
+        new SyncManager(address(this));
 
         // values set correctly
         assertEq(address(syncManager.spoke()), address(spoke));

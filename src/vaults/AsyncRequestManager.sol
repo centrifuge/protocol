@@ -45,7 +45,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
 
-    address public immutable root;
     IEscrow public immutable globalEscrow;
 
     ISpoke public spoke;
@@ -54,9 +53,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
 
-    constructor(IEscrow globalEscrow_, address root_, address deployer) Auth(deployer) {
+    constructor(IEscrow globalEscrow_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
-        root = root_;
     }
 
     //----------------------------------------------------------------------------------------------
