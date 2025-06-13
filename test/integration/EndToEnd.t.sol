@@ -344,7 +344,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.initializeHolding(
             POOL_A, SC_1, s_.usdcId, h.valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );
-        h.hub.initializeRequestManager{value: GAS}(POOL_A, SC_1, s_.usdcId, address(s.asyncRequestManager).toBytes32());
+        h.hub.setRequestManager{value: GAS}(POOL_A, SC_1, s_.usdcId, address(s.asyncRequestManager).toBytes32());
         h.hub.updateBalanceSheetManager{value: GAS}(
             s_.centrifugeId, POOL_A, address(s.asyncRequestManager).toBytes32(), true
         );

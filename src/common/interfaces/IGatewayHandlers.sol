@@ -84,7 +84,7 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function initializeRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)

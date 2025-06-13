@@ -19,17 +19,19 @@ struct Pool {
     mapping(ShareClassId scId => ShareClassDetails) shareClasses;
 }
 
+struct ShareClassAsset {
+    /// @dev Manager that can send requests, and handles the request callbacks.
+    IRequestManager manager;
+    /// @dev Number of linked vaults.
+    uint32 numVaults;
+}
+
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
-    /// @dev Manager that can send requests, and handles the request callbacks.
-    mapping(AssetId assetId => IRequestManager) manager;
-    /// @dev Each share class can have multiple vaults deployed,
-    ///      multiple vaults can be linked to the same asset.
-    ///      A vault in this storage DOES NOT mean the vault can be used
-    mapping(address asset => mapping(uint256 tokenId => IVault[])) vaults;
+    mapping(AssetId assetId => ShareClassAsset) asset;
     /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
 }
@@ -75,7 +77,7 @@ interface ISpoke {
         IVault vault,
         VaultKind kind
     );
-    event InitializeRequestManager(
+    event SetRequestManager(
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestManager manager
     );
     event UpdateAssetPrice(
@@ -133,7 +135,7 @@ interface ISpoke {
     error ShareTokenTransferFailed();
     error TransferFromFailed();
     error InvalidRequestManager();
-    error RequestManagerAlreadySet();
+    error MoreThanZeroLinkedVaults();
     error RequestManagerNotSet();
     error InvalidManager();
 

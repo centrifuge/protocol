@@ -193,9 +193,7 @@ contract BaseTest is SpokeDeployer, Test {
             );
         }
 
-        spoke.initializeRequestManager(
-            POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager)
-        );
+        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncRequestManager), true);
 
