@@ -327,8 +327,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
         h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
 
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        vm.stopPrank();
     }
 
     function _configurePool(CSpoke memory s_) internal {
@@ -355,8 +354,24 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
-        vm.startPrank(ANY);
+        vm.startPrank(BSM);
         s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+
+        vm.stopPrank();
+    }
+
+    function _configurePool(bool sameChain) internal {
+        _setSpoke(sameChain);
+        _configurePool(s);
+
+        /// We subsidize the hub using the local spoke deployment
+        if (s.centrifugeId != h.centrifugeId) {
+            vm.startPrank(FM);
+            h.hub.notifyPool{value: GAS}(POOL_A, h.centrifugeId);
+
+            vm.startPrank(BSM);
+            h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        }
     }
 
     function _configurePrices(D18 assetPrice, D18 sharePrice) internal {
@@ -371,10 +386,10 @@ contract EndToEndFlows is EndToEndUtils {
         currentSharePrice = sharePrice;
     }
 
-    function _testAsyncDeposit(bool sameChain) internal {
+    function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(s);
-        _configurePrices(ASSET_PRICE, SHARE_PRICE);
+        _configurePool(sameChain);
+        nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
@@ -393,7 +408,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         uint32 issueEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, s.usdcId);
-        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, SHARE_PRICE);
+        (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
@@ -406,10 +422,10 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
     }
 
-    function _testSyncDeposit(bool sameChain) internal {
+    function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(s);
-        _configurePrices(ASSET_PRICE, SHARE_PRICE);
+        _configurePool(sameChain);
+        nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
@@ -426,8 +442,9 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
     }
 
-    function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit) internal {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
+    function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
+        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
+        nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(
@@ -447,7 +464,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         uint32 revokeEpochId = h.shareClassManager.nowRevokeEpoch(SC_1, s.usdcId);
-        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, SHARE_PRICE);
+        (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
+        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxRedeemClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
@@ -460,8 +478,11 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "expected assets");
     }
 
-    function _testAsyncRedeemCancel(bool sameChain, bool afterAsyncDeposit) internal {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
+    function _testAsyncRedeemCancel(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
+        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
+        uint128 expectedShares = assetToShare(USDC_AMOUNT_1);
+
+        nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
         h.hub.updateRestriction{value: GAS}(
@@ -478,11 +499,11 @@ contract EndToEndFlows is EndToEndUtils {
         vault.claimCancelRedeemRequest(PLACEHOLDER, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
-        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "expected shares");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares, "expected shares");
     }
 
-    function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit) internal {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain) : _testSyncDeposit(sameChain);
+    function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
+        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
@@ -490,17 +511,17 @@ contract EndToEndFlows is EndToEndUtils {
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
-        assertEq(amount, USDC_AMOUNT_1);
-        assertEq(value, assetToPool(USDC_AMOUNT_1));
+        assertEq(amount, USDC_AMOUNT_1, "expected amount");
+        assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
 
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), nonZeroPrices ? 1 : 2, "expected snapshots");
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
     }
 
-    function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) internal {
-        _testAsyncRedeem(sameChain, afterAsyncDeposit);
+    function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
+        _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
@@ -508,10 +529,10 @@ contract EndToEndFlows is EndToEndUtils {
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
-        assertEq(amount, 0);
-        assertEq(value, assetToPool(0));
+        assertEq(amount, 0, "expected amount");
+        assertEq(value, assetToPool(0), "expected value");
 
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 2, "expected snapshots");
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(0), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(0), true);
@@ -566,19 +587,19 @@ contract EndToEndUseCases is EndToEndFlows {
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncDeposit(bool sameChain) public {
-        _testAsyncDeposit(sameChain);
+    function testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testAsyncDeposit(sameChain, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testSyncDeposit(bool sameChain) public {
-        _testSyncDeposit(sameChain);
+    function testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testSyncDeposit(sameChain, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
     function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
         _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
         vm.startPrank(FM);
@@ -599,33 +620,33 @@ contract EndToEndUseCases is EndToEndFlows {
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeem_AfterAsyncDeposit(bool sameChain, bool afterAsyncDeposit) public {
-        _testAsyncRedeem(false, true);
+    function testAsyncRedeem_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testAsyncRedeem(sameChain, true, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeem_AfterSyncDeposit(bool sameChain) public {
-        _testAsyncRedeem(sameChain, false);
+    function testAsyncRedeem_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testAsyncRedeem(sameChain, false, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeemCancel_AfterAsyncDeposit(bool sameChain) public {
-        _testAsyncRedeemCancel(sameChain, true);
+    function testAsyncRedeemCancel_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testAsyncRedeemCancel(sameChain, true, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncRedeemCancel_AfterSyncDeposit(bool sameChain) public {
-        _testAsyncRedeemCancel(sameChain, false);
+    function testAsyncRedeemCancel_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testAsyncRedeemCancel(sameChain, false, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterDeposit_AfterAsyncDeposit(bool sameChain) public {
-        _testUpdateAccountingAfterDeposit(sameChain, true);
+    function testUpdateAccountingAfterDeposit_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testUpdateAccountingAfterDeposit(sameChain, true, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterDeposit_AfterSyncDeposit(bool sameChain) public {
-        _testUpdateAccountingAfterDeposit(sameChain, false);
+    function testUpdateAccountingAfterDeposit_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
+        _testUpdateAccountingAfterDeposit(sameChain, false, nonZeroPrices);
     }
 
     /// forge-config: default.isolate = true

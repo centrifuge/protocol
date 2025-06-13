@@ -40,6 +40,8 @@ contract BaseTest is HubDeployer, Test {
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
+    address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
+    address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncRequestManager");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);

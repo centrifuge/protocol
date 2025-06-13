@@ -6,6 +6,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {d18, D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -18,8 +19,18 @@ import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
+    using RequestMessageLib for *;
     using CastLib for *;
     using MathLib for uint256;
+
+    function _checkCancelDepositRequestMessage(MockAdapter adapter, IBaseVault vault, uint128 assetId) internal view {
+        MessageLib.Request memory m = adapter.values_bytes("send").deserializeRequest();
+        assertEq(m.poolId, vault.poolId().raw());
+        assertEq(m.scId, vault.scId().raw());
+        assertEq(m.assetId, assetId);
+        RequestMessageLib.CancelDepositRequest memory cb = RequestMessageLib.deserializeCancelDepositRequest(m.payload);
+        assertEq(cb.investor, bytes32(bytes20(self)));
+    }
 
     /// forge-config: default.isolate = true
     function testDepositMint() public {
@@ -666,12 +677,7 @@ contract DepositTest is BaseTest {
 
         // check message was send out to centchain
         vault.cancelDepositRequest(0, self);
-
-        // MessageLib.CancelDepositRequest memory m = adapter1.values_bytes("send").deserializeCancelDepositRequest();
-        // assertEq(m.poolId, vault.poolId().raw());
-        // assertEq(m.scId, vault.scId().raw());
-        // assertEq(m.investor, bytes32(bytes20(self)));
-        // assertEq(m.assetId, assetId);
+        _checkCancelDepositRequestMessage(adapter1, vault, assetId);
 
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
 
@@ -686,7 +692,7 @@ contract DepositTest is BaseTest {
         erc20.burn(self, amount);
 
         centrifugeChain.isFulfilledDepositRequest(
-            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
+            vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, amount.toUint128()
         );
         assertEq(erc20.balanceOf(address(globalEscrow)), amount);
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), 0);

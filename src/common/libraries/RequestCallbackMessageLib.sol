@@ -26,7 +26,7 @@ library RequestCallbackMessageLib {
     }
 
     //---------------------------------------
-    //    Request.ApprovedDeposits (submsg)
+    //    RequestCallback.ApprovedDeposits (submsg)
     //---------------------------------------
 
     struct ApprovedDeposits {
@@ -45,7 +45,7 @@ library RequestCallbackMessageLib {
     }
 
     //---------------------------------------
-    //    Request.IssuedShares (submsg)
+    //    RequestCallback.IssuedShares (submsg)
     //---------------------------------------
 
     struct IssuedShares {
@@ -64,7 +64,7 @@ library RequestCallbackMessageLib {
     }
 
     //---------------------------------------
-    //    Request.RevokedShares (submsg)
+    //    RequestCallback.RevokedShares (submsg)
     //---------------------------------------
 
     struct RevokedShares {
@@ -88,7 +88,7 @@ library RequestCallbackMessageLib {
     }
 
     //---------------------------------------
-    //    Request.FulfilledDepositRequest (submsg)
+    //    RequestCallback.FulfilledDepositRequest (submsg)
     //---------------------------------------
 
     struct FulfilledDepositRequest {
@@ -123,7 +123,7 @@ library RequestCallbackMessageLib {
     }
 
     //---------------------------------------
-    //    Request.FulfilledRedeemRequest (submsg)
+    //    RequestCallback.FulfilledRedeemRequest (submsg)
     //---------------------------------------
 
     struct FulfilledRedeemRequest {
