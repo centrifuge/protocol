@@ -53,7 +53,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     uint64 internal _assetCounter;
 
     mapping(PoolId poolId => Pool) public pools;
-    mapping(IVaultFactory factory => bool) public vaultFactory;
 
     mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(AssetId assetId => AssetIdKey) internal _idToAsset;
@@ -81,13 +80,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc ISpoke
-    function file(bytes32 what, address factory, bool status) external auth {
-        if (what == "vaultFactory") vaultFactory[IVaultFactory(factory)] = status;
-        else revert FileUnrecognizedParam();
-        emit File(what, factory, status);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -321,7 +313,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(msg.sender == address(shareClass.manager[assetId]), NotAuthorized());
 
         sender.sendRequest(poolId, scId, assetId, payload);
-        // emit Request(poolId, scId, payload);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -331,7 +322,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(address(manager) != address(0), InvalidRequestManager());
 
         manager.callback(poolId, scId, assetId, payload);
-        // emit RequestCallback(poolId, scId, assetId, payload);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -365,8 +355,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         returns (IVault)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        require(vaultFactory[factory], InvalidFactory());
-
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         IVault vault = IVaultFactory(factory).newVault(
             poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)

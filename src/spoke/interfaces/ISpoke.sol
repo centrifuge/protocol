@@ -155,12 +155,8 @@ interface ISpoke {
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
-    ///                'vaultFactory', or 'gasService'
+    ///                or 'gasService'
     function file(bytes32 what, address data) external;
-
-    /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'vaultFactory'
-    function file(bytes32 what, address factory, bool status) external;
 
     /// @notice transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
