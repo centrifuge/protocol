@@ -290,7 +290,7 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     function _shareToAssetAmount(IBaseVault vault_, uint256 shares, MathLib.Rounding rounding)
         internal
         view
-        returns (uint256 shares)
+        returns (uint256 assets)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 

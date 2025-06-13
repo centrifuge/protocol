@@ -140,7 +140,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
+    function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
         uint8 kind = uint8(RequestCallbackMessageLib.requestCallbackType(payload));
 
         if (kind == uint8(RequestCallbackType.ApprovedDeposits)) {
