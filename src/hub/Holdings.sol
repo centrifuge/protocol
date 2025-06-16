@@ -14,7 +14,6 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IHoldings, Holding, HoldingAccount, Snapshot} from "src/hub/interfaces/IHoldings.sol";
-import {IHoldings, Holding} from "src/hub/interfaces/IHoldings.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
 /// @title  Holdings
