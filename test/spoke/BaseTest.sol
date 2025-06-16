@@ -36,14 +36,6 @@ import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-// core contracts
-
-// scripts
-
-// mocks
-
-// test env
-
 contract BaseTest is SpokeDeployer, Test {
     using MessageLib for *;
 
