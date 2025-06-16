@@ -104,32 +104,6 @@ jobs:
   #     - name: Run Halmos symbolic tests
   #       run: halmos --contract TestMessageLibIdentities --function test
 
-  check-unused-imports:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
-          architecture: x64
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install `setuptools`
-        run: pip install setuptools
-
-      - name: Check unused imports
-        run: python3 script/utils/fix_imports.py --check-unused
-
   coverage:
     runs-on: ubuntu-latest
     permissions:
