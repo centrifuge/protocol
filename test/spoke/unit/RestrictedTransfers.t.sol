@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+
+import {ShareToken} from "src/spoke/ShareToken.sol";
+
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
+import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
+import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
-
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
-import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
+import "forge-std/Test.sol";
 
 contract FullRestrictionsTest is Test {
     MockRoot root;

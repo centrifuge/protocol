@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {Escrow} from "src/misc/Escrow.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
 
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 
 import {BaseTest} from "test/spoke/BaseTest.sol";
+
 import "forge-std/Test.sol";
 
 interface SpokeLike {

@@ -5,22 +5,23 @@ import {Auth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {d18, D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {d18, D18} from "src/misc/types/D18.sol";
 
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.

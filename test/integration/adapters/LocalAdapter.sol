@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
+import "forge-std/Test.sol";
 
 /// An adapter that sends the message to another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {

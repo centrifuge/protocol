@@ -2,24 +2,25 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
+
+import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+
+import "forge-std/Test.sol";
 
 /// @dev Token not returning any boolean.
 contract ERC20WithoutBoolean {

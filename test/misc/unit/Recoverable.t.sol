@@ -2,11 +2,12 @@
 pragma solidity ^0.8.28;
 
 import {Auth, IAuth} from "src/misc/Auth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
+
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 import "forge-std/Test.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 contract RecoverableImpl is Recoverable {
     constructor(address deployer) Auth(deployer) {}

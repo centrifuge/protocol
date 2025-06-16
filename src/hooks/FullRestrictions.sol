@@ -2,19 +2,19 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
-
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
+
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
+import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 /// @title  Full Restrictions
 /// @notice Hook implementation that:

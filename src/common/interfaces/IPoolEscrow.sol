@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IRecoverable} from "src/misc/Recoverable.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {IRecoverable} from "src/misc/Recoverable.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";

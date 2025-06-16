@@ -8,13 +8,13 @@ import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @title  Gateway
@@ -321,4 +321,3 @@ contract Gateway is Auth, Recoverable, IGateway {
         return keccak256(abi.encode("outboundBatch", centrifugeId, poolId));
     }
 }
-

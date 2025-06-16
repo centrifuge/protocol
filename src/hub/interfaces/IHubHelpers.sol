@@ -3,10 +3,10 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 

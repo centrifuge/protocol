@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-
 import {Auth, IAuth} from "src/misc/Auth.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
@@ -12,11 +10,13 @@ import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
 import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+
+import "forge-std/Test.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING

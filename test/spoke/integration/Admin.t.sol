@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
 import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 
 import "test/spoke/BaseTest.sol";

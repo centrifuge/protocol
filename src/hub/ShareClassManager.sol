@@ -2,17 +2,18 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+
 import {
     IShareClassManager,
     EpochInvestAmounts,

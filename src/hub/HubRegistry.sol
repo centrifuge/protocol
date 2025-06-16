@@ -2,11 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 
 /// @title  Hub Registry

@@ -3,15 +3,15 @@ pragma solidity >=0.5.0;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 
+import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {Price} from "src/spoke/types/Price.sol";
 import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {Price} from "src/spoke/types/Price.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

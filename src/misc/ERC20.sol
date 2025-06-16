@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
-
 import {IERC20, IERC20Metadata, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
+import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 
 /// @title  ERC20
 /// @notice Standard ERC-20 implementation, with mint/burn functionality and permit logic.
