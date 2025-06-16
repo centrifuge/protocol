@@ -3,9 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IRecoverable {

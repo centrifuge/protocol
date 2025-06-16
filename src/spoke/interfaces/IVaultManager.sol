@@ -2,8 +2,8 @@
 pragma solidity >=0.5.0;
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 

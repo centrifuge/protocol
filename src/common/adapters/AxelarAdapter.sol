@@ -3,6 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import {
     IAxelarAdapter,
     IAdapter,
@@ -12,7 +15,6 @@ import {
     AxelarDestination,
     IAxelarExecutable
 } from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway

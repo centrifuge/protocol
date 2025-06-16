@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
-
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract BalanceSheetTest is BaseTest {
     // Deployment
