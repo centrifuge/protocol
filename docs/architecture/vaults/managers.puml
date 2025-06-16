@@ -3,6 +3,7 @@ hide empty members
 
 package spoke {
     interface IVaultManager
+    interface IRequestManager
 }
 
 interface IBaseRequestManager
@@ -17,27 +18,20 @@ interface IAsyncRedeemManager
 interface IAsyncRequestManager
 interface ISyncManager
 
+IBaseRequestManager -up-|> IRequestManager
 IBaseRequestManager -up-|> IVaultManager
-IDepositManager -up-|> IBaseRequestManager
-IRedeemManager -up-|> IBaseRequestManager
 
+IAsyncDepositManager -up-|> IBaseRequestManager
 IAsyncDepositManager -up-|> IDepositManager
 ISyncDepositManager -up-|> IDepositManager
 IAsyncRedeemManager -up-|> IRedeemManager
+IAsyncRedeemManager -up-|> IBaseRequestManager
 
 IAsyncRequestManager -up-|> IAsyncDepositManager
 IAsyncRequestManager -up-|> IAsyncRedeemManager
 
 ISyncManager -up-|> ISyncDepositManager
 
-abstract BaseRequestManager
-class AsyncRequestManager
-class SyncManager
-
-AsyncRequestManager -up-|> BaseRequestManager
-SyncManager -up-|> BaseRequestManager
-
-BaseRequestManager -up-|> IBaseRequestManager
 AsyncRequestManager -up-|> IAsyncRequestManager
 SyncManager -up-|> ISyncManager
 
