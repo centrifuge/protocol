@@ -5,6 +5,7 @@ import re
 import subprocess
 from typing import List, Dict, Set, Tuple
 import argparse
+import sys
 
 # Priority order for imports
 IMPORT_PRIORITY = [
@@ -380,6 +381,9 @@ def check_unused_imports():
     print(f"   Files checked: {len(files)}")
     print(f"   Files with unused imports: {files_with_unused}")
     print(f"   Total unused imports: {total_unused}")
+
+    if total_unused > 0:
+        sys.exit(1)
 
 def fix_all_unused_imports():
     """Remove unused imports from all Solidity files"""
