@@ -31,6 +31,18 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.maxReserve, b.maxReserve);
     }
 
+    function testUpdateContractUpdateAddress(bytes32 kind, uint128 assetId, bytes32 what, bool isEnabled) public pure {
+        UpdateContractMessageLib.UpdateContractUpdateAddress memory a = UpdateContractMessageLib
+            .UpdateContractUpdateAddress({kind: kind, assetId: assetId, what: what, isEnabled: isEnabled});
+        UpdateContractMessageLib.UpdateContractUpdateAddress memory b =
+            UpdateContractMessageLib.deserializeUpdateContractUpdateAddress(a.serialize());
+
+        assertEq(a.kind, b.kind);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.what, b.what);
+        assertEq(a.isEnabled, b.isEnabled);
+    }
+
     function testUpdateContractPolicy(bytes32 who, bytes32 what) public pure {
         UpdateContractMessageLib.UpdateContractPolicy memory a =
             UpdateContractMessageLib.UpdateContractPolicy({who: who, what: what});
@@ -39,6 +51,5 @@ contract TestUpdateContractMessageLibIdentities is Test {
 
         assertEq(a.who, b.who);
         assertEq(a.what, b.what);
-        // This message is a submessage and has not static message length defined
     }
 }

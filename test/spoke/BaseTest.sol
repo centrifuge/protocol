@@ -6,6 +6,7 @@ import "src/misc/interfaces/IERC20.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {Escrow} from "src/misc/Escrow.sol";
 
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
@@ -21,7 +22,6 @@ import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 // core contracts
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
-import {Escrow} from "src/spoke/Escrow.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
@@ -113,7 +113,7 @@ contract BaseTest is SpokeDeployer, Test {
         // remove deployer access
         // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncRequestManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -122,7 +122,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncRequestManager), "SyncRequestManager");
+        vm.label(address(syncManager), "SyncManager");
         vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -146,7 +146,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(asyncRequestManager));
-        excludeContract(address(syncRequestManager));
+        excludeContract(address(syncManager));
         excludeContract(address(balanceSheet));
         excludeContract(address(spoke));
         excludeContract(address(gateway));
@@ -192,6 +192,12 @@ contract BaseTest is SpokeDeployer, Test {
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
         }
+
+        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+        balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
+        balanceSheet.updateManager(POOL_A, address(syncManager), true);
+
+        syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

@@ -9,6 +9,7 @@ enum UpdateContractType {
     Invalid,
     Valuation,
     SyncDepositMaxReserve,
+    UpdateAddress,
     Policy
 }
 
@@ -64,6 +65,36 @@ library UpdateContractMessageLib {
 
     function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.UpdateAddress (submsg)
+    //---------------------------------------
+
+    struct UpdateContractUpdateAddress {
+        bytes32 kind;
+        uint128 assetId;
+        bytes32 what;
+        bool isEnabled;
+    }
+
+    function deserializeUpdateContractUpdateAddress(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractUpdateAddress memory)
+    {
+        require(updateContractType(data) == UpdateContractType.UpdateAddress, UnknownMessageType());
+
+        return UpdateContractUpdateAddress({
+            kind: data.toBytes32(1),
+            assetId: data.toUint128(33),
+            what: data.toBytes32(49),
+            isEnabled: data.toBool(81)
+        });
+    }
+
+    function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.assetId, t.what, t.isEnabled);
     }
 
     //---------------------------------------

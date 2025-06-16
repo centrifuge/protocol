@@ -19,7 +19,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
@@ -37,14 +37,10 @@ contract SyncDepositTestHelper is BaseTest {
         syncVault = SyncDepositVault(syncVault_);
 
         centrifugeChain.updatePricePoolPerShare(
-            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.inner(), uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), pricePoolPerShare.raw(), uint64(block.timestamp)
         );
         centrifugeChain.updatePricePoolPerAsset(
-            syncVault.poolId().raw(),
-            syncVault.scId().raw(),
-            assetId,
-            pricePoolPerAsset.inner(),
-            uint64(block.timestamp)
+            syncVault.poolId().raw(), syncVault.scId().raw(), assetId, pricePoolPerAsset.raw(), uint64(block.timestamp)
         );
     }
 
@@ -60,7 +56,7 @@ contract SyncDepositTestHelper is BaseTest {
         emit IBalanceSheet.Issue(poolId, scId, self, pricePoolPerShare, shares);
 
         vm.expectEmit();
-        emit IBalanceSheet.Deposit(
+        emit IBalanceSheet.NoteDeposit(
             poolId, scId, vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
         );
     }
@@ -79,7 +75,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
     function testFile(bytes32 fileTarget, address nonWard) public {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
         vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncManager)
                 && nonWard != address(asyncRequestManager)
         );
         address random = makeAddr("random");
@@ -172,7 +168,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(
@@ -180,21 +176,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         );
 
         if (snap) {
-            vm.startSnapshotGas("SyncDepositVault", "deposit_withoutQueue");
+            vm.startSnapshotGas("SyncDepositVault", "deposit");
         }
         // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount / 2, self);
-        if (snap) {
-            vm.stopSnapshotGas();
-        }
-
-        balanceSheet.setQueue(syncVault.poolId(), syncVault.scId(), true);
-
-        if (snap) {
-            vm.startSnapshotGas("SyncDepositVault", "deposit_withQueue");
-        }
-        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
-        syncVault.deposit(amount / 2, self);
+        syncVault.deposit(amount, self);
         if (snap) {
             vm.stopSnapshotGas();
         }
@@ -212,10 +197,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(1, self);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
     }
 }

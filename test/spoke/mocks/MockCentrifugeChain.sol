@@ -4,18 +4,19 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
-import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
@@ -28,17 +29,18 @@ contract MockCentrifugeChain is Test {
     using MessageLib for *;
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;
+    using RequestCallbackMessageLib for *;
 
     IAdapter[] public adapters;
     Spoke public spoke;
-    SyncRequestManager public syncRequestManager;
+    SyncManager public syncManager;
 
-    constructor(IAdapter[] memory adapters_, Spoke spoke_, SyncRequestManager syncRequestManager_) {
+    constructor(IAdapter[] memory adapters_, Spoke spoke_, SyncManager syncManager_) {
         for (uint256 i = 0; i < adapters_.length; i++) {
             adapters.push(adapters_[i]);
         }
         spoke = spoke_;
-        syncRequestManager = syncRequestManager_;
+        syncManager = syncManager_;
     }
 
     function addPool(uint64 poolId) public {
@@ -80,7 +82,7 @@ contract MockCentrifugeChain is Test {
             MessageLib.UpdateContract({
                 poolId: poolId,
                 scId: scId,
-                target: bytes32(bytes20(address(syncRequestManager))),
+                target: bytes32(bytes20(address(syncManager))),
                 payload: UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
                     assetId: vaultDetails.assetId.raw(),
                     maxReserve: maxReserve
@@ -246,18 +248,20 @@ contract MockCentrifugeChain is Test {
     ) public {
         // NOTE: Currently, hardcoding pricePoolPerAsset to 1
         isApprovedDeposits(poolId, scId, assetId, fulfilledAssetAmount, d18(1, 1));
-        isIssuedShares(poolId, scId, fulfilledShareAmount, d18(1, 1));
+        isIssuedShares(poolId, scId, assetId, fulfilledShareAmount, d18(1, 1));
 
         execute(
-            MessageLib.FulfilledDepositRequest({
-                poolId: poolId,
-                scId: scId,
-                investor: investor,
-                assetId: assetId,
-                fulfilledAssetAmount: fulfilledAssetAmount,
-                fulfilledShareAmount: fulfilledShareAmount,
-                cancelledAssetAmount: cancelledAssetAmount
-            }).serialize()
+            MessageLib.RequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest({
+                    investor: investor,
+                    fulfilledAssetAmount: fulfilledAssetAmount,
+                    fulfilledShareAmount: fulfilledShareAmount,
+                    cancelledAssetAmount: cancelledAssetAmount
+                }).serialize()
+            ).serialize()
         );
     }
 
@@ -274,15 +278,17 @@ contract MockCentrifugeChain is Test {
         // NOTE: Currently hard coding pricePoolPerShare to 1
         isRevokedShares(poolId, scId, assetId, fulfilledAssetAmount, fulfilledShareAmount, d18(1, 1));
         execute(
-            MessageLib.FulfilledRedeemRequest({
-                poolId: poolId,
-                scId: scId,
-                investor: investor,
-                assetId: assetId,
-                fulfilledAssetAmount: fulfilledAssetAmount,
-                fulfilledShareAmount: fulfilledShareAmount,
-                cancelledShareAmount: cancelledShareAmount
-            }).serialize()
+            MessageLib.RequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest({
+                    investor: investor,
+                    fulfilledAssetAmount: fulfilledAssetAmount,
+                    fulfilledShareAmount: fulfilledShareAmount,
+                    cancelledShareAmount: cancelledShareAmount
+                }).serialize()
+            ).serialize()
         );
     }
 
@@ -291,25 +297,30 @@ contract MockCentrifugeChain is Test {
         public
     {
         execute(
-            MessageLib.ApprovedDeposits({
-                poolId: poolId,
-                scId: scId,
-                assetId: assetId,
-                assetAmount: assets,
-                pricePoolPerAsset: pricePoolPerAsset.raw()
-            }).serialize()
+            MessageLib.RequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.ApprovedDeposits({
+                    assetAmount: assets,
+                    pricePoolPerAsset: pricePoolPerAsset.raw()
+                }).serialize()
+            ).serialize()
         );
     }
 
     /// @dev Impicitly called by isFulfilledDepositRequest
-    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 shares, D18 pricePoolPerShare) public {
+    function isIssuedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 shares, D18 pricePoolPerShare)
+        public
+    {
         execute(
-            MessageLib.IssuedShares({
-                poolId: poolId,
-                scId: scId,
-                shareAmount: shares,
-                pricePoolPerShare: pricePoolPerShare.raw()
-            }).serialize()
+            MessageLib.RequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.IssuedShares({shareAmount: shares, pricePoolPerShare: pricePoolPerShare.raw()})
+                    .serialize()
+            ).serialize()
         );
     }
 
@@ -323,14 +334,16 @@ contract MockCentrifugeChain is Test {
         D18 pricePoolPerShare
     ) public {
         execute(
-            MessageLib.RevokedShares({
-                poolId: poolId,
-                scId: scId,
-                assetId: assetId,
-                assetAmount: assets,
-                shareAmount: shareAmount,
-                pricePoolPerShare: pricePoolPerShare.raw()
-            }).serialize()
+            MessageLib.RequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.RevokedShares({
+                    assetAmount: assets,
+                    shareAmount: shareAmount,
+                    pricePoolPerShare: pricePoolPerShare.raw()
+                }).serialize()
+            ).serialize()
         );
     }
 

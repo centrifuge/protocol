@@ -8,6 +8,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
 import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
@@ -18,7 +19,6 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 
 /// @title  VaultRouter
@@ -167,7 +167,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[msg.sender][vault] = 0;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, receiver, lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, 0, receiver, lockedRequest);
 
         emit UnlockDepositRequest(vault, msg.sender, receiver);
     }
@@ -184,7 +184,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         lockedRequests[controller][vault] = 0;
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        escrow.authTransferTo(vaultDetails.asset, address(this), lockedRequest);
+        escrow.authTransferTo(vaultDetails.asset, 0, address(this), lockedRequest);
 
         _approveMax(vaultDetails.asset, address(vault));
         vault.requestDeposit(lockedRequest, controller, address(this));

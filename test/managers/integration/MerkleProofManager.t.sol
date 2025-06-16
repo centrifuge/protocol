@@ -69,8 +69,6 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {
-        balanceSheet.setQueue(POOL_A, defaultTypedShareClassId, true);
-
         erc20.mint(address(this), amount);
         erc20.approve(address(balanceSheet), amount);
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, amount);

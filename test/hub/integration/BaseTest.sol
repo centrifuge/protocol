@@ -24,7 +24,7 @@ import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
@@ -40,6 +40,8 @@ contract BaseTest is HubDeployer, Test {
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
+    address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
+    address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);

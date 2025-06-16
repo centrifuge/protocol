@@ -18,6 +18,6 @@ contract IdentityValuation is BaseValuation, IIdentityValuation {
 
     /// @inheritdoc IValuation
     function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {
-        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), d18(1e18)).toUint128();
+        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), d18(1e18));
     }
 }

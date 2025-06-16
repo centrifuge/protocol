@@ -244,7 +244,6 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
         require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
-        IShareToken(share).authTransferFrom(sender, owner, address(baseManager.globalEscrow()), shares);
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -363,8 +362,8 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(ISyncDepositManager syncRequestManager_) {
-        syncDepositManager = syncRequestManager_;
+    constructor(ISyncDepositManager syncManager_) {
+        syncDepositManager = syncManager_;
     }
 
     //----------------------------------------------------------------------------------------------

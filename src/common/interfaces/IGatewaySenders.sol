@@ -69,30 +69,13 @@ interface IHubMessageSender is ILocalCentrifugeId {
         external;
 
     /// @notice Creates and send the message
-    function sendFulfilledDepositRequest(
+    function sendUpdateRestriction(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledAssetAmount
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledShareAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendUpdateRestriction(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes calldata payload)
-        external;
 
     /// @notice Creates and send the message
     function sendUpdateContract(
@@ -100,7 +83,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -109,52 +93,15 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 extraGasLimit
     ) external;
+
+    /// @notice Creates and send the message
+    function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external;
 
     /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external;
-
-    /// @notice Creates and send the message
-    function sendApprovedDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        D18 pricePoolPerAsset
-    ) external;
-
-    // @notice Creates and send the message
-    function sendIssuedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendRevokedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendTriggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        external;
-
-    /// @notice Creates and send the message
-    function sendTriggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external;
-
-    /// @notice Creates and send the message
-    function sendTriggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external;
-
-    /// @notice Creates and send the message
-    function sendSetQueue(PoolId poolId, ShareClassId scId, bool enabled) external;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
@@ -170,6 +117,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
+
+    /// @notice Creates and send the message
+    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -184,20 +134,6 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
-        external;
-
-    /// @notice Creates and send the message
-    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
-        external;
-
-    /// @notice Creates and send the message
-    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
-
-    /// @notice Creates and send the message
-    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
-
-    /// @notice Creates and send the message
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external;
 
     /// @notice Creates and send the message
@@ -209,7 +145,8 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -219,6 +156,10 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         uint128 shares,
         bool isIssuance,
         bool isSnapshot,
-        uint64 nonce
+        uint64 nonce,
+        uint128 extraGasLimit
     ) external;
+
+    /// @notice Creates and send the message
+    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }

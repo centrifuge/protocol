@@ -11,6 +11,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {HubHelpers} from "src/hub/HubHelpers.sol";
@@ -19,9 +20,10 @@ contract TestCommon is Test {
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
     IHubRegistry immutable hubRegistry = IHubRegistry(makeAddr("HubRegistry"));
+    IHubMessageSender immutable sender = IHubMessageSender(makeAddr("sender"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
-    HubHelpers hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, scm, address(this));
+    HubHelpers hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, sender, scm, address(this));
 }
 
 contract TestMainMethodsChecks is TestCommon {

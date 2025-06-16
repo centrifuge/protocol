@@ -8,10 +8,9 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 /// @title  ERC7540 Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -32,7 +31,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) public auth returns (IBaseVault) {
+    ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
         AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequestManager);
 

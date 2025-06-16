@@ -8,10 +8,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {IPoolEscrowProvider} from "src/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
     // Net queued shares
@@ -42,7 +42,8 @@ interface IBalanceSheet {
         uint128 amount,
         D18 pricePoolPerAsset
     );
-    event Deposit(
+    event Deposit(PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 amount);
+    event NoteDeposit(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address asset,
@@ -52,6 +53,27 @@ interface IBalanceSheet {
     );
     event Issue(PoolId indexed poolId, ShareClassId indexed scId, address to, D18 pricePoolPerShare, uint128 shares);
     event Revoke(PoolId indexed poolId, ShareClassId indexed scId, address from, D18 pricePoolPerShare, uint128 shares);
+    event TransferSharesFrom(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        address sender,
+        address indexed from,
+        address to,
+        uint256 amount
+    );
+    event SubmitQueuedShares(
+        PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance, bool isSnapshot, uint64 nonce
+    );
+    event SubmitQueuedAssets(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed assetId,
+        uint128 deposits,
+        uint128 withdrawals,
+        D18 pricePoolPerAsset,
+        bool isSnapshot,
+        uint64 nonce
+    );
 
     // --- Errors ---
     error FileUnrecognizedParam();
@@ -63,7 +85,6 @@ interface IBalanceSheet {
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);
-    function queueDisabled(PoolId poolId, ShareClassId scId) external view returns (bool);
     function queuedShares(PoolId poolId, ShareClassId scId)
         external
         view
@@ -96,14 +117,36 @@ interface IBalanceSheet {
         uint128 amount
     ) external;
 
+    /// @notice Increase the reserved balance of the pool. These assets are removed from the available balance
+    ///         and cannot be withdrawn before they are unreserved.
+    ///
+    ///         It is possible to reserve more than the current balance, to lock future expected assets.
+    function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+
+    /// @notice Decrease the reserved balance of the pool. These assets are re-added to the available balance.
+    function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external;
+
     /// @notice Issue new share tokens. Increases the total issuance.
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external;
 
     /// @notice Revoke share tokens. Decreases the total issuance.
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external;
 
+    /// @notice Sends the queued updated holding amount to the Hub
+    function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit) external;
+
+    /// @notice Sends the queued updated shares changed to the Hub
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit) external;
+
     /// @notice Force-transfers share tokens.
-    function transferSharesFrom(PoolId poolId, ShareClassId scId, address from, address to, uint256 amount) external;
+    function transferSharesFrom(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender,
+        address from,
+        address to,
+        uint256 amount
+    ) external;
 
     /// @notice Override the price pool per asset, to be used for any other balance sheet interactions.
     /// @dev    This can be used to note an interaction at a lower/higher price than the current one.
