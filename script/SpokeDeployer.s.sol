@@ -56,7 +56,7 @@ contract SpokeDeployer is CommonDeployer {
 
         spoke = new Spoke(tokenFactory, deployer);
         balanceSheet = new BalanceSheet(root, deployer);
-        vaultRouter = new VaultRouter(address(routerEscrow), gateway, spoke, messageDispatcher, deployer);
+        vaultRouter = new VaultRouter(address(routerEscrow), gateway, spoke, deployer);
 
         // Hooks
         freezeOnlyHook = address(new FreezeOnly{salt: SALT}(address(root), deployer));
