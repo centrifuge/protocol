@@ -6,6 +6,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -17,6 +18,7 @@ import "test/spoke/BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;
+    using RequestMessageLib for *;
     using CastLib for *;
 
     function testRedeem(uint256 amount) public {
@@ -192,11 +194,12 @@ contract RedeemTest is BaseTest {
         // check message was send out to centchain
         vault.cancelRedeemRequest(0, self);
 
-        MessageLib.CancelRedeemRequest memory m = adapter1.values_bytes("send").deserializeCancelRedeemRequest();
+        MessageLib.Request memory m = adapter1.values_bytes("send").deserializeRequest();
         assertEq(m.poolId, vault.poolId().raw());
         assertEq(m.scId, vault.scId().raw());
-        assertEq(m.investor, bytes32(bytes20(self)));
         assertEq(m.assetId, assetId);
+        RequestMessageLib.CancelRedeemRequest memory cb = RequestMessageLib.deserializeCancelRedeemRequest(m.payload);
+        assertEq(cb.investor, bytes32(bytes20(self)));
 
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
 

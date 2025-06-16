@@ -261,6 +261,42 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
+    function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+        MessageLib.Request memory a =
+            MessageLib.Request({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
+        MessageLib.Request memory b = MessageLib.deserializeRequest(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.payload, b.payload);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+    }
+
+    function testRequestCallback(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+        MessageLib.RequestCallback memory a =
+            MessageLib.RequestCallback({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
+        MessageLib.RequestCallback memory b = MessageLib.deserializeRequestCallback(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.payload, b.payload);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+    }
+
     function testUpdateVault(uint64 poolId, bytes16 scId, bytes32 vaultOrFactory, uint128 assetId, uint8 kind)
         public
         pure
@@ -285,6 +321,21 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
+    function testSetRequestManager(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 manager) public pure {
+        MessageLib.SetRequestManager memory a =
+            MessageLib.SetRequestManager({poolId: poolId, scId: scId, assetId: assetId, manager: manager});
+        MessageLib.SetRequestManager memory b = MessageLib.deserializeSetRequestManager(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.scId, b.scId);
+        assertEq(a.assetId, b.assetId);
+        assertEq(a.manager, b.manager);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    }
+
     function testUpdateBalanceSheetManager(uint64 poolId, bytes32 who, bool canManage) public pure {
         MessageLib.UpdateBalanceSheetManager memory a =
             MessageLib.UpdateBalanceSheetManager({poolId: poolId, who: who, canManage: canManage});
@@ -299,144 +350,145 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
-        public
-        pure
-    {
-        MessageLib.DepositRequest memory a = MessageLib.DepositRequest({
-            poolId: poolId,
-            scId: scId,
-            investor: investor,
-            assetId: assetId,
-            amount: amount
-        });
-        MessageLib.DepositRequest memory b = MessageLib.deserializeDepositRequest(a.serialize());
+    // function testDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+    //     public
+    //     pure
+    // {
+    //     MessageLib.DepositRequest memory a = MessageLib.DepositRequest({
+    //         poolId: poolId,
+    //         scId: scId,
+    //         investor: investor,
+    //         assetId: assetId,
+    //         amount: amount
+    //     });
+    //     MessageLib.DepositRequest memory b = MessageLib.deserializeDepositRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.amount, b.amount);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.amount, b.amount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
+    // }
 
-    function testRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
-        public
-        pure
-    {
-        MessageLib.RedeemRequest memory a =
-            MessageLib.RedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId, amount: amount});
-        MessageLib.RedeemRequest memory b = MessageLib.deserializeRedeemRequest(a.serialize());
+    // function testRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId, uint128 amount)
+    //     public
+    //     pure
+    // {
+    //     MessageLib.RedeemRequest memory a =
+    //         MessageLib.RedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId, amount:
+    // amount});
+    //     MessageLib.RedeemRequest memory b = MessageLib.deserializeRedeemRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.amount, b.amount);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.amount, b.amount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
+    // }
 
-    function testCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) public pure {
-        MessageLib.CancelDepositRequest memory a =
-            MessageLib.CancelDepositRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId});
-        MessageLib.CancelDepositRequest memory b = MessageLib.deserializeCancelDepositRequest(a.serialize());
+    // function testCancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) public pure {
+    //     MessageLib.CancelDepositRequest memory a =
+    //         MessageLib.CancelDepositRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId});
+    //     MessageLib.CancelDepositRequest memory b = MessageLib.deserializeCancelDepositRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
+    // }
 
-    function testCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) public pure {
-        MessageLib.CancelRedeemRequest memory a =
-            MessageLib.CancelRedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId});
-        MessageLib.CancelRedeemRequest memory b = MessageLib.deserializeCancelRedeemRequest(a.serialize());
+    // function testCancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 assetId) public pure {
+    //     MessageLib.CancelRedeemRequest memory a =
+    //         MessageLib.CancelRedeemRequest({poolId: poolId, scId: scId, investor: investor, assetId: assetId});
+    //     MessageLib.CancelRedeemRequest memory b = MessageLib.deserializeCancelRedeemRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
+    // }
 
-    function testFulfilledDepositRequest(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 investor,
-        uint128 assetId,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledAssetAmount
-    ) public pure {
-        MessageLib.FulfilledDepositRequest memory a = MessageLib.FulfilledDepositRequest({
-            poolId: poolId,
-            scId: scId,
-            investor: investor,
-            assetId: assetId,
-            fulfilledAssetAmount: fulfilledAssetAmount,
-            fulfilledShareAmount: fulfilledShareAmount,
-            cancelledAssetAmount: cancelledAssetAmount
-        });
-        MessageLib.FulfilledDepositRequest memory b = MessageLib.deserializeFulfilledDepositRequest(a.serialize());
+    // function testFulfilledDepositRequest(
+    //     uint64 poolId,
+    //     bytes16 scId,
+    //     bytes32 investor,
+    //     uint128 assetId,
+    //     uint128 fulfilledAssetAmount,
+    //     uint128 fulfilledShareAmount,
+    //     uint128 cancelledAssetAmount
+    // ) public pure {
+    //     MessageLib.FulfilledDepositRequest memory a = MessageLib.FulfilledDepositRequest({
+    //         poolId: poolId,
+    //         scId: scId,
+    //         investor: investor,
+    //         assetId: assetId,
+    //         fulfilledAssetAmount: fulfilledAssetAmount,
+    //         fulfilledShareAmount: fulfilledShareAmount,
+    //         cancelledAssetAmount: cancelledAssetAmount
+    //     });
+    //     MessageLib.FulfilledDepositRequest memory b = MessageLib.deserializeFulfilledDepositRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.fulfilledAssetAmount, b.fulfilledAssetAmount);
-        assertEq(a.fulfilledShareAmount, b.fulfilledShareAmount);
-        assertEq(a.cancelledAssetAmount, b.cancelledAssetAmount);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.fulfilledAssetAmount, b.fulfilledAssetAmount);
+    //     assertEq(a.fulfilledShareAmount, b.fulfilledShareAmount);
+    //     assertEq(a.cancelledAssetAmount, b.cancelledAssetAmount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    // }
 
-    function testFulfilledRedeemRequest(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 investor,
-        uint128 assetId,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledShareAmount
-    ) public pure {
-        MessageLib.FulfilledRedeemRequest memory a = MessageLib.FulfilledRedeemRequest({
-            poolId: poolId,
-            scId: scId,
-            investor: investor,
-            assetId: assetId,
-            fulfilledAssetAmount: fulfilledAssetAmount,
-            fulfilledShareAmount: fulfilledShareAmount,
-            cancelledShareAmount: cancelledShareAmount
-        });
-        MessageLib.FulfilledRedeemRequest memory b = MessageLib.deserializeFulfilledRedeemRequest(a.serialize());
+    // function testFulfilledRedeemRequest(
+    //     uint64 poolId,
+    //     bytes16 scId,
+    //     bytes32 investor,
+    //     uint128 assetId,
+    //     uint128 fulfilledAssetAmount,
+    //     uint128 fulfilledShareAmount,
+    //     uint128 cancelledShareAmount
+    // ) public pure {
+    //     MessageLib.FulfilledRedeemRequest memory a = MessageLib.FulfilledRedeemRequest({
+    //         poolId: poolId,
+    //         scId: scId,
+    //         investor: investor,
+    //         assetId: assetId,
+    //         fulfilledAssetAmount: fulfilledAssetAmount,
+    //         fulfilledShareAmount: fulfilledShareAmount,
+    //         cancelledShareAmount: cancelledShareAmount
+    //     });
+    //     MessageLib.FulfilledRedeemRequest memory b = MessageLib.deserializeFulfilledRedeemRequest(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.investor, b.investor);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.fulfilledAssetAmount, b.fulfilledAssetAmount);
-        assertEq(a.fulfilledShareAmount, b.fulfilledShareAmount);
-        assertEq(a.cancelledShareAmount, b.cancelledShareAmount);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.investor, b.investor);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.fulfilledAssetAmount, b.fulfilledAssetAmount);
+    //     assertEq(a.fulfilledShareAmount, b.fulfilledShareAmount);
+    //     assertEq(a.cancelledShareAmount, b.cancelledShareAmount);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    // }
 
     function testUpdateHoldingAmount(
         uint64 poolId,
@@ -512,64 +564,64 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testApprovedDeposits(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        uint128 assetAmount,
-        uint128 pricePoolPerAsset
-    ) public pure {
-        MessageLib.ApprovedDeposits memory a = MessageLib.ApprovedDeposits({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            assetAmount: assetAmount,
-            pricePoolPerAsset: pricePoolPerAsset
-        });
+    // function testApprovedDeposits(
+    //     uint64 poolId,
+    //     bytes16 scId,
+    //     uint128 assetId,
+    //     uint128 assetAmount,
+    //     uint128 pricePoolPerAsset
+    // ) public pure {
+    //     MessageLib.ApprovedDeposits memory a = MessageLib.ApprovedDeposits({
+    //         poolId: poolId,
+    //         scId: scId,
+    //         assetId: assetId,
+    //         assetAmount: assetAmount,
+    //         pricePoolPerAsset: pricePoolPerAsset
+    //     });
 
-        MessageLib.ApprovedDeposits memory b = MessageLib.deserializeApprovedDeposits(a.serialize());
+    //     MessageLib.ApprovedDeposits memory b = MessageLib.deserializeApprovedDeposits(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.assetAmount, b.assetAmount);
-        assertEq(a.pricePoolPerAsset, b.pricePoolPerAsset);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.assetAmount, b.assetAmount);
+    //     assertEq(a.pricePoolPerAsset, b.pricePoolPerAsset);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    // }
 
-    function testRevokedShares(
-        uint64 poolId,
-        bytes16 scId,
-        uint128 assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        uint128 pricePoolPerShare
-    ) public pure {
-        MessageLib.RevokedShares memory a = MessageLib.RevokedShares({
-            poolId: poolId,
-            scId: scId,
-            assetId: assetId,
-            assetAmount: assetAmount,
-            shareAmount: shareAmount,
-            pricePoolPerShare: pricePoolPerShare
-        });
+    // function testRevokedShares(
+    //     uint64 poolId,
+    //     bytes16 scId,
+    //     uint128 assetId,
+    //     uint128 assetAmount,
+    //     uint128 shareAmount,
+    //     uint128 pricePoolPerShare
+    // ) public pure {
+    //     MessageLib.RevokedShares memory a = MessageLib.RevokedShares({
+    //         poolId: poolId,
+    //         scId: scId,
+    //         assetId: assetId,
+    //         assetAmount: assetAmount,
+    //         shareAmount: shareAmount,
+    //         pricePoolPerShare: pricePoolPerShare
+    //     });
 
-        MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
+    //     MessageLib.RevokedShares memory b = MessageLib.deserializeRevokedShares(a.serialize());
 
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.assetAmount, b.assetAmount);
-        assertEq(a.shareAmount, b.shareAmount);
-        assertEq(a.pricePoolPerShare, b.pricePoolPerShare);
+    //     assertEq(a.poolId, b.poolId);
+    //     assertEq(a.scId, b.scId);
+    //     assertEq(a.assetId, b.assetId);
+    //     assertEq(a.assetAmount, b.assetAmount);
+    //     assertEq(a.shareAmount, b.shareAmount);
+    //     assertEq(a.pricePoolPerShare, b.pricePoolPerShare);
 
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
-    }
+    //     assertEq(a.serialize().messageLength(), a.serialize().length);
+    //     assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+    //     assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
+    // }
 
     function testMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
         MessageLib.MaxAssetPriceAge memory a =

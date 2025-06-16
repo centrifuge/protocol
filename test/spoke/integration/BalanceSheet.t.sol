@@ -25,8 +25,6 @@ contract BalanceSheetTest is BaseTest {
 
         // permissions set correctly
         assertEq(balanceSheet.wards(address(root)), 1);
-        assertEq(balanceSheet.wards(address(asyncRequestManager)), 1);
-        assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
         assertEq(balanceSheet.wards(address(messageProcessor)), 1);
         assertEq(balanceSheet.wards(address(messageDispatcher)), 1);
         assertEq(balanceSheet.wards(nonWard), 0);

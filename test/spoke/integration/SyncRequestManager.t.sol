@@ -63,7 +63,6 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         // permissions set correctly
         assertEq(syncRequestManager.wards(address(root)), 1);
         assertEq(syncRequestManager.wards(address(spoke)), 1);
-        assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
         assertEq(syncRequestManager.wards(nonWard), 0);
     }
 

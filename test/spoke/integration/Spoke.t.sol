@@ -81,14 +81,12 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher)
-                && nonWard != address(gateway)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(messageProcessor)
+                && nonWard != address(messageDispatcher) && nonWard != address(gateway)
         );
 
         // redeploying within test to increase coverage
         new Spoke(tokenFactory, address(this));
-        spoke.file("vaultFactory", address(asyncVaultFactory), true);
 
         // values set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
@@ -102,7 +100,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         // permissions set correctly
         assertEq(spoke.wards(address(root)), 1);
         assertEq(spoke.wards(address(gateway)), 1);
-        assertEq(spoke.wards(address(vaultRouter)), 1);
         assertEq(spoke.wards(nonWard), 0);
     }
 
@@ -125,31 +122,13 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.file("poolEscrowFactory", newPoolEscrowFactory);
         assertEq(address(spoke.poolEscrowFactory()), newPoolEscrowFactory);
 
-        IVaultFactory newVaultFactory = IVaultFactory(makeAddr("newVaultFactory"));
-        assertEq(spoke.vaultFactory(newVaultFactory), false);
-        spoke.file("vaultFactory", address(newVaultFactory), true);
-        assertEq(spoke.vaultFactory(newVaultFactory), true);
-        assertEq(spoke.vaultFactory(asyncVaultFactory), true);
-
-        vm.expectEmit();
-        emit ISpoke.File("vaultFactory", address(newVaultFactory), false);
-        spoke.file("vaultFactory", address(newVaultFactory), false);
-        assertEq(spoke.vaultFactory(newVaultFactory), false);
-
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
         spoke.file("escrow", newEscrow);
 
-        vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
-        spoke.file("escrow", newEscrow, true);
-
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.file("", address(0));
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.file("", address(0), true);
     }
 
     function testAddPool(PoolId poolId) public {
@@ -571,7 +550,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         // rewire factory contracts
         newVaultFactory.rely(address(spoke));
         asyncRequestManager.rely(address(newVaultFactory));
-        spoke.file("vaultFactory", address(newVaultFactory), true);
 
         // Unlink old vault
         spoke.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
@@ -778,19 +756,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
     function testDeploVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
         spoke.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), asyncVaultFactory);
-    }
-
-    function testDeploVaultInvalidVaultFactory(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        vm.expectRevert(ISpoke.InvalidFactory.selector);
-        spoke.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), IVaultFactory(address(0)));
     }
 
     function testDeployVaultUnauthorized() public {

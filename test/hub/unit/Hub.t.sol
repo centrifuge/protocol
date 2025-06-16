@@ -59,17 +59,9 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.registerAsset(AssetId.wrap(0), 0);
 
+        bytes memory EMPTY_BYTES;
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.redeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.cancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        hub.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.updateHoldingAmount(

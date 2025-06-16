@@ -43,7 +43,7 @@ contract HubDeployer is CommonDeployer {
         accounting = new Accounting(deployer);
         holdings = new Holdings(hubRegistry, deployer);
         shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
+        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer);
         hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
 
         _poolsRegister();
@@ -75,6 +75,7 @@ contract HubDeployer is CommonDeployer {
         // Rely hub helpers
         accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
+        messageDispatcher.rely(address(hubHelpers));
 
         // Rely others on hub
         hub.rely(address(messageProcessor));

@@ -8,39 +8,40 @@ import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IRequestManagerGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
+import {RequestCallbackType, RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 import {ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
 
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+
 import {IAsyncRequestManager, AsyncInvestmentState} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {BaseRequestManager} from "src/vaults/BaseRequestManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
-/// @title  Investment Manager
+/// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
 contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     using CastLib for *;
-    using MessageLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-
-    ISpokeMessageSender public sender;
+    using RequestMessageLib for *;
+    using RequestCallbackMessageLib for *;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
@@ -53,8 +54,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external override(IBaseRequestManager, BaseRequestManager) auth {
-        if (what == "sender") sender = ISpokeMessageSender(data);
-        else if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spoke") spoke = ISpoke(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -72,20 +72,14 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     {
         uint128 assets_ = assets.toUint128();
         require(assets_ != 0, ZeroAmountNotAllowed());
-
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        PoolId poolId = vault_.poolId();
-        ShareClassId scId = vault_.scId();
-
         require(spoke.isLinked(vault_), AssetNotAllowed());
-
         require(_canTransfer(vault_, address(0), controller, convertToShares(vault_, assets_)), TransferNotAllowed());
 
         AsyncInvestmentState storage state = investments[vault_][controller];
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
-
         state.pendingDepositRequest += assets_;
-        sender.sendDepositRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, assets_);
+
+        _sendRequest(vault_, RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize());
 
         return true;
     }
@@ -98,13 +92,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
     {
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmountNotAllowed());
-
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-        PoolId poolId = vault_.poolId();
-        ShareClassId scId = vault_.scId();
-
         require(spoke.isLinked(vault_), AssetNotAllowed());
-
         require(
             _canTransfer(vault_, owner, ESCROW_HOOK_ID, shares)
                 && _canTransfer(vault_, controller, ESCROW_HOOK_ID, shares),
@@ -113,24 +101,12 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
 
         AsyncInvestmentState storage state = investments[vault_][controller];
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
-
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
-        sender.sendRedeemRequest(poolId, scId, controller.toBytes32(), vaultDetails.assetId, shares_);
 
-        _executeRedeemTransfer(poolId, scId, sender_, owner, address(globalEscrow), shares_);
+        _sendRequest(vault_, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize());
+        balanceSheet.transferSharesFrom(vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_);
 
         return true;
-    }
-
-    function _executeRedeemTransfer(
-        PoolId poolId,
-        ShareClassId scId,
-        address sender_,
-        address owner,
-        address to,
-        uint128 shares
-    ) internal {
-        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, to, shares);
     }
 
     /// @inheritdoc IAsyncDepositManager
@@ -140,9 +116,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
         state.pendingCancelDepositRequest = true;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
-
-        sender.sendCancelDepositRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
+        _sendRequest(vault_, RequestMessageLib.CancelDepositRequest(controller.toBytes32()).serialize());
     }
 
     /// @inheritdoc IAsyncRedeemManager
@@ -155,23 +129,64 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         require(state.pendingCancelRedeemRequest != true, CancellationIsPending());
         state.pendingCancelRedeemRequest = true;
 
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
+        _sendRequest(vault_, RequestMessageLib.CancelRedeemRequest(controller.toBytes32()).serialize());
+    }
 
-        sender.sendCancelRedeemRequest(vault_.poolId(), vault_.scId(), controller.toBytes32(), vaultDetails.assetId);
+    function _sendRequest(IBaseVault vault_, bytes memory payload) internal {
+        spoke.request(vault_.poolId(), vault_.scId(), spoke.vaultDetails(vault_).assetId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
     // Gateway handlers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
+        uint8 kind = uint8(RequestCallbackMessageLib.requestCallbackType(payload));
+
+        if (kind == uint8(RequestCallbackType.ApprovedDeposits)) {
+            RequestCallbackMessageLib.ApprovedDeposits memory m = payload.deserializeApprovedDeposits();
+            approvedDeposits(poolId, scId, assetId, m.assetAmount, D18.wrap(m.pricePoolPerAsset));
+        } else if (kind == uint8(RequestCallbackType.IssuedShares)) {
+            RequestCallbackMessageLib.IssuedShares memory m = payload.deserializeIssuedShares();
+            issuedShares(poolId, scId, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+        } else if (kind == uint8(RequestCallbackType.RevokedShares)) {
+            RequestCallbackMessageLib.RevokedShares memory m = payload.deserializeRevokedShares();
+            revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+        } else if (kind == uint8(RequestCallbackType.FulfilledDepositRequest)) {
+            RequestCallbackMessageLib.FulfilledDepositRequest memory m = payload.deserializeFulfilledDepositRequest();
+            fulfillDepositRequest(
+                poolId,
+                scId,
+                m.investor.toAddress(),
+                assetId,
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledAssetAmount
+            );
+        } else if (kind == uint8(RequestCallbackType.FulfilledRedeemRequest)) {
+            RequestCallbackMessageLib.FulfilledRedeemRequest memory m = payload.deserializeFulfilledRedeemRequest();
+            fulfillRedeemRequest(
+                poolId,
+                scId,
+                m.investor.toAddress(),
+                assetId,
+                m.fulfilledAssetAmount,
+                m.fulfilledShareAmount,
+                m.cancelledShareAmount
+            );
+        } else {
+            revert IRequestManager.UnknownRequestCallbackType();
+        }
+    }
+
+    /// @inheritdoc IAsyncRequestManager
     function approvedDeposits(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 assetAmount,
         D18 pricePoolPerAsset
-    ) external auth {
+    ) public auth {
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
         // Note deposit and transfer from global escrow into the pool escrow,
@@ -184,14 +199,14 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         globalEscrow.authTransferTo(asset, tokenId, poolEscrow, assetAmount);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) external auth {
+    /// @inheritdoc IAsyncRequestManager
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) public auth {
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.issue(poolId, scId, address(globalEscrow), shareAmount);
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function revokedShares(
         PoolId poolId,
         ShareClassId scId,
@@ -199,7 +214,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         uint128 assetAmount,
         uint128 shareAmount,
         D18 pricePoolPerShare
-    ) external auth {
+    ) public auth {
         // Lock assets to ensure they are not withdrawn and are available for the redeeming user
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
         balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount);
@@ -210,7 +225,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function fulfillDepositRequest(
         PoolId poolId,
         ShareClassId scId,
@@ -243,7 +258,7 @@ contract AsyncRequestManager is BaseRequestManager, IAsyncRequestManager {
         if (cancelledAssets > 0) vault_.onCancelDepositClaimable(user, cancelledAssets);
     }
 
-    /// @inheritdoc IRequestManagerGatewayHandler
+    /// @inheritdoc IAsyncRequestManager
     function fulfillRedeemRequest(
         PoolId poolId,
         ShareClassId scId,

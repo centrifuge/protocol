@@ -20,7 +20,7 @@ import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncRequestManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
@@ -35,8 +35,8 @@ import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
     using MathLib for *;
     using CastLib for *;
-    using UpdateContractMessageLib for *;
     using BytesLib for bytes;
+    using UpdateContractMessageLib for *;
 
     mapping(PoolId => mapping(ShareClassId scId => ISyncDepositValuation)) public valuation;
     mapping(PoolId => mapping(ShareClassId scId => mapping(address asset => mapping(uint256 tokenId => uint128))))
@@ -216,8 +216,17 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
-        return
-            super._assetToShareAmount(vault_, vaultDetails, assets, poolPerAsset, poolPerShare, MathLib.Rounding.Down);
+        return poolPerShare.isZero()
+            ? 0
+            : PricingLib.assetToShareAmount(
+                vault_.share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                assets.toUint128(),
+                poolPerAsset,
+                poolPerShare,
+                MathLib.Rounding.Down
+            );
     }
 
     /// @inheritdoc IBaseRequestManager
@@ -278,16 +287,26 @@ contract SyncRequestManager is BaseRequestManager, ISyncRequestManager {
         }
     }
 
-    function _shareToAssetAmount(IBaseVault vault_, uint256 assets, MathLib.Rounding rounding)
+    function _shareToAssetAmount(IBaseVault vault_, uint256 shares, MathLib.Rounding rounding)
         internal
         view
-        returns (uint256 shares)
+        returns (uint256 assets)
     {
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
         D18 poolPerShare = pricePoolPerShare(vault_.poolId(), vault_.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vaultDetails.assetId, true);
 
-        return super._shareToAssetAmount(vault_, vaultDetails, assets, poolPerAsset, poolPerShare, rounding);
+        return poolPerAsset.isZero()
+            ? 0
+            : PricingLib.shareToAssetAmount(
+                vault_.share(),
+                shares.toUint128(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                poolPerShare,
+                poolPerAsset,
+                rounding
+            );
     }
 }

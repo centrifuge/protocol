@@ -17,6 +17,8 @@ interface IHubHelpers {
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
 
+    error UnknownRequestType();
+
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
     /// Accepts a `bytes32` representation of 'hub'
@@ -37,6 +39,9 @@ interface IHubHelpers {
 
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
+
+    /// @notice Handles a request originating from the Spoke side.
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     function holdingAccounts(
         AccountId assetAccount,

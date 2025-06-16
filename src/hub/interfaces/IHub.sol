@@ -162,6 +162,9 @@ interface IHub {
     /// @notice Allow/disallow an account to interact as hub manager this pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
+    /// @notice Allow/disallow an account to interact as request manager
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external payable;
+
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
