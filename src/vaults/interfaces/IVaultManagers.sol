@@ -8,12 +8,11 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-interface IDepositManager is IBaseRequestManager {
+interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
     /// the deposit order
     ///         has been successfully processed (partial fulfillment possible).
@@ -54,7 +53,7 @@ interface ISyncDepositManager is IDepositManager {
     function previewMint(IBaseVault vault, address sender, uint256 shares) external view returns (uint256);
 }
 
-interface IAsyncDepositManager is IDepositManager {
+interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
     ///         on the corresponding CP instance. Once the next epoch is executed on the corresponding CP instance,
@@ -100,7 +99,7 @@ interface IAsyncDepositManager is IDepositManager {
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
-interface IRedeemManager is IBaseRequestManager {
+interface IRedeemManager {
     event TriggerRedeemRequest(
         uint64 indexed poolId,
         bytes16 indexed scId,
@@ -145,7 +144,7 @@ interface IRedeemManager is IBaseRequestManager {
     function maxWithdraw(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
-interface IAsyncRedeemManager is IRedeemManager {
+interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
     ///         requests are added to the order book on the corresponding CP instance. Once the next epoch is
@@ -212,15 +211,29 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncRequestManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IUpdateContract {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
+    event File(bytes32 indexed what, address data);
 
+    error ExceedsMaxDeposit();
+    error FileUnrecognizedParam();
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
+
+    /// @notice Updates contract parameters of type address.
+    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param data The new contract address.
+    function file(bytes32 what, address data) external;
+
+    /// @notice Converts the assets value to share decimals.
+    function convertToShares(IBaseVault vault, uint256 _assets) external view returns (uint256 shares);
+
+    /// @notice Converts the shares value to assets decimals.
+    function convertToAssets(IBaseVault vault, uint256 _shares) external view returns (uint256 assets);
 
     /// @notice Sets the valuation for a specific pool and share class.
     ///
@@ -266,7 +279,10 @@ struct AsyncInvestmentState {
     bool pendingCancelRedeemRequest;
 }
 
-interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager, IRequestManager {
+interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
+    error AssetNotAllowed();
+    error ExceedsMaxDeposit();
+    error AssetMismatch();
     error ZeroAmountNotAllowed();
     error TransferNotAllowed();
     error CancellationIsPending();

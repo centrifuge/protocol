@@ -14,6 +14,7 @@ import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 
@@ -22,9 +23,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, address root, address deployer)
-        AsyncRequestManager(globalEscrow, root, deployer)
-    {}
+    constructor(IEscrow globalEscrow, address deployer) AsyncRequestManager(globalEscrow, deployer) {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
@@ -52,12 +51,12 @@ contract AsyncRequestManagerTest is BaseTest {
     // Deployment
     function testDeploymentAsync(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncManager)
                 && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequestManager(globalEscrow, address(root), address(this));
+        new AsyncRequestManager(globalEscrow, address(this));
 
         // values set correctly
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
@@ -96,13 +95,13 @@ contract AsyncRequestManagerTest is BaseTest {
 
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.AssetNotAllowed.selector);
         asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
     }
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(root), address(this));
+        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(this));
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
     }

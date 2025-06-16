@@ -34,9 +34,10 @@ import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
@@ -104,7 +105,7 @@ contract EndToEndDeployment is Test {
         bytes32 asyncVaultFactory;
         bytes32 syncDepositVaultFactory;
         AsyncRequestManager asyncRequestManager;
-        SyncRequestManager syncRequestManager;
+        SyncManager syncManager;
         // Hooks
         address fullRestrictionsHook;
         address redemptionRestrictionsHook;
@@ -237,7 +238,7 @@ contract EndToEndDeployment is Test {
         s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
         s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
         s_.asyncRequestManager = deploy.asyncRequestManager();
-        s_.syncRequestManager = deploy.syncRequestManager();
+        s_.syncManager = deploy.syncManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
 
@@ -296,6 +297,7 @@ contract EndToEndUtils is EndToEndDeployment {
 /// Common and generic flows ready to be used in different tests
 contract EndToEndFlows is EndToEndUtils {
     using CastLib for *;
+    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
     using MathLib for *;
 
@@ -303,6 +305,17 @@ contract EndToEndFlows is EndToEndUtils {
         return UpdateRestrictionMessageLib.UpdateRestrictionMember({
             user: addr.toBytes32(),
             validUntil: type(uint64).max
+        }).serialize();
+    }
+
+    function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
+            assetId: assetId.raw(),
+            maxReserve: maxReserve
         }).serialize();
     }
 
@@ -348,9 +361,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(
             s_.centrifugeId, POOL_A, address(s.asyncRequestManager).toBytes32(), true
         );
-        h.hub.updateBalanceSheetManager{value: GAS}(
-            s_.centrifugeId, POOL_A, address(s.syncRequestManager).toBytes32(), true
-        );
+        h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, address(s.syncManager).toBytes32(), true);
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
@@ -431,8 +442,16 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
         );
+        h.hub.updateContract{value: GAS}(
+            POOL_A,
+            SC_1,
+            s.centrifugeId,
+            address(s.syncManager).toBytes32(),
+            _updateContractSyncDepositMaxReserveMsg(s.usdcId, type(uint128).max),
+            EXTRA_GAS
+        );
 
-        IBaseVault vault = IBaseVault(address(s.syncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
+        IBaseVault vault = IBaseVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);

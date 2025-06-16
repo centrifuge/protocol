@@ -362,8 +362,8 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(ISyncDepositManager syncRequestManager_) {
-        syncDepositManager = syncRequestManager_;
+    constructor(ISyncDepositManager syncManager_) {
+        syncDepositManager = syncManager_;
     }
 
     //----------------------------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFact
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 
@@ -26,7 +26,7 @@ import {CommonDeployer} from "script/CommonDeployer.s.sol";
 contract SpokeDeployer is CommonDeployer {
     Spoke public spoke;
     BalanceSheet public balanceSheet;
-    SyncRequestManager public syncRequestManager;
+    SyncManager public syncManager;
     AsyncRequestManager public asyncRequestManager;
     Escrow public routerEscrow;
     Escrow public globalEscrow;
@@ -47,11 +47,10 @@ contract SpokeDeployer is CommonDeployer {
         globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
         tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
 
-        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
-        syncRequestManager = new SyncRequestManager(IEscrow(globalEscrow), address(root), deployer);
+        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), deployer);
+        syncManager = new SyncManager(deployer);
         asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
-        syncDepositVaultFactory =
-            new SyncDepositVaultFactory(address(root), syncRequestManager, asyncRequestManager, deployer);
+        syncDepositVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, deployer);
 
         spoke = new Spoke(tokenFactory, deployer);
         balanceSheet = new BalanceSheet(root, deployer);
@@ -76,7 +75,7 @@ contract SpokeDeployer is CommonDeployer {
         register("fullRestrictionsHook", address(fullRestrictionsHook));
         register("tokenFactory", address(tokenFactory));
         register("asyncRequestManager", address(asyncRequestManager));
-        register("syncRequestManager", address(syncRequestManager));
+        register("syncManager", address(syncManager));
         register("asyncVaultFactory", address(asyncVaultFactory));
         register("syncDepositVaultFactory", address(syncDepositVaultFactory));
         register("spoke", address(spoke));
@@ -97,7 +96,7 @@ contract SpokeDeployer is CommonDeployer {
         IAuth(syncDepositVaultFactory).rely(address(spoke));
         IAuth(tokenFactory).rely(address(spoke));
         asyncRequestManager.rely(address(spoke));
-        syncRequestManager.rely(address(spoke));
+        syncManager.rely(address(spoke));
         IAuth(freezeOnlyHook).rely(address(spoke));
         IAuth(fullRestrictionsHook).rely(address(spoke));
         IAuth(redemptionRestrictionsHook).rely(address(spoke));
@@ -108,9 +107,6 @@ contract SpokeDeployer is CommonDeployer {
         // Rely async requests manager
         globalEscrow.rely(address(asyncRequestManager));
 
-        // Rely sync requests manager
-        asyncRequestManager.rely(address(syncRequestManager));
-
         // Rely BalanceSheet
         messageDispatcher.rely(address(balanceSheet));
         gateway.rely(address(balanceSheet));
@@ -119,7 +115,7 @@ contract SpokeDeployer is CommonDeployer {
         vaultRouter.rely(address(root));
         spoke.rely(address(root));
         asyncRequestManager.rely(address(root));
-        syncRequestManager.rely(address(root));
+        syncManager.rely(address(root));
         balanceSheet.rely(address(root));
         routerEscrow.rely(address(root));
         globalEscrow.rely(address(root));
@@ -135,6 +131,7 @@ contract SpokeDeployer is CommonDeployer {
 
         // Rely others
         routerEscrow.rely(address(vaultRouter));
+        syncManager.rely(address(syncDepositVaultFactory));
 
         // Rely messageProcessor
         spoke.rely(address(messageProcessor));
@@ -162,8 +159,8 @@ contract SpokeDeployer is CommonDeployer {
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
 
-        syncRequestManager.file("spoke", address(spoke));
-        syncRequestManager.file("balanceSheet", address(balanceSheet));
+        syncManager.file("spoke", address(spoke));
+        syncManager.file("balanceSheet", address(balanceSheet));
 
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
@@ -189,7 +186,7 @@ contract SpokeDeployer is CommonDeployer {
         IAuth(fullRestrictionsHook).deny(deployer);
         IAuth(redemptionRestrictionsHook).deny(deployer);
         asyncRequestManager.deny(deployer);
-        syncRequestManager.deny(deployer);
+        syncManager.deny(deployer);
         spoke.deny(deployer);
         balanceSheet.deny(deployer);
         routerEscrow.deny(deployer);

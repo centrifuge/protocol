@@ -113,7 +113,7 @@ contract BaseTest is SpokeDeployer, Test {
         // remove deployer access
         // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncRequestManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -122,7 +122,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncRequestManager), "SyncRequestManager");
+        vm.label(address(syncManager), "SyncManager");
         vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -146,7 +146,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(asyncRequestManager));
-        excludeContract(address(syncRequestManager));
+        excludeContract(address(syncManager));
         excludeContract(address(balanceSheet));
         excludeContract(address(spoke));
         excludeContract(address(gateway));
@@ -195,7 +195,9 @@ contract BaseTest is SpokeDeployer, Test {
 
         spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
-        balanceSheet.updateManager(POOL_A, address(syncRequestManager), true);
+        balanceSheet.updateManager(POOL_A, address(syncManager), true);
+
+        syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

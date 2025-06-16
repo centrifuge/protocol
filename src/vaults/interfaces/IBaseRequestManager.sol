@@ -8,19 +8,14 @@ import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
-interface IBaseRequestManager is IVaultManager {
-    // --- Events ---
+interface IBaseRequestManager is IVaultManager, IRequestManager {
     event File(bytes32 indexed what, address data);
 
     error FileUnrecognizedParam();
-    error SenderNotVault();
-    error AssetNotAllowed();
-    error ExceedsMaxDeposit();
-    error AssetMismatch();
-    error VaultAlreadyExists();
-    error VaultDoesNotExist();
 
     /// @notice Updates contract parameters of type address.
     /// @param what The bytes32 representation of 'gateway' or 'spoke'.

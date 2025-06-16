@@ -9,9 +9,8 @@ contract BalanceSheetTest is BaseTest {
     // Deployment
     function testDeployment(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(asyncRequestManager)
-                && nonWard != address(syncRequestManager) && nonWard != address(messageProcessor)
-                && nonWard != address(messageDispatcher) && nonWard != address(this)
+            nonWard != address(root) && nonWard != address(asyncRequestManager) && nonWard != address(syncManager)
+                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher) && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage

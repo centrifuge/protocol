@@ -19,7 +19,7 @@ import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 
@@ -75,7 +75,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
     function testFile(bytes32 fileTarget, address nonWard) public {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
         vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncManager)
                 && nonWard != address(asyncRequestManager)
         );
         address random = makeAddr("random");
@@ -168,7 +168,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(
@@ -197,10 +197,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(1, self);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
     }
 }

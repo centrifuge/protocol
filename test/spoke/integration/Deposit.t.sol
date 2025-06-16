@@ -160,7 +160,7 @@ contract DepositTest is BaseTest {
         // minting or depositing more should revert
         vm.expectRevert(IAsyncRequestManager.ExceedsDepositLimits.selector);
         vault.mint(1, self);
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(2, self, self);
 
         // remainder is rounding difference
@@ -766,7 +766,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), investor.toBytes32(), assetId, uint128(amount), uint128(amount), 0
         );
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(amount, investor);
 
         vm.prank(investor);

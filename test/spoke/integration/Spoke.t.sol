@@ -91,7 +91,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         // values set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(syncRequestManager.spoke()), address(spoke));
+        assertEq(address(syncManager.spoke()), address(spoke));
 
         assertEq(address(spoke.poolEscrowFactory()), address(poolEscrowFactory));
         assertEq(address(spoke.tokenFactory()), address(tokenFactory));

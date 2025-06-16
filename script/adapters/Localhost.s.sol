@@ -161,7 +161,7 @@ contract LocalhostDeployer is FullDeployer {
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
-        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncRequestManager).toBytes32(), true);
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
