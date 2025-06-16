@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {Auth} from "src/misc/Auth.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
-import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 

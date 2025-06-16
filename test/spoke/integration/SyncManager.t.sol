@@ -7,14 +7,12 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {SyncManager} from "src/vaults/SyncManager.sol";
-
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 

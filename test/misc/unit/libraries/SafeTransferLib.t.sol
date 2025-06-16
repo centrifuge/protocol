@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 

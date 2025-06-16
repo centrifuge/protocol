@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {IERC7540Operator, IERC7714, IERC7741} from "src/misc/interfaces/IERC7540.sol";
 import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
+import {IERC7540Operator, IERC7714, IERC7741} from "src/misc/interfaces/IERC7540.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";

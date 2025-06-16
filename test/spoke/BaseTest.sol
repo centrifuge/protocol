@@ -4,39 +4,35 @@ pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {Escrow} from "src/misc/Escrow.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {Root} from "src/common/Root.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {Gateway} from "src/common/Gateway.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
 
+import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 
 import "forge-std/Test.sol";
 

@@ -7,8 +7,8 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 interface IVaultRouter is IMulticall {
     // --- Events ---

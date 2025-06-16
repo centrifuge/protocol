@@ -3,10 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 interface IHubRegistry is IERC6909Decimals {
     event NewAsset(AssetId indexed assetId, uint8 decimals);

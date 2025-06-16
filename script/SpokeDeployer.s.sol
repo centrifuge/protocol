@@ -5,17 +5,16 @@ import {Escrow} from "src/misc/Escrow.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {Gateway} from "src/common/Gateway.sol";
 import {ISafe} from "src/common/Guardian.sol";
 
+import {SyncManager} from "src/vaults/SyncManager.sol";
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
 
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";

@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 
 import {Accounting} from "src/hub/Accounting.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";

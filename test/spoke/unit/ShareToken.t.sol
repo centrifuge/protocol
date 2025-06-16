@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC20} from "src/misc/ERC20.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC7575.sol";
-import {ERC20} from "src/misc/ERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 
-import {MockFullRestrictions} from "test/spoke/mocks/MockFullRestrictions.sol";
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import {MockFullRestrictions} from "test/spoke/mocks/MockFullRestrictions.sol";
 
 import "forge-std/Test.sol";
 

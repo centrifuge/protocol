@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 import "test/spoke/BaseTest.sol";
 

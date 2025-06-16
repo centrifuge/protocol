@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {AssetId} from "src/common/types/AssetId.sol";
 

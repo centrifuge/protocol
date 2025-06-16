@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AccountId} from "src/common/types/AccountId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 

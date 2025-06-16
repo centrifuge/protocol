@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
+import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
 
 /// @title  Share Token Factory
 /// @dev    Utility for deploying new share class token contracts

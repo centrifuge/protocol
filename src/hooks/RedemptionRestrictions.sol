@@ -2,10 +2,10 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";

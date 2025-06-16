@@ -7,8 +7,8 @@ import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
 import {ShareToken} from "src/spoke/ShareToken.sol";
 
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "test/common/mocks/MockRoot.sol";

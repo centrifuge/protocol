@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {SyncManager} from "src/vaults/SyncManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
