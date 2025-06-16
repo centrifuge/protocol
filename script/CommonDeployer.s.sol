@@ -4,14 +4,14 @@ pragma solidity 0.8.28;
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
-import {GasService} from "src/common/GasService.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
+import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {MessageProcessor} from "src/common/MessageProcessor.sol";
-import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
+import {MessageProcessor} from "src/common/MessageProcessor.sol";
+import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
+import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";

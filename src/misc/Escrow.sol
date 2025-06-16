@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}

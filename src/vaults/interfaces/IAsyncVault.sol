@@ -3,8 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 /**
  * @title  IAsyncRedeemVault

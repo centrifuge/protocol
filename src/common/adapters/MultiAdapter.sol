@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 
 contract MultiAdapter is Auth, IMultiAdapter {

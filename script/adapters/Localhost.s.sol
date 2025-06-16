@@ -5,18 +5,19 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 

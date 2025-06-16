@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import "forge-std/Test.sol";
-
 import "src/misc/types/D18.sol";
 import "src/misc/libraries/MathLib.sol";
+
+import "forge-std/Test.sol";
 
 contract D18Test is Test {
     function testFuzzAdd(uint128 a, uint128 b) public pure {
