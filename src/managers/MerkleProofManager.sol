@@ -7,6 +7,7 @@ import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 

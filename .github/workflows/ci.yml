@@ -101,7 +101,7 @@ jobs:
       - name: Install `setuptools`
         run: pip install setuptools
 
-      - name: Run Halmos symbolic tests
+      - name: Check unused imports
         run: python3 script/utils/fix_imports.py --check-unused
 
   coverage:
