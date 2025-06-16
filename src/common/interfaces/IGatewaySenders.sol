@@ -3,9 +3,9 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
@@ -69,28 +69,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
         external;
 
     /// @notice Creates and send the message
-    function sendFulfilledDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledAssetAmount
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendFulfilledRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint128 fulfilledAssetAmount,
-        uint128 fulfilledShareAmount,
-        uint128 cancelledShareAmount
-    ) external;
-
-    /// @notice Creates and send the message
     function sendUpdateRestriction(
         uint16 centrifugeId,
         PoolId poolId,
@@ -120,35 +98,10 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
+    function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external;
+
+    /// @notice Creates and send the message
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external;
-
-    /// @notice Creates and send the message
-    function sendApprovedDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        D18 pricePoolPerAsset
-    ) external;
-
-    // @notice Creates and send the message
-    function sendIssuedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external;
-
-    /// @notice Creates and send the message
-    function sendRevokedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) external;
 
     /// @notice Creates and send the message
     function sendExecuteTransferShares(
@@ -164,6 +117,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
+
+    /// @notice Creates and send the message
+    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }
 
 /// @notice Interface for dispatch-only gateway
@@ -176,20 +132,6 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         bytes32 receiver,
         uint128 amount
     ) external;
-
-    /// @notice Creates and send the message
-    function sendDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
-        external;
-
-    /// @notice Creates and send the message
-    function sendRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId, uint128 amount)
-        external;
-
-    /// @notice Creates and send the message
-    function sendCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
-
-    /// @notice Creates and send the message
-    function sendCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId assetId) external;
 
     /// @notice Creates and send the message
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external;
@@ -217,4 +159,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         uint64 nonce,
         uint128 extraGasLimit
     ) external;
+
+    /// @notice Creates and send the message
+    function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 }

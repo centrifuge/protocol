@@ -5,14 +5,16 @@ pragma abicoder v2;
 import {d18, D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {IEscrow} from "src/spoke/interfaces/IEscrow.sol";
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+
+import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 import "test/spoke/BaseTest.sol";
 
@@ -21,9 +23,7 @@ interface VaultLike {
 }
 
 contract AsyncRequestManagerHarness is AsyncRequestManager {
-    constructor(IEscrow globalEscrow, address root, address deployer)
-        AsyncRequestManager(globalEscrow, root, deployer)
-    {}
+    constructor(IEscrow globalEscrow, address deployer) AsyncRequestManager(globalEscrow, deployer) {}
 
     function calculatePriceAssetPerShare(IBaseVault vault, uint128 assets, uint128 shares)
         external
@@ -49,30 +49,23 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
 
 contract AsyncRequestManagerTest is BaseTest {
     // Deployment
-    function testDeployment(address nonWard) public {
+    function testDeploymentAsync(address nonWard) public {
         vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(messageDispatcher)
-                && nonWard != address(messageProcessor) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncManager)
                 && nonWard != address(this)
         );
 
         // redeploying within test to increase coverage
-        new AsyncRequestManager(globalEscrow, address(root), address(this));
+        new AsyncRequestManager(globalEscrow, address(this));
 
         // values set correctly
-        assertEq(address(asyncRequestManager.sender()), address(messageDispatcher));
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
 
         // permissions set correctly
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
-        assertEq(asyncRequestManager.wards(address(messageProcessor)), 1);
-        assertEq(asyncRequestManager.wards(address(messageDispatcher)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
-
-        assertEq(balanceSheet.wards(address(asyncRequestManager)), 1);
-        assertEq(messageDispatcher.wards(address(asyncRequestManager)), 1);
     }
 
     // --- Administration ---
@@ -83,8 +76,6 @@ contract AsyncRequestManagerTest is BaseTest {
 
         assertEq(address(asyncRequestManager.spoke()), address(spoke));
         // success
-        asyncRequestManager.file("sender", randomUser);
-        assertEq(address(asyncRequestManager.sender()), randomUser);
         asyncRequestManager.file("spoke", randomUser);
         assertEq(address(asyncRequestManager.spoke()), randomUser);
         asyncRequestManager.file("balanceSheet", randomUser);
@@ -104,13 +95,13 @@ contract AsyncRequestManagerTest is BaseTest {
 
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseRequestManager.AssetNotAllowed.selector);
+        vm.expectRevert(IAsyncRequestManager.AssetNotAllowed.selector);
         asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
     }
 
     // --- Price calculations ---
     function testPrice() public {
-        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(root), address(this));
+        AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(globalEscrow, address(this));
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 1, 0).isZero());
         assert(harness.calculatePriceAssetPerShare(IBaseVault(address(0)), 0, 1).isZero());
     }

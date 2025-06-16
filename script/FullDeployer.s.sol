@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/Guardian.sol";
 
-import "forge-std/Script.sol";
 import {HubDeployer} from "script/HubDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+
+import "forge-std/Script.sol";
 
 contract FullDeployer is HubDeployer, SpokeDeployer {
     function deployFull(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
@@ -13,7 +14,7 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         deploySpoke(centrifugeId_, adminSafe_, deployer, isTests);
     }
 
-    function run() public {
+    function run() public virtual {
         vm.startBroadcast();
         uint16 centrifugeId;
         string memory environment;

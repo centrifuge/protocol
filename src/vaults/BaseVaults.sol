@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC7575.sol";
-import {Auth} from "src/misc/Auth.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {Recoverable} from "src/misc/Recoverable.sol";
+import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
 import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
+import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
 import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
@@ -362,8 +362,8 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
 abstract contract BaseSyncDepositVault is BaseVault {
     ISyncDepositManager public syncDepositManager;
 
-    constructor(ISyncDepositManager syncRequestManager_) {
-        syncDepositManager = syncRequestManager_;
+    constructor(ISyncDepositManager syncManager_) {
+        syncDepositManager = syncManager_;
     }
 
     //----------------------------------------------------------------------------------------------

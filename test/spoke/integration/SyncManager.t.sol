@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
 
-import {ISyncRequestManager, Prices, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 
-contract SyncRequestManagerBaseTest is BaseTest {
+contract SyncManagerBaseTest is BaseTest {
     function _assumeUnauthorizedCaller(address nonWard) internal view {
         vm.assume(nonWard != address(root) && nonWard != address(spoke) && nonWard != address(this));
     }
@@ -40,13 +39,13 @@ contract SyncRequestManagerBaseTest is BaseTest {
 
     function _setValuation(SyncDepositVault vault, address valuation_) internal {
         vm.expectEmit();
-        emit ISyncRequestManager.SetValuation(vault.poolId(), vault.scId(), valuation_);
-        syncRequestManager.setValuation(vault.poolId(), vault.scId(), valuation_);
-        assertEq(address(syncRequestManager.valuation(vault.poolId(), vault.scId())), valuation_);
+        emit ISyncManager.SetValuation(vault.poolId(), vault.scId(), valuation_);
+        syncManager.setValuation(vault.poolId(), vault.scId(), valuation_);
+        assertEq(address(syncManager.valuation(vault.poolId(), vault.scId())), valuation_);
     }
 }
 
-contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
+contract SyncManagerTest is SyncManagerBaseTest {
     using MessageLib for *;
 
     // Deployment
@@ -54,39 +53,38 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         _assumeUnauthorizedCaller(nonWard);
 
         // redeploying within test to increase coverage
-        new SyncRequestManager(globalEscrow, address(root), address(this));
+        new SyncManager(address(this));
 
         // values set correctly
-        assertEq(address(syncRequestManager.spoke()), address(spoke));
-        assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncManager.spoke()), address(spoke));
+        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
 
         // permissions set correctly
-        assertEq(syncRequestManager.wards(address(root)), 1);
-        assertEq(syncRequestManager.wards(address(spoke)), 1);
-        assertEq(balanceSheet.wards(address(syncRequestManager)), 1);
-        assertEq(syncRequestManager.wards(nonWard), 0);
+        assertEq(syncManager.wards(address(root)), 1);
+        assertEq(syncManager.wards(address(spoke)), 1);
+        assertEq(syncManager.wards(nonWard), 0);
     }
 
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param
         vm.expectRevert(IBaseRequestManager.FileUnrecognizedParam.selector);
-        syncRequestManager.file("random", self);
+        syncManager.file("random", self);
 
-        assertEq(address(syncRequestManager.spoke()), address(spoke));
-        assertEq(address(syncRequestManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncManager.spoke()), address(spoke));
+        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
 
         // success
-        syncRequestManager.file("spoke", randomUser);
-        assertEq(address(syncRequestManager.spoke()), randomUser);
-        syncRequestManager.file("balanceSheet", randomUser);
-        assertEq(address(syncRequestManager.balanceSheet()), randomUser);
+        syncManager.file("spoke", randomUser);
+        assertEq(address(syncManager.spoke()), randomUser);
+        syncManager.file("balanceSheet", randomUser);
+        assertEq(address(syncManager.balanceSheet()), randomUser);
 
         // remove self from wards
-        syncRequestManager.deny(self);
+        syncManager.deny(self);
         // auth fail
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        syncRequestManager.file("spoke", randomUser);
+        syncManager.file("spoke", randomUser);
     }
 
     // --- Simple Errors ---
@@ -94,87 +92,43 @@ contract SyncRequestManagerTest is SyncRequestManagerBaseTest {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(ISyncRequestManager.ExceedsMaxMint.selector);
-        syncRequestManager.mint(vault, 1, address(0), address(0));
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
+        syncManager.mint(vault, 1, address(0), address(0));
     }
 
     function testDepositUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
-        syncRequestManager.deposit(vault, 1, address(0), address(0));
-    }
-
-    function testAddVaultEmptySecondaryManager() public {
-        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(assetId_);
-
-        syncRequestManager.removeVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
-
-        vm.prank(address(root));
-        vault.file("asyncRedeemManager", address(0));
-
-        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
-        syncRequestManager.addVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
-    }
-
-    function testRemoveVaultEmptySecondaryManager() public {
-        (SyncDepositVault vault, uint128 assetId_) = _deploySyncDepositVault(d18(0), d18(0));
-        VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = AssetId.wrap(assetId_);
-
-        vm.prank(address(root));
-        vault.file("asyncRedeemManager", address(0));
-
-        vm.expectRevert(ISyncRequestManager.SecondaryManagerDoesNotExist.selector);
-        syncRequestManager.removeVault(poolId, scId, assetId, vault, vaultDetails.asset, vaultDetails.tokenId);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
+        syncManager.deposit(vault, 1, address(0), address(0));
     }
 }
 
-contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
+contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
     function testFileUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequestManager.file(bytes32(0), address(0));
-    }
-
-    function testAddVaultUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
-        syncRequestManager.addVault(
-            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IBaseVault(address(0)), address(0), 0
-        );
-    }
-
-    function testRemoveVaultUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
-        syncRequestManager.removeVault(
-            PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IBaseVault(address(0)), address(0), 0
-        );
+        syncManager.file(bytes32(0), address(0));
     }
 
     function testDepositUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequestManager.deposit(IBaseVault(address(0)), 0, address(0), address(0));
+        syncManager.deposit(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testMintUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequestManager.mint(IBaseVault(address(0)), 0, address(0), address(0));
+        syncManager.mint(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
     function testSetValuationUnauthorized(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequestManager.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
+        syncManager.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
     }
 
     function testUpdate(address nonWard) public {
         _expectUnauthorized(nonWard);
-        syncRequestManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
+        syncManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
     function _expectUnauthorized(address caller) internal {
@@ -188,7 +142,7 @@ contract SyncRequestManagerUnauthorizedTest is SyncRequestManagerBaseTest {
     }
 }
 
-contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
+contract SyncManagerUpdateValuation is SyncManagerBaseTest {
     using MathLib for uint256;
 
     address valuation_ = makeAddr("valuation");
@@ -210,7 +164,7 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         D18 expectedPoolPerShare,
         uint128 assetId
     ) internal view {
-        D18 poolPerShare = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 poolPerShare = syncManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
         D18 poolPerAsset = spoke.pricePoolPerAsset(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), true);
 
         assertNotEq(prePoolPerShare.raw(), expectedPoolPerShare.raw(), "Price should be changed by valuation");
@@ -230,7 +184,7 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         D18 priceAssetPerShare = d18(2e18);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        D18 pricePre = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
         _setValuation(syncVault, valuation_);
 
@@ -255,7 +209,7 @@ contract SyncRequestManagerUpdateValuation is SyncRequestManagerBaseTest {
         vm.assume(priceAssetPerShare.raw() % multiplier == 0);
 
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
-        D18 pricePre = syncRequestManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
+        D18 pricePre = syncManager.pricePoolPerShare(syncVault.poolId(), syncVault.scId());
 
         _setValuation(syncVault, valuation_);
 

@@ -1,44 +1,44 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Script.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {Hub} from "src/hub/Hub.sol";
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 
-contract TestData is Script {
+import {Hub} from "src/hub/Hub.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+
+import {Spoke} from "src/spoke/Spoke.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {FullDeployer} from "script/FullDeployer.s.sol";
+
+import "forge-std/Script.sol";
+
+// Script to deploy Hub and Vaults with a Localhost Adapter.
+contract LocalhostDeployer is FullDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
 
-    AssetId public immutable USD_ID = newAssetId(840); // USD currency code
-
     address public admin;
-    ISpoke public spoke;
-    Hub public hub;
-    IShareClassManager public shareClassManager;
-    address public redemptionRestrictionsHook;
-    IdentityValuation public identityValuation;
-    address public asyncVaultFactory;
-    address public syncDepositVaultFactory;
-    BalanceSheet public balanceSheet;
-    IHubRegistry public hubRegistry;
 
-    function run() public {
+    function run() public override {
         string memory network = vm.envString("NETWORK");
         string memory configFile = string.concat("env/", network, ".json");
         string memory config = vm.readFile(configFile);
@@ -46,15 +46,15 @@ contract TestData is Script {
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
 
         admin = vm.envAddress("ADMIN");
-        spoke = ISpoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
+        spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
         hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
-        shareClassManager = IShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
+        shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
         redemptionRestrictionsHook = vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook");
         identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
-        asyncVaultFactory = vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory");
-        syncDepositVaultFactory = vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory");
+        asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
+        syncDepositVaultFactory = SyncDepositVaultFactory(vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"));
         balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
-        hubRegistry = IHubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
+        hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -86,9 +86,10 @@ contract TestData is Script {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(
-            poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook))
-        );
+        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -105,9 +106,7 @@ contract TestData is Script {
             AccountId.wrap(0x04)
         );
 
-        hub.updateVault(
-            poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
-        );
+        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0);
 
         hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -121,12 +120,8 @@ contract TestData is Script {
         vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        hub.approveDeposits(
-            poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6
-        );
-        hub.issueShares(
-            poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1)
-        );
+        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
 
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
@@ -161,12 +156,8 @@ contract TestData is Script {
         vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        hub.approveRedeems(
-            poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18
-        );
-        hub.revokeShares(
-            poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10)
-        );
+        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
 
         hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
@@ -185,9 +176,11 @@ contract TestData is Script {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(
-            poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook))
-        );
+        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -205,12 +198,7 @@ contract TestData is Script {
         );
 
         hub.updateVault(
-            poolId,
-            scId,
-            assetId,
-            address(syncDepositVaultFactory).toBytes32(),
-            VaultUpdateKind.DeployAndLink,
-            0
+            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
         );
 
         hub.updateSharePrice(poolId, scId, navPerShare);

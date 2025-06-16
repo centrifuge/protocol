@@ -3,21 +3,20 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -161,6 +160,9 @@ interface IHub {
 
     /// @notice Allow/disallow an account to interact as hub manager this pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
+
+    /// @notice Allow/disallow an account to interact as request manager
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)

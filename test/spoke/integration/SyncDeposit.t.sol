@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
-
+import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
+
+import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -75,7 +76,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
     function testFile(bytes32 fileTarget, address nonWard) public {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
         vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncRequestManager)
+            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncManager)
                 && nonWard != address(asyncRequestManager)
         );
         address random = makeAddr("random");
@@ -168,7 +169,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
             syncVault.poolId().raw(), syncVault.scId().raw(), address(syncVault), uint128(amount / 2)
         );
 
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(amount, self);
 
         centrifugeChain.updateMaxReserve(
@@ -197,10 +198,10 @@ contract SyncDepositTest is SyncDepositTestHelper {
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncVault.deposit(1, self);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
     }
 }

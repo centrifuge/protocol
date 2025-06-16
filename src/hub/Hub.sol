@@ -1,29 +1,31 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {Auth} from "src/misc/Auth.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {IPoolEscrow, IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
@@ -32,6 +34,7 @@ import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 ///         Also acts as the central contract that routes messages from other chains to the Hub contracts.
 contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuardianActions {
     using MathLib for uint256;
+    using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
 
@@ -41,6 +44,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     IAccounting public accounting;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
+    IPoolEscrowFactory public poolEscrowFactory;
 
     constructor(
         IGateway gateway_,
@@ -79,6 +83,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
+        else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -106,6 +111,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
         hubRegistry.registerPool(poolId, admin, currency);
+
+        IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
+        gateway.setRefundAddress(poolId, escrow);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -122,8 +130,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            sender.sendFulfilledDepositRequest(
-                poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+            sender.sendRequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(
+                    investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                ).serialize()
             );
         }
     }
@@ -138,8 +151,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            sender.sendFulfilledRedeemRequest(
-                poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+            sender.sendRequestCallback(
+                poolId,
+                scId,
+                assetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(
+                    investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                ).serialize()
             );
         }
     }
@@ -269,6 +287,17 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        sender.sendSetRequestManager(poolId, scId, assetId, manager);
+    }
+
+    /// @inheritdoc IHub
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
         payable
@@ -304,7 +333,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
 
-        sender.sendApprovedDeposits(poolId, scId, depositAssetId, approvedAssetAmount, pricePoolPerAsset);
+        sender.sendRequestCallback(
+            poolId,
+            scId,
+            depositAssetId,
+            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize()
+        );
     }
 
     /// @inheritdoc IHub
@@ -340,7 +374,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
 
-        sender.sendIssuedShares(poolId, scId, depositAssetId, issuedShareAmount, navPoolPerShare);
+        sender.sendRequestCallback(
+            poolId,
+            scId,
+            depositAssetId,
+            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize()
+        );
     }
 
     /// @inheritdoc IHub
@@ -361,7 +400,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
 
-        sender.sendRevokedShares(poolId, scId, payoutAssetId, payoutAssetAmount, revokedShareAmount, navPoolPerShare);
+        sender.sendRequestCallback(
+            poolId,
+            scId,
+            payoutAssetId,
+            RequestCallbackMessageLib.RevokedShares(payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw())
+                .serialize()
+        );
     }
 
     /// @inheritdoc IHub
@@ -377,7 +422,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
+            sender.sendRequestCallback(
+                poolId,
+                scId,
+                depositAssetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize()
+            );
         }
     }
 
@@ -393,7 +443,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
+            sender.sendRequestCallback(
+                poolId,
+                scId,
+                payoutAssetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize()
+            );
         }
     }
 
@@ -582,47 +637,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function depositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId, uint128 amount)
-        external
-    {
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable {
         _auth();
 
-        shareClassManager.requestDeposit(poolId, scId, amount, investor, depositAssetId);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function redeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId, uint128 amount)
-        external
-    {
-        _auth();
-
-        shareClassManager.requestRedeem(poolId, scId, amount, investor, payoutAssetId);
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function cancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external
-    {
-        _auth();
-
-        uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, investor, depositAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
-        }
-    }
-
-    /// @inheritdoc IHubGatewayHandler
-    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId) external {
-        _auth();
-
-        uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, investor, payoutAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledShareAmount > 0) {
-            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
-        }
+        hubHelpers.request(poolId, scId, assetId, payload);
     }
 
     /// @inheritdoc IHubGatewayHandler

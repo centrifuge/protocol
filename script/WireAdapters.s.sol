@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Script.sol";
-import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
-import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
+import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
+
+import "forge-std/Script.sol";
 
 // NOTE: Assumes each adapter in network A is also set up in network B, and all adapters should be wired
 contract WireAdapters is Script {

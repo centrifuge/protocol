@@ -46,7 +46,7 @@
     "fullRestrictionsHook": "0x3422C7ff73728E7fb981e60bFE67E73f67394f3D",
     "tokenFactory": "0x91d5b16CE7b0514441BB0761f7e7c8D6F8E02951",
     "asyncRequestManager": "0xC0Bc4CCDb5DE8f8C41806694416ad8C487b9a705",
-    "syncRequestManager": "0xB9d4836c04adFFDFB09530B65Faf7d9fA4f04d2c",
+    "syncManager": "0xB9d4836c04adFFDFB09530B65Faf7d9fA4f04d2c",
     "asyncVaultFactory": "0xA6F0ae482bdcD75dD2eA8fdcC6c9dc9D947Cd263",
     "syncDepositVaultFactory": "0x58ec94c4e66B130351ca169785Ed929E38275cdF",
     "spoke": "0x80d60b9643C93706Ffcea40035599A5E3d5444A7",

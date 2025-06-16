@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Script.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import {Root} from "src/common/Root.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
+import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
+
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
+
+import "forge-std/Script.sol";
 
 contract Adapters is Script, JsonRegistry {
     Root public root;
