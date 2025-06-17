@@ -1,43 +1,38 @@
 @startuml
 hide empty members
 
-package misc {
-    interface Escrow
-}
-
 package spoke {
-    class Spoke
-    class BalanceSheet
-    interface IUpdateContract
     interface IVaultManager
     interface IRequestManager
 }
 
 interface IBaseRequestManager
 
+interface IDepositManager
+interface IRedeemManager
+
+interface IAsyncDepositManager
+interface ISyncDepositManager
+interface IAsyncRedeemManager
+
 interface IAsyncRequestManager
 interface ISyncManager
-
-class GlobalEscrow
-class VaultEscrow
 
 IBaseRequestManager -up-|> IRequestManager
 IBaseRequestManager -up-|> IVaultManager
 
-IAsyncRequestManager -up-|> IBaseRequestManager
-ISyncManager -up-|> IUpdateContract
+IAsyncDepositManager -up-|> IBaseRequestManager
+IAsyncDepositManager -up-|> IDepositManager
+ISyncDepositManager -up-|> IDepositManager
+IAsyncRedeemManager -up-|> IRedeemManager
+IAsyncRedeemManager -up-|> IBaseRequestManager
 
-GlobalEscrow -up-|> Escrow
-VaultEscrow -up-|> Escrow
+IAsyncRequestManager -up-|> IAsyncDepositManager
+IAsyncRequestManager -up-|> IAsyncRedeemManager
 
-AsyncRequestManager -up--> GlobalEscrow
-AsyncRequestManager -up--> BalanceSheet
+ISyncManager -up-|> ISyncDepositManager
+
 AsyncRequestManager -up-|> IAsyncRequestManager
-
 SyncManager -up-|> ISyncManager
-SyncManager -up--> BalanceSheet
-
-VaultRouter -up-> VaultEscrow
-VaultRouter -up-> Spoke
 
 @enduml

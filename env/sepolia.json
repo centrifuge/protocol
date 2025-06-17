@@ -1,0 +1,57 @@
+{
+  "network": {
+    "chainId": 11155111,
+    "environment": "testnet",
+    "centrifugeId": 1,
+    "network": "ethereum",
+    "etherscanUrl": "https://api-sepolia.etherscan.io/api",
+    "connectsTo": [
+      "arbitrum-sepolia",
+      "base-sepolia"
+    ]
+  },
+  "adapters": {
+    "wormhole": {
+      "wormholeId": "10002",
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "deploy": true
+    },
+    "axelar": {
+      "axelarId": "ethereum-sepolia",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": "0xF9634D79Cf230b64FbbF1A571177E3CFb7F70070",
+    "guardian": "0xba63B0B015841423272751A5cFf7b5d587D545D3",
+    "gasService": "0x112d505405996DaCa9df23D80eAa5344aC2B4a71",
+    "gateway": "0x440365e1E39890FdBac52C995a21047dD46b62fA",
+    "multiAdapter": "0x3a255c29FEF1dD77a7617E5eaF34a3f68F244d7d",
+    "messageProcessor": "0xAA0858c92D0F9d1Bb0CA45fcA6bA592a9211bBB7",
+    "messageDispatcher": "0x809cCe3dbd3b5200A913453151a16aF7Cd14C43D",
+    "hubRegistry": "0x5d8829Bbc9E444027Cee139850472e15d7Bb77ff",
+    "accounting": "0xB8D7EC7a7FE199Af80A69da161A37088Da7E3d40",
+    "holdings": "0x74EF0ca6CAE2d06CD11b78114C4EdEdF28eb99ed",
+    "shareClassManager": "0x34f6853d0F8c4D3D2cfDDfE611557FeD223CAc3a",
+    "hub": "0x696ac2dCcE82507ED583354d029cbF189A25f42F",
+    "identityValuation": "0x63A35338D8726Cc3F50396c7DE585B390EE64C16",
+    "poolEscrowFactory": "0xDE46062b194EBFe62b0Df00C28e39E83dadF9D4C",
+    "routerEscrow": "0xB1Bc36e44e084A42f3A1d38B3E206e99De0452f9",
+    "globalEscrow": "0xBEE9118Da799e96e476573abE52BF3f4119B1822",
+    "freezeOnlyHook": "0x93757327A1aa1673bb38e734cA06D40e813B63cf",
+    "redemptionRestrictionsHook": "0xB37e277065Ea928eD7CeC8A64BE169850a994B9e",
+    "fullRestrictionsHook": "0x59DE27F6213c171BFE3318738D6b2b832e302d39",
+    "tokenFactory": "0x9181987dd3cF6494CdDFF2126CACdE374cc74410",
+    "asyncRequestManager": "0x0D036cCbA4f5775c19A490AD04dAf48E6D7F4093",
+    "syncManager": "0xd5729Ad87D4Be672ab990339f2b8031f9Ca5c579",
+    "asyncVaultFactory": "0x78f7D6aDD7735BBcFA03f9F82b2f978a1cD04365",
+    "syncDepositVaultFactory": "0x3D7167af42Dd6Bad5785DF7EeeF509f71b55ad45",
+    "spoke": "0x8A37F271c52486E0C194d8E9DFCF66F85aa29F75",
+    "vaultRouter": "0x0d44A18Fe3d02012f9090aD22FAE63E0a7A18067",
+    "balanceSheet": "0x93bb9219218cC4F4e36417A0F57275Dc96E809aF",
+    "wormholeAdapter": "0xA77DF260E79fC0E9E2baaf5Fa7c4E8234210cCaD",
+    "axelarAdapter": "0x3a10D135D00747e36eBb61Cb1554aF29f59675b5"
+  }
+}

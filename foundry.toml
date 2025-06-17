@@ -11,13 +11,20 @@ optimizer_runs = 1
 verbosity = 3
 
 ffi = true
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}, { access = "read-write", path = "./deployments"}]
+fs_permissions = [
+  { access = "read-write", path = ".forge-snapshots/" },
+  { access = "read-write", path = "./env/latest" },
+  { access = "read", path = "env" },
+]
 
+# Deployment specific settings
+gas_reports = ["*"]
+gas_reports_ignore = ["test/*", "script/*"]
 gas_snapshot_check = false
 
 # False-alarm warnings
 ignored_warnings_from = [
-    "src/misc/ReentrancyProtection.sol" # Issue: https://github.com/ethereum/solidity/issues/14359
+  "src/misc/ReentrancyProtection.sol", # Issue: https://github.com/ethereum/solidity/issues/14359
 ]
 
 [profile.default.fuzz]
@@ -25,9 +32,9 @@ runs = 100
 max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
 
 [profile.default.invariant]
-runs           = 10
-depth          = 100
-call_override  = false
+runs = 10
+depth = 100
+call_override = false
 fail_on_revert = false
 
 [profile.ci.fuzz]
@@ -35,36 +42,34 @@ runs = 1000
 max_test_rejects = 1_000_000 # Number of times `vm.assume` can fail
 
 [profile.ci.invariant]
-runs           = 100
-depth          = 1000
-call_override  = false
+runs = 100
+depth = 1000
+call_override = false
 fail_on_revert = false
 
 [profile.ci-coverage]
 verbosity = 2
 
 [profile.ci-coverage.coverage]
-ignore = [
-  "test/spoke/fuzzing/**/*.sol",
-]
+ignore = ["test/spoke/fuzzing/**/*.sol"]
 
 [profile.ci-coverage.fuzz]
-runs = 512 # 2x of default
+runs = 512                # 2x of default
 max_test_rejects = 65_536 # default value
 
 [profile.smt.model_checker]
-  engine = "chc" # constrained Horn clauses
-  invariants = ["contract", "reentrancy"]
-  show_unproved = true
-  timeout = 100_000 # in milliseconds, per solving query
-  targets = [
-    "assert",
-    "constantCondition",
-    "divByZero",
-    "outOfBounds",
-    "overflow",
-    "underflow",
-  ]
+engine = "chc" # constrained Horn clauses
+invariants = ["contract", "reentrancy"]
+show_unproved = true
+timeout = 100_000 # in milliseconds, per solving query
+targets = [
+  "assert",
+  "constantCondition",
+  "divByZero",
+  "outOfBounds",
+  "overflow",
+  "underflow",
+]
 
 [profile.smt.model_checker.contracts]
   "src/vaults/AsyncVault.sol" = ["AsyncVault"]
@@ -79,27 +84,23 @@ max_test_rejects = 65_536 # default value
   "src/spoke/admin/Guardian.sol" = ["Guardian"]
 
 [doc]
-  ignore = ["**/*.t.sol", "**/*.s.sol"]
-  out = "docs"
-  repository = "https://github.com/centrifuge/asset-pools"
+ignore = ["**/*.t.sol", "**/*.s.sol"]
+out = "docs"
+repository = "https://github.com/centrifuge/asset-pools"
 
 [fmt]
-  line_length = 120
-  tab_width = 4
-  bracket_spacing = false
-  int_types = "long"
-  multiline_func_header = "attributes_first"
-  quote_style = "double"
-  number_underscore = "preserve"
-  wrap_comments = true
-  ignore = [
-    "test/*.sol",
-    #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
-    "src/misc/ReentrancyProtection.sol", #Because transient keyword
-    "src/hub/Accounting.sol", #Because transient keyword
-    "src/common/Gateway.sol", #Because transient keyword
-  ]
-
-[rpc_endpoints]
-ethereum-mainnet = "https://mainnet.infura.io/v3/${INFURA_API_KEY}"
-polygon-mainnet = "https://polygon-mainnet.infura.io/v3/${INFURA_API_KEY}"
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+multiline_func_header = "attributes_first"
+quote_style = "double"
+number_underscore = "preserve"
+wrap_comments = true
+ignore = [
+  "test/*.sol",
+  #Check if https://github.com/foundry-rs/foundry/issues/9088 is fixed to remove the following:
+  "src/misc/ReentrancyProtection.sol", #Because transient keyword
+  "src/hub/Accounting.sol",            #Because transient keyword
+  "src/common/Gateway.sol",            #Because transient keyword
+]
