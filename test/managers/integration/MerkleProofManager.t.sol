@@ -84,10 +84,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: rootHash
-            }).serialize()
+            UpdateContractMessageLib.UpdateContractPolicy({who: address(this).toBytes32(), what: rootHash}).serialize()
         );
     }
 
