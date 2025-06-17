@@ -12,8 +12,10 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 
@@ -24,6 +26,7 @@ import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -35,6 +38,7 @@ import "forge-std/Script.sol";
 contract LocalhostDeployer is FullDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
+    using UpdateContractMessageLib for *;
 
     address public admin;
 
@@ -52,9 +56,12 @@ contract LocalhostDeployer is FullDeployer {
         redemptionRestrictionsHook = vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook");
         identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
         asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
-        syncDepositVaultFactory = SyncDepositVaultFactory(vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"));
+        syncDepositVaultFactory =
+            SyncDepositVaultFactory(vm.parseJsonAddress(config, "$.contracts.syncDepositVaultFactory"));
         balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
         hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
+        asyncRequestManager = AsyncRequestManager(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"));
+        syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -211,6 +218,18 @@ contract LocalhostDeployer is FullDeployer {
         hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
+
+        hub.updateContract(
+            poolId,
+            scId,
+            centrifugeId,
+            address(syncManager).toBytes32(),
+            UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
+                assetId: assetId.raw(),
+                maxReserve: type(uint128).max
+            }).serialize(),
+            0
+        );
 
         // Deposit
         IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
