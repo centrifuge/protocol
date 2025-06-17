@@ -56,7 +56,7 @@ contract VaultRouterTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, spoke, messageDispatcher, address(this));
+        new VaultRouter(address(routerEscrow), gateway, spoke, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
