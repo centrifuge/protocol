@@ -243,10 +243,15 @@ run_forge_script() {
         print_info "Running: forge script $script ..."
         eval "$FORGE_CMD"
         if [[ $? -ne 0 ]]; then
-            print_error "Failed to run $script with Forge"
-            print_step "If you want to try and run the command manually:"
-            print_info "NETWORK=$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --rpc-url \$RPC_URL --private-key \$PRIVATE_KEY --verify --broadcast --chain-id $CHAIN_ID --etherscan-api-key \$ETHERSCAN_API_KEY ${FORGE_ARGS[*]}"
-            print_info "Do not forget to source the secrets using load_vars.sh first"
+            print_error "ERROR: Failed to run $script with Forge"
+            print_step "Try these steps:"
+            print_info "1. Run ./deploy.sh $NETWORK $STEP --resume to pick up where this run left off"
+            print_info "2. Run ./deploy.sh forge:clean for a new clean deployment (sometimes lingering old deploys conflict with new code)"
+            print_info "3. Try running the command manually:"
+            print_info "   $FORGE_CMD --resume"
+            print_info "   OR"
+            print_info "   $FORGE_CMD"
+            print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
             exit 1
         fi
     fi
