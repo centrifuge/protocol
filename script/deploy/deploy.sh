@@ -318,6 +318,7 @@ fi
 
 # Set arguments
 CI_MODE=${CI_MODE:-false}
+
 if [[ "$1" == "forge:clean" ]]; then
     NETWORK=""
     STEP="forge:clean"
@@ -346,10 +347,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Load environment variables
-if ! source "$SCRIPT_DIR/load_vars.sh" "$NETWORK"; then
-    print_error "Failed to load environment variables"
-    exit 1
+# Load environment variables only if not forge:clean
+if [[ "$STEP" != "forge:clean" ]]; then
+    if ! source "$SCRIPT_DIR/load_vars.sh" "$NETWORK"; then
+        print_error "Failed to load environment variables"
+        exit 1
+    fi
 fi
 
 # Run the requested step
