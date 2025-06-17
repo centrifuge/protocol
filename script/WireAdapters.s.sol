@@ -8,7 +8,10 @@ import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
 
 import "forge-std/Script.sol";
 
-// NOTE: Assumes each adapter in network A is also set up in network B, and all adapters should be wired
+/// @dev Configures the local network's adapters to communicate with remote networks.
+///      This script only sets up one-directional communication (local → remote).
+///      For bidirectional communication, the script must be run on each network separately.
+///      Intended for testnet use only.
 contract WireAdapters is Script {
     IAdapter[] adapters; // Storage array like in CommonDeployer
 
@@ -25,80 +28,85 @@ contract WireAdapters is Script {
     }
 
     function run() public {
-        string memory network1 = vm.envString("NETWORK");
-        string memory config1 = fetchConfig(network1);
+        string memory localNetwork = vm.envString("NETWORK");
+        string memory localConfig = fetchConfig(localNetwork);
 
-        // Declare and initialize adapter addresses
-        address wormholeAddr = address(0);
-        address axelarAddr = address(0);
+        // Declare and initialize local adapter addresses
+        address localWormholeAddr = address(0);
+        address localAxelarAddr = address(0);
 
-        // Try to get Wormhole adapter
-        try vm.parseJsonAddress(config1, "$.contracts.wormholeAdapter") returns (address addr) {
+        // Try to get local Wormhole adapter
+        try vm.parseJsonAddress(localConfig, "$.contracts.wormholeAdapter") returns (address addr) {
             if (addr != address(0)) {
-                wormholeAddr = addr;
+                localWormholeAddr = addr;
                 adapters.push(IAdapter(addr));
             }
         } catch {
-            console.log("No WormholeAdapter found in config for network", network1);
+            console.log("No WormholeAdapter found in config for network", localNetwork);
         }
 
-        // Try to get Axelar adapter
-        try vm.parseJsonAddress(config1, "$.contracts.axelarAdapter") returns (address addr) {
+        // Try to get local Axelar adapter
+        try vm.parseJsonAddress(localConfig, "$.contracts.axelarAdapter") returns (address addr) {
             if (addr != address(0)) {
-                axelarAddr = addr;
+                localAxelarAddr = addr;
                 adapters.push(IAdapter(addr));
             }
         } catch {
-            console.log("No AxelarAdapter found in config for network", network1);
+            console.log("No AxelarAdapter found in config for network", localNetwork);
         }
 
-        string[] memory connectsTo = vm.parseJsonStringArray(config1, "$.network.connectsTo");
+        string[] memory connectsTo = vm.parseJsonStringArray(localConfig, "$.network.connectsTo");
 
         vm.startBroadcast();
         for (uint256 i = 0; i < connectsTo.length; i++) {
-            string memory network2 = connectsTo[i];
-            string memory config2 = fetchConfig(network2);
-            uint16 centrifugeId2 = uint16(vm.parseJsonUint(config2, "$.network.centrifugeId"));
+            string memory remoteNetwork = connectsTo[i];
+            string memory remoteConfig = fetchConfig(remoteNetwork);
+            uint16 remoteCentrifugeId = uint16(vm.parseJsonUint(remoteConfig, "$.network.centrifugeId"));
 
             // Register ALL adapters for this destination chain
-            MultiAdapter multiAdapter = MultiAdapter(vm.parseJsonAddress(config1, "$.contracts.multiAdapter"));
-            multiAdapter.file("adapters", centrifugeId2, adapters);
-            console.log("Registered MultiAdapter(", network1, ") for", network2);
+            MultiAdapter multiAdapter = MultiAdapter(vm.parseJsonAddress(localConfig, "$.contracts.multiAdapter"));
+            multiAdapter.file("adapters", remoteCentrifugeId, adapters);
+            console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter
-            if (wormholeAddr != address(0)) {
-                try vm.parseJsonAddress(config2, "$.contracts.wormholeAdapter") {
-                    address wormholeAddr2 = vm.parseJsonAddress(config2, "$.contracts.wormholeAdapter");
-                    uint16 wormholeId2 = uint16(vm.parseJsonUint(config2, "$.adapters.wormhole.wormholeId"));
-                    WormholeAdapter wormholeAdapter = WormholeAdapter(wormholeAddr);
-                    wormholeAdapter.file("sources", centrifugeId2, wormholeId2, wormholeAddr2);
-                    wormholeAdapter.file("destinations", centrifugeId2, wormholeId2, wormholeAddr2);
-                    console.log("Wired WormholeAdapter from", network1, "to", network2);
+            if (localWormholeAddr != address(0)) {
+                try vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter") {
+                    address remoteWormholeAddr = vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter");
+                    uint16 remoteWormholeId = uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId"));
+                    WormholeAdapter localWormholeAdapter = WormholeAdapter(localWormholeAddr);
+                    localWormholeAdapter.file("sources", remoteCentrifugeId, remoteWormholeId, remoteWormholeAddr);
+                    localWormholeAdapter.file("destinations", remoteCentrifugeId, remoteWormholeId, remoteWormholeAddr);
+
+                    console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
                 } catch {
                     console.log(
                         "Failed to wire Wormhole.",
                         "No WormholeAdapter contract found in config (not deployed yet?) for network ",
-                        network2
+                        remoteNetwork
                     );
                 }
             }
 
             // Wire AxelarAdapter
-            if (axelarAddr != address(0)) {
-                try vm.parseJsonAddress(config2, "$.contracts.axelarAdapter") {
-                    address axelarAddr2 = vm.parseJsonAddress(config2, "$.contracts.axelarAdapter");
-                    string memory axelarId2 = vm.parseJsonString(config2, "$.adapters.axelar.axelarId");
+            if (localAxelarAddr != address(0)) {
+                try vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter") {
+                    address remoteAxelarAddr = vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter");
+                    string memory remoteAxelarId = vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId");
 
-                    AxelarAdapter axelarAdapter = AxelarAdapter(axelarAddr);
-                    axelarAdapter.file("sources", axelarId2, centrifugeId2, vm.toString(axelarAddr2));
-                    axelarAdapter.file("destinations", centrifugeId2, axelarId2, vm.toString(axelarAddr2));
+                    AxelarAdapter localAxelarAdapter = AxelarAdapter(localAxelarAddr);
+                    localAxelarAdapter.file(
+                        "sources", remoteAxelarId, remoteCentrifugeId, vm.toString(remoteAxelarAddr)
+                    );
+                    localAxelarAdapter.file(
+                        "destinations", remoteCentrifugeId, remoteAxelarId, vm.toString(remoteAxelarAddr)
+                    );
 
-                    console.log("Wired AxelarAdapter from", network1, "to", network2);
+                    console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
                 } catch {
                     console.log(
                         "Failed to wire Axelar.",
                         "No AxelarAdapter contract found (not deployed yet?) in config for network ",
-                        network2
+                        remoteNetwork
                     );
                 }
             }
