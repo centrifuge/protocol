@@ -211,15 +211,6 @@ run_forge_script() {
     print_info "Network: $NETWORK"
     print_info "Chain ID: $CHAIN_ID"
 
-    # Create logs directory if it doesn't exist
-    local logs_dir="$SCRIPT_DIR/logs"
-    mkdir -p "$logs_dir"
-
-    # Generate log file names with timestamp
-    local timestamp=""
-    timestamp=$(date +"%Y%m%d_%H%M%S")
-    local log_file="$logs_dir/${script}_${NETWORK}_${timestamp}.log"
-
     # Construct the forge command
     FORGE_CMD="ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
@@ -237,38 +228,22 @@ run_forge_script() {
     CATAPULTA_CMD="NETWORK=$NETWORK DEPLOYMENT_SALT=$DEPLOYMENT_SALT catapulta script $script \"$ROOT_DIR/script/$script.s.sol\" --network ${CATAPULTA_NET:-$NETWORK} --private-key $PRIVATE_KEY"
 
     print_step "Executing Command"
-    short_log_file="${log_file/#$PWD\//}"
 
-    # Execute the appropriate command with output redirection
+    # Execute the appropriate command
     if [ "$USE_CATAPULTA" = true ]; then
         print_info "Using Catapulta deployment"
         print_info "Running: catapulta script $script ..."
-        if [ "$VERBOSE" = true ]; then
-            eval "$CATAPULTA_CMD"
-        else
-            print_info "Output will be logged to: $short_log_file"
-            eval "$CATAPULTA_CMD" >"$log_file" 2>&1
-        fi
-        exit_code=${PIPESTATUS[0]}
-        if [[ $exit_code -ne 0 ]]; then
+        eval "$CATAPULTA_CMD"
+        if [[ $? -ne 0 ]]; then
             print_error "Failed to run $script with Catapulta"
-            print_error "Check the log file for details: $short_log_file"
             exit 1
         fi
     else
         print_info "Using Forge deployment"
         print_info "Running: forge script $script ..."
-        if [ "$VERBOSE" = true ]; then
-            eval "$FORGE_CMD"
-        else
-            print_info "Output will be logged to: $short_log_file"
-            eval "$FORGE_CMD" >"$log_file" 2>&1
-        fi
-        exit_code=${PIPESTATUS[0]}
-        if [[ $exit_code -ne 0 ]]; then
+        eval "$FORGE_CMD"
+        if [[ $? -ne 0 ]]; then
             print_error "Failed to run $script with Forge"
-            print_error "Check the log file for details: $short_log_file"
-            print_error "Run the script again with --verbose to see the full output from forge on your terminal"
             print_step "If you want to try and run the command manually:"
             print_info "NETWORK=$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --rpc-url \$RPC_URL --private-key \$PRIVATE_KEY --verify --broadcast --chain-id $CHAIN_ID --etherscan-api-key \$ETHERSCAN_API_KEY ${FORGE_ARGS[*]}"
             print_info "Do not forget to source the secrets using load_vars.sh first"
@@ -277,7 +252,6 @@ run_forge_script() {
     fi
 
     print_success "Script execution completed successfully"
-    print_info "Full output available in: $short_log_file"
 }
 
 # Function to update network config with deployment output
@@ -318,7 +292,7 @@ update_network_config() {
 # Example: ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2
 # Example: ./deploy.sh eth-sepolia deploy:test --nonce 4765
 
-if [[ -z "$1" || -z "$2" ]]; then
+if [[ "$1" != "forge:clean" ]] || [[ -z "$1" || -z "$2" ]]; then
     echo "Usage: ./deploy.sh <network> <step> [--catapulta] [--verbose] [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
@@ -331,7 +305,6 @@ if [[ -z "$1" || -z "$2" ]]; then
     echo
     echo "Options:"
     echo "  --catapulta     - Use Catapulta for deployment"
-    echo "  --verbose       - Show forge output in terminal"
     echo
     echo "Examples:"
     echo "  ./deploy.sh sepolia deploy:protocol"
@@ -344,24 +317,25 @@ fi
 
 # Set arguments
 CI_MODE=${CI_MODE:-false}
-NETWORK=$1
-STEP=$2
-shift 2 # Remove the first two arguments
+if [[ "$1" == "forge:clean" ]]; then
+    NETWORK=""
+    STEP="forge:clean"
+    shift 1 # Remove the argument
+else
+    NETWORK=$1
+    STEP=$2
+    shift 2 # Remove the first two arguments
+fi
 
 # Check for --catapulta flag
 USE_CATAPULTA=false
 FORGE_ARGS=()
-VERBOSE=false
 
 # Process remaining arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
     --catapulta)
         USE_CATAPULTA=true
-        shift
-        ;;
-    --verbose)
-        VERBOSE=true
         shift
         ;;
     *)
