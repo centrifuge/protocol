@@ -14,23 +14,23 @@ contract BaseDecoder {
     }
 
     // @desc deposit into the balance sheet
-    function deposit(PoolId, ShareClassId, address asset, uint256, uint128)
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256, uint128)
         external
         view
         virtual
         returns (bytes memory addressesFound)
     {
-        addressesFound = abi.encodePacked(asset);
+        addressesFound = abi.encodePacked(poolId, scId, asset);
     }
 
     // @desc withdraw from the balance sheet
-    function withdraw(PoolId, ShareClassId, address asset, uint256, address receiver, uint128)
+    function withdraw(PoolId poolId, ShareClassId scId, address asset, uint256, address receiver, uint128)
         external
         view
         virtual
         returns (bytes memory addressesFound)
     {
-        addressesFound = abi.encodePacked(asset, receiver);
+        addressesFound = abi.encodePacked(poolId, scId, asset, receiver);
     }
 
     fallback() external {

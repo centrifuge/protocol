@@ -61,7 +61,7 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         bytes32 strategistPolicy = policy[msg.sender];
         require(strategistPolicy != bytes32(0), NotAStrategist());
 
-        for (uint256 i; i < calls.length; ++i) {
+        for (uint256 i; i < calls.length; i++) {
             bytes memory addresses = abi.decode(_staticCall(calls[i].decoder, calls[i].targetData), (bytes));
             PolicyLeaf memory leaf = _toPolicyLeaf(calls[i], addresses);
 

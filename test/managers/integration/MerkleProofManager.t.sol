@@ -22,6 +22,7 @@ import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
+    using UpdateContractMessageLib for *;
     using UpdateRestrictionMessageLib for *;
 
     uint128 defaultAmount;
@@ -76,6 +77,20 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
         balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, amount);
     }
 
+    function _setPolicy(bytes32[][] memory tree) internal {
+        bytes32 rootHash = tree[tree.length - 1][0];
+
+        vm.prank(address(spoke));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractPolicy({
+                who: address(this).toBytes32(),
+                what: rootHash
+            }).serialize()
+        );
+    }
+
     function _selector(string memory signature) internal pure returns (bytes4) {
         return bytes4(keccak256(abi.encodePacked(signature)));
     }
@@ -99,7 +114,6 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
 
 contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
     using CastLib for *;
-    using UpdateContractMessageLib for *;
 
     function testNotStrategist() public {
         Call[] memory calls = new Call[](0);
@@ -120,7 +134,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
-            addresses: abi.encodePacked(erc20, manager)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -128,20 +142,12 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
-            addresses: abi.encodePacked(erc20)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20)
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
 
-        vm.prank(address(spoke));
-        manager.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: tree[tree.length - 1][0]
-            }).serialize()
-        );
+        _setPolicy(tree);
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
@@ -183,7 +189,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
-            addresses: abi.encodePacked(erc20, manager)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -191,20 +197,12 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
-            addresses: abi.encodePacked(erc20)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20)
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
 
-        vm.prank(address(spoke));
-        manager.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: tree[tree.length - 1][0]
-            }).serialize()
-        );
+        _setPolicy(tree);
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
@@ -257,7 +255,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
-            addresses: abi.encodePacked(erc20, manager)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -265,20 +263,12 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
-            addresses: abi.encodePacked(erc20)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20)
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
 
-        vm.prank(address(spoke));
-        manager.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: tree[tree.length - 1][0]
-            }).serialize()
-        );
+        _setPolicy(tree);
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
@@ -311,7 +301,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                     decoder: address(decoder),
                     target: address(balanceSheet),
                     selector: BalanceSheet.withdraw.selector,
-                    addresses: abi.encodePacked(address(erc20), address(manager)),
+                    addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, address(erc20), address(manager)),
                     valueNonZero: false
                 }),
                 proofs[0]
@@ -335,7 +325,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
-            addresses: abi.encodePacked(erc20, manager)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -343,20 +333,12 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
-            addresses: abi.encodePacked(erc20)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20)
         });
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
 
-        vm.prank(address(spoke));
-        manager.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: tree[tree.length - 1][0]
-            }).serialize()
-        );
+        _setPolicy(tree);
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](1);
@@ -389,7 +371,7 @@ contract MerkleProofManagerFailureTests is MerkleProofManagerBaseTest {
                     decoder: address(decoder),
                     target: address(balanceSheet),
                     selector: BalanceSheet.withdraw.selector,
-                    addresses: abi.encodePacked(address(erc20), makeAddr("otherTarget")),
+                    addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, address(erc20), makeAddr("otherTarget")),
                     valueNonZero: false
                 }),
                 proofs[0]
@@ -420,7 +402,7 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("withdraw(uint64,bytes16,address,uint256,address,uint128)"),
-            addresses: abi.encodePacked(erc20, manager)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20, manager)
         });
 
         leafs[1] = PolicyLeaf({
@@ -428,7 +410,7 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
             target: address(balanceSheet),
             valueNonZero: false,
             selector: _selector("deposit(uint64,bytes16,address,uint256,uint128)"),
-            addresses: abi.encodePacked(erc20)
+            addresses: abi.encodePacked(POOL_A, defaultTypedShareClassId, erc20)
         });
 
         leafs[2] = PolicyLeaf({
@@ -449,15 +431,7 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
 
         bytes32[][] memory tree = MerkleTreeLib.generateMerkleTree(_computeHashes(leafs));
 
-        vm.prank(address(spoke));
-        manager.update(
-            POOL_A,
-            defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractPolicy({
-                who: address(this).toBytes32(),
-                what: tree[tree.length - 1][0]
-            }).serialize()
-        );
+        _setPolicy(tree);
 
         // Generate proof for execution
         PolicyLeaf[] memory proofLeafs = new PolicyLeaf[](3);
