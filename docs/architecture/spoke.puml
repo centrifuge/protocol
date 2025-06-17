@@ -13,6 +13,11 @@ package managers {
     class MerkleProofManager
 }
 
+package vaults {
+    class AsyncRequestManager
+    class SyncManager
+}
+
 package hooks {
     class FreezeOnly
     class RedemptionRestrictions
@@ -58,6 +63,8 @@ IVault -up-> IVaultManager
 
 OnOfframpManager -down-> BalanceSheet
 MerkleProofManager -up-> BalanceSheet
+AsyncRequestManager -up-> BalanceSheet
+SyncManager -up-> BalanceSheet
 
 TokenFactory .up.> ShareToken
 IVaultFactory .left.> IVault

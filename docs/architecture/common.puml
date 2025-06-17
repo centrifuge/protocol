@@ -58,7 +58,7 @@ Guardian ---> MultiAdapter
 Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
-Gateway -down--|> MultiAdapter
+Gateway -down--> MultiAdapter
 MultiAdapter -down-->"n" IAdapter
 Gateway -up->PoolEscrow
 
