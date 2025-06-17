@@ -287,13 +287,13 @@ update_network_config() {
     return 0
 }
 
-# Usage: ./deploy.sh <network> <step> [--catapulta] [--verbose] [forge_args...]
+# Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]
 # Example: ./deploy.sh eth-sepolia deploy:protocol
 # Example: ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2
 # Example: ./deploy.sh eth-sepolia deploy:test --nonce 4765
 
-if [[ "$1" != "forge:clean" ]] || [[ -z "$1" || -z "$2" ]]; then
-    echo "Usage: ./deploy.sh <network> <step> [--catapulta] [--verbose] [forge_args...]"
+if [[ -z "$1" ]] || [[ "$1" != "forge:clean" && -z "$2" ]]; then
+    echo "Usage: ./deploy.sh <network> <step> [--catapulta] [forge_args...]"
     echo "Network options: sepolia, base-sepolia, etc. (must match env/<network>.json)"
     echo "Step options:"
     echo "  deploy:protocol  - Deploy core protocol contracts (hub, spoke)"
@@ -311,7 +311,8 @@ if [[ "$1" != "forge:clean" ]] || [[ -z "$1" || -z "$2" ]]; then
     echo "  ./deploy.sh base-sepolia deploy:adapters --catapulta --priority-gas-price 2"
     echo "  ./deploy.sh sepolia deploy:test --nonce 4765"
     echo "  ./deploy.sh sepolia verify:protocol"
-    echo "  ./deploy.sh arbitrum-sepolia verify:adapters --verbose"
+    echo "  ./deploy.sh arbitrum-sepolia verify:adapters"
+    echo "  ./deploy.sh forge:clean"
     exit 1
 fi
 
