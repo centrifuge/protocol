@@ -12,9 +12,9 @@ struct Call {
 struct PolicyLeaf {
     address decoder;
     address target;
+    bool valueNonZero;
     bytes4 selector;
     bytes addresses;
-    bool valueNonZero;
 }
 
 interface IERC7751 {

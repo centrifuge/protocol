@@ -84,9 +84,9 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         return PolicyLeaf({
             decoder: call.decoder,
             target: call.target,
+            valueNonZero: call.value > 0,
             selector: bytes4(call.targetData),
-            addresses: addresses,
-            valueNonZero: call.value > 0
+            addresses: addresses
         });
     }
 
