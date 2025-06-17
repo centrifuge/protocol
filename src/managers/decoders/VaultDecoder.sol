@@ -4,21 +4,21 @@ pragma solidity 0.8.28;
 import {BaseDecoder} from "src/managers/decoders/BaseDecoder.sol";
 
 contract VaultDecoder is BaseDecoder {
-    // @desc deposit into the ERC4626 vault
-    // @tag receiver:address:the address of the receiver of the vault tokens
+    /// @notice Deposit into the ERC4626 vault
+    /// @param  receiver the address of the receiver of the vault tokens
     function deposit(uint256, address receiver) external view virtual returns (bytes memory addressesFound) {
         addressesFound = abi.encodePacked(receiver);
     }
 
-    // @desc mint tokens from the ERC4626 vault
-    // @tag receiver:address:the address of the receiver of the vault tokens
+    /// @notice Mint tokens from the ERC4626 vault
+    /// @param  receiver the address of the receiver of the vault tokens
     function mint(uint256, address receiver) external pure virtual returns (bytes memory addressesFound) {
         addressesFound = abi.encodePacked(receiver);
     }
 
-    // @desc withdraw tokens from the ERC4626 vault
-    // @tag receiver:address:the address of the receiver of the vault tokens
-    // @tag owner:address:the address of the owner of the vault tokens
+    /// @notice Withdraw tokens from the ERC4626 vault
+    /// @param  receiver the address of the receiver of the vault tokens
+    /// @param  owner the address of the owner of the vault tokens
     function withdraw(uint256, address receiver, address owner)
         external
         view
@@ -28,9 +28,9 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(receiver, owner);
     }
 
-    // @desc redeem tokens from the ERC4626 vault
-    // @tag receiver:address:the address of the receiver of the vault tokens
-    // @tag owner:address:the address of the owner of the vault tokens
+    /// @notice Redeem tokens from the ERC4626 vault
+    /// @param  receiver the address of the receiver of the vault tokens
+    /// @param  owner the address of the owner of the vault tokens
     function redeem(uint256, address receiver, address owner)
         external
         view
@@ -40,9 +40,9 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(receiver, owner);
     }
 
-    // @desc submit deposit request into the ERC7540 vault
-    // @tag controller:address:the address of the controller of the request
-    // @tag owner:address:the address of the owner of the assets
+    /// @notice Submit deposit request into the ERC7540 vault
+    /// @param  controller the address of the controller of the request
+    /// @param  owner the address of the owner of the assets
     function requestDeposit(uint256, address controller, address owner)
         external
         view
@@ -52,9 +52,9 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(controller, owner);
     }
 
-    // @desc submit redeem request into the ERC7540 vault
-    // @tag controller:address:the address of the controller of the request
-    // @tag owner:address:the address of the owner of the shares
+    /// @notice Submit redeem request into the ERC7540 vault
+    /// @param  controller the address of the controller of the request
+    /// @param  owner the address of the owner of the shares
     function requestRedeem(uint256, address controller, address owner)
         external
         view
@@ -64,8 +64,8 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(controller, owner);
     }
 
-    // @desc cancel deposit request into the ERC7887 vault
-    // @tag controller:address:the address of the controller of the request
+    /// @notice Cancel deposit request into the ERC7887 vault
+    /// @param  controller the address of the controller of the request
     function cancelDepositRequest(uint256, address controller)
         external
         view
@@ -75,8 +75,8 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(controller);
     }
 
-    // @desc cancel redeem request into the ERC7887 vault
-    // @tag controller:address:the address of the controller of the request
+    /// @notice Cancel redeem request into the ERC7887 vault
+    /// @param  controller the address of the controller of the request
     function cancelRedeemRequest(uint256, address controller)
         external
         view
@@ -86,9 +86,9 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(controller);
     }
 
-    // @desc claim cancel deposit request into the ERC7887 vault
-    // @tag receiver:address:the address of the receiver of the assets
-    // @tag controller:address:the address of the controller of the request
+    /// @notice Claim cancel deposit request into the ERC7887 vault
+    /// @param  receiver the address of the receiver of the assets
+    /// @param  controller the address of the controller of the request
     function claimCancelDepositRequest(uint256, address receiver, address controller)
         external
         view
@@ -98,9 +98,9 @@ contract VaultDecoder is BaseDecoder {
         addressesFound = abi.encodePacked(receiver, controller);
     }
 
-    // @desc claim cancel redeem request into the ERC7887 vault
-    // @tag receiver:address:the address of the receiver of the assets
-    // @tag controller:address:the address of the controller of the request
+    /// @notice Claim cancel redeem request into the ERC7887 vault
+    /// @param  receiver the address of the receiver of the assets
+    /// @param  controller the address of the controller of the request
     function claimCancelRedeemRequest(uint256, address receiver, address controller)
         external
         view

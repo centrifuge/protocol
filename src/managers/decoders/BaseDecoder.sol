@@ -7,13 +7,16 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 contract BaseDecoder {
     error FunctionNotImplemented(bytes _calldata);
 
-    // @desc The spender address to approve
-    // @tag spender:address
+    /// @notice Approve ERC20 assets for transfer
+    /// @param  spender the spender address to approve
     function approve(address spender, uint256) external pure returns (bytes memory addressesFound) {
         addressesFound = abi.encodePacked(spender);
     }
 
-    // @desc deposit into the balance sheet
+    /// @notice Deposit into the balance sheet
+    /// @param  poolId ID of the pool
+    /// @param  scId ID of the share class
+    /// @param  asset ERC20 asset that is deposited
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256, uint128)
         external
         view
@@ -23,7 +26,11 @@ contract BaseDecoder {
         addressesFound = abi.encodePacked(poolId, scId, asset);
     }
 
-    // @desc withdraw from the balance sheet
+    /// @notice Withdraw from the balance sheet
+    /// @param  poolId ID of the pool
+    /// @param  scId ID of the share class
+    /// @param  asset ERC20 asset that is deposited
+    /// @param  asset receiver account of the withdrawn assets
     function withdraw(PoolId poolId, ShareClassId scId, address asset, uint256, address receiver, uint128)
         external
         view
