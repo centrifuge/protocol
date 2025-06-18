@@ -17,7 +17,7 @@ contract GuardianTest is Test {
     IMultiAdapter immutable gateway = IMultiAdapter(makeAddr("gateway"));
     IRoot immutable root = IRoot(makeAddr("root"));
     IRootMessageSender messageDispatcher = IRootMessageSender(makeAddr("messageDispatcher"));
-    
+
     address immutable unauthorized = makeAddr("unauthorized");
 
     function setUp() public {
@@ -40,9 +40,9 @@ contract GuardianTest is Test {
         guardian.file("hub", makeAddr("newHub"));
         assertEq(address(guardian.hub()), makeAddr("newHub"));
 
-        guardian.file("multiAdapter", makeAddr("newMultiAdapter")); 
+        guardian.file("multiAdapter", makeAddr("newMultiAdapter"));
         assertEq(address(guardian.multiAdapter()), makeAddr("newMultiAdapter"));
-        
+
         guardian.file("safe", makeAddr("newSafe"));
         assertEq(address(guardian.safe()), makeAddr("newSafe"));
     }
@@ -110,7 +110,7 @@ contract GuardianTest is Test {
     function testWireAdaptersOnlySafe() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = IAdapter(makeAddr("adapter"));
-        
+
         vm.prank(unauthorized);
         vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
         guardian.wireAdapters(1, adapters);
@@ -119,22 +119,14 @@ contract GuardianTest is Test {
     function testWireWormholeAdapterOnlySafe() public {
         vm.prank(unauthorized);
         vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
-        guardian.wireWormholeAdapter(
-            IWormholeAdapter(makeAddr("localAdapter")), 
-            1, 
-            2, 
-            makeAddr("remoteAdapter")
-        );
+        guardian.wireWormholeAdapter(IWormholeAdapter(makeAddr("localAdapter")), 1, 2, makeAddr("remoteAdapter"));
     }
 
     function testWireAxelarAdapterOnlySafe() public {
         vm.prank(unauthorized);
         vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
         guardian.wireAxelarAdapter(
-            IAxelarAdapter(makeAddr("localAdapter")), 
-            1, 
-            "remoteAxelarId", 
-            "remoteAdapterAddress"
+            IAxelarAdapter(makeAddr("localAdapter")), 1, "remoteAxelarId", "remoteAdapterAddress"
         );
     }
 }
