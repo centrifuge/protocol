@@ -79,7 +79,7 @@ contract LocalhostDeployer is FullDeployer {
         spoke.registerAsset(centrifugeId, address(token), 0);
         AssetId assetId = newAssetId(centrifugeId, 1);
 
-         _deployAsyncVault(centrifugeId, token, assetId);
+        _deployAsyncVault(centrifugeId, token, assetId);
         _deploySyncDepositVault(centrifugeId, token, assetId);
     }
 
@@ -142,12 +142,10 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
         vault.mint(1_000_000e18, msg.sender);
 
-
         // Update price, deposit principal + yield
         hub.updateSharePrice(poolId, scId, d18(11, 10));
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
-
 
         // Make sender a member to submit redeem request
         hub.updateRestriction(
@@ -189,9 +187,12 @@ contract LocalhostDeployer is FullDeployer {
         wBtc.approve(address(balanceSheet), 10e18);
 
         bytes[] memory calls = new bytes[](3);
-        calls[0] = abi.encodeWithSelector(balanceSheet.overridePricePoolPerAsset.selector, poolId, scId, wBtcId, d18(100_000,1));
+        calls[0] = abi.encodeWithSelector(
+            balanceSheet.overridePricePoolPerAsset.selector, poolId, scId, wBtcId, d18(100_000, 1)
+        );
         calls[1] = abi.encodeWithSelector(balanceSheet.deposit.selector, poolId, scId, address(wBtc), 0, 10e18);
-        calls[2] = abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, wBtcId, DEFAULT_EXTRA_GAS);
+        calls[2] =
+            abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, wBtcId, DEFAULT_EXTRA_GAS);
         balanceSheet.multicall(calls);
 
         hub.createAccount(poolId, AccountId.wrap(0x05), true);
