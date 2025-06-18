@@ -187,9 +187,12 @@ contract LocalhostDeployer is FullDeployer {
         AssetId wBtcId = newAssetId(centrifugeId, 2);
 
         wBtc.approve(address(balanceSheet), 10e18);
-        balanceSheet.overridePricePoolPerAsset(poolId, scId, wBtcId, d18(100_000,1));
-        balanceSheet.deposit(poolId, scId, address(wBtc), 0, 10e18);
-        balanceSheet.submitQueuedAssets(poolId, scId, wBtcId, DEFAULT_EXTRA_GAS);
+
+        bytes[] memory calls = new bytes[](3);
+        calls[0] = abi.encodeWithSelector(balanceSheet.overridePricePoolPerAsset.selector, poolId, scId, wBtcId, d18(100_000,1));
+        calls[1] = abi.encodeWithSelector(balanceSheet.deposit.selector, poolId, scId, address(wBtc), 0, 10e18);
+        calls[2] = abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, wBtcId, DEFAULT_EXTRA_GAS);
+        balanceSheet.multicall(calls);
 
         hub.createAccount(poolId, AccountId.wrap(0x05), true);
         hub.initializeHolding(
@@ -264,6 +267,5 @@ contract LocalhostDeployer is FullDeployer {
         uint128 investAmount = 1_000_000e6;
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);
-        //spoke.registerAsset(centrifugeId, address(token), 0);
     }
 }
