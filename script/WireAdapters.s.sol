@@ -73,6 +73,7 @@ contract WireAdapters is Script {
                 try vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter") {
                     address remoteWormholeAddr = vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter");
                     uint16 remoteWormholeId = uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId"));
+
                     WormholeAdapter localWormholeAdapter = WormholeAdapter(localWormholeAddr);
                     localWormholeAdapter.file("sources", remoteCentrifugeId, remoteWormholeId, remoteWormholeAddr);
                     localWormholeAdapter.file("destinations", remoteCentrifugeId, remoteWormholeId, remoteWormholeAddr);

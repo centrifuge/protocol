@@ -41,11 +41,20 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external auth {
+    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) public auth {
         if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeId, addr);
         else if (what == "destinations") destinations[centrifugeId] = WormholeDestination(wormholeId, addr);
         else revert FileUnrecognizedParam();
         emit File(what, centrifugeId, wormholeId, addr);
+    }
+
+    /// @inheritdoc IWormholeAdapter
+    function setRemoteAdapter(uint16 centrifugeId, uint16 wormholeId, address adapter) external auth {
+        require(sources[wormholeId].addr == address(0), SourceExists());
+        require(destinations[centrifugeId].wormholeId == 0, DestinationExists());
+
+        file("sources", centrifugeId, wormholeId, adapter);
+        file("destinations", centrifugeId, wormholeId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

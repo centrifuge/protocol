@@ -83,7 +83,17 @@ interface IAxelarAdapter is IAdapter, IAxelarExecutable {
     event File(bytes32 indexed what, uint16 centrifugeId, string axelarId, string destination);
 
     error FileUnrecognizedParam();
+    error SourceExists();
+    error DestinationExists();
 
     function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external;
     function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination) external;
+
+    /// @notice Sets up unidirectional communication with a remote Axelar adapter.
+    /// @dev For bidirectional communication, perform this setup on the remote adapter.
+    /// @dev Reverts if remote adapter is already configured.
+    /// @param centrifugeId The remote chain's Centrifuge ID
+    /// @param axelarId The remote chain's Axelar ID
+    /// @param adapter The remote chain's Axelar adapter address
+    function setRemoteAdapter(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external;
 }

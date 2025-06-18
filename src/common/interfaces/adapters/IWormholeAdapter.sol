@@ -140,10 +140,20 @@ interface IWormholeAdapter is IAdapter, IWormholeReceiver {
     error FileUnrecognizedParam();
     error NotWormholeRelayer();
     error InvalidSource();
+    error SourceExists();
+    error DestinationExists();
 
-    /// @dev Configures the adapter
+    /// @notice Configures the adapter
     /// @param what Can be "sources" or "destinations".
     /// @param addr if what == "sources", it represents the source
     /// @param addr if what == "destinations", it represents the destination
     function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external;
+
+    /// @notice Sets up unidirectional communication with a remote Wormhole adapter.
+    /// @dev For bidirectional communication, perform this setup on the remote adapter.
+    /// @dev Reverts if remote adapter is already configured.
+    /// @param centrifugeId The remote chain's Centrifuge ID
+    /// @param wormholeId The remote chain's Wormhole ID
+    /// @param adapter The remote chain's Wormhole adapter address
+    function setRemoteAdapter(uint16 centrifugeId, uint16 wormholeId, address adapter) external;
 }

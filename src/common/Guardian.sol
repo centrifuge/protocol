@@ -11,6 +11,8 @@ import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;
@@ -113,6 +115,29 @@ contract Guardian is IGuardian {
     /// @inheritdoc IGuardian
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
         multiAdapter.disputeRecovery(centrifugeId, adapter, hash);
+    }
+
+    /// @inheritdoc IGuardian
+    function wireAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
+        multiAdapter.file("adapters", centrifugeId, adapters);
+    }
+
+    /// @inheritdoc IGuardian
+    function wireWormholeAdapter(IWormholeAdapter localAdapter, uint16 centrifugeId, uint16 wormholeId, address adapter)
+        external
+        onlySafe
+    {
+        localAdapter.setRemoteAdapter(centrifugeId, wormholeId, adapter);
+    }
+
+    /// @inheritdoc IGuardian
+    function wireAxelarAdapter(
+        IAxelarAdapter localAdapter,
+        uint16 centrifugeId,
+        string calldata axelarId,
+        string calldata adapter
+    ) external onlySafe {
+        localAdapter.setRemoteAdapter(centrifugeId, axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
