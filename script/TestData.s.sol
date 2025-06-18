@@ -40,6 +40,8 @@ contract LocalhostDeployer is FullDeployer {
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;
 
+    uint128 constant DEFAULT_EXTRA_GAS = uint128(0);
+
     address public admin;
 
     function run() public override {
@@ -75,10 +77,9 @@ contract LocalhostDeployer is FullDeployer {
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
         spoke.registerAsset(centrifugeId, address(token), 0);
-
         AssetId assetId = newAssetId(centrifugeId, 1);
 
-        _deployAsyncVault(centrifugeId, token, assetId);
+         _deployAsyncVault(centrifugeId, token, assetId);
         _deploySyncDepositVault(centrifugeId, token, assetId);
     }
 
@@ -128,24 +129,25 @@ contract LocalhostDeployer is FullDeployer {
 
         // Fulfill deposit request
         hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
-        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
-
-        uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
-        hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
-
-        // Claim deposit request
-        vault.mint(1_000_000e18, msg.sender);
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Withdraw principal
         balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
+
+        // Issue and claim
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
+        balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
+        uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
+        hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
+        vault.mint(1_000_000e18, msg.sender);
+
 
         // Update price, deposit principal + yield
         hub.updateSharePrice(poolId, scId, d18(11, 10));
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
-        token.approve(address(balanceSheet), 1_100_000e18);
-        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Make sender a member to submit redeem request
         hub.updateRestriction(
@@ -165,11 +167,42 @@ contract LocalhostDeployer is FullDeployer {
         // Fulfill redeem request
         hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
         hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
-
+        balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
+
+        // Deposit for withdraw
+        token.approve(address(balanceSheet), 1_100_000e18);
+        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Claim redeem request
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
+
+        // Deposit asset and init later
+        ERC20 wBtc = new ERC20(18);
+        wBtc.file("name", "Wrapped Bitcoin");
+        wBtc.file("symbol", "wBTC");
+        wBtc.mint(msg.sender, 10_000_000e18);
+        spoke.registerAsset(centrifugeId, address(wBtc), 0);
+        AssetId wBtcId = newAssetId(centrifugeId, 2);
+
+        wBtc.approve(address(balanceSheet), 10e18);
+        balanceSheet.overridePricePoolPerAsset(poolId, scId, wBtcId, d18(100_000,1));
+        balanceSheet.deposit(poolId, scId, address(wBtc), 0, 10e18);
+        balanceSheet.submitQueuedAssets(poolId, scId, wBtcId, DEFAULT_EXTRA_GAS);
+
+        hub.createAccount(poolId, AccountId.wrap(0x05), true);
+        hub.initializeHolding(
+            poolId,
+            scId,
+            wBtcId,
+            identityValuation,
+            AccountId.wrap(0x05),
+            AccountId.wrap(0x02),
+            AccountId.wrap(0x03),
+            AccountId.wrap(0x04)
+        );
+        hub.updateHoldingValue(poolId, scId, wBtcId);
     }
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
@@ -231,5 +264,6 @@ contract LocalhostDeployer is FullDeployer {
         uint128 investAmount = 1_000_000e6;
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);
+        //spoke.registerAsset(centrifugeId, address(token), 0);
     }
 }
