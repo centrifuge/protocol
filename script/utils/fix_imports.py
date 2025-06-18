@@ -5,6 +5,7 @@ import re
 import subprocess
 from typing import List, Dict, Set, Tuple
 import argparse
+import sys
 
 # Priority order for imports
 IMPORT_PRIORITY = [
@@ -20,9 +21,9 @@ IMPORT_PRIORITY = [
 ]
 
 def get_all_solidity_files() -> List[str]:
-    """Get all Solidity files excluding lib directory"""
+    """Get all Solidity files excluding lib, out, cache, and broadcast directories"""
     result = subprocess.run(
-        ["find", ".", "-name", "*.sol", "-not", "-path", "./lib/*"],
+        ["find", ".", "-name", "*.sol", "-type", "f", "-not", "-path", "./lib/*", "-not", "-path", "./out/*", "-not", "-path", "./cache/*", "-not", "-path", "./broadcast/*"],
         capture_output=True,
         text=True
     )
@@ -381,6 +382,9 @@ def check_unused_imports():
     print(f"   Files with unused imports: {files_with_unused}")
     print(f"   Total unused imports: {total_unused}")
 
+    if total_unused > 0:
+        sys.exit(1)
+
 def fix_all_unused_imports():
     """Remove unused imports from all Solidity files"""
     files = get_all_solidity_files()
@@ -404,6 +408,69 @@ def fix_all_unused_imports():
     print(f"   Files processed: {len(files)}")
     print(f"   Files fixed: {total_files_fixed}")
     print(f"   Total unused imports removed: {total_imports_removed}")
+
+def check_import_order_in_file(file_path: str) -> Tuple[bool, List[str]]:
+    """Check if imports in a file are properly ordered"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        imports = extract_imports(content)
+        if not imports:
+            return True, []  # No imports, so order is correct
+        
+        # Get current import order
+        current_imports = imports
+        
+        # Get expected import order
+        categorized, other_imports = categorize_imports(imports)
+        expected_imports_str = organize_imports(categorized, other_imports)
+        expected_imports = [line for line in expected_imports_str.split('\n') if line.strip()]
+        
+        # Compare current vs expected order
+        issues = []
+        
+        if len(current_imports) != len(expected_imports):
+            issues.append("Number of imports doesn't match expected")
+            return False, issues
+        
+        for i, (current, expected) in enumerate(zip(current_imports, expected_imports)):
+            if current.strip() != expected.strip():
+                issues.append(f"Line {i+1}: Expected '{expected}' but found '{current}'")
+        
+        return len(issues) == 0, issues
+        
+    except Exception as e:
+        return False, [f"Error processing file: {e}"]
+
+def check_import_order():
+    """Check import order in all Solidity files"""
+    files = get_all_solidity_files()
+    print(f"Checking import order in {len(files)} Solidity files...\n")
+    
+    total_files_with_issues = 0
+    total_issues = 0
+    
+    for file_path in files:
+        if file_path.strip():
+            is_ordered, issues = check_import_order_in_file(file_path)
+            if not is_ordered:
+                total_files_with_issues += 1
+                total_issues += len(issues)
+                print(f"\n📁 {file_path}")
+                for issue in issues:
+                    print(f"  ❌ {issue}")
+    
+    print(f"\n📊 Summary:")
+    print(f"   Files checked: {len(files)}")
+    print(f"   Files with import order issues: {total_files_with_issues}")
+    print(f"   Total import order issues: {total_issues}")
+    
+    if total_files_with_issues > 0:
+        print(f"\n💡 Run with --organize to fix these issues")
+        return False  # Return False to indicate issues found (for CI)
+    
+    return True  # Return True if all files are properly ordered
 
 def organize_all_imports():
     """Organize imports in all Solidity files"""
@@ -449,11 +516,12 @@ def main():
     parser.add_argument('--check-unused', action='store_true', help='Check for unused imports')
     parser.add_argument('--fix-unused', action='store_true', help='Remove unused imports from all files')
     parser.add_argument('--organize', action='store_true', help='Organize imports according to priority')
+    parser.add_argument('--check-order', action='store_true', help='Check if imports are properly ordered (dry-run of --organize)')
     parser.add_argument('--file', type=str, help='Process a specific file instead of all files')
     
     args = parser.parse_args()
     
-    if not args.check_unused and not args.organize and not args.fix_unused:
+    if not args.check_unused and not args.organize and not args.fix_unused and not args.check_order:
         # Default behavior: check for unused imports
         args.check_unused = True
     
@@ -485,6 +553,16 @@ def main():
                 print(f"✅ Organized imports in {args.file}")
             else:
                 print(f"ℹ️  No changes needed in {args.file}")
+        
+        if args.check_order:
+            is_ordered, issues = check_import_order_in_file(args.file)
+            if is_ordered:
+                print(f"✅ Import order is correct in {args.file}")
+            else:
+                print(f"📁 {args.file}")
+                for issue in issues:
+                    print(f"  ❌ {issue}")
+                print(f"\n💡 Run with --organize to fix these issues")
     else:
         # Process all files
         if args.check_unused:
@@ -495,6 +573,11 @@ def main():
         
         if args.organize:
             organize_all_imports()
+        
+        if args.check_order:
+            success = check_import_order()
+            if not success:
+                exit(1)  # Exit with error code for CI
 
 if __name__ == "__main__":
     main() 

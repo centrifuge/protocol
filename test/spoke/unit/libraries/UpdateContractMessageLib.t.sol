@@ -40,6 +40,15 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.assetId, b.assetId);
         assertEq(a.what, b.what);
         assertEq(a.isEnabled, b.isEnabled);
-        // This message is a submessage and has not static message length defined
+    }
+
+    function testUpdateContractPolicy(bytes32 who, bytes32 what) public pure {
+        UpdateContractMessageLib.UpdateContractPolicy memory a =
+            UpdateContractMessageLib.UpdateContractPolicy({who: who, what: what});
+        UpdateContractMessageLib.UpdateContractPolicy memory b =
+            UpdateContractMessageLib.deserializeUpdateContractPolicy(a.serialize());
+
+        assertEq(a.who, b.who);
+        assertEq(a.what, b.what);
     }
 }

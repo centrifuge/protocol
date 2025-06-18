@@ -13,7 +13,6 @@ import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 
 import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
