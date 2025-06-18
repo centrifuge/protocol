@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {AxelarAdapter, IAdapter, IAxelarExecutable} from "src/common/adapters/AxelarAdapter.sol";
 
 import {Mock} from "test/common/mocks/Mock.sol";
@@ -49,10 +51,7 @@ contract MockAxelarGasService is Mock {
     }
 }
 
-contract AxelarAdapterTest is Test {
-    using CastLib for *;
-    using AxelarAddressToString for address;
-
+contract AxelarAdapterTestBase is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
 
@@ -67,6 +66,11 @@ contract AxelarAdapterTest is Test {
         axelarGasService = new MockAxelarGasService();
         adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService), address(this));
     }
+}
+
+contract AxelarAdapterTest is AxelarAdapterTestBase {
+    using CastLib for *;
+    using AxelarAddressToString for address;
 
     function testDeploy() public view {
         assertEq(address(adapter.entrypoint()), address(GATEWAY));
@@ -178,6 +182,105 @@ contract AxelarAdapterTest is Test {
         assertEq(axelarGateway.values_string("destinationChain"), AXELAR_CHAIN_ID);
         assertEq(axelarGateway.values_string("contractAddress"), makeAddr("DestinationAdapter").toAxelarString());
         assertEq(axelarGateway.values_bytes("payload"), payload);
+    }
+}
+
+contract AxelarAdapterSetRemoteAdapterTest is AxelarAdapterTestBase {
+    using CastLib for *;
+    using AxelarAddressToString for address;
+
+    uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 2;
+    string constant REMOTE_AXELAR_CHAIN_ID = "base";
+    address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
+
+    function _remoteAdapter() internal pure returns (string memory) {
+        return REMOTE_ADAPTER_ADDRESS.toAxelarString();
+    }
+
+    function testSetRemoteAdapter() public {
+        vm.expectEmit();
+        emit IAxelarAdapter.File("sources", REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, _remoteAdapter());
+        vm.expectEmit();
+        emit IAxelarAdapter.File("destinations", REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+
+        (uint16 sourceCentrifugeId, bytes32 sourceAddressHash) = adapter.sources(REMOTE_AXELAR_CHAIN_ID);
+        assertEq(sourceCentrifugeId, REMOTE_CENTRIFUGE_CHAIN_ID);
+        assertEq(sourceAddressHash, keccak256(bytes(_remoteAdapter())));
+
+        (string memory destAxelarId, string memory destAddr) = adapter.destinations(REMOTE_CENTRIFUGE_CHAIN_ID);
+        assertEq(destAxelarId, REMOTE_AXELAR_CHAIN_ID);
+        assertEq(destAddr, _remoteAdapter());
+    }
+
+    function testSetRemoteAdapterRevertIfSourceAlreadyConfigured() public {
+        adapter.file("sources", REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, _remoteAdapter());
+
+        vm.expectRevert(abi.encodeWithSelector(IAxelarAdapter.SourceExists.selector));
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+    }
+
+    function testSetRemoteAdapterRevertIfDestinationAlreadyConfigured() public {
+        adapter.file("destinations", REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+
+        vm.expectRevert(abi.encodeWithSelector(IAxelarAdapter.DestinationExists.selector));
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+    }
+
+    function testSetRemoteAdapterRevertIfBothAlreadyConfigured() public {
+        adapter.file("sources", REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, _remoteAdapter());
+        adapter.file("destinations", REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+
+        vm.expectRevert(abi.encodeWithSelector(IAxelarAdapter.SourceExists.selector));
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+    }
+
+    function testSetRemoteAdapterNotAuthorized() public {
+        vm.prank(makeAddr("Unauthorized"));
+        vm.expectRevert(abi.encodeWithSelector(IAuth.NotAuthorized.selector));
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+    }
+
+    function testSetRemoteAdapterWithDifferentChainIds() public {
+        uint16 anotherCentrifugeId = 3;
+        string memory anotherAxelarId = "otherEvmChain";
+
+        adapter.setRemoteAdapter(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+
+        // Should be able to set up another remote adapter with different IDs
+        adapter.setRemoteAdapter(anotherCentrifugeId, anotherAxelarId, _remoteAdapter());
+
+        // Verify both configurations exist
+        (uint16 sourceCentrifugeId1,) = adapter.sources(REMOTE_AXELAR_CHAIN_ID);
+        assertEq(sourceCentrifugeId1, REMOTE_CENTRIFUGE_CHAIN_ID);
+
+        (uint16 sourceCentrifugeId2,) = adapter.sources(anotherAxelarId);
+        assertEq(sourceCentrifugeId2, anotherCentrifugeId);
+
+        (string memory destAxelarId1,) = adapter.destinations(REMOTE_CENTRIFUGE_CHAIN_ID);
+        assertEq(destAxelarId1, REMOTE_AXELAR_CHAIN_ID);
+
+        (string memory destAxelarId2,) = adapter.destinations(anotherCentrifugeId);
+        assertEq(destAxelarId2, anotherAxelarId);
+    }
+
+    function testSetRemoteAdapterFuzzed(uint16 centrifugeId, string calldata axelarId, string calldata adapterStr)
+        public
+    {
+        vm.assume(centrifugeId != 0);
+        vm.assume(bytes(axelarId).length > 0);
+        vm.assume(bytes(adapterStr).length > 0);
+
+        adapter.setRemoteAdapter(centrifugeId, axelarId, adapterStr);
+
+        (uint16 sourceCentrifugeId, bytes32 sourceAddressHash) = adapter.sources(axelarId);
+        assertEq(sourceCentrifugeId, centrifugeId);
+        assertEq(sourceAddressHash, keccak256(bytes(adapterStr)));
+
+        (string memory destAxelarId, string memory destAddr) = adapter.destinations(centrifugeId);
+        assertEq(destAxelarId, axelarId);
+        assertEq(destAddr, adapterStr);
     }
 }
 
