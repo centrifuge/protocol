@@ -8,8 +8,6 @@ contract JsonRegistry is Script {
     string deploymentOutput;
     uint256 registeredContracts = 0;
 
-    uint64 startTime = uint64(block.timestamp);
-
     function register(string memory name, address target) public {
         deploymentOutput = (registeredContracts == 0)
             ? string(abi.encodePacked(deploymentOutput, '    "', name, '": "', vm.toString(target), '"'))
@@ -22,17 +20,27 @@ contract JsonRegistry is Script {
         deploymentOutput = '{\n  "contracts": {\n';
 
         if (!isTests) {
-            console.log(
-                "\n\n---------\n\nStarting deployment: %s_%s\n\n", vm.toString(block.chainid), vm.toString(startTime)
-            );
+            console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
         }
     }
 
     function saveDeploymentOutput() public {
-        string memory path = string(
-            abi.encodePacked("./deployments/latest/", vm.toString(block.chainid), "_", vm.toString(startTime), ".json")
-        );
+        string memory dir = "./env/latest/";
+        if (!vm.exists(dir)) {
+            vm.createDir(dir, true);
+        }
+
+        // Save with timestamp for history
+        string memory timestampedPath =
+            string(abi.encodePacked(dir, vm.toString(block.chainid), "_", vm.toString(block.timestamp), ".json"));
         deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
-        vm.writeFile(path, deploymentOutput);
+        vm.writeFile(timestampedPath, deploymentOutput);
+        console.log("Contract addresses saved to: %s", timestampedPath);
+
+        // Save as latest
+        string memory latestPath = string(abi.encodePacked(dir, vm.toString(block.chainid), "-latest.json"));
+
+        vm.writeFile(latestPath, deploymentOutput);
+        console.log("Contract addresses also saved to: %s", latestPath);
     }
 }

@@ -18,7 +18,7 @@ library TransientBytesLib {
 
         lengthSlot.tstore(prevLength + value.length);
 
-        uint256 baseSlot = uint256(keccak256(abi.encodePacked(key)));
+        uint256 baseSlot = uint256(lengthSlot);
         bytes32 joinSlot = bytes32(baseSlot + startChunk + 1);
         bytes memory firstPart = abi.encodePacked(joinSlot.tloadBytes32()).sliceZeroPadded(0, offset);
         bytes memory secondPart = value.sliceZeroPadded(0, 32 - offset);
@@ -35,10 +35,11 @@ library TransientBytesLib {
 
     function get(bytes32 key) internal view returns (bytes memory) {
         bytes memory data;
-        uint256 length = keccak256(abi.encodePacked(key)).tloadUint256();
+        bytes32 lengthSlot = keccak256(abi.encodePacked(key));
+        uint256 length = lengthSlot.tloadUint256();
         if (length == 0) return data;
 
-        uint256 baseSlot = uint256(keccak256(abi.encodePacked(key)));
+        uint256 baseSlot = uint256(lengthSlot);
         uint256 chunks = length / 32 + 1;
         for (uint256 i = 0; i < chunks; i++) {
             bytes32 slot = bytes32(baseSlot + i + 1);

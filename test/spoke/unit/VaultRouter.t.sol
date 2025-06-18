@@ -5,6 +5,7 @@ import "src/misc/interfaces/IERC20.sol";
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC7575.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
 import {IGateway} from "src/common/interfaces/IGateway.sol";
@@ -47,14 +48,15 @@ contract NonAsyncVault {
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
     using MessageLib for *;
+    using MathLib for uint256;
 
     uint16 constant CHAIN_ID = 1;
-    uint256 constant GAS_BUFFER = 10 gwei;
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, spoke, messageDispatcher, address(this));
+        new VaultRouter(address(routerEscrow), gateway, spoke, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
