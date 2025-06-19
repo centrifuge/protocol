@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {AxelarAdapter, IAdapter, IAxelarExecutable} from "src/common/adapters/AxelarAdapter.sol";
 
 import {Mock} from "test/common/mocks/Mock.sol";
