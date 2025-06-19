@@ -14,8 +14,6 @@ interface ISafe {
 interface IGuardian {
     error NotTheAuthorizedSafe();
     error NotTheAuthorizedSafeOrItsOwner();
-    error SourceExists();
-    error DestinationExists();
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -87,7 +85,6 @@ interface IGuardian {
 
     /// @notice Wire the local Wormhole adapter to a remote one.
     /// @dev For bidirectional communication, perform this setup on the remote adapter.
-    /// @dev Reverts if remote adapter is already configured.
     /// @param localAdapter The local Wormhole adapter to configure
     /// @param centrifugeId The remote chain's chain ID
     /// @param wormholeId The remote chain's Wormhole ID
@@ -97,7 +94,6 @@ interface IGuardian {
 
     /// @notice Wire the local Axelar adapter to a remote one.
     /// @dev For bidirectional communication, perform this setup on the remote adapter.
-    /// @dev Reverts if remote adapter is already configured.
     /// @param localAdapter The local Axelar adapter to configure
     /// @param centrifugeId The remote chain's chain ID
     /// @param axelarId The remote chain's Axelar ID
