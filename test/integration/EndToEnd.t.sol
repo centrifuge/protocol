@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
@@ -13,6 +14,7 @@ import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -202,6 +204,19 @@ contract EndToEndDeployment is Test {
         vm.label(address(h.hub), "Hub");
     }
 
+    function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
+        vm.startPrank(address(deploy.guardian().safe()));
+        IAuth(address(adapter)).rely(address(deploy.root()));
+        IAuth(address(adapter)).rely(address(deploy.guardian()));
+        IAuth(address(adapter)).deny(address(deploy));
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
+
+        vm.stopPrank();
+    }
+
     function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
         internal
         returns (LocalAdapter adapter)
@@ -209,11 +224,9 @@ contract EndToEndDeployment is Test {
         deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
-        deploy.wire(remoteCentrifugeId, adapter, address(deploy));
+        _wire(deploy, remoteCentrifugeId, adapter);
 
-        // TODO(later): Re-enable if wire is moved to Guardian
-        //             (ref: https://github.com/centrifuge/protocol-v3/pull/415#discussion_r2121671364)
-        // deploy.removeFullDeployerAccess(address(deploy));
+        deploy.removeFullDeployerAccess(address(deploy), "testnet");
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
