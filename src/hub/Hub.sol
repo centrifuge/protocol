@@ -125,8 +125,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         external
         payable
         payTransaction
-        protected
     {
+        _protected();
+
         (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
@@ -147,8 +148,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         external
         payable
         payTransaction
-        protected
     {
+        _protected();
+
         (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
@@ -707,6 +709,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     /// @dev Ensure the sender is authorized
     function _auth() internal auth {}
+
+    /// @dev Protect against reentrancy
+    function _protected() internal protected {}
 
     /// @dev Ensure the method can be used without reentrancy issues, and the sender is a pool admin
     function _isManager(PoolId poolId) internal protected {
