@@ -125,6 +125,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         external
         payable
         payTransaction
+        protected
     {
         (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
@@ -146,6 +147,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         external
         payable
         payTransaction
+        protected
     {
         (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
