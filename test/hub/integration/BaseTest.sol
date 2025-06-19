@@ -2,9 +2,11 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
@@ -54,9 +56,19 @@ contract BaseTest is HubDeployer, Test {
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, multiAdapter);
-        wire(CHAIN_CV, cv, address(this));
+        _wire(CHAIN_CV, cv);
 
         valuation = new MockValuation(hubRegistry);
+    }
+
+    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).rely(address(guardian));
+        IAuth(address(adapter)).deny(address(this));
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        multiAdapter.file("adapters", centrifugeId, adapters);
     }
 
     function setUp() public virtual {

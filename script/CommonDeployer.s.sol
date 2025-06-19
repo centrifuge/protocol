@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
@@ -114,18 +111,6 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         gateway.file("processor", address(messageProcessor));
         gateway.file("adapter", address(multiAdapter));
         poolEscrowFactory.file("gateway", address(gateway));
-    }
-    // The centrifugeId_ here has to be the destination centrifuge_chain_id
-    // Use WireAdapters.s.sol for automatic wiring of live multi-chains adapters
-
-    function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(deployer);
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-
-        multiAdapter.file("adapters", centrifugeId_, adapters);
     }
 
     function removeCommonDeployerAccess(address deployer) public {
