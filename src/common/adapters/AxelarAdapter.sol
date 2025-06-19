@@ -57,14 +57,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         emit File(what, centrifugeId, axelarId, destination);
     }
 
-    /// @inheritdoc IAxelarAdapter
-    function setRemoteAdapter(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external auth {
-        require(sources[axelarId].centrifugeId == 0, SourceExists());
-        require(bytes(destinations[centrifugeId].axelarId).length == 0, DestinationExists());
 
-        file("sources", axelarId, centrifugeId, adapter);
-        file("destinations", centrifugeId, axelarId, adapter);
-    }
 
     //----------------------------------------------------------------------------------------------
     // Incoming

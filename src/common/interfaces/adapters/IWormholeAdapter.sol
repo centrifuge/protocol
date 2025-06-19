@@ -149,11 +149,15 @@ interface IWormholeAdapter is IAdapter, IWormholeReceiver {
     /// @param addr if what == "destinations", it represents the destination
     function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external;
 
-    /// @notice Sets up unidirectional communication with a remote Wormhole adapter.
-    /// @dev For bidirectional communication, perform this setup on the remote adapter.
-    /// @dev Reverts if remote adapter is already configured.
-    /// @param centrifugeId The remote chain's Centrifuge ID
-    /// @param wormholeId The remote chain's Wormhole ID
-    /// @param adapter The remote chain's Wormhole adapter address
-    function setRemoteAdapter(uint16 centrifugeId, uint16 wormholeId, address adapter) external;
+    /// @notice Returns the source configuration for a given wormhole chain id
+    /// @param wormholeId The remote wormhole id
+    /// @return centrifugeId The remote chain id
+    /// @return addr The address of the remote wormhole adapter
+    function sources(uint16 wormholeId) external view returns (uint16 centrifugeId, address addr);
+
+    /// @notice Returns the destination configuration for a given chain id
+    /// @param centrifugeId The remote chain id
+    /// @return wormholeId The remote wormhole id
+    /// @return addr The address of the remote wormhole adapter
+    function destinations(uint16 centrifugeId) external view returns (uint16 wormholeId, address addr);
 }

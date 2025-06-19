@@ -48,14 +48,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         emit File(what, centrifugeId, wormholeId, addr);
     }
 
-    /// @inheritdoc IWormholeAdapter
-    function setRemoteAdapter(uint16 centrifugeId, uint16 wormholeId, address adapter) external auth {
-        require(sources[wormholeId].addr == address(0), SourceExists());
-        require(destinations[centrifugeId].wormholeId == 0, DestinationExists());
 
-        file("sources", centrifugeId, wormholeId, adapter);
-        file("destinations", centrifugeId, wormholeId, adapter);
-    }
 
     //----------------------------------------------------------------------------------------------
     // Incoming
