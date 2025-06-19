@@ -44,7 +44,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
     }
 
-    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
+    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -54,27 +54,102 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
         uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
 
-        root = new Root(DELAY, deployer);
-        tokenRecoverer = new TokenRecoverer(root, deployer);
+        // Get the base salt from the FullDeployer
+        bytes32 baseSalt = getBaseSalt();
+        
+        console.log("Deploying Common contracts with CreateX...");
 
-        messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
+        // Root
+        bytes32 rootSalt = keccak256(abi.encodePacked(baseSalt, "root"));
+        bytes memory rootBytecode = abi.encodePacked(
+            type(Root).creationCode,
+            abi.encode(DELAY, deployer)
+        );
+        root = Root(create3(rootSalt, rootBytecode));
+        console.log("Root deployed at:", address(root));
 
-        gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(root, gasService, deployer);
-        multiAdapter = new MultiAdapter(centrifugeId_, gateway, deployer);
+        // TokenRecoverer
+        bytes32 tokenRecovererSalt = keccak256(abi.encodePacked(baseSalt, "tokenRecoverer"));
+        bytes memory tokenRecovererBytecode = abi.encodePacked(
+            type(TokenRecoverer).creationCode,
+            abi.encode(root, deployer)
+        );
+        tokenRecoverer = TokenRecoverer(create3(tokenRecovererSalt, tokenRecovererBytecode));
+        console.log("TokenRecoverer deployed at:", address(tokenRecoverer));
 
-        messageDispatcher = new MessageDispatcher(centrifugeId_, root, gateway, tokenRecoverer, deployer);
+        // MessageProcessor
+        bytes32 messageProcessorSalt = keccak256(abi.encodePacked(baseSalt, "messageProcessor"));
+        bytes memory messageProcessorBytecode = abi.encodePacked(
+            type(MessageProcessor).creationCode,
+            abi.encode(root, tokenRecoverer, deployer)
+        );
+        messageProcessor = MessageProcessor(create3(messageProcessorSalt, messageProcessorBytecode));
+        console.log("MessageProcessor deployed at:", address(messageProcessor));
+
+        // GasService
+        bytes32 gasServiceSalt = keccak256(abi.encodePacked(baseSalt, "gasService"));
+        bytes memory gasServiceBytecode = abi.encodePacked(
+            type(GasService).creationCode,
+            abi.encode(maxBatchSize, messageGasLimit)
+        );
+        gasService = GasService(create3(gasServiceSalt, gasServiceBytecode));
+        console.log("GasService deployed at:", address(gasService));
+
+        // Gateway
+        bytes32 gatewaySalt = keccak256(abi.encodePacked(baseSalt, "gateway"));
+        bytes memory gatewayBytecode = abi.encodePacked(
+            type(Gateway).creationCode,
+            abi.encode(root, gasService, deployer)
+        );
+        gateway = Gateway(create3(gatewaySalt, gatewayBytecode));
+        console.log("Gateway deployed at:", address(gateway));
+
+        // MultiAdapter
+        bytes32 multiAdapterSalt = keccak256(abi.encodePacked(baseSalt, "multiAdapter"));
+        bytes memory multiAdapterBytecode = abi.encodePacked(
+            type(MultiAdapter).creationCode,
+            abi.encode(centrifugeId_, gateway, deployer)
+        );
+        multiAdapter = MultiAdapter(create3(multiAdapterSalt, multiAdapterBytecode));
+        console.log("MultiAdapter deployed at:", address(multiAdapter));
+
+        // MessageDispatcher
+        bytes32 messageDispatcherSalt = keccak256(abi.encodePacked(baseSalt, "messageDispatcher"));
+        bytes memory messageDispatcherBytecode = abi.encodePacked(
+            type(MessageDispatcher).creationCode,
+            abi.encode(centrifugeId_, root, gateway, tokenRecoverer, deployer)
+        );
+        messageDispatcher = MessageDispatcher(create3(messageDispatcherSalt, messageDispatcherBytecode));
+        console.log("MessageDispatcher deployed at:", address(messageDispatcher));
 
         adminSafe = adminSafe_;
 
-        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
-        guardian = new Guardian(ISafe(deployer), multiAdapter, root, messageDispatcher);
+        // Guardian
+        bytes32 guardianSalt = keccak256(abi.encodePacked(baseSalt, "guardian"));
+        bytes memory guardianBytecode = abi.encodePacked(
+            type(Guardian).creationCode,
+            abi.encode(ISafe(deployer), multiAdapter, root, messageDispatcher)
+        );
+        guardian = Guardian(create3(guardianSalt, guardianBytecode));
+        console.log("Guardian deployed at:", address(guardian));
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
+        // PoolEscrowFactory
+        bytes32 poolEscrowFactorySalt = keccak256(abi.encodePacked(baseSalt, "poolEscrowFactory"));
+        bytes memory poolEscrowFactoryBytecode = abi.encodePacked(
+            type(PoolEscrowFactory).creationCode,
+            abi.encode(address(root), deployer)
+        );
+        poolEscrowFactory = PoolEscrowFactory(create3(poolEscrowFactorySalt, poolEscrowFactoryBytecode));
+        console.log("PoolEscrowFactory deployed at:", address(poolEscrowFactory));
 
         _commonRegister();
         _commonRely();
         _commonFile();
+    }
+
+    // Virtual function to get the base salt - implemented by FullDeployer
+    function getBaseSalt() internal view virtual returns (bytes32) {
+        return SALT; // Fallback to the old SALT if not overridden
     }
 
     function _commonRegister() private {

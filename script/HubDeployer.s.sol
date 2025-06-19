@@ -34,16 +34,76 @@ contract HubDeployer is CommonDeployer {
     AssetId public immutable USD_ID = newAssetId(840);
     AssetId public immutable EUR_ID = newAssetId(978);
 
-    function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
+    function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
         deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
 
-        hubRegistry = new HubRegistry(deployer);
-        identityValuation = new IdentityValuation(hubRegistry, deployer);
-        accounting = new Accounting(deployer);
-        holdings = new Holdings(hubRegistry, deployer);
-        shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer);
-        hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
+        // Get the base salt from the FullDeployer
+        bytes32 baseSalt = getBaseSalt();
+        
+        console.log("Deploying Hub contracts with CreateX...");
+
+        // HubRegistry
+        bytes32 hubRegistrySalt = keccak256(abi.encodePacked(baseSalt, "hubRegistry"));
+        bytes memory hubRegistryBytecode = abi.encodePacked(
+            type(HubRegistry).creationCode,
+            abi.encode(deployer)
+        );
+        hubRegistry = HubRegistry(create3(hubRegistrySalt, hubRegistryBytecode));
+        console.log("HubRegistry deployed at:", address(hubRegistry));
+
+        // IdentityValuation
+        bytes32 identityValuationSalt = keccak256(abi.encodePacked(baseSalt, "identityValuation"));
+        bytes memory identityValuationBytecode = abi.encodePacked(
+            type(IdentityValuation).creationCode,
+            abi.encode(hubRegistry, deployer)
+        );
+        identityValuation = IdentityValuation(create3(identityValuationSalt, identityValuationBytecode));
+        console.log("IdentityValuation deployed at:", address(identityValuation));
+
+        // Accounting
+        bytes32 accountingSalt = keccak256(abi.encodePacked(baseSalt, "accounting"));
+        bytes memory accountingBytecode = abi.encodePacked(
+            type(Accounting).creationCode,
+            abi.encode(deployer)
+        );
+        accounting = Accounting(create3(accountingSalt, accountingBytecode));
+        console.log("Accounting deployed at:", address(accounting));
+
+        // Holdings
+        bytes32 holdingsSalt = keccak256(abi.encodePacked(baseSalt, "holdings"));
+        bytes memory holdingsBytecode = abi.encodePacked(
+            type(Holdings).creationCode,
+            abi.encode(hubRegistry, deployer)
+        );
+        holdings = Holdings(create3(holdingsSalt, holdingsBytecode));
+        console.log("Holdings deployed at:", address(holdings));
+
+        // ShareClassManager
+        bytes32 shareClassManagerSalt = keccak256(abi.encodePacked(baseSalt, "shareClassManager"));
+        bytes memory shareClassManagerBytecode = abi.encodePacked(
+            type(ShareClassManager).creationCode,
+            abi.encode(hubRegistry, deployer)
+        );
+        shareClassManager = ShareClassManager(create3(shareClassManagerSalt, shareClassManagerBytecode));
+        console.log("ShareClassManager deployed at:", address(shareClassManager));
+
+        // HubHelpers
+        bytes32 hubHelpersSalt = keccak256(abi.encodePacked(baseSalt, "hubHelpers"));
+        bytes memory hubHelpersBytecode = abi.encodePacked(
+            type(HubHelpers).creationCode,
+            abi.encode(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer)
+        );
+        hubHelpers = HubHelpers(create3(hubHelpersSalt, hubHelpersBytecode));
+        console.log("HubHelpers deployed at:", address(hubHelpers));
+
+        // Hub
+        bytes32 hubSalt = keccak256(abi.encodePacked(baseSalt, "hub"));
+        bytes memory hubBytecode = abi.encodePacked(
+            type(Hub).creationCode,
+            abi.encode(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer)
+        );
+        hub = Hub(create3(hubSalt, hubBytecode));
+        console.log("Hub deployed at:", address(hub));
 
         _poolsRegister();
         _poolsRely();
