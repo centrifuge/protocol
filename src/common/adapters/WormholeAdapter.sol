@@ -41,7 +41,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IWormholeAdapter
-    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) public auth {
+    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external auth {
         if (what == "sources") sources[wormholeId] = WormholeSource(centrifugeId, addr);
         else if (what == "destinations") destinations[centrifugeId] = WormholeDestination(wormholeId, addr);
         else revert FileUnrecognizedParam();

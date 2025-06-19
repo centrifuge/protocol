@@ -41,7 +41,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) public auth {
+    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external auth {
         if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(source)));
         else revert FileUnrecognizedParam();
         emit File(what, axelarId, centrifugeId, source);
@@ -49,7 +49,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
 
     /// @inheritdoc IAxelarAdapter
     function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination)
-        public
+        external
         auth
     {
         if (what == "destinations") destinations[centrifugeId] = AxelarDestination(axelarId, destination);
