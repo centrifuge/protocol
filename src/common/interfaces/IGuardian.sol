@@ -14,6 +14,8 @@ interface ISafe {
 interface IGuardian {
     error NotTheAuthorizedSafe();
     error NotTheAuthorizedSafeOrItsOwner();
+    error SourceExists();
+    error DestinationExists();
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();

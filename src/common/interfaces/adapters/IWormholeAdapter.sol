@@ -140,8 +140,6 @@ interface IWormholeAdapter is IAdapter, IWormholeReceiver {
     error FileUnrecognizedParam();
     error NotWormholeRelayer();
     error InvalidSource();
-    error SourceExists();
-    error DestinationExists();
 
     /// @notice Configures the adapter
     /// @param what Can be "sources" or "destinations".

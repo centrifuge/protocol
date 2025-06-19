@@ -135,7 +135,7 @@ contract GuardianTestFile is GuardianTest {
 
 contract GuardianWireWormholeAdapterTest is GuardianTest {
     IWormholeAdapter localAdapter;
-    
+
     uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 3;
     uint16 constant REMOTE_WORMHOLE_CHAIN_ID = 4;
     address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
@@ -182,7 +182,9 @@ contract GuardianWireWormholeAdapterTest is GuardianTest {
     function _expectWormholeRevert(bytes4 errorSelector) internal {
         vm.prank(address(adminSafe));
         vm.expectRevert(errorSelector);
-        guardian.wireWormholeAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
+        guardian.wireWormholeAdapter(
+            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
+        );
     }
 
     function testWireWormholeAdapter() public {
@@ -190,51 +192,67 @@ contract GuardianWireWormholeAdapterTest is GuardianTest {
         _mockWormholeFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
 
         vm.prank(address(adminSafe));
-        guardian.wireWormholeAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
+        guardian.wireWormholeAdapter(
+            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
+        );
     }
 
     function testWireWormholeAdapterRevertIfSourceAlreadyConfigured() public {
         _mockWormholeSourceConfig(REMOTE_WORMHOLE_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
-        _expectWormholeRevert(IWormholeAdapter.SourceExists.selector);
+        _expectWormholeRevert(IGuardian.SourceExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfSourcePartiallyConfigured() public {
         _mockWormholeSourceConfig(REMOTE_WORMHOLE_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, address(0));
-        _expectWormholeRevert(IWormholeAdapter.SourceExists.selector);
+        _expectWormholeRevert(IGuardian.SourceExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfSourceAddressOnlyConfigured() public {
         _mockWormholeSourceConfig(REMOTE_WORMHOLE_CHAIN_ID, uint16(0), REMOTE_ADAPTER_ADDRESS);
-        _expectWormholeRevert(IWormholeAdapter.SourceExists.selector);
+        _expectWormholeRevert(IGuardian.SourceExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfDestinationAlreadyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID), abi.encode(uint16(0), address(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID),
+            abi.encode(uint16(0), address(0))
+        );
         _mockWormholeDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
-        _expectWormholeRevert(IWormholeAdapter.DestinationExists.selector);
+        _expectWormholeRevert(IGuardian.DestinationExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfDestinationPartiallyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID), abi.encode(uint16(0), address(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID),
+            abi.encode(uint16(0), address(0))
+        );
         _mockWormholeDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, address(0));
-        _expectWormholeRevert(IWormholeAdapter.DestinationExists.selector);
+        _expectWormholeRevert(IGuardian.DestinationExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfDestinationAddressOnlyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID), abi.encode(uint16(0), address(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IWormholeAdapter.sources.selector, REMOTE_WORMHOLE_CHAIN_ID),
+            abi.encode(uint16(0), address(0))
+        );
         _mockWormholeDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, uint16(0), REMOTE_ADAPTER_ADDRESS);
-        _expectWormholeRevert(IWormholeAdapter.DestinationExists.selector);
+        _expectWormholeRevert(IGuardian.DestinationExists.selector);
     }
 
     function testWireWormholeAdapterRevertIfBothAlreadyConfigured() public {
         _mockWormholeSourceConfig(REMOTE_WORMHOLE_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
-        _expectWormholeRevert(IWormholeAdapter.SourceExists.selector);
+        _expectWormholeRevert(IGuardian.SourceExists.selector);
     }
 
     function testWireWormholeAdapterOnlySafe() public {
         vm.prank(unauthorized);
         vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
-        guardian.wireWormholeAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
+        guardian.wireWormholeAdapter(
+            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
+        );
     }
 
     function testWireWormholeAdapterWithDifferentChainIds() public {
@@ -245,7 +263,9 @@ contract GuardianWireWormholeAdapterTest is GuardianTest {
         _mockWormholeEmptyConfig(REMOTE_WORMHOLE_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID);
         _mockWormholeFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
         vm.prank(address(adminSafe));
-        guardian.wireWormholeAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
+        guardian.wireWormholeAdapter(
+            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
+        );
 
         // Second configuration
         _mockWormholeEmptyConfig(anotherWormholeId, anotherCentrifugeId);
@@ -265,15 +285,13 @@ contract GuardianWireWormholeAdapterTest is GuardianTest {
         vm.prank(address(adminSafe));
         guardian.wireWormholeAdapter(localAdapter, centrifugeId, wormholeId, adapterAddr);
     }
-
-
 }
 
 contract GuardianWireAxelarAdapterTest is GuardianTest {
     using AxelarAddressToString for address;
-    
+
     IAxelarAdapter localAdapter;
-    
+
     uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 2;
     string constant REMOTE_AXELAR_CHAIN_ID = "base";
     address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
@@ -316,12 +334,19 @@ contract GuardianWireAxelarAdapterTest is GuardianTest {
         );
         vm.mockCall(
             address(localAdapter),
-            abi.encodeWithSignature("file(bytes32,uint16,string,string)", "destinations", centrifugeId, axelarId, adapter),
+            abi.encodeWithSignature(
+                "file(bytes32,uint16,string,string)", "destinations", centrifugeId, axelarId, adapter
+            ),
             abi.encode()
         );
     }
 
-    function _expectAxelarRevert(bytes4 errorSelector, uint16 centrifugeId, string memory axelarId, string memory adapter) internal {
+    function _expectAxelarRevert(
+        bytes4 errorSelector,
+        uint16 centrifugeId,
+        string memory axelarId,
+        string memory adapter
+    ) internal {
         vm.prank(address(adminSafe));
         vm.expectRevert(errorSelector);
         guardian.wireAxelarAdapter(localAdapter, centrifugeId, axelarId, adapter);
@@ -337,40 +362,66 @@ contract GuardianWireAxelarAdapterTest is GuardianTest {
 
     function testWireAxelarAdapterRevertIfSourceAlreadyConfigured() public {
         _mockAxelarSourceConfig(REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, keccak256(bytes(_remoteAdapter())));
-        _expectAxelarRevert(IAxelarAdapter.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfSourcePartiallyConfigured() public {
         _mockAxelarSourceConfig(REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, bytes32(0));
-        _expectAxelarRevert(IAxelarAdapter.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfSourceAddressHashOnlyConfigured() public {
         _mockAxelarSourceConfig(REMOTE_AXELAR_CHAIN_ID, uint16(0), keccak256(bytes(_remoteAdapter())));
-        _expectAxelarRevert(IAxelarAdapter.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfDestinationAlreadyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID), abi.encode(uint16(0), bytes32(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID),
+            abi.encode(uint16(0), bytes32(0))
+        );
         _mockAxelarDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-        _expectAxelarRevert(IAxelarAdapter.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfDestinationPartiallyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID), abi.encode(uint16(0), bytes32(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID),
+            abi.encode(uint16(0), bytes32(0))
+        );
         _mockAxelarDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, "");
-        _expectAxelarRevert(IAxelarAdapter.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfDestinationAddressOnlyConfigured() public {
-        vm.mockCall(address(localAdapter), abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID), abi.encode(uint16(0), bytes32(0)));
+        vm.mockCall(
+            address(localAdapter),
+            abi.encodeWithSelector(IAxelarAdapter.sources.selector, REMOTE_AXELAR_CHAIN_ID),
+            abi.encode(uint16(0), bytes32(0))
+        );
         _mockAxelarDestinationConfig(REMOTE_CENTRIFUGE_CHAIN_ID, "", _remoteAdapter());
-        _expectAxelarRevert(IAxelarAdapter.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.DestinationExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterRevertIfBothAlreadyConfigured() public {
         _mockAxelarSourceConfig(REMOTE_AXELAR_CHAIN_ID, REMOTE_CENTRIFUGE_CHAIN_ID, keccak256(bytes(_remoteAdapter())));
-        _expectAxelarRevert(IAxelarAdapter.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
+        _expectAxelarRevert(
+            IGuardian.SourceExists.selector, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter()
+        );
     }
 
     function testWireAxelarAdapterOnlySafe() public {
@@ -394,7 +445,9 @@ contract GuardianWireAxelarAdapterTest is GuardianTest {
         guardian.wireAxelarAdapter(localAdapter, anotherCentrifugeId, anotherAxelarId, _remoteAdapter());
     }
 
-    function testWireAxelarAdapterFuzzed(uint16 centrifugeId, string calldata axelarId, string calldata adapterStr) public {
+    function testWireAxelarAdapterFuzzed(uint16 centrifugeId, string calldata axelarId, string calldata adapterStr)
+        public
+    {
         vm.assume(centrifugeId != 0);
         vm.assume(bytes(axelarId).length > 0);
         vm.assume(bytes(adapterStr).length > 0);

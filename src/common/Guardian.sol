@@ -129,10 +129,10 @@ contract Guardian is IGuardian {
     {
         // Check if remote adapter is already configured
         (uint16 centrifugeId_, address sourceAddr) = localAdapter.sources(wormholeId);
-        require(centrifugeId_ == 0 && sourceAddr == address(0), IWormholeAdapter.SourceExists());
-        
+        require(centrifugeId_ == 0 && sourceAddr == address(0), SourceExists());
+
         (uint16 destWormholeId, address destAddr) = localAdapter.destinations(centrifugeId);
-        require(destWormholeId == 0 && destAddr == address(0), IWormholeAdapter.DestinationExists());
+        require(destWormholeId == 0 && destAddr == address(0), DestinationExists());
 
         localAdapter.file("sources", centrifugeId, wormholeId, adapter);
         localAdapter.file("destinations", centrifugeId, wormholeId, adapter);
@@ -147,10 +147,10 @@ contract Guardian is IGuardian {
     ) external onlySafe {
         // Check if remote adapter is already configured
         (uint16 centrifugeId_, bytes32 sourceAddr) = localAdapter.sources(axelarId);
-        require(centrifugeId_ == 0 && sourceAddr == bytes32(0), IAxelarAdapter.SourceExists());
-        
+        require(centrifugeId_ == 0 && sourceAddr == bytes32(0), SourceExists());
+
         (string memory destAxelarId, string memory destAddr) = localAdapter.destinations(centrifugeId);
-        require(bytes(destAxelarId).length == 0 && bytes(destAddr).length == 0, IAxelarAdapter.DestinationExists());
+        require(bytes(destAxelarId).length == 0 && bytes(destAddr).length == 0, DestinationExists());
 
         localAdapter.file("sources", axelarId, centrifugeId, adapter);
         localAdapter.file("destinations", centrifugeId, axelarId, adapter);

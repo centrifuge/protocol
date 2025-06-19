@@ -178,5 +178,3 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         assertEq(relayer.values_address("refundAddress"), refund);
     }
 }
-
-
