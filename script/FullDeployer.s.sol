@@ -2,21 +2,16 @@
 pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/Guardian.sol";
-import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
-contract FullDeployer is HubDeployer, SpokeDeployer, CreateXScript {
+contract FullDeployer is HubDeployer, SpokeDeployer {
     
     // Base salt for deterministic deployments
     bytes32 public baseSalt;
-    
-    function setUp() public withCreateX {
-        // CreateXScript automatically handles CreateX setup
-    }
 
     // Override to provide the base salt to parent contracts
     function getBaseSalt() internal view override returns (bytes32) {

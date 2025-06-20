@@ -15,13 +15,14 @@ import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
 
 string constant MESSAGE_COST_ENV = "MESSAGE_COST";
 string constant MAX_BATCH_SIZE_ENV = "MAX_BATCH_SIZE";
 
-abstract contract CommonDeployer is Script, JsonRegistry {
+abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
     uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
@@ -42,6 +43,10 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
+    }
+
+    function setUp() public withCreateX {
+        // CreateXScript automatically handles CreateX setup
     }
 
     function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
@@ -101,7 +106,7 @@ abstract contract CommonDeployer is Script, JsonRegistry {
             type(Gateway).creationCode,
             abi.encode(root, gasService, deployer)
         );
-        gateway = Gateway(create3(gatewaySalt, gatewayBytecode));
+        gateway = Gateway(payable(create3(gatewaySalt, gatewayBytecode)));
         console.log("Gateway deployed at:", address(gateway));
 
         // MultiAdapter
