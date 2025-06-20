@@ -147,6 +147,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         sender.sendRegisterAsset(centrifugeId, assetId, decimals);
     }
 
+    /// @inheritdoc ISpoke
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        require(msg.sender == address(shareClass.asset[assetId].manager), NotAuthorized());
+
+        sender.sendRequest(poolId, scId, assetId, payload);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Pool & token management
     //----------------------------------------------------------------------------------------------
@@ -306,14 +314,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
     // Vault management
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc ISpoke
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
-        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        require(msg.sender == address(shareClass.asset[assetId].manager), NotAuthorized());
-
-        sender.sendRequest(poolId, scId, assetId, payload);
-    }
 
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
