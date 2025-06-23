@@ -504,8 +504,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
-        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
+        assertEq(isPositive, false);
     }
 
     function testIssueAndThenRevokeAndThenIssueSameAmount() public {
@@ -575,8 +576,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
-        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
+        assertEq(isPositive, false);
     }
 
     function testRevokeAndThenIssueWithLessAmount() public {
