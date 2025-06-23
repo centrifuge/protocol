@@ -9,6 +9,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
@@ -117,10 +118,10 @@ contract OnOfframpManager is IOnOfframpManager {
 }
 
 contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
-    address public immutable spoke;
+    ISpoke public immutable spoke;
     IBalanceSheet public immutable balanceSheet;
 
-    constructor(address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_) {
         spoke = spoke_;
         balanceSheet = balanceSheet_;
     }
@@ -130,7 +131,7 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
         require(address(spoke.shareToken(poolId, scId)) != address(0), InvalidIds());
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, spoke, balanceSheet
+            poolId, scId, address(spoke), balanceSheet
         );
 
         emit DeployOnOfframpManager(poolId, scId, address(manager));
