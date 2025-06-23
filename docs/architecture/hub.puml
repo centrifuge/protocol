@@ -17,6 +17,10 @@ class HubRegistry
 class ShareClassManager
 class Accounting
 class Hub
+class HubHelpers
+
+interface ISnapshotHook
+interface IValuation
 
 Hub -up-|> Multicall
 Multicall -up-|> ReentrancyProtection
@@ -26,8 +30,15 @@ Hub --> Holdings
 Hub --> HubRegistry
 Hub --> ShareClassManager
 Hub --> Accounting
+HubHelpers --> Holdings
+HubHelpers --> HubRegistry
+HubHelpers --> ShareClassManager
+HubHelpers --> Accounting
 Hub -up-> MessageDispatcher
+HubHelpers -up-> MessageDispatcher
 Hub -up-> Gateway
+Holdings --> IValuation
+Holdings --> ISnapshotHook
 
 Holdings --> HubRegistry
 ShareClassManager --> HubRegistry

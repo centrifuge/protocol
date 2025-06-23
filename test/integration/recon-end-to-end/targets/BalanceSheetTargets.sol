@@ -104,7 +104,7 @@ abstract contract BalanceSheetTargets is
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.transferSharesFrom(vault.poolId(), vault.scId(), _getActor(), _getRandomActor(uint256(uint160(to))), amount);
+        balanceSheet.transferSharesFrom(vault.poolId(), vault.scId(), _getActor(), _getActor(), _getRandomActor(uint256(uint160(to))), amount);
     }
 
     function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {

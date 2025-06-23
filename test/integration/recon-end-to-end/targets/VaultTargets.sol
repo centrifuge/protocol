@@ -221,7 +221,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
-            (uint32 depositEpochId,,,) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
+            (depositEpochId,,,) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
             uint128 previousDepositApproved;
             if(depositEpochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId

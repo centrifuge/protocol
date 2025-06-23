@@ -19,7 +19,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";

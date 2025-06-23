@@ -13,7 +13,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
@@ -118,11 +118,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // forge test --match-test test_property_asset_soundness_7 -vvv 
     // NOTE: might be a real issue or something about property assumption is incorrect
+    // TODO(wischli): Investigate
     function test_property_asset_soundness_7() public {
 
         shortcut_deployNewTokenPoolAndShare(0,1,true,false,false);
-
-        hub_setQueue_clamped(false);
 
         shortcut_mint_sync(1,10000556069156430593232020144282359);
 
@@ -140,11 +139,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // forge test --match-test test_property_gain_soundness_10 -vvv 
     // NOTE: might be a real issue or something about property assumption is incorrect
+    // TODO(wischli): Investigate
     function test_property_gain_soundness_10() public {
 
         shortcut_deployNewTokenPoolAndShare(4,1,true,false,false);
-
-        hub_setQueue_clamped(false);
 
         shortcut_mint_sync(1,100084919394955237472397927082214);
 

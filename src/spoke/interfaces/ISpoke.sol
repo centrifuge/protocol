@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.5.0;
 
-import {D18, d18} from "src/misc/types/D18.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {Price} from "src/spoke/types/Price.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
@@ -18,15 +19,19 @@ struct Pool {
     mapping(ShareClassId scId => ShareClassDetails) shareClasses;
 }
 
+struct ShareClassAsset {
+    /// @dev Manager that can send requests, and handles the request callbacks.
+    IRequestManager manager;
+    /// @dev Number of linked vaults.
+    uint32 numVaults;
+}
+
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
 struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
-    /// @dev Each share class can have multiple vaults deployed,
-    ///      multiple vaults can be linked to the same asset.
-    ///      A vault in this storage DOES NOT mean the vault can be used
-    mapping(address asset => mapping(uint256 tokenId => IVault[])) vaults;
+    mapping(AssetId assetId => ShareClassAsset) asset;
     /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
 }
@@ -57,7 +62,8 @@ interface ISpoke {
         uint256 indexed tokenId,
         string name,
         string symbol,
-        uint8 decimals
+        uint8 decimals,
+        bool isInitialization
     );
     event File(bytes32 indexed what, address factory, bool status);
     event AddPool(PoolId indexed poolId);
@@ -71,7 +77,10 @@ interface ISpoke {
         IVault vault,
         VaultKind kind
     );
-    event PriceUpdate(
+    event SetRequestManager(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestManager manager
+    );
+    event UpdateAssetPrice(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address indexed asset,
@@ -79,7 +88,7 @@ interface ISpoke {
         uint256 price,
         uint64 computedAt
     );
-    event PriceUpdate(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
     event TransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
@@ -87,6 +96,9 @@ interface ISpoke {
         address indexed sender,
         bytes32 destinationAddress,
         uint128 amount
+    );
+    event ExecuteTransferShares(
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed receiver, uint128 amount
     );
     event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
     event LinkVault(
@@ -122,6 +134,10 @@ interface ISpoke {
     error CrossChainTransferNotAllowed();
     error ShareTokenTransferFailed();
     error TransferFromFailed();
+    error InvalidRequestManager();
+    error MoreThanZeroLinkedVaults();
+    error RequestManagerNotSet();
+    error InvalidManager();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -141,12 +157,8 @@ interface ISpoke {
 
     /// @notice Updates a contract parameter
     /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
-    ///                'vaultFactory', or 'gasService'
+    ///                or 'gasService'
     function file(bytes32 what, address data) external;
-
-    /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'vaultFactory'
-    function file(bytes32 what, address factory, bool status) external;
 
     /// @notice transfers share class tokens to a cross-chain recipient address
     /// @dev    To transfer to evm chains, pad a 20 byte evm address with 12 bytes of 0
@@ -173,6 +185,13 @@ interface ISpoke {
         returns (AssetId assetId);
 
     function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
+
+    /// @notice Handles a request originating from the Spoke side.
+    /// @param  poolId The pool id
+    /// @param  scId The share class id
+    /// @param  assetId The asset id
+    /// @param  payload The request payload to be processed
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 
     /// @notice Deploys a new vault
     ///

@@ -12,7 +12,7 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
@@ -883,10 +883,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
         uint256 escrowBalance = MockERC20(asset).balanceOf(poolEscrow);
         
-        // precondition: if queue is enabled, holdings don't get updated until the queue is submitted
-        if(!balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
-            eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
-        } 
+        eq(holdingAssetAmount, escrowBalance, "holding != escrow balance");
     }
 
     /// @dev Property: The total issuance of a share class is <= the sum of issued shares and burned shares
@@ -896,10 +893,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         ShareClassId scId = vault.scId();
         AssetId assetId = hubRegistry.currency(poolId);
 
+        // TODO(wischli): Find feasible replacement now that queues are always enabled
         // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when the queue isn't enabled
-        if(!balanceSheet.queueDisabled(vault.poolId(), vault.scId())) {
-            return;
-        }
+        return;
 
         (uint128 totalIssuance,) = shareClassManager.metrics(scId);
         
@@ -1160,7 +1156,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         systemAddresses[1] = address(syncVaultFactory);
         systemAddresses[2] = address(tokenFactory);
         systemAddresses[3] = address(asyncRequestManager);
-        systemAddresses[4] = address(syncRequestManager);
+        systemAddresses[4] = address(syncManager);
         systemAddresses[5] = address(spoke);
         systemAddresses[6] = address(IBaseVault(_getVault()));
         systemAddresses[7] = address(IBaseVault(_getVault()).asset());

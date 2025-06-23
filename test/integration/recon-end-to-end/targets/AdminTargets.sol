@@ -195,16 +195,6 @@ abstract contract AdminTargets is
         AssetId assetId = hubRegistry.currency(poolId);
         hub.notifyAssetPrice(poolId, scId, assetId);
     }
-    
-    function hub_setQueue(uint16 centrifugeId, bool enabled) public updateGhosts {
-        PoolId poolId = PoolId.wrap(_getPool());
-        ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        hub.setQueue(poolId, scId, enabled);
-    }
-
-    function hub_setQueue_clamped(bool enabled) public {
-        hub_setQueue(CENTRIFUGE_CHAIN_ID, enabled);
-    }
 
     /// @dev Property: After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance totalIssuance[..] is decreased
     // TODO: Refactor this property to work with new issuance update logic
@@ -270,22 +260,22 @@ abstract contract AdminTargets is
     function hub_updateRestriction(uint16 chainId, bytes calldata payload) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        hub.updateRestriction(poolId, scId, chainId, payload);
+        hub.updateRestriction(poolId, scId, chainId, payload, 0);
     }
 
     function hub_updateRestriction_clamped(bytes calldata payload) public {
         hub_updateRestriction(CENTRIFUGE_CHAIN_ID, payload);
     }
 
-    function syncRequestManager_setValuation(address valuation) public updateGhosts {
+    function syncManager_setValuation(address valuation) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        syncRequestManager.setValuation(poolId, scId, valuation);
+        syncManager.setValuation(poolId, scId, valuation);
     }
 
-    function syncRequestManager_setValuation_clamped(bool isIdentityValuation) public {
+    function syncManager_setValuation_clamped(bool isIdentityValuation) public {
         address valuation = isIdentityValuation ? address(identityValuation) : address(transientValuation);
-        syncRequestManager_setValuation(valuation);
+        syncManager_setValuation(valuation);
     }
 
     function hub_updateSharePrice(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPoolPerShare) public updateGhosts {

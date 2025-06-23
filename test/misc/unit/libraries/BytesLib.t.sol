@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+
+import "forge-std/Test.sol";
 
 contract BytesLibTest is Test {
     function testSlice(bytes memory data, bytes memory randomStart, bytes memory randomEnd) public pure {

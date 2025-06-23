@@ -8,16 +8,16 @@ import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {Escrow} from "src/spoke/Escrow.sol";
+import {Escrow} from "src/misc/Escrow.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {PoolEscrowFactory} from "src/spoke/factories/PoolEscrowFactory.sol";
+import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {SyncRequestManager} from "src/vaults/SyncRequestManager.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
@@ -43,7 +43,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequestManager asyncRequestManager;
-    SyncRequestManager syncRequestManager;
+    SyncManager syncManager;
     Spoke spoke;
     AsyncVault vault;
     ShareToken token;
@@ -150,8 +150,8 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         root.endorse(address(escrow));
 
         balanceSheet = new BalanceSheet(IRoot(address(root)), address(this));
-        asyncRequestManager = new AsyncRequestManager(escrow, address(root), address(this));
-        syncRequestManager = new SyncRequestManager(escrow, address(root), address(this));
+        asyncRequestManager = new AsyncRequestManager(escrow, address(this));
+        syncManager = new SyncManager(address(this));
         vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
@@ -167,14 +167,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         asyncRequestManager.file("spoke", address(spoke));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));    
         asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
-        syncRequestManager.file("spoke", address(spoke));
-        syncRequestManager.file("balanceSheet", address(balanceSheet));
-        syncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        syncManager.file("spoke", address(spoke));
+        syncManager.file("balanceSheet", address(balanceSheet));
+        syncManager.file("poolEscrowProvider", address(poolEscrowFactory));
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultFactory", address(vaultFactory), true);
+        spoke.file("vaultFactory", address(vaultFactory));
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
@@ -205,7 +205,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         tokenFactory.rely(address(spoke));
         poolEscrowFactory.rely(address(spoke));
         balanceSheet.rely(address(asyncRequestManager));
-        balanceSheet.rely(address(syncRequestManager));
+        balanceSheet.rely(address(syncManager));
     }
 
     // NOTE: this overrides contracts deployed in setup() above with forked contracts

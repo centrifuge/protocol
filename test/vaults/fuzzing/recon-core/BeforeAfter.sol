@@ -63,8 +63,8 @@ abstract contract BeforeAfter is Ghosts {
             (
                 uint128 maxMint,
                 uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
+                D18 depositPrice,
+                D18 redeemPrice,
                 uint128 pendingDepositRequest,
                 uint128 pendingRedeemRequest,
                 uint128 claimableCancelDepositRequest,
@@ -110,8 +110,8 @@ abstract contract BeforeAfter is Ghosts {
             (
                 uint128 maxMint,
                 uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
+                D18 depositPrice,
+                D18 redeemPrice,
                 uint128 pendingDepositRequest,
                 uint128 pendingRedeemRequest,
                 uint128 claimableCancelDepositRequest,

@@ -6,7 +6,6 @@ import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
 contract TokenRecoverer is Auth, ITokenRecoverer {
     IRoot public immutable root;

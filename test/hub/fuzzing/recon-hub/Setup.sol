@@ -20,7 +20,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+ import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
@@ -34,6 +34,7 @@ import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
 import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
@@ -135,7 +136,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
-        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IShareClassManager(address(shareClassManager)), address(this));
+        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IHubMessageSender(address(messageDispatcher)), IShareClassManager(address(shareClassManager)), address(this));
         messageDispatcher = new MockMessageDispatcher();
         hub = new Hub(
             IGateway(address(gateway)), 

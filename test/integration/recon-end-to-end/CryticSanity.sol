@@ -13,7 +13,7 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {AccountId, AccountType} from "src/hub/interfaces/IHub.sol";
-import {PoolEscrow} from "src/spoke/Escrow.sol";
+import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";

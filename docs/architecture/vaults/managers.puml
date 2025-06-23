@@ -1,0 +1,38 @@
+@startuml
+hide empty members
+
+package spoke {
+    interface IVaultManager
+    interface IRequestManager
+}
+
+interface IBaseRequestManager
+
+interface IDepositManager
+interface IRedeemManager
+
+interface IAsyncDepositManager
+interface ISyncDepositManager
+interface IAsyncRedeemManager
+
+interface IAsyncRequestManager
+interface ISyncManager
+
+IBaseRequestManager -up-|> IRequestManager
+IBaseRequestManager -up-|> IVaultManager
+
+IAsyncDepositManager -up-|> IBaseRequestManager
+IAsyncDepositManager -up-|> IDepositManager
+ISyncDepositManager -up-|> IDepositManager
+IAsyncRedeemManager -up-|> IRedeemManager
+IAsyncRedeemManager -up-|> IBaseRequestManager
+
+IAsyncRequestManager -up-|> IAsyncDepositManager
+IAsyncRequestManager -up-|> IAsyncRedeemManager
+
+ISyncManager -up-|> ISyncDepositManager
+
+AsyncRequestManager -up-|> IAsyncRequestManager
+SyncManager -up-|> ISyncManager
+
+@enduml

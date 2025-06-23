@@ -219,9 +219,9 @@ abstract contract BeforeAfter is Setup {
     /// === HELPER FUNCTIONS === ///
     
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
-        (,, uint256 depositPrice, uint256 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
+        (,, D18 depositPrice, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
 
-        return (depositPrice, redeemPrice);
+        return (depositPrice.raw(), redeemPrice.raw());
     }
 
     function _updateInvestmentForAllActors(bool before) internal {
@@ -232,8 +232,8 @@ abstract contract BeforeAfter is Setup {
             (
                 uint128 maxMint,
                 uint128 maxWithdraw,
-                uint256 depositPrice,
-                uint256 redeemPrice,
+                D18 depositPrice,
+                D18 redeemPrice,
                 uint128 pendingDepositRequest,
                 uint128 pendingRedeemRequest,
                 uint128 claimableCancelDepositRequest,

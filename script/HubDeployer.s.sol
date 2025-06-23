@@ -4,19 +4,18 @@ pragma solidity 0.8.28;
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
 import {ISafe} from "src/common/Guardian.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {Root} from "src/common/Root.sol";
-
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+
+import {Hub} from "src/hub/Hub.sol";
 import {Holdings} from "src/hub/Holdings.sol";
 import {Accounting} from "src/hub/Accounting.sol";
-import {Hub} from "src/hub/Hub.sol";
 import {HubHelpers} from "src/hub/HubHelpers.sol";
+import {HubRegistry} from "src/hub/HubRegistry.sol";
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+
+import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
 
 contract HubDeployer is CommonDeployer {
     // Main contracts
@@ -33,16 +32,17 @@ contract HubDeployer is CommonDeployer {
     // Data
     uint8 constant ISO4217_DECIMALS = 18;
     AssetId public immutable USD_ID = newAssetId(840);
+    AssetId public immutable EUR_ID = newAssetId(978);
 
-    function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
+    function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
+        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
 
         hubRegistry = new HubRegistry(deployer);
         identityValuation = new IdentityValuation(hubRegistry, deployer);
         accounting = new Accounting(deployer);
         holdings = new Holdings(hubRegistry, deployer);
         shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, shareClassManager, deployer);
+        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer);
         hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
 
         _poolsRegister();
@@ -69,10 +69,12 @@ contract HubDeployer is CommonDeployer {
         gateway.rely(address(hub));
         messageDispatcher.rely(address(hub));
         hubHelpers.rely(address(hub));
+        poolEscrowFactory.rely(address(hub));
 
         // Rely hub helpers
         accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
+        messageDispatcher.rely(address(hubHelpers));
 
         // Rely others on hub
         hub.rely(address(messageProcessor));
@@ -86,6 +88,7 @@ contract HubDeployer is CommonDeployer {
         shareClassManager.rely(address(root));
         hub.rely(address(root));
         identityValuation.rely(address(root));
+        hubHelpers.rely(address(root));
     }
 
     function _poolsFile() private {
@@ -93,6 +96,7 @@ contract HubDeployer is CommonDeployer {
         messageDispatcher.file("hub", address(hub));
 
         hub.file("sender", address(messageDispatcher));
+        hub.file("poolEscrowFactory", address(poolEscrowFactory));
 
         guardian.file("hub", address(hub));
 
@@ -101,6 +105,7 @@ contract HubDeployer is CommonDeployer {
 
     function _poolsInitialConfig() private {
         hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
+        hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
 
     function removeHubDeployerAccess(address deployer) public {
@@ -111,7 +116,7 @@ contract HubDeployer is CommonDeployer {
         holdings.deny(deployer);
         shareClassManager.deny(deployer);
         hub.deny(deployer);
-
+        hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
     }
 }

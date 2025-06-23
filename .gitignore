@@ -4,17 +4,17 @@ broadcast/
 .env
 .idea/
 .DS_Store
-.env.*
+.env
 lcov.info
 .vscode
-deployments/latest
-
+**/latest
+**.zip
 ## Recon
 /medusa
 /crytic-export
 /echidna
 recon.json
-
+**/*.log
 
 ## Recon Separate Configs
 /medusa-core

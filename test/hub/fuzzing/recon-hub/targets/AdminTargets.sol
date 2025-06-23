@@ -21,6 +21,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
 
 // Test Utils
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
@@ -33,6 +34,7 @@ abstract contract AdminTargets is
     Properties
 {
     using CastLib for *;
+    using RequestMessageLib for *;
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
@@ -195,7 +197,7 @@ abstract contract AdminTargets is
     function hub_updateRestriction(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint16 chainId, bytes calldata payload) public {
         PoolId poolId = PoolId.wrap(poolIdAsUint);
         ShareClassId scId = ShareClassId.wrap(scIdAsBytes);
-        hub.updateRestriction(poolId, scId, chainId, payload);
+        hub.updateRestriction(poolId, scId, chainId, payload, 0);
     }
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -223,7 +225,8 @@ abstract contract AdminTargets is
         AssetId depositAssetId = hubRegistry.currency(poolId);
         bytes32 investor = _getActor().toBytes32();
 
-        try hub.depositRequest(poolId, scId, investor, depositAssetId, amount) {
+        bytes memory payload = RequestMessageLib.DepositRequest(investor, amount).serialize();
+        try hub.request(poolId, scId, depositAssetId, payload) {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(scId, depositAssetId, investor);
             (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
 
@@ -254,7 +257,8 @@ abstract contract AdminTargets is
         AssetId payoutAssetId = AssetId.wrap(assetIdAsUint);
         bytes32 investor = CastLib.toBytes32(_getActor());
 
-        try hub.redeemRequest(poolId, scId, investor, payoutAssetId, amount) {
+        bytes memory payload = RequestMessageLib.RedeemRequest(investor, amount).serialize();
+        try hub.request(poolId, scId, payoutAssetId, payload) {
             (, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
             // uint32 epochId = shareClassManager.epochId(poolId);
 
@@ -282,7 +286,8 @@ abstract contract AdminTargets is
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.depositRequest(scId, depositAssetId, investor);
         (uint32 depositEpochId,,, )= shareClassManager.epochId(scId, depositAssetId);
-        try hub.cancelDepositRequest(poolId, scId, investor, depositAssetId) {
+        bytes memory payload = RequestMessageLib.CancelDepositRequest(investor).serialize();
+        try hub.request(poolId, scId, depositAssetId, payload) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(scId, depositAssetId, investor);
 
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should not change
@@ -291,7 +296,7 @@ abstract contract AdminTargets is
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
-            (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, depositAssetId);
+            (depositEpochId,,,) = shareClassManager.epochId(scId, depositAssetId);
             uint128 previousDepositApproved;
             if(depositEpochId > 0) {
                 // we also check the previous epoch because approvals can increment the epochId
@@ -323,7 +328,8 @@ abstract contract AdminTargets is
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
 
-        try hub.cancelRedeemRequest(poolId, scId, investor, payoutAssetId) {
+        bytes memory payload = RequestMessageLib.CancelRedeemRequest(investor).serialize();
+        try hub.request(poolId, scId, payoutAssetId, payload) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(scId, payoutAssetId, investor);
             (, uint32 redeemEpochId,, )= shareClassManager.epochId(scId, payoutAssetId);
 
