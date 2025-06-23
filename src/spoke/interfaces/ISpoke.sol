@@ -156,7 +156,7 @@ interface ISpoke {
     function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory',
+    /// @param what Accepts a bytes32 representation of 'gateway', 'requestManager', 'tokenFactory',
     ///                or 'gasService'
     function file(bytes32 what, address data) external;
 

@@ -94,7 +94,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     // Sum of assets received on `claimCancelDepositRequest`<= sum of fulfillCancelDepositRequest.assets
     function property_global_5() public assetIsSet {
         // claimCancelDepositRequest
-        // investmentManager_fulfillCancelDepositRequest
+        // requestManager_fulfillCancelDepositRequest
         lte(sumOfClaimedDepositCancelations[address(vault.asset())], cancelDepositCurrencyPayout[address(vault.asset())], "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout");
     }
 

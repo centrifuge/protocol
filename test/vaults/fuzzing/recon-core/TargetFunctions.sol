@@ -18,6 +18,7 @@ import {PoolManagerTargets} from "./targets/PoolManagerTargets.sol";
 import {VaultCallbackTargets} from "./targets/VaultCallbackTargets.sol";
 import {ManagerTargets} from "./targets/ManagerTargets.sol";
 import {Properties} from "./properties/Properties.sol";
+
 abstract contract TargetFunctions is
     BaseTargetFunctions,
     Properties,
@@ -26,7 +27,7 @@ abstract contract TargetFunctions is
     FullRestrictionsTargets,
     VaultTargets,
     PoolManagerTargets,
-    VaultCallbackTargets, 
+    VaultCallbackTargets,
     ManagerTargets
 {
     /**

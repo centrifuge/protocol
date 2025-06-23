@@ -8,85 +8,88 @@ contract MockAsyncRequestManager {
     //||                                                             ||
     //<>=============================================================<>
     // Mock implementation of addVault
-    function addVault(uint64 poolId, bytes16 scId, address vault_, address asset_, uint128 assetId) public {
-        
-    }
+    function addVault(uint64 poolId, bytes16 scId, address vault_, address asset_, uint128 assetId) public {}
 
     // Mock implementation of approvedDeposits
-    function approvedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount, uint128 pricePoolPerAsset) public {
-        
-    }
+    function approvedDeposits(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assetAmount,
+        uint128 pricePoolPerAsset
+    ) public {}
 
     // Mock implementation of cancelDepositRequest
-    function cancelDepositRequest(address vault_, address controller, address arg2) public {
-        
-    }
+    function cancelDepositRequest(address vault_, address controller, address arg2) public {}
 
     // Mock implementation of cancelRedeemRequest
-    function cancelRedeemRequest(address vault_, address controller, address arg2) public {
-        
-    }
+    function cancelRedeemRequest(address vault_, address controller, address arg2) public {}
 
     // Mock implementation of deny
-    function deny(address user) public {
-        
-    }
+    function deny(address user) public {}
 
     // Mock implementation of file
-    function file(bytes32 what, address data) public {
-        
-    }
+    function file(bytes32 what, address data) public {}
 
     // Mock implementation of fulfillCancelDepositRequest
-    function fulfillCancelDepositRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 assets, uint128 fulfillment) public {
-        
-    }
+    function fulfillCancelDepositRequest(
+        uint64 poolId,
+        bytes16 scId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 fulfillment
+    ) public {}
 
     // Mock implementation of fulfillCancelRedeemRequest
-    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares) public {
-        
-    }
+    function fulfillCancelRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 shares)
+        public
+    {}
 
     // Mock implementation of fulfillDepositRequest
-    function fulfillDepositRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 assets, uint128 shares) public {
-        
-    }
+    function fulfillDepositRequest(
+        uint64 poolId,
+        bytes16 scId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) public {}
 
     // Mock implementation of fulfillRedeemRequest
-    function fulfillRedeemRequest(uint64 poolId, bytes16 scId, address user, uint128 assetId, uint128 assets, uint128 shares) public {
-        
-    }
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 scId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) public {}
 
     // Mock implementation of issuedShares
-    function issuedShares(uint64 poolId, bytes16 scId, uint128 shareAmount, uint128 pricePoolPerShare) public {
-        
-    }
+    function issuedShares(uint64 poolId, bytes16 scId, uint128 shareAmount, uint128 pricePoolPerShare) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, address receiver, uint256 amount) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {}
 
     // Mock implementation of rely
-    function rely(address user) public {
-        
-    }
+    function rely(address user) public {}
 
     // Mock implementation of removeVault
-    function removeVault(uint64 poolId, bytes16 scId, address vault_, address asset_, uint128 assetId) public {
-        
-    }
+    function removeVault(uint64 poolId, bytes16 scId, address vault_, address asset_, uint128 assetId) public {}
 
     // Mock implementation of revokedShares
-    function revokedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assetAmount, uint128 shareAmount, uint128 pricePoolPerShare) public {
-        
-    }
-
+    function revokedShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 assetAmount,
+        uint128 shareAmount,
+        uint128 pricePoolPerShare
+    ) public {}
 
     //<>=============================================================<>
     //||                                                             ||
@@ -139,7 +142,18 @@ contract MockAsyncRequestManager {
     }
 
     // Function to set return values for investments
-    function setInvestmentsReturn(uint128 _value0, uint128 _value1, uint256 _value2, uint256 _value3, uint128 _value4, uint128 _value5, uint128 _value6, uint128 _value7, bool _value8, bool _value9) public {
+    function setInvestmentsReturn(
+        uint128 _value0,
+        uint128 _value1,
+        uint256 _value2,
+        uint256 _value3,
+        uint128 _value4,
+        uint128 _value5,
+        uint128 _value6,
+        uint128 _value7,
+        bool _value8,
+        bool _value9
+    ) public {
         _investmentsReturn_0 = _value0;
         _investmentsReturn_1 = _value1;
         _investmentsReturn_2 = _value2;
@@ -268,13 +282,14 @@ contract MockAsyncRequestManager {
         _withdrawReturn_0 = _value0;
     }
 
-
-    /*******************************************************************
+    /**
+     *
      *   ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️  *
-     *-----------------------------------------------------------------*
+     * -----------------------------------------------------------------*
      *      Generally you only need to modify the sections above.      *
      *          The code below handles system operations.              *
-     *******************************************************************/
+     *
+     */
 
     //<>=============================================================<>
     //||                                                             ||
@@ -290,7 +305,9 @@ contract MockAsyncRequestManager {
     event Deny(address user);
     event File(bytes32 what, address data);
     event Rely(address user);
-    event TriggerRedeemRequest(uint64 poolId, bytes16 scId, address user, address asset, uint256 tokenId, uint128 shares);
+    event TriggerRedeemRequest(
+        uint64 poolId, bytes16 scId, address user, address asset, uint256 tokenId, uint128 shares
+    );
 
     //<>=============================================================<>
     //||                                                             ||
@@ -352,12 +369,20 @@ contract MockAsyncRequestManager {
     }
 
     // Mock implementation of claimCancelDepositRequest
-    function claimCancelDepositRequest(address vault_, address receiver, address controller) public view returns (uint256) {
+    function claimCancelDepositRequest(address vault_, address receiver, address controller)
+        public
+        view
+        returns (uint256)
+    {
         return _claimCancelDepositRequestReturn_0;
     }
 
     // Mock implementation of claimCancelRedeemRequest
-    function claimCancelRedeemRequest(address vault_, address receiver, address controller) public view returns (uint256) {
+    function claimCancelRedeemRequest(address vault_, address receiver, address controller)
+        public
+        view
+        returns (uint256)
+    {
         return _claimCancelRedeemRequestReturn_0;
     }
 
@@ -382,7 +407,11 @@ contract MockAsyncRequestManager {
     }
 
     // Mock implementation of deposit
-    function deposit(address vault_, uint256 assets, address receiver, address controller) public view returns (uint256) {
+    function deposit(address vault_, uint256 assets, address receiver, address controller)
+        public
+        view
+        returns (uint256)
+    {
         return _depositReturn_0;
     }
 
@@ -392,8 +421,23 @@ contract MockAsyncRequestManager {
     }
 
     // Mock implementation of investments
-    function investments(address vault, address investor) public view returns (uint128, uint128, uint256, uint256, uint128, uint128, uint128, uint128, bool, bool) {
-        return (_investmentsReturn_0, _investmentsReturn_1, _investmentsReturn_2, _investmentsReturn_3, _investmentsReturn_4, _investmentsReturn_5, _investmentsReturn_6, _investmentsReturn_7, _investmentsReturn_8, _investmentsReturn_9);
+    function investments(address vault, address investor)
+        public
+        view
+        returns (uint128, uint128, uint256, uint256, uint128, uint128, uint128, uint128, bool, bool)
+    {
+        return (
+            _investmentsReturn_0,
+            _investmentsReturn_1,
+            _investmentsReturn_2,
+            _investmentsReturn_3,
+            _investmentsReturn_4,
+            _investmentsReturn_5,
+            _investmentsReturn_6,
+            _investmentsReturn_7,
+            _investmentsReturn_8,
+            _investmentsReturn_9
+        );
     }
 
     // Mock implementation of maxDeposit
@@ -462,17 +506,29 @@ contract MockAsyncRequestManager {
     }
 
     // Mock implementation of redeem
-    function redeem(address vault_, uint256 shares, address receiver, address controller) public view returns (uint256) {
+    function redeem(address vault_, uint256 shares, address receiver, address controller)
+        public
+        view
+        returns (uint256)
+    {
         return _redeemReturn_0;
     }
 
     // Mock implementation of requestDeposit
-    function requestDeposit(address vault_, uint256 assets, address controller, address arg3, address arg4) public view returns (bool) {
+    function requestDeposit(address vault_, uint256 assets, address controller, address arg3, address arg4)
+        public
+        view
+        returns (bool)
+    {
         return _requestDepositReturn_0;
     }
 
     // Mock implementation of requestRedeem
-    function requestRedeem(address vault_, uint256 shares, address controller, address owner, address arg4) public view returns (bool) {
+    function requestRedeem(address vault_, uint256 shares, address controller, address owner, address arg4)
+        public
+        view
+        returns (bool)
+    {
         return _requestRedeemReturn_0;
     }
 
@@ -507,8 +563,11 @@ contract MockAsyncRequestManager {
     }
 
     // Mock implementation of withdraw
-    function withdraw(address vault_, uint256 assets, address receiver, address controller) public view returns (uint256) {
+    function withdraw(address vault_, uint256 assets, address receiver, address controller)
+        public
+        view
+        returns (uint256)
+    {
         return _withdrawReturn_0;
     }
-
 }

@@ -54,7 +54,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     MockMessageDispatcher messageDispatcher;
     MockGateway gateway;
     MockHub hub;    
-    MockAsyncRequestManager investmentManager;
+    MockAsyncRequestManager requestManager;
 
     bytes16 scId;
     uint64 poolId;
@@ -160,7 +160,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         messageDispatcher = new MockMessageDispatcher(); 
         gateway = new MockGateway();
         hub = new MockHub();
-        investmentManager = new MockAsyncRequestManager();
+        requestManager = new MockAsyncRequestManager();
 
         // set dependencies
         asyncRequestManager.file("sender", address(messageDispatcher));
@@ -185,7 +185,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
-        messageDispatcher.file("investmentManager", address(investmentManager));
+        messageDispatcher.file("requestManager", address(requestManager));
         
         // authorize contracts
         asyncRequestManager.rely(address(spoke));

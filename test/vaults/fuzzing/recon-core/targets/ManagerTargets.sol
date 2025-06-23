@@ -9,21 +9,16 @@ import {MockERC20} from "@recon/MockERC20.sol";
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 
-
 // Target functions that are effectively inherited from the Actor and AssetManagers
 // Once properly standardized, managers will expose these by default
 // Keeping them out makes your project more custom
-abstract contract ManagerTargets is
-    BaseTargetFunctions,
-    Properties
-{
+abstract contract ManagerTargets is BaseTargetFunctions, Properties {
     // == ACTOR HANDLERS == //
-    
+
     /// @dev Start acting as another actor
     function switch_actor(uint256 entropy) public {
         _switchActor(entropy);
     }
-
 
     /// @dev Starts using a new asset
     function switch_asset(uint256 entropy) public {

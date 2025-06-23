@@ -128,7 +128,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// @dev Property: Sum of assets received on claimCancelDepositRequest <= sum of fulfillCancelDepositRequest.assets
     function property_sum_of_assets_received_on_claim_cancel_deposit_request() public assetIsSet {
         // claimCancelDepositRequest
-        // investmentManager_fulfillCancelDepositRequest
+        // requestManager_fulfillCancelDepositRequest
         IBaseVault vault = IBaseVault(_getVault());
         address asset = vault.asset();
 

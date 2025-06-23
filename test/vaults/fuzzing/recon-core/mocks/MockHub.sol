@@ -8,215 +8,159 @@ contract MockHub {
     //||                                                             ||
     //<>=============================================================<>
     // Mock implementation of addShareClass
-    function addShareClass(uint64 poolId, string memory name, string memory symbol, bytes32 salt) public {
-        
-    }
+    function addShareClass(uint64 poolId, string memory name, string memory symbol, bytes32 salt) public {}
 
     // Mock implementation of cancelDepositRequest
-    function cancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 depositAssetId) public {
-        
-    }
+    function cancelDepositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 depositAssetId) public {}
 
     // Mock implementation of cancelRedeemRequest
-    function cancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 payoutAssetId) public {
-        
-    }
+    function cancelRedeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 payoutAssetId) public {}
 
     // Mock implementation of createAccount
-    function createAccount(uint64 poolId, uint32 account, bool isDebitNormal) public {
-        
-    }
+    function createAccount(uint64 poolId, uint32 account, bool isDebitNormal) public {}
 
     // Mock implementation of createHolding
-    function createHolding(uint64 poolId, bytes16 scId, uint128 assetId, address valuation, uint32 assetAccount, uint32 equityAccount, uint32 lossAccount, uint32 gainAccount) public {
-        
-    }
+    function createHolding(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        address valuation,
+        uint32 assetAccount,
+        uint32 equityAccount,
+        uint32 lossAccount,
+        uint32 gainAccount
+    ) public {}
 
     // Mock implementation of createLiability
-    function createLiability(uint64 poolId, bytes16 scId, uint128 assetId, address valuation, uint32 expenseAccount, uint32 liabilityAccount) public {
-        
-    }
+    function createLiability(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        address valuation,
+        uint32 expenseAccount,
+        uint32 liabilityAccount
+    ) public {}
 
     // Mock implementation of createPool
-    function createPool(uint64 poolId, address admin, uint128 currency) public {
-        
-    }
+    function createPool(uint64 poolId, address admin, uint128 currency) public {}
 
     // Mock implementation of decreaseShareIssuance
-    function decreaseShareIssuance(uint64 poolId, bytes16 scId, uint128 amount) public {
-        
-    }
+    function decreaseShareIssuance(uint64 poolId, bytes16 scId, uint128 amount) public {}
 
     // Mock implementation of deny
-    function deny(address user) public {
-        
-    }
+    function deny(address user) public {}
 
     // Mock implementation of depositRequest
-    function depositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 depositAssetId, uint128 amount) public {
-        
-    }
+    function depositRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 depositAssetId, uint128 amount)
+        public
+    {}
 
     // Mock implementation of file
-    function file(bytes32 what, address data) public {
-        
-    }
+    function file(bytes32 what, address data) public {}
 
     // Mock implementation of increaseShareIssuance
-    function increaseShareIssuance(uint64 poolId, bytes16 scId, uint128 amount) public {
-        
-    }
+    function increaseShareIssuance(uint64 poolId, bytes16 scId, uint128 amount) public {}
 
     // Mock implementation of multicall
-    function multicall(bytes[] memory data) public {
-        
-    }
+    function multicall(bytes[] memory data) public {}
 
     // Mock implementation of notifyAssetPrice
-    function notifyAssetPrice(uint64 poolId, bytes16 scId, uint128 assetId) public {
-        
-    }
+    function notifyAssetPrice(uint64 poolId, bytes16 scId, uint128 assetId) public {}
 
     // Mock implementation of notifyDeposit
-    function notifyDeposit(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 investor, uint32 maxClaims) public {
-        
-    }
+    function notifyDeposit(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 investor, uint32 maxClaims) public {}
 
     // Mock implementation of notifyPool
-    function notifyPool(uint64 poolId, uint16 centrifugeId) public {
-        
-    }
+    function notifyPool(uint64 poolId, uint16 centrifugeId) public {}
 
     // Mock implementation of notifyRedeem
-    function notifyRedeem(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 investor, uint32 maxClaims) public {
-        
-    }
+    function notifyRedeem(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 investor, uint32 maxClaims) public {}
 
     // Mock implementation of notifyShareClass
-    function notifyShareClass(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 hook) public {
-        
-    }
+    function notifyShareClass(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 hook) public {}
 
     // Mock implementation of notifyShareMetadata
-    function notifyShareMetadata(uint64 poolId, bytes16 scId, uint16 centrifugeId) public {
-        
-    }
+    function notifyShareMetadata(uint64 poolId, bytes16 scId, uint16 centrifugeId) public {}
 
     // Mock implementation of notifySharePrice
-    function notifySharePrice(uint64 poolId, bytes16 scId, uint16 centrifugeId) public {
-        
-    }
+    function notifySharePrice(uint64 poolId, bytes16 scId, uint16 centrifugeId) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, address receiver, uint256 amount) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {}
 
     // Mock implementation of redeemRequest
-    function redeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 payoutAssetId, uint128 amount) public {
-        
-    }
+    function redeemRequest(uint64 poolId, bytes16 scId, bytes32 investor, uint128 payoutAssetId, uint128 amount)
+        public
+    {}
 
     // Mock implementation of registerAsset
-    function registerAsset(uint128 assetId, uint8 decimals) public {
-        
-    }
+    function registerAsset(uint128 assetId, uint8 decimals) public {}
 
     // Mock implementation of rely
-    function rely(address user) public {
-        
-    }
+    function rely(address user) public {}
 
     // Mock implementation of setAccountMetadata
-    function setAccountMetadata(uint64 poolId, uint32 account, bytes memory metadata) public {
-        
-    }
+    function setAccountMetadata(uint64 poolId, uint32 account, bytes memory metadata) public {}
 
     // Mock implementation of setHoldingAccountId
-    function setHoldingAccountId(uint64 poolId, bytes16 scId, uint128 assetId, uint8 kind, uint32 accountId) public {
-        
-    }
+    function setHoldingAccountId(uint64 poolId, bytes16 scId, uint128 assetId, uint8 kind, uint32 accountId) public {}
 
     // Mock implementation of setPoolMetadata
-    function setPoolMetadata(uint64 poolId, bytes memory metadata) public {
-        
-    }
+    function setPoolMetadata(uint64 poolId, bytes memory metadata) public {}
 
     // Mock implementation of setQueue
-    function setQueue(uint16 centrifugeId, uint64 poolId, bytes16 scId, bool enabled) public {
-        
-    }
+    function setQueue(uint16 centrifugeId, uint64 poolId, bytes16 scId, bool enabled) public {}
 
     // Mock implementation of triggerIssueShares
-    function triggerIssueShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, address who, uint128 shares) public {
-        
-    }
+    function triggerIssueShares(uint16 centrifugeId, uint64 poolId, bytes16 scId, address who, uint128 shares) public {}
 
     // Mock implementation of triggerSubmitQueuedAssets
-    function triggerSubmitQueuedAssets(uint64 poolId, bytes16 scId, uint128 assetId) public {
-        
-    }
+    function triggerSubmitQueuedAssets(uint64 poolId, bytes16 scId, uint128 assetId) public {}
 
     // Mock implementation of triggerSubmitQueuedShares
-    function triggerSubmitQueuedShares(uint16 centrifugeId, uint64 poolId, bytes16 scId) public {
-        
-    }
+    function triggerSubmitQueuedShares(uint16 centrifugeId, uint64 poolId, bytes16 scId) public {}
 
     // Mock implementation of updateContract
-    function updateContract(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 target, bytes memory payload) public {
-        
-    }
+    function updateContract(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 target, bytes memory payload)
+        public
+    {}
 
     // Mock implementation of updateHoldingAmount
-    function updateHoldingAmount(uint64 poolId, bytes16 scId, uint128 assetId, uint128 amount, uint128 pricePoolPerAsset, bool isIncrease) public {
-        
-    }
+    function updateHoldingAmount(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 amount,
+        uint128 pricePoolPerAsset,
+        bool isIncrease
+    ) public {}
 
     // Mock implementation of updateHoldingValuation
-    function updateHoldingValuation(uint64 poolId, bytes16 scId, uint128 assetId, address valuation) public {
-        
-    }
+    function updateHoldingValuation(uint64 poolId, bytes16 scId, uint128 assetId, address valuation) public {}
 
     // Mock implementation of updateHoldingValue
-    function updateHoldingValue(uint64 poolId, bytes16 scId, uint128 assetId) public {
-        
-    }
+    function updateHoldingValue(uint64 poolId, bytes16 scId, uint128 assetId) public {}
 
     // Mock implementation of updateJournal
-    function updateJournal(uint64 poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {
-        
-    }
+    function updateJournal(uint64 poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) public {}
 
     // Mock implementation of updateManager
-    function updateManager(uint64 poolId, address who, bool canManage) public {
-        
-    }
+    function updateManager(uint64 poolId, address who, bool canManage) public {}
 
     // Mock implementation of updatePricePerShare
-    function updatePricePerShare(uint64 poolId, bytes16 scId, uint128 navPoolPerShare) public {
-        
-    }
+    function updatePricePerShare(uint64 poolId, bytes16 scId, uint128 navPoolPerShare) public {}
 
     // Mock implementation of updateRestriction
-    function updateRestriction(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes memory payload) public {
-        
-    }
+    function updateRestriction(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes memory payload) public {}
 
     // Mock implementation of updateShareClassMetadata
-    function updateShareClassMetadata(uint64 poolId, bytes16 scId, string memory name, string memory symbol) public {
-        
-    }
+    function updateShareClassMetadata(uint64 poolId, bytes16 scId, string memory name, string memory symbol) public {}
 
     // Mock implementation of updateShareHook
-    function updateShareHook(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 hook) public {
-        
-    }
-
+    function updateShareHook(uint64 poolId, bytes16 scId, uint16 centrifugeId, bytes32 hook) public {}
 
     //<>=============================================================<>
     //||                                                             ||
@@ -283,13 +227,14 @@ contract MockHub {
         _wardsReturn_0 = _value0;
     }
 
-
-    /*******************************************************************
+    /**
+     *
      *   ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️  *
-     *-----------------------------------------------------------------*
+     * -----------------------------------------------------------------*
      *      Generally you only need to modify the sections above.      *
      *          The code below handles system operations.              *
-     *******************************************************************/
+     *
+     */
 
     //<>=============================================================<>
     //||                                                             ||
@@ -302,7 +247,6 @@ contract MockHub {
         uint32 accountId;
     }
 
-
     //<>=============================================================<>
     //||                                                             ||
     //||        ⚠️  EVENTS DEFINITIONS - DO NOT MODIFY  ⚠️          ||
@@ -310,7 +254,9 @@ contract MockHub {
     //<>=============================================================<>
     event Deny(address user);
     event File(bytes32 what, address addr);
-    event NotifyAssetPrice(uint16 centrifugeId, uint64 poolId, bytes16 scId, uint128 assetId, uint128 pricePoolPerAsset);
+    event NotifyAssetPrice(
+        uint16 centrifugeId, uint64 poolId, bytes16 scId, uint128 assetId, uint128 pricePoolPerAsset
+    );
     event NotifyPool(uint16 centrifugeId, uint64 poolId);
     event NotifyShareClass(uint16 centrifugeId, uint64 poolId, bytes16 scId);
     event NotifySharePrice(uint16 centrifugeId, uint64 poolId, bytes16 scId, string name, string symbol);
@@ -353,12 +299,24 @@ contract MockHub {
     }
 
     // Mock implementation of approveDeposits
-    function approveDeposits(uint64 poolId, bytes16 scId, uint128 depositAssetId, uint32 nowDepositEpochId, uint128 approvedAssetAmount) public view returns (uint128, uint128) {
+    function approveDeposits(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 depositAssetId,
+        uint32 nowDepositEpochId,
+        uint128 approvedAssetAmount
+    ) public view returns (uint128, uint128) {
         return (_approveDepositsReturn_0, _approveDepositsReturn_1);
     }
 
     // Mock implementation of approveRedeems
-    function approveRedeems(uint64 poolId, bytes16 scId, uint128 payoutAssetId, uint32 nowRedeemEpochId, uint128 approvedShareAmount) public view returns (uint128) {
+    function approveRedeems(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 payoutAssetId,
+        uint32 nowRedeemEpochId,
+        uint128 approvedShareAmount
+    ) public view returns (uint128) {
         return _approveRedeemsReturn_0;
     }
 
@@ -378,12 +336,24 @@ contract MockHub {
     }
 
     // Mock implementation of issueShares
-    function issueShares(uint64 poolId, bytes16 scId, uint128 depositAssetId, uint32 nowIssueEpochId, uint128 navPoolPerShare) public view returns (uint128, uint128, uint128) {
+    function issueShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 depositAssetId,
+        uint32 nowIssueEpochId,
+        uint128 navPoolPerShare
+    ) public view returns (uint128, uint128, uint128) {
         return (_issueSharesReturn_0, _issueSharesReturn_1, _issueSharesReturn_2);
     }
 
     // Mock implementation of revokeShares
-    function revokeShares(uint64 poolId, bytes16 scId, uint128 payoutAssetId, uint32 nowRevokeEpochId, uint128 navPoolPerShare) public view returns (uint128, uint128, uint128) {
+    function revokeShares(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 payoutAssetId,
+        uint32 nowRevokeEpochId,
+        uint128 navPoolPerShare
+    ) public view returns (uint128, uint128, uint128) {
         return (_revokeSharesReturn_0, _revokeSharesReturn_1, _revokeSharesReturn_2);
     }
 
@@ -401,5 +371,4 @@ contract MockHub {
     function wards(address arg0) public view returns (uint256) {
         return _wardsReturn_0;
     }
-
 }

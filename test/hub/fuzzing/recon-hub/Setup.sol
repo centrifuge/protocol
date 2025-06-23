@@ -20,7 +20,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
- import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
@@ -45,6 +45,7 @@ import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 // Types
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 
 // Test Utils
@@ -69,9 +70,10 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     MockGateway gateway;
     MockMessageDispatcher messageDispatcher;
     MockAccountValue mockAccountValue;
-    MockAsyncRequestManager investmentManager;
+    MockAsyncRequestManager requestManager;
     MockSpoke spoke;
     MockBalanceSheet balanceSheet;
+    PoolEscrowFactory poolEscrowFactory;
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     PoolId[] internal createdPools;
@@ -83,10 +85,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     bool deposited;
     bool cancelledRedeemRequest;
 
-    D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
+    D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
+        // shortcut to avoid stack too deep errors
     uint16 internal CENTIFUGE_CHAIN_ID = 1;
     /// @dev see toggle_IsLiability
-    bool internal IS_LIABILITY = true; 
+    bool internal IS_LIABILITY = true;
     /// @dev see toggle_IsIncrease
     bool internal IS_INCREASE = true;
     bool internal IS_DEBIT_NORMAL = true;
@@ -100,21 +103,20 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     uint32 internal LOSS_ACCOUNT = 3;
     uint32 internal GAIN_ACCOUNT = 4;
     uint64 internal POOL_ID_COUNTER = 1;
-    uint32 internal NOW_REVOKE_EPOCH_ID = 0;
 
     event LogString(string);
 
-    modifier statelessTest {
+    modifier statelessTest() {
         _;
         revert("stateless");
     }
 
-    /// @dev Clear queued calls so they don't interfere with executions in shortcut functions 
-    modifier clearQueuedCalls {
+    /// @dev Clear queued calls so they don't interfere with executions in shortcut functions
+    modifier clearQueuedCalls() {
         queuedCalls = new bytes[](0);
         _;
     }
-    
+
     /// === Setup === ///
     /// This contains all calls to be performed in the tester constructor, both for Echidna and Foundry
     function setup() internal virtual override {
@@ -124,59 +126,75 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
 
         gateway = new MockGateway();
         root = new Root(7 days, address(this));
-        accounting = new Accounting(address(this)); 
-        hubRegistry = new HubRegistry(address(this)); 
+        accounting = new Accounting(address(this));
+        hubRegistry = new HubRegistry(address(this));
         transientValuation = new MockValuation(IERC6909Decimals(address(hubRegistry)));
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
-        investmentManager = new MockAsyncRequestManager();
+        requestManager = new MockAsyncRequestManager();
         spoke = new MockSpoke();
         balanceSheet = new MockBalanceSheet();
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
-        
+
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
-        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IHubMessageSender(address(messageDispatcher)), IShareClassManager(address(shareClassManager)), address(this));
-        messageDispatcher = new MockMessageDispatcher();
-        hub = new Hub(
-            IGateway(address(gateway)), 
-            IHoldings(address(holdings)), 
-            IHubHelpers(address(hubHelpers)), 
-            IAccounting(address(accounting)), 
-            IHubRegistry(address(hubRegistry)), 
-            IShareClassManager(address(shareClassManager)), 
+        hubHelpers = new HubHelpers(
+            IHoldings(address(holdings)),
+            IAccounting(address(accounting)),
+            IHubRegistry(address(hubRegistry)),
+            IHubMessageSender(address(messageDispatcher)),
+            IShareClassManager(address(shareClassManager)),
             address(this)
         );
-
-        // set addresses on the PoolRouter
-        hub.file("sender", address(messageDispatcher));
-        messageDispatcher.file("hub", address(hub));
-        messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("balanceSheet", address(balanceSheet));
-        messageDispatcher.file("investmentManager", address(investmentManager));    
+        messageDispatcher = new MockMessageDispatcher();
+        hub = new Hub(
+            IGateway(address(gateway)),
+            IHoldings(address(holdings)),
+            IHubHelpers(address(hubHelpers)),
+            IAccounting(address(accounting)),
+            IHubRegistry(address(hubRegistry)),
+            IShareClassManager(address(shareClassManager)),
+            address(this)
+        );
+        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
 
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
-        accounting.rely(address(hub));
-        accounting.rely(address(hubHelpers));
         holdings.rely(address(hub));
+        accounting.rely(address(hub));
         shareClassManager.rely(address(hub));
+        poolEscrowFactory.rely(address(hub));
+
+        // Rely hub helpers
+        accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
-        hub.rely(address(hub));
+
+        // Rely others on hub
+        hub.rely(address(messageDispatcher));
         hubHelpers.rely(address(hub));
-        hubHelpers.rely(address(messageDispatcher));
-        shareClassManager.rely(address(this));
+
+        // shareClassManager.rely(address(this));
+
+        // set dependencies
+        hub.file("sender", address(messageDispatcher));
+        hub.file("poolEscrowFactory", address(poolEscrowFactory));
+        hubHelpers.file("hub", address(hub));
+
+        messageDispatcher.file("hub", address(hub));
+        messageDispatcher.file("spoke", address(spoke));
+        messageDispatcher.file("balanceSheet", address(balanceSheet));
+        messageDispatcher.file("requestManager", address(requestManager));
     }
 
     /// === MODIFIERS === ///
     /// Prank admin and actor
-    
-    modifier asAdmin {
+
+    modifier asAdmin() {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor {
+    modifier asActor() {
         vm.prank(address(_getActor()));
         _;
     }
@@ -189,7 +207,7 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
     function _getRandomShareClassIdForPool(PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
         uint32 randomIndex = scEntropy % shareClassCount;
-        if(randomIndex == 0) {
+        if (randomIndex == 0) {
             // the first share class is never assigned
             randomIndex = 1;
         }
@@ -198,7 +216,11 @@ abstract contract Setup is BaseSetup, ActorManager, AssetManager, Utils {
         return scId;
     }
 
-    function _getRandomAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 accountEntropy) internal view returns (AccountId) {
+    function _getRandomAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 accountEntropy)
+        internal
+        view
+        returns (AccountId)
+    {
         uint8 accountType = accountEntropy % 6;
         return holdings.accountId(poolId, scId, assetId, accountType);
     }

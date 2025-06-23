@@ -58,8 +58,8 @@ library Helpers {
     }
 
     /// @dev performs the same check as SCM::_updateQueued
-    function canMutate(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
-        return lastUpdate > latestApproval || pending == 0 || latestApproval == 0;
+    function canMutate(uint32 lastUpdate, uint128 pending, uint128 currentEpoch) internal pure returns (bool) {
+        return currentEpoch <= 1 || pending == 0 || lastUpdate >= currentEpoch;
     }
 
     function isAsyncVault(address vault) internal view returns (bool) {

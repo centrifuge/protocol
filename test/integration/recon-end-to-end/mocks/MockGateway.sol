@@ -8,88 +8,54 @@ contract MockGateway {
     //||                                                             ||
     //<>=============================================================<>
     // Mock implementation of addUnpaidMessage
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) public {
-        
-    }
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) public {}
 
     // Mock implementation of deny
-    function deny(address user) public {
-        
-    }
+    function deny(address user) public {}
 
     // Mock implementation of endBatching
-    function endBatching() public {
-        
-    }
+    function endBatching() public {}
 
     // Mock implementation of endTransactionPayment
-    function endTransactionPayment() public {
-        
-    }
+    function endTransactionPayment() public {}
 
     // Mock implementation of file
-    function file(bytes32 what, address instance) public {
-        
-    }
+    function file(bytes32 what, address instance) public {}
 
     // Mock implementation of handle
-    function handle(uint16 centrifugeId, bytes memory batch) public {
-        
-    }
+    function handle(uint16 centrifugeId, bytes memory batch) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, address receiver, uint256 amount) public {}
 
     // Mock implementation of recoverTokens
-    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {
-        
-    }
+    function recoverTokens(address token, uint256 tokenId, address receiver, uint256 amount) public {}
 
     // Mock implementation of rely
-    function rely(address user) public {
-        
-    }
+    function rely(address user) public {}
 
     // Mock implementation of repay
-    function repay(uint16 centrifugeId, bytes memory batch) public payable{
-        
-    }
+    function repay(uint16 centrifugeId, bytes memory batch) public payable {}
 
     // Mock implementation of retry
-    function retry(uint16 centrifugeId, bytes memory message) public {
-        
-    }
+    function retry(uint16 centrifugeId, bytes memory message) public {}
 
     // Mock implementation of send
-    function send(uint16 centrifugeId, bytes memory message) public {
-        
-    }
+    function send(uint16 centrifugeId, bytes memory message) public {}
 
     // Mock implementation of setRefundAddress
-    function setRefundAddress(uint64 poolId, address refund) public {
-        
-    }
+    function setRefundAddress(uint64 poolId, address refund) public {}
 
     // Mock implementation of startBatching
-    function startBatching() public {
-        
-    }
+    function startBatching() public {}
 
     // Mock implementation of startTransactionPayment
-    function startTransactionPayment(address payer) public payable {
-        
-    }
+    function startTransactionPayment(address payer) public payable {}
 
     // Mock implementation of subsidizePool
-    function subsidizePool(uint64 poolId) public payable {
-        
-    }
+    function subsidizePool(uint64 poolId) public payable {}
 
-    receive() external payable {
-    }
-
+    receive() external payable {}
 
     //<>=============================================================<>
     //||                                                             ||
@@ -163,13 +129,14 @@ contract MockGateway {
         _wardsReturn_0 = _value0;
     }
 
-
-    /*******************************************************************
+    /**
+     *
      *   ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️ WARNING ⚠️  *
-     *-----------------------------------------------------------------*
+     * -----------------------------------------------------------------*
      *      Generally you only need to modify the sections above.      *
      *          The code below handles system operations.              *
-     *******************************************************************/
+     *
+     */
 
     //<>=============================================================<>
     //||                                                             ||
@@ -283,5 +250,4 @@ contract MockGateway {
     function wards(address arg0) public view returns (uint256) {
         return _wardsReturn_0;
     }
-
 }

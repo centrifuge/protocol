@@ -299,22 +299,25 @@ abstract contract Setup is
 
         // set permissions for calling privileged functions
         hubRegistry.rely(address(hub));
-        accounting.rely(address(hub));
-        accounting.rely(address(hubHelpers));
         holdings.rely(address(hub));
+        accounting.rely(address(hub));
         shareClassManager.rely(address(hub));
+        poolEscrowFactory.rely(address(hub));
+
+        accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
-        hub.rely(address(hub));
+
         hub.rely(address(messageDispatcher));
-        hubHelpers.rely(address(hub));
-        hubHelpers.rely(address(messageDispatcher));
-        shareClassManager.rely(address(this));
+        
+        // shareClassManager.rely(address(this));
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
+        hub.file("poolEscrowFactory", address(poolEscrowFactory));
+
         messageDispatcher.file("hub", address(hub)); 
         messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("investmentManager", address(asyncRequestManager));
+        messageDispatcher.file("requestManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
     }
 
