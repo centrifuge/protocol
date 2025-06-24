@@ -114,7 +114,8 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: depositing maxDeposit blocks the user from depositing more
     /// @dev Property: depositing maxDeposit does not increase the pendingDeposit
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
-    function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public statelessTest {
+    // TODO(wischli): Add back statelessTest modifier after optimizer run
+    function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public {
         uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(_getActor());
         require(maxDepositBefore > 0, "must be able to deposit");
 
@@ -136,8 +137,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         //     maxMintBefore = syncManager.maxMint(IBaseVault(_getVault()), _getActor());
         // }
 
-        console2.log(" === Before Max Deposit === ");
-        console2.log("deposit amount in asyncVault_maxDeposit: ", depositAmount);
         vm.prank(_getActor());
         try IBaseVault(_getVault()).deposit(depositAmount, _getActor()) returns (uint256 shares) {
             console2.log(" === After Max Deposit === ");
@@ -147,9 +146,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             // optimizing the difference to see if we can get it to more than 1 wei optimize_maxDeposit_difference
             // property
             if (maxDepositAfter > difference) {
-                maxDepositDifference = int256(maxDepositAfter - difference);
+                maxDepositGreater = int256(maxDepositAfter - difference);
             } else {
-                maxDepositDifference = int256(difference - maxDepositAfter);
+                maxDepositLess = int256(difference - maxDepositAfter);
             }
 
             // console2.log("difference in asyncVault_maxDeposit: ", difference);
@@ -279,7 +278,8 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always maxRedeem if they have > 0 shares and are approved
     /// @dev Property: user can always redeem an amount between 1 and maxRedeem if they have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem does not increase the pendingRedeem
-    function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public statelessTest {
+    // TODO(wischli): Add back statelessTest modifier after optimizer run
+    function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public {
         uint256 maxRedeemBefore = IBaseVault(_getVault()).maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
@@ -307,9 +307,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
             // for optimizing the difference between the two
             if (maxRedeemAfter > maxRedeemBefore) {
-                maxRedeemDifference = int256(maxRedeemAfter - maxRedeemBefore);
+                maxRedeemGreater = int256(maxRedeemAfter - maxRedeemBefore);
             } else {
-                maxRedeemDifference = int256(maxRedeemBefore - maxRedeemAfter);
+                maxRedeemLess = int256(maxRedeemBefore - maxRedeemAfter);
             }
 
             address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));

@@ -1271,13 +1271,20 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // return 0;
     }
 
-    // NOTE: see the asyncVault_maxRedeem test for how we get the maxRedeemDifference
-    function optimize_maxRedeem_difference() public view returns (int256) {
-        return maxRedeemDifference;
+    function optimize_maxDeposit_greater() public view returns (int256) {
+        return maxDepositGreater;
     }
 
-    function optimize_maxDeposit_difference() public view returns (int256) {
-        return maxDepositDifference;
+    function optimize_maxDeposit_less() public view returns (int256) {
+        return maxDepositLess;
+    }
+
+    function optimize_maxRedeem_greater() public view returns (int256) {
+        return maxRedeemGreater;
+    }
+
+    function optimize_maxRedeem_less() public view returns (int256) {
+        return maxRedeemLess;
     }
 
     /// === HELPERS === ///
