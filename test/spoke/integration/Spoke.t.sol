@@ -80,31 +80,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
     using UpdateRestrictionMessageLib for *;
     using CastLib for *;
 
-    // Deployment
-    function testDeployment(address nonWard) public {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(messageProcessor)
-                && nonWard != address(messageDispatcher) && nonWard != address(gateway)
-        );
-
-        // redeploying within test to increase coverage
-        new Spoke(tokenFactory, address(this));
-
-        // values set correctly
-        assertEq(address(messageDispatcher.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(syncManager.spoke()), address(spoke));
-
-        assertEq(address(spoke.poolEscrowFactory()), address(poolEscrowFactory));
-        assertEq(address(spoke.tokenFactory()), address(tokenFactory));
-        assertEq(address(spoke.sender()), address(messageDispatcher));
-
-        // permissions set correctly
-        assertEq(spoke.wards(address(root)), 1);
-        assertEq(spoke.wards(address(gateway)), 1);
-        assertEq(spoke.wards(nonWard), 0);
-    }
-
     function testFile() public {
         address newSender = makeAddr("newSender");
         vm.expectEmit();

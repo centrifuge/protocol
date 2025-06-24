@@ -73,12 +73,8 @@ contract SyncDepositTest is SyncDepositTestHelper {
     D18 pricePoolPerShare = d18(4, 1);
     D18 pricePoolPerAsset = pricePoolPerShare / priceAssetPerShare;
 
-    function testFile(bytes32 fileTarget, address nonWard) public {
+    function testFile(bytes32 fileTarget) public {
         vm.assume(fileTarget != "manager" && fileTarget != "asyncRedeemManager" && fileTarget != "syncDepositManager");
-        vm.assume(
-            nonWard != address(root) && nonWard != address(this) && nonWard != address(syncManager)
-                && nonWard != address(asyncRequestManager)
-        );
         address random = makeAddr("random");
         (SyncDepositVault vault,) = _deploySyncDepositVault(d18(0), d18(0));
 
