@@ -259,6 +259,16 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
         assertEq(deposits, AMOUNT);
     }
 
+    function testNoteDepositZero() public {
+        _mockEscrowDeposit(erc20, 0, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, 0);
+
+        (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 0);
+    }
+
     function testNoteDepositTwice() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
@@ -343,6 +353,16 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
 
         (, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(withdrawals, AMOUNT);
+    }
+
+    function testWithdrawZero() public {
+        _mockEscrowWithdraw(erc20, 0, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, 0);
+
+        (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 0);
     }
 
     function testWithdrawTwice() public {
