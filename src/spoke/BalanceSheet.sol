@@ -194,9 +194,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         } else if (shareQueue.delta > shares) {
             shareQueue.delta -= shares;
             shareQueue.isPositive = true;
-            if (shareQueue.delta == 0) {
-                shareQueue.isPositive = false;
-            }
         } else {
             shareQueue.delta = shares - shareQueue.delta;
             shareQueue.isPositive = false;
