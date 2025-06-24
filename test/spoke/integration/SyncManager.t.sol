@@ -7,7 +7,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";

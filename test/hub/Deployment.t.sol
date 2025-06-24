@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {HubDeployer} from "script/HubDeployer.s.sol";
 
 import {CommonDeploymentTest} from "test/common/Deployment.t.sol";

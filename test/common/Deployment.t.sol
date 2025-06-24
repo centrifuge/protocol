@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {CommonDeployer} from "script/CommonDeployer.s.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
+
+import "forge-std/Test.sol";
 
 contract CommonDeploymentTest is CommonDeployer, Test {
     uint16 constant CENTRIFUGE_ID = 23;
