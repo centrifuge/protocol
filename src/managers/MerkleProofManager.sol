@@ -29,6 +29,8 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         spoke = spoke_;
     }
 
+    receive() external payable {}
+    
     //----------------------------------------------------------------------------------------------
     // Owner actions
     //----------------------------------------------------------------------------------------------
