@@ -150,6 +150,18 @@ abstract contract TargetFunctions is
 
         asyncRequestManager.rely(address(_getVault()));
 
+        if (!isAsyncVault) {
+            // Set max reserve for sync vaults to maximum value to allow unlimited deposits
+            (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(_getAssetId()));
+            syncManager.setMaxReserve(
+                PoolId.wrap(_getPool()), 
+                ShareClassId.wrap(_getShareClassId()), 
+                asset, 
+                tokenId,
+                type(uint128).max
+            );
+        }
+
         // 6. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](3);
         approvals[0] = address(spoke);

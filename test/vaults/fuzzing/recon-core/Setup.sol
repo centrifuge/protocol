@@ -15,9 +15,10 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {Root} from "src/common/Root.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SyncManager} from "src/vaults/SyncManager.sol";
 import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
@@ -38,12 +39,13 @@ import {MockAsyncRequestManager} from "./mocks/MockAsyncRequestManager.sol";
 abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager {
     // Dependencies
     AsyncVaultFactory vaultFactory;
+    SyncDepositVaultFactory syncVaultFactory;
+    SyncManager syncManager;
     TokenFactory tokenFactory;
     PoolEscrowFactory poolEscrowFactory;
 
     Escrow public escrow; // NOTE: Restriction Manager will query it
     AsyncRequestManager asyncRequestManager;
-    SyncManager syncManager;
     Spoke spoke;
     AsyncVault vault;
     ShareToken token;
@@ -156,6 +158,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         asyncRequestManager = new AsyncRequestManager(escrow, address(this));
         syncManager = new SyncManager(address(this));
         vaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
+        syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
@@ -187,7 +190,14 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // authorize contracts
         asyncRequestManager.rely(address(spoke));
         asyncRequestManager.rely(address(vaultFactory));
+        asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
+        asyncRequestManager.rely(address(syncManager));
+        syncManager.rely(address(spoke));
+        syncManager.rely(address(vaultFactory));
+        syncManager.rely(address(syncVaultFactory));
+        syncManager.rely(address(messageDispatcher));
+        syncManager.rely(address(asyncRequestManager));
         spoke.rely(address(messageDispatcher));
         spoke.rely(address(asyncRequestManager));
 
@@ -200,6 +210,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
         // Permissions on factories
         vaultFactory.rely(address(spoke));
+        syncVaultFactory.rely(address(spoke));
         tokenFactory.rely(address(spoke));
         poolEscrowFactory.rely(address(spoke));
         balanceSheet.rely(address(asyncRequestManager));

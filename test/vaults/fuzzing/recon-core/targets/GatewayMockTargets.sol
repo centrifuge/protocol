@@ -17,6 +17,8 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -89,6 +91,24 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
         asyncRequestManager.rely(address(newVault));
+        
+        // Set max reserve for sync vaults (if it's a sync vault)
+        // Check if the vault is a sync vault by checking if it has a syncDepositManager
+        try BaseSyncDepositVault(newVault).syncDepositManager() returns (ISyncDepositManager syncDepositManager) {
+            if (address(syncDepositManager) != address(0)) {
+                // This is a sync vault, set max reserve to maximum value
+                (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(newAssetId));
+                syncManager.setMaxReserve(
+                    PoolId.wrap(POOL_ID), 
+                    ShareClassId.wrap(SHARE_ID), 
+                    asset, 
+                    tokenId,
+                    type(uint128).max
+                );
+            }
+        } catch {
+            // If the vault doesn't have syncDepositManager, it's not a sync vault
+        }
 
         // NOTE: Add to storage! So this will be called by other functions
         // NOTE: This sets the actors
