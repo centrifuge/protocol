@@ -247,11 +247,14 @@ contract HubHelpers is Auth, IHubHelpers {
 
     /// @inheritdoc IHubHelpers
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18) {
-        AssetId poolCurrency = hubRegistry.currency(poolId);
+        // Assume price of 1.0 if the holding is not initialized yet
+        if (!holdings.isInitialized(poolId, scId, assetId)) return d18(1, 1);
+
         // NOTE: We assume symmetric prices are provided by holdings valuation
         IValuation valuation = holdings.valuation(poolId, scId, assetId);
 
         // Retrieve amount of 1 asset unit in pool currency
+        AssetId poolCurrency = hubRegistry.currency(poolId);
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
         uint128 poolAmountPerAsset = valuation.getQuote(assetUnitAmount, assetId, poolCurrency);
