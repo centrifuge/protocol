@@ -160,7 +160,8 @@ abstract contract Setup is
     mapping (PoolId poolId => mapping (ShareClassId scId => uint256)) revokedBalanceSheetShares;
     
     int256 maxRedeemDifference;
-    int256 maxDepositDifference;
+    int256 maxDepositGreater;
+    int256 maxDepositLess;
     
     modifier asAdmin {
         vm.prank(address(this));

@@ -121,8 +121,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
     
-        console2.log(" === Before Max Deposit === ");
-        console2.log("deposit amount in asyncVault_maxDeposit: ", depositAmount);
         vm.prank(_getActor());
         try IBaseVault(_getVault()).deposit(depositAmount, _getActor()) returns (uint256 shares) {
             console2.log(" === After Max Deposit === ");
@@ -131,9 +129,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
             // optimizing the difference to see if we can get it to more than 1 wei optimize_maxDeposit_difference property 
             if(maxDepositAfter > difference) {
-                maxDepositDifference = int256(maxDepositAfter - difference);
+                maxDepositGreater = int256(maxDepositAfter - difference);
             } else {
-                maxDepositDifference = int256(difference - maxDepositAfter);
+                maxDepositLess = int256(difference - maxDepositAfter);
             }
 
             // console2.log("difference in asyncVault_maxDeposit: ", difference);
