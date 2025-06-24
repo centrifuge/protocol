@@ -42,14 +42,14 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
-        
+
         spoke_updateMember(type(uint64).max);
-        
+
         vault_requestDeposit(1e18, 0);
 
         hub_approveDeposits(1, 1e18);
         hub_issueShares(1, 1e18);
-       
+
         // need to call claimDeposit first to mint the shares
         hub_notifyDeposit(MAX_CLAIMS);
 
@@ -66,7 +66,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
-        
+
         spoke_updateMember(type(uint64).max);
 
         vault_deposit(1e18);
@@ -74,7 +74,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
     function test_vault_deposit_and_fulfill_shortcut() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
-        
+
         shortcut_deposit_and_claim(1e18, 1e18, 1e18, 1e18, 0);
     }
 
@@ -86,14 +86,14 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
         spoke_updateMember(type(uint64).max);
-        
+
         vault_requestDeposit(1e18, 0);
 
         transientValuation_setPrice_clamped(1e18);
 
         hub_approveDeposits(1, 1e18);
         hub_issueShares(1, 1e18);
-       
+
         // need to call claimDeposit first to mint the shares
         hub_notifyDeposit(MAX_CLAIMS);
 
@@ -103,7 +103,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         hub_approveRedeems(1, 1e18);
         hub_revokeShares(1, 1e18);
-        
+
         hub_notifyRedeem(MAX_CLAIMS);
 
         vault_withdraw(1e18, 0);
@@ -150,7 +150,9 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_request_deposit(1e18, 1e18, 1e18, 0);
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()));
+        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
+            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+        );
         hub_approveDeposits(nowDepositEpoch, 5e17);
         hub_issueShares(nowDepositEpoch, 5e17);
 
@@ -163,7 +165,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
 
         shortcut_deposit_queue_cancel(1e18, 1e18, 1e18, 5e17, 1e18, 0);
-       
+
         hub_notifyDeposit(1);
     }
 

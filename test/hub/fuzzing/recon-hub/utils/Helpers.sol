@@ -31,10 +31,14 @@ library Helpers {
         return PoolId.wrap(createdPools[poolEntropy % createdPools.length]);
     }
 
-    function getRandomShareClassIdForPool(IShareClassManager shareClassManager, PoolId poolId, uint32 scEntropy) internal view returns (ShareClassId) {
+    function getRandomShareClassIdForPool(IShareClassManager shareClassManager, PoolId poolId, uint32 scEntropy)
+        internal
+        view
+        returns (ShareClassId)
+    {
         uint32 shareClassCount = shareClassManager.shareClassCount(poolId);
         uint32 randomIndex = scEntropy % (shareClassCount + 1);
-        if(randomIndex == 0) {
+        if (randomIndex == 0) {
             // the first share class is never assigned
             randomIndex = 1;
         }
@@ -43,12 +47,22 @@ library Helpers {
         return scId;
     }
 
-    function getRandomAccountId(IHoldings holdings, PoolId poolId, ShareClassId scId, AssetId assetId, uint8 accountEntropy) internal view returns (AccountId) {
+    function getRandomAccountId(
+        IHoldings holdings,
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint8 accountEntropy
+    ) internal view returns (AccountId) {
         uint8 accountType = accountEntropy % 6;
         return holdings.accountId(poolId, scId, assetId, accountType);
     }
 
-    function getRandomAccountId(AccountId[] memory createdAccountIds, uint8 accountEntropy) internal pure returns (AccountId) {
+    function getRandomAccountId(AccountId[] memory createdAccountIds, uint8 accountEntropy)
+        internal
+        pure
+        returns (AccountId)
+    {
         return createdAccountIds[accountEntropy % createdAccountIds.length];
     }
 
@@ -58,11 +72,12 @@ library Helpers {
     }
 
     /// @dev performs the same check as SCM::_updateQueued
-    function canMutate(uint32 lastUpdate, uint128 pending, uint128 currentEpoch) internal pure returns (bool) {
-        return currentEpoch <= 1 || pending == 0 || lastUpdate >= currentEpoch;
+    function canMutate(uint32 lastUpdate, uint128 pending, uint128 latestApproval) internal pure returns (bool) {
+        return latestApproval == 0 || pending == 0 || lastUpdate > latestApproval;
     }
 
     function isAsyncVault(address vault) internal view returns (bool) {
-        return IERC165(vault).supportsInterface(type(IERC7540Deposit).interfaceId) || IERC165(vault).supportsInterface(type(IERC7887Deposit).interfaceId);
+        return IERC165(vault).supportsInterface(type(IERC7540Deposit).interfaceId)
+            || IERC165(vault).supportsInterface(type(IERC7887Deposit).interfaceId);
     }
 }

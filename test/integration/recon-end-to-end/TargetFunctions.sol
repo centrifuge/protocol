@@ -75,14 +75,16 @@ abstract contract TargetFunctions is
         return true;
     }
 
-
     /// === Shortcut Functions === ///
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
-    function shortcut_deployNewTokenPoolAndShare(uint8 decimals, uint256 salt, bool isIdentityValuation, bool isDebitNormal, bool isAsyncVault)
-        public
-        returns (address _token, address _shareToken, address _vault, uint128 _assetId, bytes16 _scId)
-    {
+    function shortcut_deployNewTokenPoolAndShare(
+        uint8 decimals,
+        uint256 salt,
+        bool isIdentityValuation,
+        bool isDebitNormal,
+        bool isAsyncVault
+    ) public returns (address _token, address _shareToken, address _vault, uint128 _assetId, bytes16 _scId) {
         // NOTE: TEMPORARY
         require(!hasDoneADeploy); // This bricks the function for this one for Medusa
         // Meaning we only deploy one token, one Pool, one share class
@@ -132,43 +134,45 @@ abstract contract TargetFunctions is
 
         // 4. Create accounts and holding
         {
-            IValuation valuation = isIdentityValuation ? 
-                        IValuation(address(identityValuation)) : 
-                        IValuation(address(transientValuation));
-                        
+            IValuation valuation =
+                isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
+
             hub_createAccount(ASSET_ACCOUNT, isDebitNormal);
             hub_createAccount(EQUITY_ACCOUNT, isDebitNormal);
             hub_createAccount(LOSS_ACCOUNT, isDebitNormal);
             hub_createAccount(GAIN_ACCOUNT, isDebitNormal);
-            
+
             hub_initializeHolding(valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         }
 
         // 5. Deploy new vault and register it
-        spoke_deployVault(isAsyncVault);
-        spoke_linkVault(_getVault());
+        {
+            spoke_deployVault(isAsyncVault);
 
-        asyncRequestManager.rely(address(_getVault()));
+            // must happen before linking vault
+            spoke_setRequestManager(_getVault());
 
+            spoke_linkVault(_getVault());
+
+            asyncRequestManager.rely(address(_getVault()));
+        }
+
+        // 6. Set max reserve for sync vaults to maximum value to allow unlimited deposits (instead of default zero
+        // max deposit)
         if (!isAsyncVault) {
-            // Set max reserve for sync vaults to maximum value to allow unlimited deposits
             (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(_getAssetId()));
             syncManager.setMaxReserve(
-                PoolId.wrap(_getPool()), 
-                ShareClassId.wrap(_getShareClassId()), 
-                asset, 
-                tokenId,
-                type(uint128).max
+                PoolId.wrap(_getPool()), ShareClassId.wrap(_getShareClassId()), asset, tokenId, type(uint128).max
             );
         }
 
-        // 6. approve and mint initial amount of underlying asset to all actors
+        // 7. approve and mint initial amount of underlying asset to all actors
         address[] memory approvals = new address[](3);
         approvals[0] = address(spoke);
         approvals[1] = address(_getVault());
         _finalizeAssetDeployment(_getActors(), approvals, type(uint88).max);
 
-        _token = _getAsset(); 
+        _token = _getAsset();
         _shareToken = _getShareToken();
         _vault = _getVault();
         _assetId = _getAssetId();
@@ -177,13 +181,18 @@ abstract contract TargetFunctions is
         return (_token, _shareToken, _vault, _assetId, _scId);
     }
 
-    function shortcut_request_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint256 toEntropy) public {
+    function shortcut_request_deposit(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint256 toEntropy
+    ) public {
         transientValuation_setPrice_clamped(priceValuation);
-        
+
         hub_notifySharePrice_clamped();
         hub_notifyAssetPrice();
         spoke_updateMember(type(uint64).max);
-        
+
         vault_requestDeposit(amount, toEntropy);
     }
 
@@ -192,10 +201,10 @@ abstract contract TargetFunctions is
 
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), navPerShare);
-        
+
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
-        
+
         spoke_updateMember(type(uint64).max);
 
         vault_deposit(assets);
@@ -209,16 +218,23 @@ abstract contract TargetFunctions is
 
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
-        
+
         spoke_updateMember(type(uint64).max);
 
         vault_mint(shares);
     }
 
-    function shortcut_deposit_and_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_and_claim(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
-        uint32 depositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        uint32 depositEpoch =
+            shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_issue_shares(uint128(amount), depositEpoch, navPerShare);
 
         hub_notifyDeposit(MAX_CLAIMS);
@@ -226,23 +242,43 @@ abstract contract TargetFunctions is
         vault_deposit(amount);
     }
 
-    function shortcut_deposit_and_cancel(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_and_cancel(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
         vault_cancelDepositRequest();
     }
 
-    function shortcut_deposit_queue_cancel(uint64 pricePoolPerShare, uint128 priceValuation, uint256 depositAmount, uint128 approveAmount, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_queue_cancel(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 depositAmount,
+        uint128 approveAmount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, depositAmount, toEntropy);
 
-        uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        uint32 nowDepositEpoch =
+            shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         hub_approveDeposits(nowDepositEpoch, approveAmount);
         hub_issueShares(nowDepositEpoch, navPerShare);
 
         vault_cancelDepositRequest();
     }
 
-    function shortcut_deposit_cancel_claim(uint64 pricePoolPerShare, uint128 priceValuation, uint256 amount, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_deposit_cancel_claim(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
 
         vault_cancelDepositRequest();
@@ -250,17 +286,26 @@ abstract contract TargetFunctions is
         vault_claimCancelDepositRequest(toEntropy);
     }
 
-    function shortcut_queue_deposit(uint64 pricePoolPerShare, uint128 priceValuation, uint256 depositAmount, uint128 navPerShare, uint256 toEntropy, uint128 shares) public {
+    function shortcut_queue_deposit(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 depositAmount,
+        uint128 navPerShare,
+        uint256 toEntropy,
+        uint128 shares
+    ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, depositAmount, toEntropy);
 
-        uint32 redeemEpoch = shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        uint32 redeemEpoch =
+            shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_revoke_shares(shares, redeemEpoch, navPerShare);
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         vault_requestRedeem(shares, toEntropy);
 
-        uint32 redeemEpoch = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        uint32 redeemEpoch =
+            shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
     }
 
@@ -285,7 +330,7 @@ abstract contract TargetFunctions is
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         uint256 sharesAsAssets = IBaseVault(_getVault()).convertToAssets(shares);
-        
+
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         shortcut_claim_withdrawal(sharesAsAssets, toEntropy);
     }
@@ -305,12 +350,17 @@ abstract contract TargetFunctions is
         vault_cancelRedeemRequest();
     }
 
-    function shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(
+        uint256 shares,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
-        uint128 pendingRedeem = shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        uint128 pendingRedeem =
+            shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
     }
 
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
@@ -322,22 +372,15 @@ abstract contract TargetFunctions is
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
-
     /// === POOL ADMIN SHORTCUTS === ///
-    function shortcut_approve_and_issue_shares(
-        uint128 maxApproval, 
-        uint32 nowDepositEpochId,
-        uint128 navPerShare
-    ) public  {
+    function shortcut_approve_and_issue_shares(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
+        public
+    {
         hub_approveDeposits(nowDepositEpochId, maxApproval);
         hub_issueShares(nowDepositEpochId, navPerShare);
     }
 
-    function shortcut_approve_and_revoke_shares(
-        uint128 maxApproval,
-        uint32 epochId,
-        uint128 navPerShare
-    ) public  {        
+    function shortcut_approve_and_revoke_shares(uint128 maxApproval, uint32 epochId, uint128 navPerShare) public {
         hub_approveRedeems(epochId, maxApproval);
         hub_revokeShares(epochId, navPerShare);
     }

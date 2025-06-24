@@ -145,7 +145,17 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         return spoke_deployVault(true);
     }
 
-    // Step 5 - link the vault
+    // Step 5 - set the request manager
+    function spoke_setRequestManager(address vault) public asAdmin {
+        IBaseVault vaultInstance = IBaseVault(_getVault());
+        PoolId poolId = vaultInstance.poolId();
+        ShareClassId scId = vaultInstance.scId();
+        AssetId assetId = hubRegistry.currency(poolId);
+
+        spoke.setRequestManager(poolId, scId, assetId, address(asyncRequestManager));
+    }
+
+    // Step 6- link the vault
     function spoke_linkVault(address vault) public asAdmin {
         IBaseVault vaultInstance = IBaseVault(_getVault());
         PoolId poolId = vaultInstance.poolId();
@@ -158,7 +168,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         spoke_linkVault(_getVault());
     }
 
-    // Extra 6 - remove the vault
+    // Extra 7 - remove the vault
     function spoke_unlinkVault() public asAdmin {
         spoke.unlinkVault(
             PoolId.wrap(_getPool()),

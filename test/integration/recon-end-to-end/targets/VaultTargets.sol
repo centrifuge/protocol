@@ -71,7 +71,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             (uint128 pending, uint32 lastUpdate) = shareClassManager.depositRequest(
                 IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), to.toBytes32()
             );
-            uint32 depositEpochId = shareClassManager.nowDepositEpoch(
+            (uint32 depositEpochId,,,) = shareClassManager.epochId(
                 IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
             );
 
@@ -158,12 +158,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             (uint128 pending, uint32 lastUpdate) =
                 shareClassManager.redeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), to.toBytes32());
-            uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(vault.scId(), hubRegistry.currency(vault.poolId()));
+            (, uint32 redeemEpochId,,) = shareClassManager.epochId(
+                IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            );
 
-            // nowRedeemEpoch = redeemEpochId + 1
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (Helpers.canMutate(lastUpdate, pending, redeemEpochId)) {
+                // nowRedeemEpoch = redeemEpochId + 1
                 eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch after redeemRequest");
             }
         } catch {
@@ -219,7 +221,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         (uint128 pendingBefore, uint32 lastUpdateBefore) =
             shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
-        uint32 depositEpochId = shareClassManager.nowDepositEpoch(vault.scId(), hubRegistry.currency(vault.poolId()));
+        (uint32 depositEpochId,,,) = shareClassManager.epochId(
+            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+        );
         uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, controller);
 
         vm.prank(_getActor());
@@ -281,7 +285,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(
                 vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32()
             );
-            uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(vault.scId(), hubRegistry.currency(vault.poolId()));
+            (, uint32 redeemEpochId,,) = shareClassManager.epochId(
+                IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            );
             uint256 pendingCancelAfter = IAsyncVault(_getVault()).claimableCancelRedeemRequest(REQUEST_ID, controller);
 
             // update ghosts
