@@ -169,7 +169,10 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         if (shareQueue.isPositive || shareQueue.delta == 0) {
             shareQueue.delta += shares;
             shareQueue.isPositive = true;
-        } else if (shareQueue.delta > shares) {
+            if (shareQueue.delta == 0) {
+                shareQueue.isPositive = false;
+            }
+        } else if (shareQueue.delta >= shares) {
             shareQueue.delta -= shares;
             shareQueue.isPositive = false;
         } else {
@@ -190,7 +193,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
             shareQueue.delta += shares;
         } else if (shareQueue.delta > shares) {
             shareQueue.delta -= shares;
-            shareQueue.isPositive = true;
         } else {
             shareQueue.delta = shares - shareQueue.delta;
             shareQueue.isPositive = false;
@@ -335,6 +337,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit)
         internal
     {
+        if (amount == 0) return;
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;

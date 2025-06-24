@@ -259,6 +259,16 @@ contract BalanceSheetTestNoteDeposit is BalanceSheetTest {
         assertEq(deposits, AMOUNT);
     }
 
+    function testNoteDepositZero() public {
+        _mockEscrowDeposit(erc20, 0, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, 0);
+
+        (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 0);
+    }
+
     function testNoteDepositTwice() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
 
@@ -343,6 +353,16 @@ contract BalanceSheetTestWithdraw is BalanceSheetTest {
 
         (, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
         assertEq(withdrawals, AMOUNT);
+    }
+
+    function testWithdrawZero() public {
+        _mockEscrowWithdraw(erc20, 0, 0);
+
+        vm.startPrank(AUTH);
+        balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, 0);
+
+        (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        assertEq(queuedAssetCounter, 0);
     }
 
     function testWithdrawTwice() public {
@@ -504,8 +524,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
 
-        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
+        assertEq(isPositive, false);
     }
 
     function testIssueAndThenRevokeAndThenIssueSameAmount() public {
@@ -575,8 +596,9 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
-        (uint128 delta,,,) = balanceSheet.queuedShares(POOL_A, SC_1);
+        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
+        assertEq(isPositive, false);
     }
 
     function testRevokeAndThenIssueWithLessAmount() public {

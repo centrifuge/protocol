@@ -8,6 +8,8 @@ import {IMerkleProofManager} from "src/managers/interfaces/IMerkleProofManager.s
 interface IMerkleProofManagerFactory {
     event DeployMerkleProofManager(PoolId indexed poolId, address indexed manager);
 
+    error InvalidPoolId();
+
     /// @notice Deploys new merkle proof manager.
     function newManager(PoolId poolId) external returns (IMerkleProofManager);
 }
