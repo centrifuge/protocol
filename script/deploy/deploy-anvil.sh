@@ -6,32 +6,42 @@ if pgrep anvil >/dev/null; then
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         pkill anvil
-        sleep 1
+        anvil --chain-id 31337 >anvil.log 2>&1 &
+        sleep 5
     else
         echo "Using existing Anvil instance"
     fi
 else
-    # Start anvil with minimal parameters
-    anvil --chain-id 1982 >anvil.log 2>&1 &
+    # Start anvil with default chain ID 31337 (CreateXScript expects this)
+    anvil --chain-id 31337 >anvil.log 2>&1 &
     sleep 3
 fi
 
-# Etch CreateX code to the expected address
-echo "Etching CreateX code..."
-CREATE3_ADDRESS="0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed"
-CREATE3_BYTECODE=$(sed -n 's/.*hex"\([0-9a-fA-F]*\)".*/\1/p' lib/createx-forge/script/CreateX.d.sol)
+# Run the deployment script
+# CreateXScript automatically handles CreateX deployment
+echo "Running main deployment..."
+NETWORK="anvil" ADMIN="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" forge script script/FullDeployer.s.sol:FullDeployer --rpc-url http://localhost:8545 --broadcast --skip-simulation -vvvv --via-ir
 
-cast rpc anvil_setCode $CREATE3_ADDRESS 0x"$CREATE3_BYTECODE"
+echo ""
+echo "----------------------------------------"
+echo "Verifying contract deployment on Anvil..."
+echo "----------------------------------------"
 
-# Verify CreateX deployment
-if cast keccak $(cast code $CREATE3_ADDRESS) | grep -q "0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f"; then
-    echo "Welcome Mr. Anderson. (CREATE3 deployed, hash: $CREATE3_ADDRESS)"
-else
-    echo "Error: CreateX deployment failed"
+# Extract the Root contract address from the JSON output.
+# We use grep and sed to avoid requiring jq.
+ROOT_ADDRESS=$(grep '"root":' ./env/latest/31337-latest.json | sed 's/.*"root": "\(.*\)",/\1/')
+
+if [ -z "$ROOT_ADDRESS" ] || [ "$ROOT_ADDRESS" == "null" ]; then
+    echo "❌ Could not find Root address in deployment output file."
     exit 1
 fi
 
-# Run the deployment script
-# 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 is Anvil's first account
-echo "Running main deployment..."
-NETWORK="anvil" ADMIN="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" forge script script/FullDeployer.s.sol:FullDeployer --rpc-url http://localhost:8545 --broadcast --verify -vvvv --via-ir
+echo "Checking for code at Root address: $ROOT_ADDRESS"
+ROOT_CODE=$(cast code --rpc-url http://localhost:8545 "$ROOT_ADDRESS")
+
+# Check if the returned code is not empty ('0x')
+if [ "$ROOT_CODE" != "0x" ]; then
+    echo "✅ Success: Found contract code at the Root address on the live Anvil instance."
+else
+    echo "❌ Failure: No contract code found at the Root address. The broadcast may have failed."
+fi
