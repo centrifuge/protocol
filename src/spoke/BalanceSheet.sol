@@ -193,7 +193,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
             shareQueue.delta += shares;
         } else if (shareQueue.delta > shares) {
             shareQueue.delta -= shares;
-            shareQueue.isPositive = true;
         } else {
             shareQueue.delta = shares - shareQueue.delta;
             shareQueue.isPositive = false;
