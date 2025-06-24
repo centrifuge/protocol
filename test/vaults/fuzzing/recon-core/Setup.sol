@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
-import { vm } from "@chimera/Hevm.sol";
+import {vm} from "@chimera/Hevm.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
@@ -53,7 +53,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     MockMessageDispatcher messageDispatcher;
     MockGateway gateway;
-    MockHub hub;    
+    MockHub hub;
     MockAsyncRequestManager requestManager;
 
     bytes16 scId;
@@ -76,19 +76,18 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224);
 
     // === GOV FUZZING  === //
-    bool GOV_FUZZING = bool(false); 
+    bool GOV_FUZZING = bool(false);
     address constant TARGET = address(0x0);
     uint256 constant GAS = uint256(0);
     uint256 constant VALUE = uint256(0);
     bytes constant DATA = bytes(hex"");
 
-
-    modifier asAdmin {
+    modifier asAdmin() {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor {
+    modifier asActor() {
         vm.prank(address(_getActor()));
         _;
     }
@@ -127,7 +126,7 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
 
     // NOTE: All of this will get dynamically replaced by Gov Fuzzing
     function doGovFuzzing() public onlyGovFuzzing {
-        (bool success, ) = TARGET.call{gas: GAS, value: VALUE}(DATA);
+        (bool success,) = TARGET.call{gas: GAS, value: VALUE}(DATA);
         require(success, "Call failed");
     }
 
@@ -141,6 +140,10 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
     function setup() internal virtual override {
         // Put self so we can perform settings
         centrifugeChain = address(this);
+
+        // Add actors for testing
+        _addActor(address(0x20000));
+        _addActor(address(0x30000));
 
         // Dependencies
         escrow = new Escrow(address(this));
@@ -156,42 +159,37 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
-        
-        messageDispatcher = new MockMessageDispatcher(); 
+
+        messageDispatcher = new MockMessageDispatcher();
         gateway = new MockGateway();
         hub = new MockHub();
         requestManager = new MockAsyncRequestManager();
 
         // set dependencies
-        asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("spoke", address(spoke));
-        asyncRequestManager.file("balanceSheet", address(balanceSheet));    
-        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        asyncRequestManager.file("balanceSheet", address(balanceSheet));
         syncManager.file("spoke", address(spoke));
         syncManager.file("balanceSheet", address(balanceSheet));
-        syncManager.file("poolEscrowProvider", address(poolEscrowFactory));
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultFactory", address(vaultFactory));
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
         messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
         messageDispatcher.file("requestManager", address(requestManager));
-        
+
         // authorize contracts
         asyncRequestManager.rely(address(spoke));
         asyncRequestManager.rely(address(vaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
         spoke.rely(address(messageDispatcher));
+        spoke.rely(address(asyncRequestManager));
 
         fullRestrictions.rely(address(spoke));
 
@@ -206,17 +204,23 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         poolEscrowFactory.rely(address(spoke));
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncManager));
+
+        // Configure TokenFactory to give permissions to Spoke on new tokens
+        address[] memory tokenWards = new address[](1);
+        tokenWards[0] = address(spoke);
+        tokenFactory.file("wards", tokenWards);
     }
 
     // NOTE: this overrides contracts deployed in setup() above with forked contracts
-    function setupFork() internal {  
+    function setupFork() internal {
         // These will be dynamically replaced by Gov Fuzzing
         vm.roll(20770509);
         vm.warp(1726578263);
 
         forked = true;
 
-        // Forked contracts from here: https://github.com/centrifuge/liquidity-pools/blob/main/deployments/mainnet/ethereum-mainnet.json
+        // Forked contracts from here:
+        // https://github.com/centrifuge/liquidity-pools/blob/main/deployments/mainnet/ethereum-mainnet.json
         escrow = Escrow(address(0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD));
         fullRestrictions = FullRestrictions(address(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0));
         asyncRequestManager = AsyncRequestManager(address(0xE79f06573d6aF1B66166A926483ba00924285d20));
@@ -232,36 +236,81 @@ abstract contract Setup is BaseSetup, SharedStorage, ActorManager, AssetManager 
         // Pool specific values
         poolId = 4139607887;
         scId = 0x97aa65f23e7be09fcd62d0554d2e9273;
+        // Set up the forked asset (USDC)
+        address usdcAddress = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+
+        // Check if we're actually on a fork by checking if USDC contract exists
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(usdcAddress)
+        }
+
+        if (codeSize > 0) {
+            // We're on a proper fork, use real USDC
+            _addAsset(usdcAddress);
+        } else {
+            // We're not on a fork, deploy a mock ERC20 for testing
+            MockERC20 mockUsdc = new MockERC20("USD Coin", "USDC", 6);
+            _addAsset(address(mockUsdc));
+        }
+        _switchAsset(0); // This should set the current asset to the first (and only) asset
         // TODO: need tokenId to pass in here
         // assetId = spoke.assetToId(address(_getAsset()));
 
         // remove previously set actors
-        _removeActor(address(this)); // remove default actor
+        // TODO(wischli): Cannot remove address(this) as it's the default actor
+        //_removeActor(address(this)); // remove default actor
         _removeActor(address(0x20000));
         _removeActor(address(0x30000));
 
-        // Adds actors that have permissions to interact with the system, must be authorized by the InvestmentManager
-        // NOTE: must ensure that 0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD (escrow) isn't added as an actor because it messes up property implementations
-        // _setDefaultActor(address(0x7829E5ca4286Df66e9F58160544097dB517a3B8c)); // TODO: this needs to be the default actor for fuzz testing (find better way to resolve this)
+        // Adds actors that have permissions to interact with the system, must be authorized by the AsyncRequestManager
+        // NOTE: must ensure that 0x0000000005F458Fd6ba9EEb5f365D83b7dA913dD (escrow) isn't added as an actor because it
+        // messes up property implementations
+        // _setDefaultActor(address(0x7829E5ca4286Df66e9F58160544097dB517a3B8c)); // TODO: this needs to be the default
+        // actor for fuzz testing (find better way to resolve this)
         _addActor(address(0x6F94EB271cEB5a33aeab5Bb8B8edEA8ECf35Ee86));
         _addActor(address(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC)); // authd but has transfer restrictions
 
         // Transfer underlying asset from whale to actors
         address[] memory actors = _getActors();
         address whale = address(0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341); // USDC whale for testing
-        uint256 whaleBalance = MockERC20(address(_getAsset())).balanceOf(whale); // TODO: replace with whale address
-        uint256 initialActorBalance = whaleBalance / actors.length;
-        
-        for (uint256 i = 0; i < actors.length; i++) { 
-            vm.prank(whale);
-            MockERC20(address(_getAsset())).transfer(actors[i], initialActorBalance);
+
+        if (codeSize > 0) {
+            // We're on a proper fork, transfer from whale
+            uint256 whaleBalance = MockERC20(address(_getAsset())).balanceOf(whale);
+            if (whaleBalance > 0) {
+                uint256 initialActorBalance = whaleBalance / actors.length;
+                for (uint256 i = 0; i < actors.length; i++) {
+                    vm.prank(whale);
+                    MockERC20(address(_getAsset())).transfer(actors[i], initialActorBalance);
+                }
+            }
+        } else {
+            // We're using mock USDC, mint tokens to actors
+            MockERC20 mockUsdc = MockERC20(address(_getAsset()));
+            uint256 initialActorBalance = 1000000 * 10 ** 6; // 1M USDC (6 decimals)
+            for (uint256 i = 0; i < actors.length; i++) {
+                vm.deal(actors[i], 1000 ether); // Give some ETH
+                mockUsdc.mint(actors[i], initialActorBalance); // Mint USDC to actor
+            }
         }
 
         // NOTE: used for invariants that depend on comparing ghost variables to state values
-        // state values are taken from the forked contracts so won't initially be in sync with the ghost variables, this allows us to sync them
-        totalSupplyAtFork = token.totalSupply();
-        tokenBalanceOfEscrowAtFork = MockERC20(address(_getAsset())).balanceOf(address(escrow));
-        trancheTokenBalanceOfEscrowAtFork = token.balanceOf(address(escrow));
+        // state values are taken from the forked contracts so won't initially be in sync with the ghost variables, this
+        // allows us to sync them
+
+        // Only sync fork values if we're actually on a fork
+        if (codeSize > 0) {
+            // We're on a proper fork, sync the values from forked contracts
+            totalSupplyAtFork = token.totalSupply();
+            tokenBalanceOfEscrowAtFork = MockERC20(address(_getAsset())).balanceOf(address(escrow));
+            trancheTokenBalanceOfEscrowAtFork = token.balanceOf(address(escrow));
+        } else {
+            // We're not on a fork, initialize to zero
+            totalSupplyAtFork = 0;
+            tokenBalanceOfEscrowAtFork = 0;
+            trancheTokenBalanceOfEscrowAtFork = 0;
+        }
     }
 
     /// @dev Returns a random actor from the list of actors

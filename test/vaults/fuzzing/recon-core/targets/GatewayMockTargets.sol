@@ -5,7 +5,6 @@ pragma solidity 0.8.28;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 
-
 // Src Deps | For cycling of values
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -28,6 +27,7 @@ import {OpType} from "../BeforeAfter.sol";
  * - deployNewTokenPoolAndShare Core function that deploys a Liquidity Pool
  *     - spoke_registerAsset
  */
+
 abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
@@ -81,6 +81,12 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
             (newShareToken,) = spoke_addShareClass(POOL_ID, SHARE_ID, name, symbol, 18, address(fullRestrictions));
         }
 
+        // Set AsyncRequestManager as the request manager for this asset BEFORE linking vault
+        // This allows AsyncRequestManager to call spoke.request()
+        spoke.setRequestManager(
+            PoolId.wrap(POOL_ID), ShareClassId.wrap(SHARE_ID), AssetId.wrap(newAssetId), address(asyncRequestManager)
+        );
+
         newVault = deployVault(POOL_ID, SHARE_ID, newAssetId);
         asyncRequestManager.rely(address(newVault));
 
@@ -121,7 +127,12 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     // Add it to All Pools
 
     // Step 2
-    function spoke_registerAsset(address assetAddress, uint256 erc6909TokenId) public notGovFuzzing asAdmin returns (uint128 assetId) {
+    function spoke_registerAsset(address assetAddress, uint256 erc6909TokenId)
+        public
+        notGovFuzzing
+        asAdmin
+        returns (uint128 assetId)
+    {
         assetId = spoke.registerAsset{value: 0.1 ether}(DEFAULT_DESTINATION_CHAIN, assetAddress, erc6909TokenId).raw();
 
         // Only if successful
@@ -144,7 +155,13 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
         address hook
     ) public notGovFuzzing asAdmin returns (address, bytes16) {
         spoke.addShareClass(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            tokenName,
+            tokenSymbol,
+            decimals,
+            keccak256(abi.encodePacked(poolId, scId)),
+            hook
         );
 
         address newToken = address(spoke.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)));
@@ -156,12 +173,16 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
 
     // Step 5
     function spoke_deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin returns (address) {
-        return address(spoke.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
+        return address(
+            spoke.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory)
+        );
     }
 
     // Step 6 deploy the pool
     function deployVault(uint64 poolId, bytes16 scId, uint128 assetId) public notGovFuzzing asAdmin returns (address) {
-        address newVault = address(spoke.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory));
+        address newVault = address(
+            spoke.deployVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), vaultFactory)
+        );
         spoke.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(newVault));
 
         vaults.push(newVault);
@@ -170,11 +191,11 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     // Extra 7 - Remove liquidity Pool
-    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin{
+    function removeVault(uint64 poolId, bytes16 scId, uint128 assetId) public asAdmin {
         spoke.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), IBaseVault(vaults[0]));
     }
 
-    function removeVault_clamped() public asAdmin{
+    function removeVault_clamped() public asAdmin {
         // use poolId, scId, assetId deployed in deployNewTokenPoolAndShare
         removeVault(poolId, scId, assetId);
     }
@@ -184,14 +205,24 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
      */
     function spoke_updateMember(uint64 validUntil) public asAdmin {
         spoke.updateRestriction(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil))
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            UpdateRestrictionMessageLib.serialize(
+                UpdateRestrictionMessageLib.UpdateRestrictionMember(_getActor().toBytes32(), validUntil)
+            )
         );
     }
 
     // TODO: Price is capped at u64 to test overflows
-    function spoke_updatePricePoolPerShare(uint64 price, uint64 computedAt) public updateGhostsWithType(OpType.ADMIN) asAdmin {
+    function spoke_updatePricePoolPerShare(uint64 price, uint64 computedAt)
+        public
+        updateGhostsWithType(OpType.ADMIN)
+        asAdmin
+    {
         spoke.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), price, computedAt);
-        spoke.updatePricePoolPerAsset(PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, computedAt);
+        spoke.updatePricePoolPerAsset(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), price, computedAt
+        );
     }
 
     function spoke_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public asAdmin {
@@ -199,11 +230,23 @@ abstract contract GatewayMockTargets is BaseTargetFunctions, Properties {
     }
 
     function spoke_freeze() public asAdmin {
-        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionFreeze(_getActor().toBytes32())));
+        spoke.updateRestriction(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            UpdateRestrictionMessageLib.serialize(
+                UpdateRestrictionMessageLib.UpdateRestrictionFreeze(_getActor().toBytes32())
+            )
+        );
     }
 
     function spoke_unfreeze() public asAdmin {
-        spoke.updateRestriction(PoolId.wrap(poolId), ShareClassId.wrap(scId), UpdateRestrictionMessageLib.serialize(UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32())));
+        spoke.updateRestriction(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            UpdateRestrictionMessageLib.serialize(
+                UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(_getActor().toBytes32())
+            )
+        );
     }
 
     // TODO: Rely / Permissions
