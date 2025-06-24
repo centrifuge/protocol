@@ -417,8 +417,8 @@ abstract contract Properties is BeforeAfter, Asserts {
                     ) {
                         // check that the lastUpdate was >= the latest redeem approval pointer
                         gt(
-                            _before.ghostRedeemRequest[scId][assetId][actor].lastUpdate,
-                            _before.ghostEpochId[scId][assetId].redeem,
+                            _after.ghostRedeemRequest[scId][assetId][actor].lastUpdate,
+                            _after.ghostEpochId[scId][assetId].redeem,
                             "lastUpdate is > latest redeem approval"
                         );
                     }
