@@ -332,6 +332,10 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation);
         AssetId assetId = newAssetId(isoCode);
 
+        if (!isIdentityValuation) {
+            transientValuation_setPrice(assetId, assetId, INITIAL_PRICE.raw());
+        }
+
         hub_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
     }
 
