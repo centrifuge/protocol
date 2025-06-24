@@ -337,6 +337,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit)
         internal
     {
+        if (amount == 0) return;
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;
