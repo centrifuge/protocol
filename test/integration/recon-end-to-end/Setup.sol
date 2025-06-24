@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {BaseSetup} from "@chimera/BaseSetup.sol";
-import { vm } from "@chimera/Hevm.sol";
+import {vm} from "@chimera/Hevm.sol";
 import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
@@ -58,7 +58,7 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
- import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
 
 // Test Utils
 import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
@@ -72,19 +72,18 @@ import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/Re
 import {ReconVaultManager} from "test/integration/recon-end-to-end/managers/ReconVaultManager.sol";
 import {ReconShareManager} from "test/integration/recon-end-to-end/managers/ReconShareManager.sol";
 
-abstract contract Setup is 
-    BaseSetup, 
-    SharedStorage, 
-    ActorManager, 
-    AssetManager, 
-    ReconPoolManager, 
-    ReconShareClassManager, 
-    ReconAssetIdManager, 
-    ReconVaultManager, 
+abstract contract Setup is
+    BaseSetup,
+    SharedStorage,
+    ActorManager,
+    AssetManager,
+    ReconPoolManager,
+    ReconShareClassManager,
+    ReconAssetIdManager,
+    ReconVaultManager,
     ReconShareManager,
-    Utils 
+    Utils
 {
-
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncVaultFactory;
@@ -111,7 +110,7 @@ abstract contract Setup is
 
     // CROSS CHAIN
     uint16 CENTRIFUGE_CHAIN_ID = 1;
-    uint256 REQUEST_ID = 0;  // LP request ID is always 0
+    uint256 REQUEST_ID = 0; // LP request ID is always 0
     bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224);
 
     /// === Hub === ///
@@ -130,12 +129,16 @@ abstract contract Setup is
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     AccountId[] internal createdAccountIds;
     AssetId[] internal createdAssetIds;
-    D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's shortcut to avoid stack too deep errors
-    bool internal IS_LIABILITY = true; /// @dev see toggle_IsLiability
-    bool internal IS_INCREASE = true; /// @dev see toggle_IsIncrease
+    D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
+        // shortcut to avoid stack too deep errors
+    bool internal IS_LIABILITY = true;
+    /// @dev see toggle_IsLiability
+    bool internal IS_INCREASE = true;
+    /// @dev see toggle_IsIncrease
     bool internal IS_DEBIT_NORMAL = true;
     uint32 internal MAX_CLAIMS = 20;
-    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0); /// @dev see toggle_AccountToUpdate
+    AccountId internal ACCOUNT_TO_UPDATE = AccountId.wrap(0);
+    /// @dev see toggle_AccountToUpdate
     uint32 internal ASSET_ACCOUNT = 1;
     uint32 internal EQUITY_ACCOUNT = 2;
     uint32 internal LOSS_ACCOUNT = 3;
@@ -143,32 +146,32 @@ abstract contract Setup is
     uint64 internal POOL_ID_COUNTER = 1;
 
     /// === GHOST === ///
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestDeposited;
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) depositProcessed;
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) cancelledDeposits;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestDeposited;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) depositProcessed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) cancelledDeposits;
 
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestRedeemed;
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) requestRedeemedAssets;
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) redemptionsProcessed;
-    mapping (ShareClassId scId => mapping (AssetId assetId => mapping (address user => uint256))) cancelledRedemptions;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestRedeemed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestRedeemedAssets;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) redemptionsProcessed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) cancelledRedemptions;
 
-    mapping (ShareClassId scId => mapping (AssetId assetId => uint256)) approvedDeposits;
-    mapping (ShareClassId scId => mapping (AssetId assetId => uint256)) approvedRedemptions;
+    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedDeposits;
+    mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedRedemptions;
 
-    mapping (PoolId poolId => mapping (ShareClassId scId => mapping (AssetId assetId => uint256))) issuedHubShares;
-    mapping (PoolId poolId => mapping (ShareClassId scId => uint256)) issuedBalanceSheetShares;
-    mapping (PoolId poolId => mapping (ShareClassId scId => mapping (AssetId assetId => uint256))) revokedHubShares;
-    mapping (PoolId poolId => mapping (ShareClassId scId => uint256)) revokedBalanceSheetShares;
-    
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) issuedHubShares;
+    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) issuedBalanceSheetShares;
+    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
+    mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
+
     int256 maxRedeemDifference;
     int256 maxDepositDifference;
-    
-    modifier asAdmin {
+
+    modifier asAdmin() {
         vm.prank(address(this));
         _;
     }
 
-    modifier asActor {
+    modifier asActor() {
         vm.prank(address(_getActor()));
         _;
     }
@@ -218,82 +221,60 @@ abstract contract Setup is
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
-        messageDispatcher = new MockMessageDispatcher(); 
+        messageDispatcher = new MockMessageDispatcher();
 
         // set dependencies
-        asyncRequestManager.file("sender", address(messageDispatcher));
         asyncRequestManager.file("spoke", address(spoke));
-        asyncRequestManager.file("balanceSheet", address(balanceSheet));    
-        asyncRequestManager.file("poolEscrowProvider", address(poolEscrowFactory));
+        asyncRequestManager.file("balanceSheet", address(balanceSheet));
         syncManager.file("spoke", address(spoke));
         syncManager.file("balanceSheet", address(balanceSheet));
-        syncManager.file("poolEscrowProvider", address(poolEscrowFactory));
         spoke.file("gateway", address(gateway));
         spoke.file("sender", address(messageDispatcher));
         spoke.file("tokenFactory", address(tokenFactory));
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        spoke.file("vaultFactory", address(asyncVaultFactory));
-        spoke.file("vaultFactory", address(syncVaultFactory));
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-        poolEscrowFactory.file("spoke", address(spoke));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        poolEscrowFactory.file("asyncRequestManager", address(asyncRequestManager));
-        address[] memory tokenWards = new address[](1);
+        address[] memory tokenWards = new address[](2);
         tokenWards[0] = address(spoke);
+        tokenWards[1] = address(balanceSheet);
         tokenFactory.file("wards", tokenWards);
 
-        // authorize contracts
-        asyncRequestManager.rely(address(spoke));
-        asyncRequestManager.rely(address(asyncVaultFactory));
-        asyncRequestManager.rely(address(syncVaultFactory));
-        asyncRequestManager.rely(address(messageDispatcher));
-        asyncRequestManager.rely(address(syncManager));
-        syncManager.rely(address(spoke));
-        syncManager.rely(address(asyncVaultFactory));
-        syncManager.rely(address(syncVaultFactory));
-        syncManager.rely(address(messageDispatcher));
-        syncManager.rely(address(asyncRequestManager));
-        spoke.rely(address(messageDispatcher));
-        fullRestrictions.rely(address(spoke));
-        balanceSheet.rely(address(asyncRequestManager));
-        balanceSheet.rely(address(syncManager));
-        balanceSheet.rely(address(messageDispatcher));
-        globalEscrow.rely(address(asyncRequestManager));
-        globalEscrow.rely(address(syncManager));
-        globalEscrow.rely(address(spoke));
-        globalEscrow.rely(address(balanceSheet));
-        // Permissions on factories
-        asyncVaultFactory.rely(address(spoke));
-        syncVaultFactory.rely(address(spoke));
-        tokenFactory.rely(address(spoke));
-        poolEscrowFactory.rely(address(spoke));
+        // Set up all spoke permissions
+        setupSpokePermissions();
 
         root.endorse(address(asyncRequestManager));
         root.endorse(address(syncManager));
     }
 
     function setupHub() internal {
-        hubRegistry = new HubRegistry(address(this)); 
+        hubRegistry = new HubRegistry(address(this));
         transientValuation = new MockValuation(IERC6909Decimals(address(hubRegistry)));
         identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
         mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
         // Core Hub Contracts
-        accounting = new Accounting(address(this)); 
+        accounting = new Accounting(address(this));
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
-        hubHelpers = new HubHelpers(IHoldings(address(holdings)), IAccounting(address(accounting)), IHubRegistry(address(hubRegistry)), IHubMessageSender(address(messageDispatcher)), IShareClassManager(address(shareClassManager)), address(this));
+        hubHelpers = new HubHelpers(
+            IHoldings(address(holdings)),
+            IAccounting(address(accounting)),
+            IHubRegistry(address(hubRegistry)),
+            IHubMessageSender(address(messageDispatcher)),
+            IShareClassManager(address(shareClassManager)),
+            address(this)
+        );
         hub = new Hub(
-            IGateway(address(gateway)), 
-            IHoldings(address(holdings)), 
-            IHubHelpers(address(hubHelpers)), 
-            IAccounting(address(accounting)), 
-            IHubRegistry(address(hubRegistry)), 
-            IShareClassManager(address(shareClassManager)), 
+            IGateway(address(gateway)),
+            IHoldings(address(holdings)),
+            IHubHelpers(address(hubHelpers)),
+            IAccounting(address(accounting)),
+            IHubRegistry(address(hubRegistry)),
+            IShareClassManager(address(shareClassManager)),
             address(this)
         );
 
@@ -306,21 +287,22 @@ abstract contract Setup is
 
         accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
+        // Hub needs permission to call HubHelpers functions
+        hubHelpers.rely(address(hub));
 
         hub.rely(address(messageDispatcher));
-        
+
         // shareClassManager.rely(address(this));
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
         hub.file("poolEscrowFactory", address(poolEscrowFactory));
 
-        messageDispatcher.file("hub", address(hub)); 
+        messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("requestManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
     }
-
 
     /// === Helper Functions === ///
 
@@ -338,4 +320,69 @@ abstract contract Setup is
     }
 
     receive() external payable {}
+
+    // Note: messageDispatcher is a mock and doesn't have rely function
+    function setupSpokePermissions() private {
+        // Root endorsements (from CommonDeployer and SpokeDeployer)
+        root.endorse(address(balanceSheet));
+        root.endorse(address(asyncRequestManager));
+        root.endorse(address(globalEscrow));
+
+        // Rely Spoke (from SpokeDeployer)
+        asyncVaultFactory.rely(address(spoke));
+        syncVaultFactory.rely(address(spoke));
+        tokenFactory.rely(address(spoke));
+        asyncRequestManager.rely(address(spoke));
+        syncManager.rely(address(spoke));
+        fullRestrictions.rely(address(spoke));
+        poolEscrowFactory.rely(address(spoke));
+        gateway.rely(address(spoke));
+
+        // Rely async requests manager
+        globalEscrow.rely(address(asyncRequestManager));
+        asyncRequestManager.rely(address(asyncVaultFactory));
+        asyncRequestManager.rely(address(syncVaultFactory));
+        asyncRequestManager.rely(address(messageDispatcher));
+        asyncRequestManager.rely(address(syncManager));
+
+        // Rely sync manager
+        syncManager.rely(address(spoke));
+        syncManager.rely(address(asyncVaultFactory));
+        syncManager.rely(address(syncVaultFactory));
+        syncManager.rely(address(messageDispatcher));
+        syncManager.rely(address(asyncRequestManager));
+        syncManager.rely(address(syncVaultFactory));
+
+        // Rely BalanceSheet
+        gateway.rely(address(balanceSheet));
+        balanceSheet.rely(address(asyncRequestManager));
+        balanceSheet.rely(address(syncManager));
+        balanceSheet.rely(address(messageDispatcher));
+
+        // Rely global escrow
+        globalEscrow.rely(address(asyncRequestManager));
+        globalEscrow.rely(address(syncManager));
+        globalEscrow.rely(address(spoke));
+        globalEscrow.rely(address(balanceSheet));
+
+        // Rely Root (from all deployers)
+        spoke.rely(address(root));
+        asyncRequestManager.rely(address(root));
+        syncManager.rely(address(root));
+        balanceSheet.rely(address(root));
+        globalEscrow.rely(address(root));
+        asyncVaultFactory.rely(address(root));
+        syncVaultFactory.rely(address(root));
+        tokenFactory.rely(address(root));
+        fullRestrictions.rely(address(root));
+        gateway.rely(address(root));
+        poolEscrowFactory.rely(address(root));
+
+        // Rely gateway
+        spoke.rely(address(gateway));
+
+        // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
+        spoke.rely(address(messageDispatcher));
+        balanceSheet.rely(address(messageDispatcher));
+    }
 }
