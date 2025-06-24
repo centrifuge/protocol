@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # cd "$SCRIPT_DIR" || exit
 
 # Get the root directory (one level up)
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../../" && pwd)"
 
 # Source the helper scripts
 source "$SCRIPT_DIR/formathelper.sh"
@@ -13,7 +13,6 @@ source "$SCRIPT_DIR/formathelper.sh"
 # Function to verify contracts - checks latest deployment or network config
 verify_contracts() {
     local deployment_script=${1:-""}
-    local is_standalone=${2:-true}
 
     # Get etherscan URL from network config
     local network_config="$ROOT_DIR/env/$NETWORK.json"
@@ -28,22 +27,87 @@ verify_contracts() {
 
     print_step "Using Etherscan API: $etherscan_url"
 
-    # Determine which file to check based on context
-    local contracts_file
-
-    if [[ "$is_standalone" == "true" ]]; then
-        # This is when we're calling verify:protocol or verify:adapters
-        contracts_file="$network_config"
-    else
-        # In this case the deployment is still running and -latest.json is the latest deployment
-        # instead of the env file
-        contracts_file="$ROOT_DIR/env/latest/${CHAIN_ID}-latest.json"
-    fi
+    # Start with network config, but check if latest deployment differs
+    local contracts_file="$network_config"
     print_step "Verifying contracts from $contracts_file"
 
     if [[ ! -f "$contracts_file" ]]; then
         print_error "No contracts file found at $contracts_file"
         exit 1
+    fi
+
+    # Check if we need to sync latest deployment with network config
+    local latest_deployment="$ROOT_DIR/env/latest/${CHAIN_ID}-latest.json"
+    if [[ -f "$latest_deployment" ]]; then
+        print_step "Checking if latest deployment differs from network config..."
+
+        # Compare contract addresses between latest deployment and network config
+        local addresses_differ=false
+
+        # Extract and sort contract addresses from both files for comparison
+        local latest_contracts
+        latest_contracts=$(jq -r '.contracts | to_entries[] | "\(.key):\(.value)"' "$latest_deployment" 2>/dev/null | sort)
+        local config_contracts
+        config_contracts=$(jq -r '.contracts | to_entries[] | "\(.key):\(.value)"' "$network_config" 2>/dev/null | sort)
+
+        # Compare the sorted contract lists
+        if [[ "$latest_contracts" != "$config_contracts" ]]; then
+            addresses_differ=true
+        fi
+
+        if [[ "$addresses_differ" == "true" ]]; then
+            latest_deploy_file=/env/latest/$(basename "$latest_deployment")
+            deploy_config=/env/$(basename "$network_config")
+            print_warning "$latest_deploy_file has different contract addresses than $deploy_config"
+            print_warning "This is usually a sign that the deployment was not successful and thus $deploy_config didn't update"
+            # Check if latest deployment is recent (within 24 hours)
+            local latest_file_age
+            # Get file modification time - works on both Linux and macOS
+            if [[ "$(uname)" == "Darwin" ]]; then
+                # macOS
+                latest_file_age=$(($(date +%s) - $(stat -f %m "$latest_deployment" 2>/dev/null || echo 0)))
+                deploy_file_age=$(($(date +%s) - $(stat -f %m "$network_config" 2>/dev/null || echo 0)))
+            else
+                # Linux and other Unix-like systems
+                latest_file_age=$(($(date +%s) - $(stat -c %Y "$latest_deployment" 2>/dev/null || echo 0)))
+                deploy_file_age=$(($(date +%s) - $(stat -c %Y "$network_config" 2>/dev/null || echo 0)))
+            fi
+            local one_day_in_seconds=86400
+            if [[ $latest_file_age -gt $one_day_in_seconds ]]; then
+                print_warning "The latest deployment file is old (age: $((latest_file_age / 3600)) hours)"
+                print_warning "Decide which contracts to verify:"
+                print_info "1. Verify $latest_deploy_file) - it will override $deploy_config when finished"
+                print_info "2. Verify $deploy_config - age: $((deploy_file_age / 3600)) hours"
+
+                while true; do
+                    read -p "Choose option (1/2): " -n 1 -r
+                    echo
+                    case $REPLY in
+                    1)
+                        print_info "Use /env/latest/$(basename "$latest_deployment") - it will update config"
+                        contracts_file="$latest_deployment"
+                        print_step "Now verifying contracts from $contracts_file"
+                        break
+                        ;;
+                    2)
+                        print_info "Use /env/$(basename "$network_config")"
+                        # Continue with current network config
+                        break
+                        ;;
+                    *)
+                        print_info "Invalid choice, please try again"
+                        ;;
+                    esac
+                done
+            else
+
+                print_info "Latest deployment contracts will be verified and network config will be updated"
+
+                # Switch to using latest deployment for verification
+                contracts_file="$latest_deployment"
+                print_step "Now verifying contracts from $contracts_file"
+            fi
+        fi
     fi
 
     # Filter contracts based on deployment script type
@@ -90,19 +154,32 @@ verify_contracts() {
 
         total_count=$((total_count + 1))
 
-        print_info "Checking $contract_name ($contract_address)..."
+        # First, check if contract is deployed (has code at the address)
+        local contract_code
+        contract_code=$(curl -s -X POST -H "Content-Type: application/json" \
+            --data "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\":[\"$contract_address\",\"latest\"],\"id\":1}" \
+            "$RPC_URL" | jq -r '.result')
 
-        # Check if contract is verified on Etherscan (using API v2)
+        if [[ "$contract_code" == "0x" || "$contract_code" == "null" ]]; then
+            print_error "$contract_name ($contract_address) is NOT deployed (no code at address)"
+            unverified_contracts+=("$contract_name:$contract_address")
+            continue
+        else
+            print_success "$contract_name ($contract_address) is deployed"
+        fi
+
+        # Now check if contract is verified on Etherscan (using API v2)
+        print_info "Checking if $contract_name ($contract_address) is verified on Etherscan..."
         local result
         result=$(curl -s "https://api.etherscan.io/v2/api?chainid=$CHAIN_ID&module=contract&action=getsourcecode&address=$contract_address&apikey=$ETHERSCAN_API_KEY")
 
         # Check if API result indicates contract is verified (positive verification check)
         # For verified contracts: SourceCode contains actual code, ContractName is set, CompilerVersion is set
         if echo "$result" | jq -e '(.result[0].SourceCode != null and .result[0].SourceCode != "" and .result[0].SourceCode != "Contract source code not verified") and (.result[0].ContractName != null and .result[0].ContractName != "")' >/dev/null 2>&1; then
-            print_success "$contract_name is verified"
+            print_success "$contract_name ($contract_address) is verified on Etherscan"
             verified_count=$((verified_count + 1))
         else
-            print_error "$contract_name is NOT verified"
+            print_error "$contract_name ($contract_address) is deployed but NOT verified on Etherscan"
             unverified_contracts+=("$contract_name:$contract_address")
         fi
 
@@ -127,19 +204,18 @@ verify_contracts() {
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 retry_deploy "$deployment_script"
             else
-                if [ "$is_standalone" != true ]; then
-                    print_info "The deployment has been successful but some contracts are NOT verified"
-                    print_info "The script will now overwritte the contracts in env/$NETWORK.json with unverified contracts"
-                    print_info "Run ./deploy.sh $NETWORK verify:[protocol|adapters] to verify the contracts"
-                    return 1
-                else
-                    print_info "Retry using forge --resume cancelled by the user, run it again to retry"
-                    return 1
-                fi
+                print_info "Retry using forge --resume cancelled by the user, run it again to retry"
+                return 1
             fi
         fi
     else
         print_success "All contracts are verified!"
+
+        # If we verified from latest deployment and all contracts are verified, update the network config
+        if [[ "$contracts_file" == "$latest_deployment" ]]; then
+            print_step "All contracts verified successfully - updating network config"
+            update_network_config
+        fi
     fi
 
     return 0
@@ -175,7 +251,7 @@ retry_deploy() {
 
         # Save current FORGE_ARGS and add --resume
         local original_forge_args=("${FORGE_ARGS[@]}")
-        FORGE_ARGS+=("--resume --slow --delay 10")
+        FORGE_ARGS+=("--resume --delay 10")
         # Use the existing run_forge_script function
         if run_forge_script "$deployment_script"; then
             resume_success=true
@@ -183,7 +259,7 @@ retry_deploy() {
 
             # Re-run verification check
             print_step "Re-checking verification status..."
-            verify_contracts "$deployment_script" false
+            verify_contracts "$deployment_script"
         else
             # Restore original FORGE_ARGS
             FORGE_ARGS=("${original_forge_args[@]}")
@@ -221,11 +297,21 @@ run_forge_script() {
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
         --verbosity 4 \
-        --delay 10 \
-        --slow \
+        # --delay 10 \
+        # --slow \
         ${FORGE_ARGS[*]}"
 
-    CATAPULTA_CMD="NETWORK=$NETWORK DEPLOYMENT_SALT=$DEPLOYMENT_SALT catapulta script $script \"$ROOT_DIR/script/$script.s.sol\" --network ${CATAPULTA_NET:-$NETWORK} --private-key $PRIVATE_KEY"
+    CATAPULTA_CMD="NETWORK=$NETWORK catapulta script \
+        --private-key $PRIVATE_KEY \
+        --network ${CATAPULTA_NET:-$NETWORK} \
+        --chain-id \"$CHAIN_ID\" \
+        \"$ROOT_DIR/script/$script.s.sol\" \
+        --optimize \
+        --rpc-url \"$RPC_URL\" \
+        --private-key \"$PRIVATE_KEY\" \
+        --verify \
+        --broadcast \
+        ${FORGE_ARGS[*]}"
 
     print_step "Executing Command"
 
@@ -243,16 +329,29 @@ run_forge_script() {
         print_info "Running: forge script $script ..."
         eval "$FORGE_CMD"
         if [[ $? -ne 0 ]]; then
-            print_error "ERROR: Failed to run $script with Forge"
-            print_step "Try these steps:"
-            print_info "1. Run ./deploy.sh $NETWORK $STEP --resume to pick up where this run left off"
-            print_info "2. Run ./deploy.sh forge:clean for a new clean deployment (sometimes lingering old deploys conflict with new code)"
-            print_info "3. Try running the command manually:"
-            print_info "   $FORGE_CMD --resume"
-            print_info "   OR"
-            print_info "   $FORGE_CMD"
-            print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
-            exit 1
+            # Check if deployment succeeded but verification failed
+            local latest_deployment="$ROOT_DIR/env/latest/${CHAIN_ID}-latest.json"
+            if [[ -f "$latest_deployment" ]]; then
+                print_warning "Forge script failed, but deployment succeeded"
+                print_warning "This often happens when contracts deploy successfully but verification fails"
+                print_warning "The env file will NOT be updated automatically due to verification failure"
+                print_info "To update the env file manually, run:"
+                print_info "  ./deploy.sh $NETWORK verify:[protocol|adapters]"
+                print_info "Or manually copy from: env/latest/${CHAIN_ID}-latest.json"
+                print_warning "IMPORTANT: Your env/$NETWORK.json file is NOT up to date with the latest deployment!"
+                return 0 # Don't exit, let the script continue
+            else
+                print_error "ERROR: Failed to run $script with Forge"
+                print_step "Try these steps:"
+                print_info "1. Run ./deploy.sh $NETWORK $STEP --resume to pick up where this run left off"
+                print_info "2. Run ./deploy.sh $NETWORK forge:clean for a new clean deployment (sometimes lingering old deploys conflict with new code)"
+                print_info "3. Try running the command manually:"
+                print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
+                print_info "   OR"
+                print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
+                print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
+                exit 1
+            fi
         fi
     fi
 
@@ -273,11 +372,25 @@ update_network_config() {
     # Create a backup of the current config
     cp "$network_config" "${network_config}.bak"
 
-    # Merge the contracts section, preserving existing entries
-    if ! jq -s '
+    # Get the current git commit hash
+    local git_commit
+    git_commit=$(git rev-parse --short HEAD)
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to get git commit hash"
+        mv "${network_config}.bak" "$network_config"
+        exit 1
+    fi
+
+    # Merge the contracts section and add git commit hash, preserving existing entries
+    if ! jq -s --arg commit "$git_commit" '
         .[0] as $config |
         .[1].contracts as $new_contracts |
-        $config | .contracts = ($config.contracts + $new_contracts)
+        $config | 
+        .contracts = ($config.contracts + $new_contracts) |
+        .deploymentInfo = {
+            "gitCommit": $commit,
+            "timestamp": (now | todate)
+        }
     ' "$network_config" "$latest_deployment" >"${network_config}.tmp"; then
         print_error "Failed to update network config"
         mv "${network_config}.bak" "$network_config"
@@ -324,7 +437,7 @@ fi
 # Set arguments
 CI_MODE=${CI_MODE:-false}
 
-if [[ "$1" == "forge:clean" ]]; then
+if [[ "$1" == "forge:clean" || "$2" == "forge:clean" ]]; then
     NETWORK=""
     STEP="forge:clean"
     shift 1 # Remove the argument
@@ -368,21 +481,15 @@ case "$STEP" in
     print_subtitle "Deploying core protocol contracts for $NETWORK"
     run_forge_script "FullDeployer"
     print_subtitle "Verifying deployment for $NETWORK"
-    verify_contracts "FullDeployer" false
-    print_subtitle "Deployment verified -> Updating env files"
-    print_subtitle "Updating env files"
-    update_network_config
+    verify_contracts "FullDeployer"
     print_section "Deployment Complete"
-
     ;;
 "deploy:adapters")
     print_section "Running Deployment"
     print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
     print_subtitle "Check verification status for $NETWORK"
-    verify_contracts "Adapters" false
-    print_subtitle "Updating env files"
-    update_network_config
+    verify_contracts "Adapters"
     print_section "Deployment Complete"
     ;;
 "wire:adapters")
@@ -397,25 +504,25 @@ case "$STEP" in
     ;;
 "verify:protocol")
     print_section "Verifying core protocol contracts for $NETWORK"
-    verify_contracts "FullDeployer" true
+    verify_contracts "FullDeployer"
     print_section "Verification Complete"
     ;;
 "verify:adapters")
     print_section "Verifying Adapters contracts for $NETWORK"
-    verify_contracts "Adapters" true
+    verify_contracts "Adapters"
     print_section "Verification Complete"
     ;;
 "forge:clean")
     print_subtitle "Cleaning up forge files and folders"
-    print_step "Removing broadcast files"
-    rm -rf "$ROOT_DIR/broadcast"
+    print_step "rm -rf $ROOT_DIR/broadcast/ "
+    rm -rf "$ROOT_DIR/broadcast/*"
     print_step "Removing out files"
-    rm -rf "$ROOT_DIR/out"
+    rm -rf "$ROOT_DIR/out/*"
     print_step "Removing cache files"
-    rm -rf "$ROOT_DIR/cache"
+    rm -rf "$ROOT_DIR/cache/*"
     print_step "Running forge clean"
     forge clean
-    print_section "Forge files and folders cleaned"
+    print_subtitle "Forge files and folders cleaned"
     ;;
 *)
     echo "Invalid step: $STEP"
