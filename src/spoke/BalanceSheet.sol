@@ -214,34 +214,25 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
 
         uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
 
+        uint128 netAmount = (assetQueue.deposits >= assetQueue.withdrawals)
+            ? assetQueue.deposits - assetQueue.withdrawals
+            : assetQueue.withdrawals - assetQueue.deposits;
+        bool isIncrease = assetQueue.deposits >= assetQueue.withdrawals;
+        bool isSnapshot = shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter;
+        uint64 nonce = shareQueue.nonce;
+
         emit SubmitQueuedAssets(
-            poolId,
-            scId,
-            assetId,
-            assetQueue.deposits,
-            assetQueue.withdrawals,
-            pricePoolPerAsset,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce
-        );
-        sender.sendUpdateHoldingAmount(
-            poolId,
-            scId,
-            assetId,
-            (assetQueue.deposits >= assetQueue.withdrawals)
-                ? assetQueue.deposits - assetQueue.withdrawals
-                : assetQueue.withdrawals - assetQueue.deposits,
-            pricePoolPerAsset,
-            assetQueue.deposits >= assetQueue.withdrawals,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce,
-            extraGasLimit
+            poolId, scId, assetId, assetQueue.deposits, assetQueue.withdrawals, pricePoolPerAsset, isSnapshot, nonce
         );
 
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
         shareQueue.queuedAssetCounter -= assetCounter;
+
+        sender.sendUpdateHoldingAmount(
+            poolId, scId, assetId, netAmount, pricePoolPerAsset, isIncrease, isSnapshot, nonce, extraGasLimit
+        );
     }
 
     /// @inheritdoc IBalanceSheet
