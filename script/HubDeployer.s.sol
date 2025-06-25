@@ -87,22 +87,16 @@ contract HubDeployer is CommonDeployer {
         shareClassManager = ShareClassManager(create3(shareClassManagerSalt, shareClassManagerBytecode));
         console.log("ShareClassManager deployed at:", address(shareClassManager));
 
+        // Note: HubHelpers and Hub deployments were moved to separate helper functions
+        // to avoid "stack too deep" compilation errors caused by too many local variables
+        // in the constructor argument encoding.
+        
         // HubHelpers
-        bytes32 hubHelpersSalt = keccak256(abi.encodePacked(baseSalt, "hubHelpers"));
-        bytes memory hubHelpersBytecode = abi.encodePacked(
-            type(HubHelpers).creationCode,
-            abi.encode(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer)
-        );
-        hubHelpers = HubHelpers(create3(hubHelpersSalt, hubHelpersBytecode));
+        hubHelpers = _deployHubHelpers(baseSalt, deployer);
         console.log("HubHelpers deployed at:", address(hubHelpers));
 
         // Hub
-        bytes32 hubSalt = keccak256(abi.encodePacked(baseSalt, "hub"));
-        bytes memory hubBytecode = abi.encodePacked(
-            type(Hub).creationCode,
-            abi.encode(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer)
-        );
-        hub = Hub(create3(hubSalt, hubBytecode));
+        hub = _deployHubContract(baseSalt, deployer);
         console.log("Hub deployed at:", address(hub));
 
         _poolsRegister();
@@ -178,5 +172,32 @@ contract HubDeployer is CommonDeployer {
         hub.deny(deployer);
         hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
+    }
+
+    // Helper function to deploy HubHelpers in a separate scope to avoid stack too deep errors
+    // The HubHelpers constructor requires 6 parameters which was causing compilation issues
+    function _deployHubHelpers(bytes32 baseSalt, address deployer) private returns (HubHelpers) {
+        bytes32 hubHelpersSalt = keccak256(abi.encodePacked(baseSalt, "hubHelpers"));
+        bytes memory hubHelpersBytecode = abi.encodePacked(
+            type(HubHelpers).creationCode,
+            abi.encode(address(holdings), address(accounting), address(hubRegistry), address(messageDispatcher), address(shareClassManager), deployer)
+        );
+        return HubHelpers(create3(hubHelpersSalt, hubHelpersBytecode));
+    }
+
+    // Helper function to deploy Hub contract in a separate scope to avoid stack too deep errors
+    // The Hub constructor requires 7 parameters which was causing compilation issues
+    function _deployHubContract(bytes32 baseSalt, address deployer) private returns (Hub) {
+        bytes32 hubSalt = keccak256(abi.encodePacked(baseSalt, "hub"));
+        
+        // Store variables to reduce stack pressure
+        address gatewayAddr = address(gateway);
+        address hubHelpersAddr = address(hubHelpers);
+        
+        bytes memory hubBytecode = abi.encodePacked(
+            type(Hub).creationCode,
+            abi.encode(gatewayAddr, address(holdings), hubHelpersAddr, address(accounting), address(hubRegistry), address(shareClassManager), deployer)
+        );
+        return Hub(create3(hubSalt, hubBytecode));
     }
 }

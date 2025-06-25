@@ -67,7 +67,7 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
      */
     function generateBaseSalt(string memory network, uint16 centrifugeId, string memory environment) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(
-            "centrifuge-v3",  // Protocol identifier
+            "centrifuge-003",  // Protocol identifier
             network,          // Network name
             centrifugeId,     // Centrifuge chain ID
             environment       // Environment

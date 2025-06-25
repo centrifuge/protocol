@@ -50,120 +50,19 @@ contract SpokeDeployer is CommonDeployer {
         
         console.log("Deploying Spoke contracts with CreateX...");
 
-        // RouterEscrow
-        bytes32 routerEscrowSalt = keccak256(abi.encodePacked(baseSalt, "routerEscrow"));
-        bytes memory routerEscrowBytecode = abi.encodePacked(
-            type(Escrow).creationCode,
-            abi.encode(deployer)
-        );
-        routerEscrow = Escrow(create3(routerEscrowSalt, routerEscrowBytecode));
-        console.log("RouterEscrow deployed at:", address(routerEscrow));
+        // Note: This function was split into smaller helper functions to avoid
+        // "stack too deep" compilation errors that occur when too many local
+        // variables are used in a single function scope, especially in constructor
+        // argument encoding for complex contracts.
 
-        // GlobalEscrow
-        bytes32 globalEscrowSalt = keccak256(abi.encodePacked(baseSalt, "globalEscrow"));
-        bytes memory globalEscrowBytecode = abi.encodePacked(
-            type(Escrow).creationCode,
-            abi.encode(deployer)
-        );
-        globalEscrow = Escrow(create3(globalEscrowSalt, globalEscrowBytecode));
-        console.log("GlobalEscrow deployed at:", address(globalEscrow));
+        // Deploy escrows and factories
+        _deployEscrowsAndFactories(baseSalt, deployer);
+        
+        // Deploy spoke components
+        _deploySpokeComponents(baseSalt, deployer);
 
-        // TokenFactory
-        bytes32 tokenFactorySalt = keccak256(abi.encodePacked(baseSalt, "tokenFactory"));
-        bytes memory tokenFactoryBytecode = abi.encodePacked(
-            type(TokenFactory).creationCode,
-            abi.encode(address(root), deployer)
-        );
-        tokenFactory = TokenFactory(create3(tokenFactorySalt, tokenFactoryBytecode));
-        console.log("TokenFactory deployed at:", address(tokenFactory));
-
-        // AsyncRequestManager
-        bytes32 asyncRequestManagerSalt = keccak256(abi.encodePacked(baseSalt, "asyncRequestManager"));
-        bytes memory asyncRequestManagerBytecode = abi.encodePacked(
-            type(AsyncRequestManager).creationCode,
-            abi.encode(IEscrow(globalEscrow), deployer)
-        );
-        asyncRequestManager = AsyncRequestManager(create3(asyncRequestManagerSalt, asyncRequestManagerBytecode));
-        console.log("AsyncRequestManager deployed at:", address(asyncRequestManager));
-
-        // SyncManager
-        bytes32 syncManagerSalt = keccak256(abi.encodePacked(baseSalt, "syncManager"));
-        bytes memory syncManagerBytecode = abi.encodePacked(
-            type(SyncManager).creationCode,
-            abi.encode(deployer)
-        );
-        syncManager = SyncManager(create3(syncManagerSalt, syncManagerBytecode));
-        console.log("SyncManager deployed at:", address(syncManager));
-
-        // AsyncVaultFactory
-        bytes32 asyncVaultFactorySalt = keccak256(abi.encodePacked(baseSalt, "asyncVaultFactory"));
-        bytes memory asyncVaultFactoryBytecode = abi.encodePacked(
-            type(AsyncVaultFactory).creationCode,
-            abi.encode(address(root), asyncRequestManager, deployer)
-        );
-        asyncVaultFactory = AsyncVaultFactory(create3(asyncVaultFactorySalt, asyncVaultFactoryBytecode));
-        console.log("AsyncVaultFactory deployed at:", address(asyncVaultFactory));
-
-        // SyncDepositVaultFactory
-        bytes32 syncDepositVaultFactorySalt = keccak256(abi.encodePacked(baseSalt, "syncDepositVaultFactory"));
-        bytes memory syncDepositVaultFactoryBytecode = abi.encodePacked(
-            type(SyncDepositVaultFactory).creationCode,
-            abi.encode(address(root), syncManager, asyncRequestManager, deployer)
-        );
-        syncDepositVaultFactory = SyncDepositVaultFactory(create3(syncDepositVaultFactorySalt, syncDepositVaultFactoryBytecode));
-        console.log("SyncDepositVaultFactory deployed at:", address(syncDepositVaultFactory));
-
-        // Spoke
-        bytes32 spokeSalt = keccak256(abi.encodePacked(baseSalt, "spoke"));
-        bytes memory spokeBytecode = abi.encodePacked(
-            type(Spoke).creationCode,
-            abi.encode(tokenFactory, deployer)
-        );
-        spoke = Spoke(create3(spokeSalt, spokeBytecode));
-        console.log("Spoke deployed at:", address(spoke));
-
-        // BalanceSheet
-        bytes32 balanceSheetSalt = keccak256(abi.encodePacked(baseSalt, "balanceSheet"));
-        bytes memory balanceSheetBytecode = abi.encodePacked(
-            type(BalanceSheet).creationCode,
-            abi.encode(root, deployer)
-        );
-        balanceSheet = BalanceSheet(create3(balanceSheetSalt, balanceSheetBytecode));
-        console.log("BalanceSheet deployed at:", address(balanceSheet));
-
-        // VaultRouter
-        bytes32 vaultRouterSalt = keccak256(abi.encodePacked(baseSalt, "vaultRouter"));
-        bytes memory vaultRouterBytecode = abi.encodePacked(
-            type(VaultRouter).creationCode,
-            abi.encode(address(routerEscrow), gateway, spoke, deployer)
-        );
-        vaultRouter = VaultRouter(create3(vaultRouterSalt, vaultRouterBytecode));
-        console.log("VaultRouter deployed at:", address(vaultRouter));
-
-        // Hooks - deploy using CreateX
-        bytes32 freezeOnlySalt = keccak256(abi.encodePacked(baseSalt, "freezeOnlyHook"));
-        bytes memory freezeOnlyBytecode = abi.encodePacked(
-            type(FreezeOnly).creationCode,
-            abi.encode(address(root), deployer)
-        );
-        freezeOnlyHook = create3(freezeOnlySalt, freezeOnlyBytecode);
-        console.log("FreezeOnlyHook deployed at:", freezeOnlyHook);
-
-        bytes32 fullRestrictionsSalt = keccak256(abi.encodePacked(baseSalt, "fullRestrictionsHook"));
-        bytes memory fullRestrictionsBytecode = abi.encodePacked(
-            type(FullRestrictions).creationCode,
-            abi.encode(address(root), deployer)
-        );
-        fullRestrictionsHook = create3(fullRestrictionsSalt, fullRestrictionsBytecode);
-        console.log("FullRestrictionsHook deployed at:", fullRestrictionsHook);
-
-        bytes32 redemptionRestrictionsSalt = keccak256(abi.encodePacked(baseSalt, "redemptionRestrictionsHook"));
-        bytes memory redemptionRestrictionsBytecode = abi.encodePacked(
-            type(RedemptionRestrictions).creationCode,
-            abi.encode(address(root), deployer)
-        );
-        redemptionRestrictionsHook = create3(redemptionRestrictionsSalt, redemptionRestrictionsBytecode);
-        console.log("RedemptionRestrictionsHook deployed at:", redemptionRestrictionsHook);
+        // Deploy hooks
+        _deployHooks(baseSalt, deployer);
 
         _spokeRegister();
         _spokeEndorse();
@@ -296,5 +195,140 @@ contract SpokeDeployer is CommonDeployer {
         routerEscrow.deny(deployer);
         globalEscrow.deny(deployer);
         vaultRouter.deny(deployer);
+    }
+
+    // Helper function to deploy escrows, factories, and managers in a separate scope to avoid stack too deep errors
+    function _deployEscrowsAndFactories(bytes32 baseSalt, address deployer) private {
+        // RouterEscrow
+        bytes32 routerEscrowSalt = keccak256(abi.encodePacked(baseSalt, "routerEscrow"));
+        bytes memory routerEscrowBytecode = abi.encodePacked(
+            type(Escrow).creationCode,
+            abi.encode(deployer)
+        );
+        routerEscrow = Escrow(create3(routerEscrowSalt, routerEscrowBytecode));
+        console.log("RouterEscrow deployed at:", address(routerEscrow));
+
+        // GlobalEscrow
+        bytes32 globalEscrowSalt = keccak256(abi.encodePacked(baseSalt, "globalEscrow"));
+        bytes memory globalEscrowBytecode = abi.encodePacked(
+            type(Escrow).creationCode,
+            abi.encode(deployer)
+        );
+        globalEscrow = Escrow(create3(globalEscrowSalt, globalEscrowBytecode));
+        console.log("GlobalEscrow deployed at:", address(globalEscrow));
+
+        // TokenFactory
+        bytes32 tokenFactorySalt = keccak256(abi.encodePacked(baseSalt, "tokenFactory"));
+        bytes memory tokenFactoryBytecode = abi.encodePacked(
+            type(TokenFactory).creationCode,
+            abi.encode(address(root), deployer)
+        );
+        tokenFactory = TokenFactory(create3(tokenFactorySalt, tokenFactoryBytecode));
+        console.log("TokenFactory deployed at:", address(tokenFactory));
+
+        // AsyncRequestManager
+        bytes32 asyncRequestManagerSalt = keccak256(abi.encodePacked(baseSalt, "asyncRequestManager"));
+        bytes memory asyncRequestManagerBytecode = abi.encodePacked(
+            type(AsyncRequestManager).creationCode,
+            abi.encode(IEscrow(globalEscrow), deployer)
+        );
+        asyncRequestManager = AsyncRequestManager(create3(asyncRequestManagerSalt, asyncRequestManagerBytecode));
+        console.log("AsyncRequestManager deployed at:", address(asyncRequestManager));
+
+        // SyncManager
+        bytes32 syncManagerSalt = keccak256(abi.encodePacked(baseSalt, "syncManager"));
+        bytes memory syncManagerBytecode = abi.encodePacked(
+            type(SyncManager).creationCode,
+            abi.encode(deployer)
+        );
+        syncManager = SyncManager(create3(syncManagerSalt, syncManagerBytecode));
+        console.log("SyncManager deployed at:", address(syncManager));
+
+        // AsyncVaultFactory
+        asyncVaultFactory = _deployAsyncVaultFactory(baseSalt, deployer);
+        console.log("AsyncVaultFactory deployed at:", address(asyncVaultFactory));
+
+        // SyncDepositVaultFactory
+        syncDepositVaultFactory = _deploySyncDepositVaultFactory(baseSalt, deployer);
+        console.log("SyncDepositVaultFactory deployed at:", address(syncDepositVaultFactory));
+    }
+
+    // Helper function to deploy spoke core components in a separate scope to avoid stack too deep errors
+    function _deploySpokeComponents(bytes32 baseSalt, address deployer) private {
+        // Spoke
+        bytes32 spokeSalt = keccak256(abi.encodePacked(baseSalt, "spoke"));
+        bytes memory spokeBytecode = abi.encodePacked(
+            type(Spoke).creationCode,
+            abi.encode(tokenFactory, deployer)
+        );
+        spoke = Spoke(create3(spokeSalt, spokeBytecode));
+        console.log("Spoke deployed at:", address(spoke));
+
+        // BalanceSheet
+        bytes32 balanceSheetSalt = keccak256(abi.encodePacked(baseSalt, "balanceSheet"));
+        bytes memory balanceSheetBytecode = abi.encodePacked(
+            type(BalanceSheet).creationCode,
+            abi.encode(root, deployer)
+        );
+        balanceSheet = BalanceSheet(create3(balanceSheetSalt, balanceSheetBytecode));
+        console.log("BalanceSheet deployed at:", address(balanceSheet));
+
+        // VaultRouter
+        bytes32 vaultRouterSalt = keccak256(abi.encodePacked(baseSalt, "vaultRouter"));
+        bytes memory vaultRouterBytecode = abi.encodePacked(
+            type(VaultRouter).creationCode,
+            abi.encode(address(routerEscrow), gateway, spoke, deployer)
+        );
+        vaultRouter = VaultRouter(create3(vaultRouterSalt, vaultRouterBytecode));
+        console.log("VaultRouter deployed at:", address(vaultRouter));
+    }
+
+    // Helper function to deploy hook contracts in a separate scope to avoid stack too deep errors
+    function _deployHooks(bytes32 baseSalt, address deployer) private {
+        // Hooks - deploy using CreateX
+        bytes32 freezeOnlySalt = keccak256(abi.encodePacked(baseSalt, "freezeOnlyHook"));
+        bytes memory freezeOnlyBytecode = abi.encodePacked(
+            type(FreezeOnly).creationCode,
+            abi.encode(address(root), deployer)
+        );
+        freezeOnlyHook = create3(freezeOnlySalt, freezeOnlyBytecode);
+        console.log("FreezeOnlyHook deployed at:", freezeOnlyHook);
+
+        bytes32 fullRestrictionsSalt = keccak256(abi.encodePacked(baseSalt, "fullRestrictionsHook"));
+        bytes memory fullRestrictionsBytecode = abi.encodePacked(
+            type(FullRestrictions).creationCode,
+            abi.encode(address(root), deployer)
+        );
+        fullRestrictionsHook = create3(fullRestrictionsSalt, fullRestrictionsBytecode);
+        console.log("FullRestrictionsHook deployed at:", fullRestrictionsHook);
+
+        bytes32 redemptionRestrictionsSalt = keccak256(abi.encodePacked(baseSalt, "redemptionRestrictionsHook"));
+        bytes memory redemptionRestrictionsBytecode = abi.encodePacked(
+            type(RedemptionRestrictions).creationCode,
+            abi.encode(address(root), deployer)
+        );
+        redemptionRestrictionsHook = create3(redemptionRestrictionsSalt, redemptionRestrictionsBytecode);
+        console.log("RedemptionRestrictionsHook deployed at:", redemptionRestrictionsHook);
+    }
+
+    // Helper function to deploy AsyncVaultFactory in a separate scope to avoid stack too deep errors
+    function _deployAsyncVaultFactory(bytes32 baseSalt, address deployer) private returns (AsyncVaultFactory) {
+        bytes32 asyncVaultFactorySalt = keccak256(abi.encodePacked(baseSalt, "asyncVaultFactory"));
+        bytes memory asyncVaultFactoryBytecode = abi.encodePacked(
+            type(AsyncVaultFactory).creationCode,
+            abi.encode(address(root), asyncRequestManager, deployer)
+        );
+        return AsyncVaultFactory(create3(asyncVaultFactorySalt, asyncVaultFactoryBytecode));
+    }
+
+    // Helper function to deploy SyncDepositVaultFactory in a separate scope to avoid stack too deep errors  
+    // This contract has 4 constructor parameters that were causing compilation issues
+    function _deploySyncDepositVaultFactory(bytes32 baseSalt, address deployer) private returns (SyncDepositVaultFactory) {
+        bytes32 syncDepositVaultFactorySalt = keccak256(abi.encodePacked(baseSalt, "syncDepositVaultFactory"));
+        bytes memory syncDepositVaultFactoryBytecode = abi.encodePacked(
+            type(SyncDepositVaultFactory).creationCode,
+            abi.encode(address(root), syncManager, asyncRequestManager, deployer)
+        );
+        return SyncDepositVaultFactory(create3(syncDepositVaultFactorySalt, syncDepositVaultFactoryBytecode));
     }
 }
