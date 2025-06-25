@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {d18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
@@ -24,6 +25,10 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
 
     HubHelpers hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, sender, scm, address(this));
+
+    PoolId constant POOL_A = PoolId.wrap(1);
+    ShareClassId constant SC_A = ShareClassId.wrap("2");
+    AssetId constant ASSET_A = AssetId.wrap(3);
 }
 
 contract TestMainMethodsChecks is TestCommon {
@@ -43,5 +48,17 @@ contract TestMainMethodsChecks is TestCommon {
         hubHelpers.updateAccountingValue(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), true, 0);
 
         vm.stopPrank();
+    }
+}
+
+contract TestPricePoolPerAsset is TestCommon {
+    function testPriceWithoutHoldins() public {
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(false)
+        );
+
+        assertEq(hubHelpers.pricePoolPerAsset(POOL_A, SC_A, ASSET_A).raw(), d18(1, 1).raw());
     }
 }
