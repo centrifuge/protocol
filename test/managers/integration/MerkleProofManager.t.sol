@@ -382,6 +382,13 @@ contract MerkleProofManagerSuccessTests is MerkleProofManagerBaseTest {
     using CastLib for *;
     using UpdateContractMessageLib for *;
 
+    function testReceiveEther() public {
+        (bool success,) = address(manager).call{value: 1 ether}("");
+        assertTrue(success, "Failed to send Ether");
+
+        assertEq(address(manager).balance, 1 ether);
+    }
+
     function testExecute(uint128 withdrawAmount, uint128 depositAmount) public {
         withdrawAmount = uint128(bound(withdrawAmount, 0, type(uint128).max / 2));
         depositAmount = uint128(bound(depositAmount, 0, withdrawAmount));
