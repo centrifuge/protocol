@@ -37,13 +37,10 @@ contract HubDeployer is CommonDeployer {
     function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
         deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
 
-        // Get the base salt from the FullDeployer
-        bytes32 baseSalt = getBaseSalt();
-        
         console.log("Deploying Hub contracts with CreateX...");
 
         // HubRegistry
-        bytes32 hubRegistrySalt = keccak256(abi.encodePacked(baseSalt, "hubRegistry"));
+        bytes32 hubRegistrySalt = generateSalt("hubRegistry");
         bytes memory hubRegistryBytecode = abi.encodePacked(
             type(HubRegistry).creationCode,
             abi.encode(deployer)
@@ -52,7 +49,7 @@ contract HubDeployer is CommonDeployer {
         console.log("HubRegistry deployed at:", address(hubRegistry));
 
         // IdentityValuation
-        bytes32 identityValuationSalt = keccak256(abi.encodePacked(baseSalt, "identityValuation"));
+        bytes32 identityValuationSalt = generateSalt("identityValuation");
         bytes memory identityValuationBytecode = abi.encodePacked(
             type(IdentityValuation).creationCode,
             abi.encode(hubRegistry, deployer)
@@ -61,7 +58,7 @@ contract HubDeployer is CommonDeployer {
         console.log("IdentityValuation deployed at:", address(identityValuation));
 
         // Accounting
-        bytes32 accountingSalt = keccak256(abi.encodePacked(baseSalt, "accounting"));
+        bytes32 accountingSalt = generateSalt("accounting");
         bytes memory accountingBytecode = abi.encodePacked(
             type(Accounting).creationCode,
             abi.encode(deployer)
@@ -70,7 +67,7 @@ contract HubDeployer is CommonDeployer {
         console.log("Accounting deployed at:", address(accounting));
 
         // Holdings
-        bytes32 holdingsSalt = keccak256(abi.encodePacked(baseSalt, "holdings"));
+        bytes32 holdingsSalt = generateSalt("holdings");
         bytes memory holdingsBytecode = abi.encodePacked(
             type(Holdings).creationCode,
             abi.encode(hubRegistry, deployer)
@@ -79,7 +76,7 @@ contract HubDeployer is CommonDeployer {
         console.log("Holdings deployed at:", address(holdings));
 
         // ShareClassManager
-        bytes32 shareClassManagerSalt = keccak256(abi.encodePacked(baseSalt, "shareClassManager"));
+        bytes32 shareClassManagerSalt = generateSalt("shareClassManager");
         bytes memory shareClassManagerBytecode = abi.encodePacked(
             type(ShareClassManager).creationCode,
             abi.encode(hubRegistry, deployer)
@@ -92,11 +89,11 @@ contract HubDeployer is CommonDeployer {
         // in the constructor argument encoding.
         
         // HubHelpers
-        hubHelpers = _deployHubHelpers(baseSalt, deployer);
+        hubHelpers = _deployHubHelpers(deployer);
         console.log("HubHelpers deployed at:", address(hubHelpers));
 
-        // Hub
-        hub = _deployHubContract(baseSalt, deployer);
+        // Deploy Hub contract in a separate scope to avoid stack too deep errors  
+        hub = _deployHubContract(deployer);
         console.log("Hub deployed at:", address(hub));
 
         _poolsRegister();
@@ -176,8 +173,8 @@ contract HubDeployer is CommonDeployer {
 
     // Helper function to deploy HubHelpers in a separate scope to avoid stack too deep errors
     // The HubHelpers constructor requires 6 parameters which was causing compilation issues
-    function _deployHubHelpers(bytes32 baseSalt, address deployer) private returns (HubHelpers) {
-        bytes32 hubHelpersSalt = keccak256(abi.encodePacked(baseSalt, "hubHelpers"));
+    function _deployHubHelpers(address deployer) private returns (HubHelpers) {
+        bytes32 hubHelpersSalt = generateSalt("hubHelpers");
         bytes memory hubHelpersBytecode = abi.encodePacked(
             type(HubHelpers).creationCode,
             abi.encode(address(holdings), address(accounting), address(hubRegistry), address(messageDispatcher), address(shareClassManager), deployer)
@@ -187,8 +184,8 @@ contract HubDeployer is CommonDeployer {
 
     // Helper function to deploy Hub contract in a separate scope to avoid stack too deep errors
     // The Hub constructor requires 7 parameters which was causing compilation issues
-    function _deployHubContract(bytes32 baseSalt, address deployer) private returns (Hub) {
-        bytes32 hubSalt = keccak256(abi.encodePacked(baseSalt, "hub"));
+    function _deployHubContract(address deployer) private returns (Hub) {
+        bytes32 hubSalt = generateSalt("hub");
         
         // Store variables to reduce stack pressure
         address gatewayAddr = address(gateway);

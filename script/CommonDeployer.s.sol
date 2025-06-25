@@ -45,6 +45,19 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
     }
 
+    /**
+     * @dev Generates a salt for contract deployment
+     * @param contractName The name of the contract
+     * @return salt A deterministic salt based on contract name and optional VERSION
+     */
+    function generateSalt(string memory contractName) internal view returns (bytes32) {
+        string memory version = vm.envOr("VERSION", string(""));
+        if (bytes(version).length > 0) {
+            return keccak256(abi.encodePacked(contractName, version));
+        }
+        return keccak256(abi.encodePacked(contractName));
+    }
+
     function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
@@ -55,9 +68,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
         uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
 
-        // Get the base salt from the FullDeployer
-        bytes32 baseSalt = getBaseSalt();
-        
         console.log("Deploying Common contracts with CreateX...");
 
         // Note: This function was split into smaller helper functions to avoid
@@ -65,21 +75,16 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         // variables are used in a single function scope.
         
         // Deploy basic contracts first
-        _deployBasicContracts(baseSalt, deployer, messageGasLimit, maxBatchSize);
+        _deployBasicContracts(deployer, messageGasLimit, maxBatchSize);
         
         // Deploy more complex contracts
-        _deployComplexContracts(centrifugeId_, baseSalt, deployer);
+        _deployComplexContracts(centrifugeId_, deployer);
 
         adminSafe = adminSafe_;
 
         _commonRegister();
         _commonRely();
         _commonFile();
-    }
-
-    // Virtual function to get the base salt - implemented by FullDeployer
-    function getBaseSalt() internal view virtual returns (bytes32) {
-        return SALT; // Fallback to the old SALT if not overridden
     }
 
     function _commonRegister() private {
@@ -150,9 +155,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     // Helper function to deploy basic contracts in a separate scope to avoid stack too deep errors
-    function _deployBasicContracts(bytes32 baseSalt, address deployer, uint128 messageGasLimit, uint128 maxBatchSize) private {
+    function _deployBasicContracts(address deployer, uint128 messageGasLimit, uint128 maxBatchSize) private {
         // Root
-        bytes32 rootSalt = keccak256(abi.encodePacked(baseSalt, "root"));
+        bytes32 rootSalt = generateSalt("root");
         bytes memory rootBytecode = abi.encodePacked(
             type(Root).creationCode,
             abi.encode(DELAY, deployer)
@@ -161,7 +166,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("Root deployed at:", address(root));
 
         // TokenRecoverer
-        bytes32 tokenRecovererSalt = keccak256(abi.encodePacked(baseSalt, "tokenRecoverer"));
+        bytes32 tokenRecovererSalt = generateSalt("tokenRecoverer");
         bytes memory tokenRecovererBytecode = abi.encodePacked(
             type(TokenRecoverer).creationCode,
             abi.encode(root, deployer)
@@ -170,7 +175,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("TokenRecoverer deployed at:", address(tokenRecoverer));
 
         // MessageProcessor
-        bytes32 messageProcessorSalt = keccak256(abi.encodePacked(baseSalt, "messageProcessor"));
+        bytes32 messageProcessorSalt = generateSalt("messageProcessor");
         bytes memory messageProcessorBytecode = abi.encodePacked(
             type(MessageProcessor).creationCode,
             abi.encode(root, tokenRecoverer, deployer)
@@ -179,7 +184,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("MessageProcessor deployed at:", address(messageProcessor));
 
         // GasService
-        bytes32 gasServiceSalt = keccak256(abi.encodePacked(baseSalt, "gasService"));
+        bytes32 gasServiceSalt = generateSalt("gasService");
         bytes memory gasServiceBytecode = abi.encodePacked(
             type(GasService).creationCode,
             abi.encode(maxBatchSize, messageGasLimit)
@@ -189,9 +194,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     // Helper function to deploy more complex contracts in a separate scope to avoid stack too deep errors
-    function _deployComplexContracts(uint16 centrifugeId_, bytes32 baseSalt, address deployer) private {
+    function _deployComplexContracts(uint16 centrifugeId_, address deployer) private {
         // Gateway
-        bytes32 gatewaySalt = keccak256(abi.encodePacked(baseSalt, "gateway"));
+        bytes32 gatewaySalt = generateSalt("gateway");
         bytes memory gatewayBytecode = abi.encodePacked(
             type(Gateway).creationCode,
             abi.encode(root, gasService, deployer)
@@ -200,7 +205,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("Gateway deployed at:", address(gateway));
 
         // MultiAdapter
-        bytes32 multiAdapterSalt = keccak256(abi.encodePacked(baseSalt, "multiAdapter"));
+        bytes32 multiAdapterSalt = generateSalt("multiAdapter");
         bytes memory multiAdapterBytecode = abi.encodePacked(
             type(MultiAdapter).creationCode,
             abi.encode(centrifugeId_, gateway, deployer)
@@ -209,7 +214,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("MultiAdapter deployed at:", address(multiAdapter));
 
         // MessageDispatcher - use intermediate variables to avoid stack too deep
-        bytes32 messageDispatcherSalt = keccak256(abi.encodePacked(baseSalt, "messageDispatcher"));
+        bytes32 messageDispatcherSalt = generateSalt("messageDispatcher");
         
         // Store variables to reduce stack pressure
         address rootAddr = address(root);
@@ -224,7 +229,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("MessageDispatcher deployed at:", address(messageDispatcher));
 
         // Guardian - use intermediate variables to avoid stack too deep
-        bytes32 guardianSalt = keccak256(abi.encodePacked(baseSalt, "guardian"));
+        bytes32 guardianSalt = generateSalt("guardian");
         
         // Store variables to reduce stack pressure  
         address multiAdapterAddr = address(multiAdapter);
@@ -238,13 +243,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         console.log("Guardian deployed at:", address(guardian));
 
         // PoolEscrowFactory
-        poolEscrowFactory = _deployPoolEscrowFactory(baseSalt, deployer);
+        poolEscrowFactory = _deployPoolEscrowFactory(deployer);
         console.log("PoolEscrowFactory deployed at:", address(poolEscrowFactory));
     }
 
     // Helper function to deploy PoolEscrowFactory in a separate scope to avoid stack too deep errors
-    function _deployPoolEscrowFactory(bytes32 baseSalt, address deployer) private returns (PoolEscrowFactory) {
-        bytes32 poolEscrowFactorySalt = keccak256(abi.encodePacked(baseSalt, "poolEscrowFactory"));
+    function _deployPoolEscrowFactory(address deployer) private returns (PoolEscrowFactory) {
+        bytes32 poolEscrowFactorySalt = generateSalt("poolEscrowFactory");
         bytes memory poolEscrowFactoryBytecode = abi.encodePacked(
             type(PoolEscrowFactory).creationCode,
             abi.encode(address(root), deployer)
