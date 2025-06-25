@@ -14,19 +14,6 @@ source "$SCRIPT_DIR/formathelper.sh"
 verify_contracts() {
     local deployment_script=${1:-""}
 
-    # Get etherscan URL from network config
-    local network_config="$ROOT_DIR/env/$NETWORK.json"
-    # Extract etherscanUrl field from network.etherscanUrl, return empty string if null/missing
-    local etherscan_url
-    etherscan_url=$(jq -r '.network.etherscanUrl // empty' "$network_config")
-
-    if [[ -z "$etherscan_url" ]]; then
-        print_error "No etherscanUrl found in $network_config"
-        exit 1
-    fi
-
-    print_step "Using Etherscan API: $etherscan_url"
-
     # Start with network config, but check if latest deployment differs
     local contracts_file="$network_config"
     print_step "Verifying contracts from $contracts_file"
@@ -297,8 +284,6 @@ run_forge_script() {
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
         --verbosity 4 \
-        # --delay 10 \
-        # --slow \
         ${FORGE_ARGS[*]}"
 
     CATAPULTA_CMD="NETWORK=$NETWORK catapulta script \
@@ -307,13 +292,24 @@ run_forge_script() {
         --chain-id \"$CHAIN_ID\" \
         \"$ROOT_DIR/script/$script.s.sol\" \
         --optimize \
-        --rpc-url \"$RPC_URL\" \
-        --private-key \"$PRIVATE_KEY\" \
         --verify \
         --broadcast \
         ${FORGE_ARGS[*]}"
 
     print_step "Executing Command"
+
+    # Show the command being executed (with variable names for easy copy-paste)
+    if [ "$USE_CATAPULTA" = true ]; then
+        local debug_cmd="$CATAPULTA_CMD"
+        debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        debug_cmd="${debug_cmd//$ETHERSCAN_API_KEY/\$ETHERSCAN_API_KEY}"
+        print_info "Executing Catapulta: $debug_cmd"
+    else
+        local debug_cmd="$FORGE_CMD"
+        debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        debug_cmd="${debug_cmd//$ETHERSCAN_API_KEY/\$ETHERSCAN_API_KEY}"
+        print_info "Executing Forge: $debug_cmd"
+    fi
 
     # Execute the appropriate command
     if [ "$USE_CATAPULTA" = true ]; then

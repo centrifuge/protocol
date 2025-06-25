@@ -4,7 +4,6 @@
         "centrifugeId": 9,
         "environment": "testnet",
         "network": "anvil",
-        "etherscanUrl": "https://api-sepolia.arbiscan.io/api",
         "catapultaNetwork": "anvil",
         "connectsTo": [
             "anvil"
