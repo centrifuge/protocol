@@ -30,7 +30,7 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     }
 
     receive() external payable {}
-    
+
     //----------------------------------------------------------------------------------------------
     // Owner actions
     //----------------------------------------------------------------------------------------------
