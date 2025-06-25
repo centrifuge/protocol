@@ -14,6 +14,9 @@ source "$SCRIPT_DIR/formathelper.sh"
 verify_contracts() {
     local deployment_script=${1:-""}
 
+    # Get etherscan URL from network config
+    local network_config="$ROOT_DIR/env/$NETWORK.json"
+
     # Start with network config, but check if latest deployment differs
     local contracts_file="$network_config"
     print_step "Verifying contracts from $contracts_file"
@@ -156,7 +159,6 @@ verify_contracts() {
         fi
 
         # Now check if contract is verified on Etherscan (using API v2)
-        print_info "Checking if $contract_name ($contract_address) is verified on Etherscan..."
         local result
         result=$(curl -s "https://api.etherscan.io/v2/api?chainid=$CHAIN_ID&module=contract&action=getsourcecode&address=$contract_address&apikey=$ETHERSCAN_API_KEY")
 
@@ -288,7 +290,7 @@ run_forge_script() {
 
     CATAPULTA_CMD="NETWORK=$NETWORK catapulta script \
         --private-key $PRIVATE_KEY \
-        --network ${CATAPULTA_NET:-$NETWORK} \
+        --account $ADMIN \
         --chain-id \"$CHAIN_ID\" \
         \"$ROOT_DIR/script/$script.s.sol\" \
         --optimize \
