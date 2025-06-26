@@ -9,7 +9,6 @@ import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 import "forge-std/Script.sol";
 
 contract FullDeployer is HubDeployer, SpokeDeployer {
-    
     function deployFull(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
         deployHub(centrifugeId_, adminSafe_, deployer, isTests);
         deploySpoke(centrifugeId_, adminSafe_, deployer, isTests);
@@ -31,13 +30,13 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
             revert("NETWORK environment variable is required");
         }
-        
+
         console.log("Network:", network);
         console.log("Environment:", environment);
 
         // Use the regular deployment functions - they now use CreateX internally
         deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
-        
+
         // Since `wire()` is not called, separately adding the safe here
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();

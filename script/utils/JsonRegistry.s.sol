@@ -31,8 +31,17 @@ contract JsonRegistry is Script {
         }
 
         // Save with timestamp for history
-        string memory timestampedPath =
-            string(abi.encodePacked(dir, vm.toString(block.chainid),"_block", vm.toString(block.chainid), "_nonce", vm.toString(vm.getNonce(msg.sender)), ".json"));
+        string memory timestampedPath = string(
+            abi.encodePacked(
+                dir,
+                vm.toString(block.chainid),
+                "_block",
+                vm.toString(block.chainid),
+                "_nonce",
+                vm.toString(vm.getNonce(msg.sender)),
+                ".json"
+            )
+        );
         deploymentOutput = string(abi.encodePacked(deploymentOutput, "\n  }\n}\n"));
         vm.writeFile(timestampedPath, deploymentOutput);
         console.log("Contract addresses saved to: %s", timestampedPath);

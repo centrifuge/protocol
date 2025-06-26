@@ -10,7 +10,7 @@ struct Price {
     uint64 maxAge;
 }
 
-/// @dev Checks if a price is valid. Returns false if price is 0 or computedAt is 0. Otherwise checks for block
+/// @dev Checks if a price is valid. Returns false if computedAt is 0. Otherwise checks for block
 /// timestamp <= computedAt + maxAge
 function isValid(Price memory price) view returns (bool) {
     if (price.computedAt != 0) {

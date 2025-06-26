@@ -141,9 +141,21 @@ interface IWormholeAdapter is IAdapter, IWormholeReceiver {
     error NotWormholeRelayer();
     error InvalidSource();
 
-    /// @dev Configures the adapter
+    /// @notice Configures the adapter
     /// @param what Can be "sources" or "destinations".
     /// @param addr if what == "sources", it represents the source
     /// @param addr if what == "destinations", it represents the destination
     function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external;
+
+    /// @notice Returns the source configuration for a given wormhole chain id
+    /// @param wormholeId The remote wormhole id
+    /// @return centrifugeId The remote chain id
+    /// @return addr The address of the remote wormhole adapter
+    function sources(uint16 wormholeId) external view returns (uint16 centrifugeId, address addr);
+
+    /// @notice Returns the destination configuration for a given chain id
+    /// @param centrifugeId The remote chain id
+    /// @return wormholeId The remote wormhole id
+    /// @return addr The address of the remote wormhole adapter
+    function destinations(uint16 centrifugeId) external view returns (uint16 wormholeId, address addr);
 }

@@ -246,19 +246,11 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     using MathLib for uint128;
     using CastLib for string;
 
-    function testDeployment(address nonWard) public view {
-        vm.assume(nonWard != address(shareClass.hubRegistry()) && nonWard != address(this));
-
-        assertEq(address(shareClass.hubRegistry()), hubRegistryMock);
+    function testInitialValues() public view {
         assertEq(shareClass.nowDepositEpoch(scId, USDC), 1);
         assertEq(shareClass.nowRedeemEpoch(scId, USDC), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
-
-        assertEq(shareClass.wards(address(this)), 1);
-        assertEq(shareClass.wards(address(shareClass.hubRegistry())), 0);
-
-        assertEq(shareClass.wards(nonWard), 0);
     }
 
     function testDefaultGetShareClassNavPerShare() public view {

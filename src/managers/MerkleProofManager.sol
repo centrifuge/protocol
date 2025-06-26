@@ -7,6 +7,7 @@ import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -27,6 +28,8 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
         poolId = poolId_;
         spoke = spoke_;
     }
+
+    receive() external payable {}
 
     //----------------------------------------------------------------------------------------------
     // Owner actions
@@ -115,15 +118,18 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
 }
 
 contract MerkleProofManagerFactory is IMerkleProofManagerFactory {
-    address public immutable spoke;
+    ISpoke public immutable spoke;
 
-    constructor(address spoke_) {
+    constructor(ISpoke spoke_) {
         spoke = spoke_;
     }
 
     /// @inheritdoc IMerkleProofManagerFactory
     function newManager(PoolId poolId) external returns (IMerkleProofManager) {
-        MerkleProofManager manager = new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, spoke);
+        require(spoke.isPoolActive(poolId), InvalidPoolId());
+
+        MerkleProofManager manager =
+            new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, address(spoke));
 
         emit DeployMerkleProofManager(poolId, address(manager));
         return IMerkleProofManager(manager);

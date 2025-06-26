@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
 import {Root} from "src/common/Root.sol";
@@ -75,6 +76,16 @@ contract BaseTest is SpokeDeployer, Test {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
+    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).rely(address(guardian));
+        IAuth(address(adapter)).deny(address(this));
+
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        multiAdapter.file("adapters", centrifugeId, adapters);
+    }
+
     function setUp() public virtual {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -99,7 +110,7 @@ contract BaseTest is SpokeDeployer, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(OTHER_CHAIN_ID, adapter1, address(this));
+        _wire(OTHER_CHAIN_ID, adapter1);
         // remove deployer access
         // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 

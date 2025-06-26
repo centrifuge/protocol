@@ -37,64 +37,42 @@ contract HubDeployer is CommonDeployer {
     function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
         deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
 
-        console.log("Deploying Hub contracts with CreateX...");
-
         // HubRegistry
         bytes32 hubRegistrySalt = generateSalt("hubRegistry");
-        bytes memory hubRegistryBytecode = abi.encodePacked(
-            type(HubRegistry).creationCode,
-            abi.encode(deployer)
-        );
+        bytes memory hubRegistryBytecode = abi.encodePacked(type(HubRegistry).creationCode, abi.encode(deployer));
         hubRegistry = HubRegistry(create3(hubRegistrySalt, hubRegistryBytecode));
-        console.log("HubRegistry deployed at:", address(hubRegistry));
 
         // IdentityValuation
         bytes32 identityValuationSalt = generateSalt("identityValuation");
-        bytes memory identityValuationBytecode = abi.encodePacked(
-            type(IdentityValuation).creationCode,
-            abi.encode(hubRegistry, deployer)
-        );
+        bytes memory identityValuationBytecode =
+            abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry, deployer));
         identityValuation = IdentityValuation(create3(identityValuationSalt, identityValuationBytecode));
-        console.log("IdentityValuation deployed at:", address(identityValuation));
 
         // Accounting
         bytes32 accountingSalt = generateSalt("accounting");
-        bytes memory accountingBytecode = abi.encodePacked(
-            type(Accounting).creationCode,
-            abi.encode(deployer)
-        );
+        bytes memory accountingBytecode = abi.encodePacked(type(Accounting).creationCode, abi.encode(deployer));
         accounting = Accounting(create3(accountingSalt, accountingBytecode));
-        console.log("Accounting deployed at:", address(accounting));
 
         // Holdings
         bytes32 holdingsSalt = generateSalt("holdings");
-        bytes memory holdingsBytecode = abi.encodePacked(
-            type(Holdings).creationCode,
-            abi.encode(hubRegistry, deployer)
-        );
+        bytes memory holdingsBytecode = abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, deployer));
         holdings = Holdings(create3(holdingsSalt, holdingsBytecode));
-        console.log("Holdings deployed at:", address(holdings));
 
         // ShareClassManager
         bytes32 shareClassManagerSalt = generateSalt("shareClassManager");
-        bytes memory shareClassManagerBytecode = abi.encodePacked(
-            type(ShareClassManager).creationCode,
-            abi.encode(hubRegistry, deployer)
-        );
+        bytes memory shareClassManagerBytecode =
+            abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, deployer));
         shareClassManager = ShareClassManager(create3(shareClassManagerSalt, shareClassManagerBytecode));
-        console.log("ShareClassManager deployed at:", address(shareClassManager));
 
         // Note: HubHelpers and Hub deployments were moved to separate helper functions
         // to avoid "stack too deep" compilation errors caused by too many local variables
         // in the constructor argument encoding.
-        
+
         // HubHelpers
         hubHelpers = _deployHubHelpers(deployer);
-        console.log("HubHelpers deployed at:", address(hubHelpers));
 
-        // Deploy Hub contract in a separate scope to avoid stack too deep errors  
+        // Deploy Hub contract in a separate scope to avoid stack too deep errors
         hub = _deployHubContract(deployer);
-        console.log("Hub deployed at:", address(hub));
 
         _poolsRegister();
         _poolsRely();
@@ -177,7 +155,14 @@ contract HubDeployer is CommonDeployer {
         bytes32 hubHelpersSalt = generateSalt("hubHelpers");
         bytes memory hubHelpersBytecode = abi.encodePacked(
             type(HubHelpers).creationCode,
-            abi.encode(address(holdings), address(accounting), address(hubRegistry), address(messageDispatcher), address(shareClassManager), deployer)
+            abi.encode(
+                address(holdings),
+                address(accounting),
+                address(hubRegistry),
+                address(messageDispatcher),
+                address(shareClassManager),
+                deployer
+            )
         );
         return HubHelpers(create3(hubHelpersSalt, hubHelpersBytecode));
     }
@@ -186,14 +171,22 @@ contract HubDeployer is CommonDeployer {
     // The Hub constructor requires 7 parameters which was causing compilation issues
     function _deployHubContract(address deployer) private returns (Hub) {
         bytes32 hubSalt = generateSalt("hub");
-        
+
         // Store variables to reduce stack pressure
         address gatewayAddr = address(gateway);
         address hubHelpersAddr = address(hubHelpers);
-        
+
         bytes memory hubBytecode = abi.encodePacked(
             type(Hub).creationCode,
-            abi.encode(gatewayAddr, address(holdings), hubHelpersAddr, address(accounting), address(hubRegistry), address(shareClassManager), deployer)
+            abi.encode(
+                gatewayAddr,
+                address(holdings),
+                hubHelpersAddr,
+                address(accounting),
+                address(hubRegistry),
+                address(shareClassManager),
+                deployer
+            )
         );
         return Hub(create3(hubSalt, hubBytecode));
     }

@@ -51,9 +51,7 @@ contract MockWormholeRelayer is Mock {
     }
 }
 
-contract WormholeAdapterTest is Test {
-    using CastLib for *;
-
+contract WormholeAdapterTestBase is Test {
     MockWormholeRelayer relayer;
     WormholeAdapter adapter;
 
@@ -65,6 +63,10 @@ contract WormholeAdapterTest is Test {
         relayer = new MockWormholeRelayer();
         adapter = new WormholeAdapter(GATEWAY, address(relayer), address(this));
     }
+}
+
+contract WormholeAdapterTest is WormholeAdapterTestBase {
+    using CastLib for *;
 
     function testDeploy() public view {
         assertEq(address(adapter.entrypoint()), address(GATEWAY));

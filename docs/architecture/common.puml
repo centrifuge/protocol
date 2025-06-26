@@ -7,8 +7,7 @@ package misc {
 }
 
 package hub {
-    class Hub
-    class HubHelpers
+    class "Hub/HubHelpers" as Hub
 }
 
 package spoke {
@@ -42,24 +41,23 @@ MessageProcessor --up-> Spoke
 MessageProcessor --up-> BalanceSheet
 MessageProcessor <--up-> Gateway
 
-MessageDispatcher ---> Root
-MessageDispatcher ---> TokenRecoverer
-MessageDispatcher ---> Gateway
-MessageDispatcher <--> Hub
-HubHelpers ---> MessageDispatcher
-MessageDispatcher ---> Spoke
-MessageDispatcher ---> BalanceSheet
+MessageDispatcher <---> Root
+MessageDispatcher <---> TokenRecoverer
+MessageDispatcher <---> Gateway
+MessageDispatcher <-right-> Hub
+MessageDispatcher <---> Spoke
+MessageDispatcher <---> BalanceSheet
 
 Guardian ---> Hub
 Guardian -left---> Root
 Guardian ---> MessageDispatcher
-Guardian ---> MultiAdapter
+Guardian -> MultiAdapter
 
 Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
 Gateway -down--> MultiAdapter
-MultiAdapter -down-->"n" IAdapter
+MultiAdapter -down->"n" IAdapter
 Gateway -up->PoolEscrow
 
 PoolEscrow -up-|> Escrow

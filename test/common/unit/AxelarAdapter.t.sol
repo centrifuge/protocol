@@ -49,10 +49,7 @@ contract MockAxelarGasService is Mock {
     }
 }
 
-contract AxelarAdapterTest is Test {
-    using CastLib for *;
-    using AxelarAddressToString for address;
-
+contract AxelarAdapterTestBase is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
 
@@ -67,6 +64,11 @@ contract AxelarAdapterTest is Test {
         axelarGasService = new MockAxelarGasService();
         adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService), address(this));
     }
+}
+
+contract AxelarAdapterTest is AxelarAdapterTestBase {
+    using CastLib for *;
+    using AxelarAddressToString for address;
 
     function testDeploy() public view {
         assertEq(address(adapter.entrypoint()), address(GATEWAY));

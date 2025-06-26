@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
@@ -44,7 +41,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
-        version = vm.envString("VERSION");
+        version = vm.envOr("VERSION", string(""));
     }
 
     /**
@@ -75,8 +72,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
         uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
-
-        console.log("Deploying Common contracts with CreateX...");
 
         // Note: This function was split into smaller helper functions to avoid
         // "stack too deep" compilation errors that occur when too many local
@@ -114,7 +109,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         root.rely(address(messageDispatcher));
         gateway.rely(address(root));
         gateway.rely(address(messageDispatcher));
-        gateway.rely(address(messageProcessor));
         gateway.rely(address(multiAdapter));
         multiAdapter.rely(address(root));
         multiAdapter.rely(address(guardian));
@@ -123,6 +117,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         messageDispatcher.rely(address(guardian));
         messageProcessor.rely(address(root));
         messageProcessor.rely(address(gateway));
+        tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
         tokenRecoverer.rely(address(messageProcessor));
         poolEscrowFactory.rely(address(root));
@@ -132,18 +127,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         gateway.file("processor", address(messageProcessor));
         gateway.file("adapter", address(multiAdapter));
         poolEscrowFactory.file("gateway", address(gateway));
-    }
-    // The centrifugeId_ here has to be the destination centrifuge_chain_id
-    // Use WireAdapters.s.sol for automatic wiring of live multi-chains adapters
-
-    function wire(uint16 centrifugeId_, IAdapter adapter, address deployer) public {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).deny(deployer);
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-
-        multiAdapter.file("adapters", centrifugeId_, adapters);
     }
 
     function removeCommonDeployerAccess(address deployer) public {
@@ -168,28 +151,24 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         bytes32 rootSalt = generateSalt("root");
         bytes memory rootBytecode = abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer));
         root = Root(create3(rootSalt, rootBytecode));
-        console.log("Root deployed at:", address(root));
 
         // TokenRecoverer
         bytes32 tokenRecovererSalt = generateSalt("tokenRecoverer");
         bytes memory tokenRecovererBytecode =
             abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer));
         tokenRecoverer = TokenRecoverer(create3(tokenRecovererSalt, tokenRecovererBytecode));
-        console.log("TokenRecoverer deployed at:", address(tokenRecoverer));
 
         // MessageProcessor
         bytes32 messageProcessorSalt = generateSalt("messageProcessor");
         bytes memory messageProcessorBytecode =
             abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer));
         messageProcessor = MessageProcessor(create3(messageProcessorSalt, messageProcessorBytecode));
-        console.log("MessageProcessor deployed at:", address(messageProcessor));
 
         // GasService
         bytes32 gasServiceSalt = generateSalt("gasService");
         bytes memory gasServiceBytecode =
             abi.encodePacked(type(GasService).creationCode, abi.encode(maxBatchSize, messageGasLimit));
         gasService = GasService(create3(gasServiceSalt, gasServiceBytecode));
-        console.log("GasService deployed at:", address(gasService));
     }
 
     // Helper function to deploy more complex contracts in a separate scope to avoid stack too deep errors
@@ -199,14 +178,12 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         bytes memory gatewayBytecode =
             abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer));
         gateway = Gateway(payable(create3(gatewaySalt, gatewayBytecode)));
-        console.log("Gateway deployed at:", address(gateway));
 
         // MultiAdapter
         bytes32 multiAdapterSalt = generateSalt("multiAdapter");
         bytes memory multiAdapterBytecode =
             abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(centrifugeId_, gateway, deployer));
         multiAdapter = MultiAdapter(create3(multiAdapterSalt, multiAdapterBytecode));
-        console.log("MultiAdapter deployed at:", address(multiAdapter));
 
         // MessageDispatcher - use intermediate variables to avoid stack too deep
         bytes32 messageDispatcherSalt = generateSalt("messageDispatcher");
@@ -221,7 +198,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             abi.encode(centrifugeId_, rootAddr, gatewayAddr, tokenRecovererAddr, deployer)
         );
         messageDispatcher = MessageDispatcher(create3(messageDispatcherSalt, messageDispatcherBytecode));
-        console.log("MessageDispatcher deployed at:", address(messageDispatcher));
 
         // Guardian - use intermediate variables to avoid stack too deep
         bytes32 guardianSalt = generateSalt("guardian");
@@ -234,11 +210,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapterAddr, rootAddr, messageDispatcherAddr)
         );
         guardian = Guardian(create3(guardianSalt, guardianBytecode));
-        console.log("Guardian deployed at:", address(guardian));
 
         // PoolEscrowFactory
         poolEscrowFactory = _deployPoolEscrowFactory(deployer);
-        console.log("PoolEscrowFactory deployed at:", address(poolEscrowFactory));
     }
 
     // Helper function to deploy PoolEscrowFactory in a separate scope to avoid stack too deep errors
