@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {vm} from "@chimera/Hevm.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 // Helpers
 import {Panic} from "@recon/Panic.sol";
 
@@ -17,12 +19,8 @@ import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
-abstract contract BalanceSheetTargets is
-    BaseTargetFunctions,
-    Properties
-{
+abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
-
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
 
@@ -104,7 +102,9 @@ abstract contract BalanceSheetTargets is
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.transferSharesFrom(vault.poolId(), vault.scId(), _getActor(), _getActor(), _getRandomActor(uint256(uint160(to))), amount);
+        balanceSheet.transferSharesFrom(
+            vault.poolId(), vault.scId(), _getActor(), _getActor(), _getRandomActor(uint256(uint160(to))), amount
+        );
     }
 
     function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {

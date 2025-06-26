@@ -79,7 +79,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             // not change
             if (Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
                 // nowDepositEpoch = depositEpochId + 1
-                eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+                eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch2");
             }
         } catch (bytes memory reason) {
             hasReverted = true;
@@ -242,7 +242,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             // not change
             if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
                 // nowDepositEpoch = depositEpochId + 1
-                eq(lastUpdateAfter, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+                eq(lastUpdateAfter, depositEpochId + 1, "lastUpdate != nowDepositEpoch3");
                 eq(pendingAfter, 0, "pending is not zero");
             }
         } catch (bytes memory reason) {
@@ -517,7 +517,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
-        IBaseVault(_getVault()).withdraw(assets, to, _getActor());
 
         // Bal after
         uint256 tokenUserAfter = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor());

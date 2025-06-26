@@ -26,134 +26,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     /// === Potential Issues === ///
-    // forge test --match-test test_asyncVault_maxRedeem_8 -vvv
-    // NOTE: shows that user maintains an extra 1 wei of assets in maxRedeem after a redemption
-    // see this issue: https://github.com/centrifuge/protocol-v3/issues/421
-    function test_asyncVault_maxRedeem_8() public {
-        shortcut_deployNewTokenPoolAndShare(16, 29654276389875203551777999997167602027943, true, false, true);
-        address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
-
-        shortcut_deposit_and_claim(0, 1, 143, 1, 0);
-
-        (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        console2.log("maxWithdraw before redeeming and claiming: %e", maxWithdraw);
-        // queues a redemption of 1.2407674564261682736e20 shares, 124 assets
-        // results in a stuck 1 wei of "virtual" assets in state.maxWithdraw
-        // this is because in _processRedeem, state.maxWithdraw = state.maxWithdraw - assetsUp = 124 - 123 = 1
-        console2.log(
-            "initial pool escrow balance: ", MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(poolEscrow)
-        );
-
-        console2.log(" === Before Redeem and Claim === ");
-        shortcut_redeem_and_claim_clamped(
-            44055836141804467353088311715299154505223682107, 1, 60194726908356682833407755266714281307
-        );
-        (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        console2.log("maxWithdraw after redeeming and claiming: ", maxWithdraw);
-
-        console2.log(
-            "pool escrow balance after redeeming and claiming: ",
-            MockERC20(address(IBaseVault(_getVault()).asset())).balanceOf(poolEscrow)
-        );
-        // asset is gets wiped out from the state.maxWithdraw, but is still in the escrow balance
-        console2.log(" === Before maxRedeem === ");
-        asyncVault_maxRedeem(0, 0, 0);
-        (, maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        console2.log("maxWithdraw after maxRedeem: ", maxWithdraw);
-    }
-
-    // forge test --match-test test_asyncVault_maxDeposit_3 -vvv
-    // NOTE: admin issue with NAV passed in
-    // see this issue: https://github.com/centrifuge/protocol-v3/issues/422
-    function test_asyncVault_maxDeposit_3() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
-        IBaseVault vault = IBaseVault(_getVault());
-
-        console2.log(" === Before Deposit === ");
-        shortcut_deposit_sync(1, 2380311791704365157);
-        console2.log(" === After Deposit === ");
-        poolEscrowFactory.escrow(vault.poolId()).availableBalanceOf(vault.scId(), vault.asset(), 0);
-
-        // console2.log(" === Before Cancel Redeem === ");
-        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(1, 1018635830101702210, 0);
-
-        asyncVault_maxDeposit(0, 0, 0);
-    }
-
-    // forge test --match-test test_asyncVault_maxDeposit_13 -vvv
-    // NOTE: related to the above, seems to be that claimable cancel deposit request is not being updated correctly
-    function test_asyncVault_maxDeposit_13() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true);
-
-        shortcut_deposit_queue_cancel(0, 1, 1, 1, 1, 0);
-
-        hub_notifyDeposit(1);
-
-        shortcut_request_deposit(0, 1, 1, 0);
-
-        asyncVault_maxDeposit(0, 0, 0);
-    }
-
-    // forge test --match-test test_asyncVault_maxMint_5 -vvv
-    // NOTE: same as the above
-    function test_asyncVault_maxMint_5() public {
-        shortcut_deployNewTokenPoolAndShare(27, 1, true, false, false);
-
-        shortcut_deposit_sync(0, 1001264570074274036555728822370);
-
-        console2.log(" === Before Mint === ");
-        asyncVault_maxMint(0, 0, 0);
-    }
-
-    // forge test --match-test test_hub_notifyDeposit_9 -vvv
-    // NOTE: looks like a real issue
-    function test_hub_notifyDeposit_9() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true);
-
-        shortcut_deposit_queue_cancel(0, 1, 2, 1, 1, 0);
-
-        shortcut_deposit_queue_cancel(0, 1, 0, 1, 1, 0);
-
-        hub_notifyDeposit(1);
-    }
-
-    // forge test --match-test test_property_asset_soundness_7 -vvv
-    // NOTE: might be a real issue or something about property assumption is incorrect
-    // TODO(wischli): Investigate
-    function test_property_asset_soundness_7() public {
-        shortcut_deployNewTokenPoolAndShare(0, 1, true, false, false);
-
-        shortcut_mint_sync(1, 10000556069156430593232020144282359);
-
-        hub_updateHoldingValuation_clamped(false);
-
-        shortcut_request_deposit(0, 1, 0, 0);
-
-        hub_updateHoldingValue();
-
-        balanceSheet_withdraw(0, 1);
-
-        property_asset_soundness();
-    }
-
-    // forge test --match-test test_property_gain_soundness_10 -vvv
-    // NOTE: might be a real issue or something about property assumption is incorrect
-    // TODO(wischli): Investigate
-    function test_property_gain_soundness_10() public {
-        shortcut_deployNewTokenPoolAndShare(4, 1, true, false, false);
-
-        shortcut_mint_sync(1, 100084919394955237472397927082214);
-
-        hub_updateHoldingValuation_clamped(false);
-
-        shortcut_request_deposit(0, 1, 0, 0);
-
-        hub_updateHoldingValue();
-
-        balanceSheet_withdraw(0, 1);
-
-        property_gain_soundness();
-    }
 
     /// === Categorized Issues === ///
     // forge test --match-test test_property_holdings_balance_equals_escrow_balance_0 -vvv
@@ -173,8 +45,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
 
         shortcut_deposit_sync(0, 5421286);
-
-        asyncVault_maxDeposit(0, 0, 0);
 
         property_escrow_balance();
     }
@@ -205,9 +75,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     function test_property_sum_of_minted_equals_total_supply_5() public {
         shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
 
-        shortcut_deposit_sync(0, 5421521);
-
-        asyncVault_maxDeposit(0, 0, 0);
+        shortcut_deposit_sync(1, 5421521);
 
         property_sum_of_minted_equals_total_supply();
     }

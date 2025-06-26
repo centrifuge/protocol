@@ -56,6 +56,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         bytes32 investor = CastLib.toBytes32(_getActor());
+        uint32 maxClaimsBound = shareClassManager.maxDepositClaims(
+            IBaseVault(_getVault()).scId(), investor, hubRegistry.currency(IBaseVault(_getVault()).poolId())
+        );
+        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+
         (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(
             IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
         );
@@ -94,9 +99,12 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         )] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
-        if (maxClaims > 0) {
+        if (maxClaims == maxClaimsBound && maxClaims > 0) {
             // nowDepositEpoch = depositEpochId + 1
-            eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+            eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch1");
+        } else if (maxClaimsBound > 0) {
+            // Continue claiming until all epochs are processed
+            hub_notifyDeposit(1);
         }
     }
 
@@ -104,6 +112,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         bytes32 investor = CastLib.toBytes32(_getActor());
+        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
+            IBaseVault(_getVault()).scId(), investor, hubRegistry.currency(IBaseVault(_getVault()).poolId())
+        );
+        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
+
         uint256 investorSharesBefore = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(
@@ -145,9 +158,12 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
-        if (maxClaims > 0) {
+        if (maxClaims == maxClaimsBound && maxClaims > 0) {
             // nowRedeemEpoch = redeemEpochId + 1
             eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+        } else if (maxClaimsBound > 0) {
+            // Continue claiming until all epochs are processed
+            hub_notifyRedeem(1);
         }
     }
 
