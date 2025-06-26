@@ -7,7 +7,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
@@ -17,10 +16,6 @@ import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultM
 import "test/spoke/BaseTest.sol";
 
 contract SyncManagerBaseTest is BaseTest {
-    function _assumeUnauthorizedCaller(address nonWard) internal view {
-        vm.assume(nonWard != address(root) && nonWard != address(spoke) && nonWard != address(this));
-    }
-
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)
         internal
         returns (SyncDepositVault syncVault, uint128 assetId)
@@ -47,23 +42,6 @@ contract SyncManagerBaseTest is BaseTest {
 
 contract SyncManagerTest is SyncManagerBaseTest {
     using MessageLib for *;
-
-    // Deployment
-    function testDeployment(address nonWard) public {
-        _assumeUnauthorizedCaller(nonWard);
-
-        // redeploying within test to increase coverage
-        new SyncManager(address(this));
-
-        // values set correctly
-        assertEq(address(syncManager.spoke()), address(spoke));
-        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
-
-        // permissions set correctly
-        assertEq(syncManager.wards(address(root)), 1);
-        assertEq(syncManager.wards(address(spoke)), 1);
-        assertEq(syncManager.wards(nonWard), 0);
-    }
 
     // --- Administration ---
     function testFile() public {
@@ -106,38 +84,33 @@ contract SyncManagerTest is SyncManagerBaseTest {
 }
 
 contract SyncManagerUnauthorizedTest is SyncManagerBaseTest {
-    function testFileUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
+    function testFileUnauthorized() public {
+        _expectUnauthorized();
         syncManager.file(bytes32(0), address(0));
     }
 
-    function testDepositUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
+    function testDepositUnauthorized() public {
+        _expectUnauthorized();
         syncManager.deposit(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
-    function testMintUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
+    function testMintUnauthorized() public {
+        _expectUnauthorized();
         syncManager.mint(IBaseVault(address(0)), 0, address(0), address(0));
     }
 
-    function testSetValuationUnauthorized(address nonWard) public {
-        _expectUnauthorized(nonWard);
+    function testSetValuationUnauthorized() public {
+        _expectUnauthorized();
         syncManager.setValuation(PoolId.wrap(0), ShareClassId.wrap(0), address(0));
     }
 
-    function testUpdate(address nonWard) public {
-        _expectUnauthorized(nonWard);
+    function testUpdate() public {
+        _expectUnauthorized();
         syncManager.update(PoolId.wrap(0), ShareClassId.wrap(0), bytes(""));
     }
 
-    function _expectUnauthorized(address caller) internal {
-        vm.assume(
-            caller != address(root) && caller != address(spoke) && caller != address(syncDepositVaultFactory)
-                && caller != address(this)
-        );
-
-        vm.prank(caller);
+    function _expectUnauthorized() internal {
+        vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
     }
 }

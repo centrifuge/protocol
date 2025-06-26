@@ -13,7 +13,7 @@ import "test/spoke/BaseTest.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
-    function testDeployment(bytes16 scId, uint128 assetId, address nonWard) public {
+    function testFactorySetup(bytes16 scId, uint128 assetId, address nonWard) public {
         vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
