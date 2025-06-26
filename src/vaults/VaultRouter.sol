@@ -123,7 +123,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
         vault.deposit(assets, receiver);
