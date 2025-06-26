@@ -187,6 +187,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxMint = vault.maxMint(controller);
+
+        spoke.vaultDetails(vault);
         vault.mint(maxMint, receiver, controller);
     }
 
