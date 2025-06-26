@@ -89,7 +89,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
     {
         require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
+        require(address(vault[poolId][scId][assetId]) == address(vault_), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
         deny(address(vault_));
