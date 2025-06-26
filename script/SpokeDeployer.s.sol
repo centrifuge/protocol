@@ -128,9 +128,6 @@ contract SpokeDeployer is CommonDeployer {
         IAuth(fullRestrictionsHook).rely(address(root));
         IAuth(redemptionRestrictionsHook).rely(address(root));
 
-        // Rely gateway
-        spoke.rely(address(gateway));
-
         // Rely others
         routerEscrow.rely(address(vaultRouter));
         syncManager.rely(address(syncDepositVaultFactory));
