@@ -76,15 +76,11 @@ contract BaseTest is SpokeDeployer, Test {
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
-        // We should not use the block ChainID
-        vm.chainId(BLOCK_CHAIN_ID);
-
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
         ISafe adminSafe = new MockSafe(pausers, 1);
 
-        // deploy core contracts
         vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
         deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
         guardian.file("safe", address(adminSafe));
@@ -157,6 +153,9 @@ contract BaseTest is SpokeDeployer, Test {
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
         excludeContract(address(poolEscrowFactory));
+
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
     }
 
     // helpers

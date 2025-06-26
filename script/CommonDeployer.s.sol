@@ -28,6 +28,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
     uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
 
+    string version;
     ISafe public adminSafe;
     Root public root;
     TokenRecoverer public tokenRecoverer;
@@ -43,6 +44,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
         SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
+        version = vm.envString("VERSION");
     }
 
     /**
@@ -51,7 +53,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      * @return salt A deterministic salt based on contract name and optional VERSION
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
-        string memory version = vm.envOr("VERSION", string(""));
         if (bytes(version).length > 0) {
             return keccak256(abi.encodePacked(contractName, version));
         }
@@ -63,6 +64,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already deployed. Make this method idempotent.
         }
 
+        if (isTests) {
+            // For tests we want to have different contract addreses per chain
+            version = string(abi.encodePacked(version, centrifugeId_));
+        }
+
+        setUpCreateXFactory();
+
         startDeploymentOutput(isTests);
 
         uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
@@ -73,10 +81,10 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         // Note: This function was split into smaller helper functions to avoid
         // "stack too deep" compilation errors that occur when too many local
         // variables are used in a single function scope.
-        
+
         // Deploy basic contracts first
         _deployBasicContracts(deployer, messageGasLimit, maxBatchSize);
-        
+
         // Deploy more complex contracts
         _deployComplexContracts(centrifugeId_, deployer);
 
@@ -158,37 +166,28 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     function _deployBasicContracts(address deployer, uint128 messageGasLimit, uint128 maxBatchSize) private {
         // Root
         bytes32 rootSalt = generateSalt("root");
-        bytes memory rootBytecode = abi.encodePacked(
-            type(Root).creationCode,
-            abi.encode(DELAY, deployer)
-        );
+        bytes memory rootBytecode = abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer));
         root = Root(create3(rootSalt, rootBytecode));
         console.log("Root deployed at:", address(root));
 
         // TokenRecoverer
         bytes32 tokenRecovererSalt = generateSalt("tokenRecoverer");
-        bytes memory tokenRecovererBytecode = abi.encodePacked(
-            type(TokenRecoverer).creationCode,
-            abi.encode(root, deployer)
-        );
+        bytes memory tokenRecovererBytecode =
+            abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer));
         tokenRecoverer = TokenRecoverer(create3(tokenRecovererSalt, tokenRecovererBytecode));
         console.log("TokenRecoverer deployed at:", address(tokenRecoverer));
 
         // MessageProcessor
         bytes32 messageProcessorSalt = generateSalt("messageProcessor");
-        bytes memory messageProcessorBytecode = abi.encodePacked(
-            type(MessageProcessor).creationCode,
-            abi.encode(root, tokenRecoverer, deployer)
-        );
+        bytes memory messageProcessorBytecode =
+            abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer));
         messageProcessor = MessageProcessor(create3(messageProcessorSalt, messageProcessorBytecode));
         console.log("MessageProcessor deployed at:", address(messageProcessor));
 
         // GasService
         bytes32 gasServiceSalt = generateSalt("gasService");
-        bytes memory gasServiceBytecode = abi.encodePacked(
-            type(GasService).creationCode,
-            abi.encode(maxBatchSize, messageGasLimit)
-        );
+        bytes memory gasServiceBytecode =
+            abi.encodePacked(type(GasService).creationCode, abi.encode(maxBatchSize, messageGasLimit));
         gasService = GasService(create3(gasServiceSalt, gasServiceBytecode));
         console.log("GasService deployed at:", address(gasService));
     }
@@ -197,30 +196,26 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     function _deployComplexContracts(uint16 centrifugeId_, address deployer) private {
         // Gateway
         bytes32 gatewaySalt = generateSalt("gateway");
-        bytes memory gatewayBytecode = abi.encodePacked(
-            type(Gateway).creationCode,
-            abi.encode(root, gasService, deployer)
-        );
+        bytes memory gatewayBytecode =
+            abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer));
         gateway = Gateway(payable(create3(gatewaySalt, gatewayBytecode)));
         console.log("Gateway deployed at:", address(gateway));
 
         // MultiAdapter
         bytes32 multiAdapterSalt = generateSalt("multiAdapter");
-        bytes memory multiAdapterBytecode = abi.encodePacked(
-            type(MultiAdapter).creationCode,
-            abi.encode(centrifugeId_, gateway, deployer)
-        );
+        bytes memory multiAdapterBytecode =
+            abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(centrifugeId_, gateway, deployer));
         multiAdapter = MultiAdapter(create3(multiAdapterSalt, multiAdapterBytecode));
         console.log("MultiAdapter deployed at:", address(multiAdapter));
 
         // MessageDispatcher - use intermediate variables to avoid stack too deep
         bytes32 messageDispatcherSalt = generateSalt("messageDispatcher");
-        
+
         // Store variables to reduce stack pressure
         address rootAddr = address(root);
         address gatewayAddr = address(gateway);
         address tokenRecovererAddr = address(tokenRecoverer);
-        
+
         bytes memory messageDispatcherBytecode = abi.encodePacked(
             type(MessageDispatcher).creationCode,
             abi.encode(centrifugeId_, rootAddr, gatewayAddr, tokenRecovererAddr, deployer)
@@ -230,14 +225,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         // Guardian - use intermediate variables to avoid stack too deep
         bytes32 guardianSalt = generateSalt("guardian");
-        
-        // Store variables to reduce stack pressure  
+
+        // Store variables to reduce stack pressure
         address multiAdapterAddr = address(multiAdapter);
         address messageDispatcherAddr = address(messageDispatcher);
-        
+
         bytes memory guardianBytecode = abi.encodePacked(
-            type(Guardian).creationCode,
-            abi.encode(ISafe(deployer), multiAdapterAddr, rootAddr, messageDispatcherAddr)
+            type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapterAddr, rootAddr, messageDispatcherAddr)
         );
         guardian = Guardian(create3(guardianSalt, guardianBytecode));
         console.log("Guardian deployed at:", address(guardian));
@@ -250,10 +244,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     // Helper function to deploy PoolEscrowFactory in a separate scope to avoid stack too deep errors
     function _deployPoolEscrowFactory(address deployer) private returns (PoolEscrowFactory) {
         bytes32 poolEscrowFactorySalt = generateSalt("poolEscrowFactory");
-        bytes memory poolEscrowFactoryBytecode = abi.encodePacked(
-            type(PoolEscrowFactory).creationCode,
-            abi.encode(address(root), deployer)
-        );
+        bytes memory poolEscrowFactoryBytecode =
+            abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer));
         return PoolEscrowFactory(create3(poolEscrowFactorySalt, poolEscrowFactoryBytecode));
     }
 }
