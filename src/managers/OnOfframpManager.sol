@@ -81,6 +81,8 @@ contract OnOfframpManager is IOnOfframpManager {
 
                 offramp[asset] = receiver;
                 emit UpdateOfframp(asset, receiver);
+            } else {
+                revert UnknownUpdateContractKind();
             }
         } else {
             revert UnknownUpdateContractType();
