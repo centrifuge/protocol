@@ -5,8 +5,6 @@ import {Escrow} from "src/misc/Escrow.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
-
 import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
@@ -21,7 +19,7 @@ import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
@@ -42,8 +40,8 @@ contract SpokeDeployer is CommonDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deploySpoke(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
-        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
+    function deploySpoke(CommonInput memory input, address deployer) public {
+        deployCommon(input, deployer);
 
         // Note: This function was split into smaller helper functions to avoid
         // "stack too deep" compilation errors that occur when too many local

@@ -4,14 +4,20 @@ pragma solidity 0.8.28;
 import {ISafe} from "src/common/Guardian.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
+import {CommonInput} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
 contract FullDeployer is HubDeployer, SpokeDeployer {
-    function deployFull(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployHub(centrifugeId_, adminSafe_, deployer, isTests);
-        deploySpoke(centrifugeId_, adminSafe_, deployer, isTests);
+    function deployFull(CommonInput memory input, address deployer) public {
+        deployHub(input, deployer);
+        deploySpoke(input, deployer);
+    }
+
+    function removeFullDeployerAccess(address deployer) public {
+        removeHubDeployerAccess(deployer);
+        removeSpokeDeployerAccess(deployer);
     }
 
     function run() public virtual {
@@ -34,23 +40,27 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         console.log("Network:", network);
         console.log("Environment:", environment);
 
+        CommonInput memory input = CommonInput({
+            centrifugeId: centrifugeId,
+            adminSafe: ISafe(vm.envAddress("ADMIN")),
+            messageGasLimit: uint128(vm.envUint("MESSAGE_COST")),
+            maxBatchSize: uint128(vm.envUint("MAX_BATCH_SIZE")),
+            isTests: false
+        });
+
         // Use the regular deployment functions - they now use CreateX internally
-        deployFull(centrifugeId, ISafe(vm.envAddress("ADMIN")), msg.sender, false);
+        deployFull(input, msg.sender);
 
         // Since `wire()` is not called, separately adding the safe here
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
-        vm.stopBroadcast();
 
-        removeFullDeployerAccess(msg.sender, environment);
-    }
-
-    function removeFullDeployerAccess(address deployer, string memory environment) public {
         bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
 
         if (!isNotMainnet) {
-            removeHubDeployerAccess(deployer);
-            removeSpokeDeployerAccess(deployer);
+            removeFullDeployerAccess(msg.sender);
         }
+
+        vm.stopBroadcast();
     }
 }

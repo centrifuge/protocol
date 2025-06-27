@@ -12,18 +12,21 @@ import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
-import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
-string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant MAX_BATCH_SIZE_ENV = "MAX_BATCH_SIZE";
+struct CommonInput {
+    uint16 centrifugeId;
+    ISafe adminSafe;
+    uint128 messageGasLimit;
+    uint128 maxBatchSize;
+    bool isTests;
+}
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
     bytes32 immutable SALT;
-    uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
-    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
 
     string version;
     ISafe public adminSafe;
@@ -56,34 +59,30 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         return keccak256(abi.encodePacked(contractName));
     }
 
-    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
+    function deployCommon(CommonInput memory input, address deployer) public {
         if (address(root) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        if (isTests) {
+        if (input.isTests) {
             // For tests we want to have different contract addreses per chain
-            version = string(abi.encodePacked(version, centrifugeId_));
+            version = string(abi.encodePacked(version, input.centrifugeId));
         }
 
         setUpCreateXFactory();
-
-        startDeploymentOutput(isTests);
-
-        uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
+        startDeploymentOutput(input.isTests);
 
         // Note: This function was split into smaller helper functions to avoid
         // "stack too deep" compilation errors that occur when too many local
         // variables are used in a single function scope.
 
         // Deploy basic contracts first
-        _deployBasicContracts(deployer, messageGasLimit, maxBatchSize);
+        _deployBasicContracts(deployer, input.messageGasLimit, input.maxBatchSize);
 
         // Deploy more complex contracts
-        _deployComplexContracts(centrifugeId_, deployer);
+        _deployComplexContracts(input.centrifugeId, deployer);
 
-        adminSafe = adminSafe_;
+        adminSafe = input.adminSafe;
 
         _commonRegister();
         _commonRely();

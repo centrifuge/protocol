@@ -27,8 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {SpokeDeployer, CommonInput} from "script/SpokeDeployer.s.sol";
 
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
@@ -92,8 +91,16 @@ contract BaseTest is SpokeDeployer, Test {
         pausers[0] = self;
         ISafe adminSafe = new MockSafe(pausers, 1);
 
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
-        deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
+        // deploy core contracts
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS_COST_LIMIT),
+            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            isTests: true
+        });
+
+        deploySpoke(input, address(this));
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters

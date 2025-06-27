@@ -3,13 +3,21 @@ pragma solidity 0.8.28;
 
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
-import {CommonDeploymentTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentTest, CommonInput} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
 contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
     function setUp() public virtual override {
-        deploySpoke(CENTRIFUGE_ID, ADMIN_SAFE, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CENTRIFUGE_ID,
+            adminSafe: ADMIN_SAFE,
+            messageGasLimit: 0,
+            maxBatchSize: 0,
+            isTests: true
+        });
+
+        deploySpoke(input, address(this));
         removeSpokeDeployerAccess(address(this));
     }
 
