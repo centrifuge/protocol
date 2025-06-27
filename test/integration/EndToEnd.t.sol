@@ -39,8 +39,7 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {FullDeployer, CommonInput} from "script/FullDeployer.s.sol";
 
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
@@ -161,8 +160,6 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
 
@@ -175,9 +172,6 @@ contract EndToEndDeployment is Test {
         vm.deal(BSM, 1 ether);
         vm.deal(INVESTOR_A, 1 ether);
         vm.deal(ANY, 1 ether);
-
-        // We not use the VM chain
-        vm.chainId(0xDEAD);
 
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
@@ -217,11 +211,19 @@ contract EndToEndDeployment is Test {
         vm.stopPrank();
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
         internal
         returns (LocalAdapter adapter)
     {
-        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: localCentrifugeId,
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            isTests: true
+        });
+
+        deploy.deployFull(input, address(deploy));
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);

@@ -3,13 +3,21 @@ pragma solidity 0.8.28;
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 
-import {CommonDeploymentTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentTest, CommonInput} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
 contract HubDeploymentTest is HubDeployer, CommonDeploymentTest {
     function setUp() public virtual override {
-        deployHub(CENTRIFUGE_ID, ADMIN_SAFE, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CENTRIFUGE_ID,
+            adminSafe: ADMIN_SAFE,
+            messageGasLimit: 0,
+            maxBatchSize: 0,
+            isTests: true
+        });
+
+        deployHub(input, address(this));
         removeHubDeployerAccess(address(this));
     }
 

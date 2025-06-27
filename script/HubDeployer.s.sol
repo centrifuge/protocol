@@ -13,7 +13,7 @@ import {HubHelpers} from "src/hub/HubHelpers.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
@@ -34,8 +34,8 @@ contract HubDeployer is CommonDeployer {
     AssetId public immutable USD_ID = newAssetId(840);
     AssetId public immutable EUR_ID = newAssetId(978);
 
-    function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public virtual {
-        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
+    function deployHub(CommonInput memory input, address deployer) public {
+        deployCommon(input, deployer);
 
         // HubRegistry
         bytes32 hubRegistrySalt = generateSalt("hubRegistry");

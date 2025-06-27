@@ -9,8 +9,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
-import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {HubDeployer, ISafe, CommonInput} from "script/HubDeployer.s.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
@@ -72,11 +71,16 @@ contract BaseTest is HubDeployer, Test {
     }
 
     function setUp() public virtual {
-        // Pre deployment
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CHAIN_CP,
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            isTests: true
+        });
+
+        deployHub(input, address(this));
         _mockStuff();
         removeHubDeployerAccess(address(this));
 
