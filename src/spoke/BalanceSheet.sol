@@ -223,13 +223,12 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
             nonce: shareQueue.nonce
         });
 
-        emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
         shareQueue.queuedAssetCounter -= assetCounter;
 
+        emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
         sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
     }
 
@@ -247,12 +246,11 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
             nonce: shareQueue.nonce
         });
 
-        emit SubmitQueuedShares(poolId, scId, data);
-
         shareQueue.delta = 0;
         shareQueue.isPositive = true;
         shareQueue.nonce++;
 
+        emit SubmitQueuedShares(poolId, scId, data);
         sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
     }
 
