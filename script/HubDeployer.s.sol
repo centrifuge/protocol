@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 import {Hub} from "src/hub/Hub.sol";

@@ -5,8 +5,6 @@ import {Escrow} from "src/misc/Escrow.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
-
 import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";

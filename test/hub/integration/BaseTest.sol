@@ -9,7 +9,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
-import {HubDeployer, ISafe, CommonInput} from "script/HubDeployer.s.sol";
+import {HubDeployer, CommonInput} from "script/HubDeployer.s.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
