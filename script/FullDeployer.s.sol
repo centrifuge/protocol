@@ -15,6 +15,11 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         deploySpoke(input, deployer);
     }
 
+    function removeFullDeployerAccess(address deployer) public {
+        removeHubDeployerAccess(deployer);
+        removeSpokeDeployerAccess(deployer);
+    }
+
     function run() public virtual {
         vm.startBroadcast();
         uint16 centrifugeId;
@@ -51,15 +56,10 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         saveDeploymentOutput();
         vm.stopBroadcast();
 
-        removeFullDeployerAccess(msg.sender, environment);
-    }
-
-    function removeFullDeployerAccess(address deployer, string memory environment) public {
         bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
 
         if (!isNotMainnet) {
-            removeHubDeployerAccess(deployer);
-            removeSpokeDeployerAccess(deployer);
+            removeFullDeployerAccess(msg.sender);
         }
     }
 }

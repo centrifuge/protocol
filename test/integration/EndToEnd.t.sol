@@ -199,15 +199,16 @@ contract EndToEndDeployment is Test {
     }
 
     function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy.guardian().safe()));
+        vm.startPrank(address(deploy));
         IAuth(address(adapter)).rely(address(deploy.root()));
         IAuth(address(adapter)).rely(address(deploy.guardian()));
         IAuth(address(adapter)).deny(address(deploy));
+        vm.stopPrank();
 
+        vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
-
         vm.stopPrank();
     }
 
@@ -228,7 +229,7 @@ contract EndToEndDeployment is Test {
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(address(deploy), "testnet");
+        deploy.removeFullDeployerAccess(address(deploy));
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
@@ -406,7 +407,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -442,7 +442,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -625,7 +624,6 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
