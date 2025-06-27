@@ -54,12 +54,13 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         // Since `wire()` is not called, separately adding the safe here
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
-        vm.stopBroadcast();
 
         bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
 
         if (!isNotMainnet) {
             removeFullDeployerAccess(msg.sender);
         }
+
+        vm.stopBroadcast();
     }
 }
