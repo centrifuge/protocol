@@ -17,6 +17,8 @@ import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {D18} from "src/misc/types/D18.sol";
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {CryticSanity} from "./CryticSanity.sol";
@@ -307,21 +309,17 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         );
     }
 
-    // forge test --match-test test_optimize_totalAssets_solvency_r9di -vvv
-    function test_optimize_totalAssets_solvency_r9di() public {
-        // Max value: 340282366920938451679371842713960990430;
-
-        hub_notifyShareClass_clamped(bytes32(0));
-
-
-        hub_notifySharePrice_clamped();
-    }
-
     // forge test --match-test test_optimize_maxDeposit_greater_qx63 -vvv
     function test_optimize_maxDeposit_greater_qx63() public {
         // Max value: 125748077226094910146257096;
 
-        hub_notifyShareClass_clamped(bytes32(0));
+        (,, address vault,,) = shortcut_deployNewTokenPoolAndShare(16, 29654276389875203551777999997167602027943, true, false, true);
+
+        // Mint a large amount of tokens that fits in uint128 to the actor
+        uint256 requiredAmount = 170141183460469231731687303715884105727; // uint128_max / 2
+        MockERC20(IBaseVault(vault).asset()).mint(_getActor(), requiredAmount);
+
+        shortcut_deposit_and_claim(1,type(uint128).max,requiredAmount,1000000000000000000,0);
 
 
         shortcut_cancel_redeem_clamped(
@@ -330,10 +328,10 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             58657796297957969014668979973325241632751742498456482854652408771796533732222
         );
 
-        token_approve(
-            0x00000000000000000000000000000000FFFFfFFF,
-            83890301760789798042697428350080430756845546025029970945766414744041690333773
-        );
+        // token_approve(
+        //     0x00000000000000000000000000000000FFFFfFFF,
+        //     83890301760789798042697428350080430756845546025029970945766414744041690333773
+        // );
 
         switch_asset(62656852884772475984730109869609410410096108437280586738664712996839274056315);
 
@@ -359,7 +357,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         property_soundness_processed_redemptions();
 
         asyncVault_6_withdraw(
-            0x00000000000000000000000000000000FFFFfFFF,
+            vault,
             73730384247478049308144323638281838061606655347432441995131038850389003006602
         );
 
@@ -389,7 +387,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_notifyAssetPrice();
 
-        asyncVault_5(0x00000000000000000000000000000000FFFFfFFF);
+        asyncVault_5(vault);
 
         add_new_asset(125);
 
