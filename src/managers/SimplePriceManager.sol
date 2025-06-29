@@ -51,9 +51,11 @@ contract SimplePriceManager is INAVHook {
         NetworkMetrics storage networkMetrics = metrics[centrifugeId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
+
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
         globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
-        D18 price = globalNetAssetValue / d18(globalIssuance);
+        
+        D18 price = globalIssuance == 0 ? d18(1, 1) : globalNetAssetValue / d18(globalIssuance);
 
         networkMetrics.netAssetValue = netAssetValue_;
         networkMetrics.issuance = issuance;

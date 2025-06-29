@@ -338,9 +338,11 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
+        SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub);
+        h.navManager.setNAVHook(priceManager);
+        
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
-
-        h.navManager.setNAVHook(new SimplePriceManager(POOL_A, SC_1, h.hub));
+        h.hub.updateHubManager(POOL_A, address(priceManager), true);
 
         vm.stopPrank();
     }
@@ -601,7 +603,9 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(amount, USDC_AMOUNT_1 / 5);
         assertEq(value, assetToPool(USDC_AMOUNT_1 / 5));
 
-        // assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1);
+        (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
+        assertEq(issuance, 0);
+        assertEq(poolPerShare.raw(), d18(1, 1).raw());
 
         checkAccountValue(h.navManager.assetAccount(s.centrifugeId, s.usdcId), assetToPool(USDC_AMOUNT_1 / 5), true);
         checkAccountValue(h.navManager.equityAccount(s.centrifugeId), assetToPool(USDC_AMOUNT_1 / 5), true);
