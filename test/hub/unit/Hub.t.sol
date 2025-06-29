@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "forge-std/Test.sol";
-
 import {D18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {Hub} from "src/hub/Hub.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
-import {Hub} from "src/hub/Hub.sol";
+
+import "forge-std/Test.sol";
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;
@@ -59,17 +59,9 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.registerAsset(AssetId.wrap(0), 0);
 
+        bytes memory EMPTY_BYTES;
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.depositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.redeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.cancelDepositRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.cancelRedeemRequest(PoolId.wrap(0), ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
+        hub.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.updateHoldingAmount(
@@ -148,13 +140,13 @@ contract TestMainMethodsChecks is TestCommon {
         hub.forceCancelRedeemRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""));
+        hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink);
+        hub.updateVault(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""));
+        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0));
@@ -193,18 +185,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.triggerIssueShares(0, POOL_A, ShareClassId.wrap(0), address(0), 0);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.triggerSubmitQueuedShares(0, POOL_A, ShareClassId.wrap(0));
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.triggerSubmitQueuedAssets(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0));
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.setQueue(POOL_A, ShareClassId.wrap(0), true);
 
         vm.stopPrank();
     }

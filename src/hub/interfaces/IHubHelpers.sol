@@ -3,10 +3,10 @@ pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
 
@@ -16,6 +16,8 @@ interface IHubHelpers {
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
+
+    error UnknownRequestType();
 
     /// @notice Updates a contract parameter.
     /// @param what Name of the parameter to update.
@@ -37,6 +39,9 @@ interface IHubHelpers {
 
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
+
+    /// @notice Handles a request originating from the Spoke side.
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     function holdingAccounts(
         AccountId assetAccount,

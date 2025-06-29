@@ -1,29 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
-
-import "src/misc/interfaces/IERC7575.sol";
-import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC20.sol";
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
+import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
     using MathLib for uint256;
 
-    uint256 constant GAS_BUFFER = 10 gwei;
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     /// forge-config: default.isolate = true

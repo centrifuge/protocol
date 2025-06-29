@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {

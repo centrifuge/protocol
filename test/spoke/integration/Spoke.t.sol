@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockHook} from "test/spoke/mocks/MockHook.sol";
-import "test/spoke/BaseTest.sol";
-
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {D18} from "src/misc/types/D18.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
+
+import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+
+import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import "test/spoke/BaseTest.sol";
+import {MockHook} from "test/spoke/mocks/MockHook.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;
@@ -78,34 +80,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
     using UpdateRestrictionMessageLib for *;
     using CastLib for *;
 
-    // Deployment
-    function testDeployment(address nonWard) public {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(vaultRouter) && nonWard != address(this)
-                && nonWard != address(messageProcessor) && nonWard != address(messageDispatcher)
-                && nonWard != address(gateway)
-        );
-
-        // redeploying within test to increase coverage
-        new Spoke(tokenFactory, address(this));
-        spoke.file("vaultFactory", address(asyncVaultFactory), true);
-
-        // values set correctly
-        assertEq(address(messageDispatcher.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(syncRequestManager.spoke()), address(spoke));
-
-        assertEq(address(spoke.poolEscrowFactory()), address(poolEscrowFactory));
-        assertEq(address(spoke.tokenFactory()), address(tokenFactory));
-        assertEq(address(spoke.sender()), address(messageDispatcher));
-
-        // permissions set correctly
-        assertEq(spoke.wards(address(root)), 1);
-        assertEq(spoke.wards(address(gateway)), 1);
-        assertEq(spoke.wards(address(vaultRouter)), 1);
-        assertEq(spoke.wards(nonWard), 0);
-    }
-
     function testFile() public {
         address newSender = makeAddr("newSender");
         vm.expectEmit();
@@ -125,31 +99,13 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         spoke.file("poolEscrowFactory", newPoolEscrowFactory);
         assertEq(address(spoke.poolEscrowFactory()), newPoolEscrowFactory);
 
-        IVaultFactory newVaultFactory = IVaultFactory(makeAddr("newVaultFactory"));
-        assertEq(spoke.vaultFactory(newVaultFactory), false);
-        spoke.file("vaultFactory", address(newVaultFactory), true);
-        assertEq(spoke.vaultFactory(newVaultFactory), true);
-        assertEq(spoke.vaultFactory(asyncVaultFactory), true);
-
-        vm.expectEmit();
-        emit ISpoke.File("vaultFactory", address(newVaultFactory), false);
-        spoke.file("vaultFactory", address(newVaultFactory), false);
-        assertEq(spoke.vaultFactory(newVaultFactory), false);
-
         address newEscrow = makeAddr("newEscrow");
         vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
         spoke.file("escrow", newEscrow);
 
-        vm.expectRevert(ISpoke.FileUnrecognizedParam.selector);
-        spoke.file("escrow", newEscrow, true);
-
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.file("", address(0));
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.file("", address(0), true);
     }
 
     function testAddPool(PoolId poolId) public {
@@ -571,7 +527,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         // rewire factory contracts
         newVaultFactory.rely(address(spoke));
         asyncRequestManager.rely(address(newVaultFactory));
-        spoke.file("vaultFactory", address(newVaultFactory), true);
 
         // Unlink old vault
         spoke.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
@@ -712,7 +667,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         }
     }
 
-    function _assertShareSetup(address vaultAddress, bool isLinked) private view {
+    function _assertShareSetup() private view {
         IShareToken token_ = spoke.shareToken(poolId, scId);
         ShareToken shareToken = ShareToken(address(token_));
 
@@ -722,12 +677,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.name(), tokenName, "share class token name mismatch");
         assertEq(shareToken.symbol(), tokenSymbol, "share class token symbol mismatch");
         assertEq(shareToken.decimals(), decimals, "share class token decimals mismatch");
-
-        if (isLinked) {
-            assertEq(shareToken.wards(vaultAddress), 1);
-        } else {
-            assertEq(shareToken.wards(vaultAddress), 0, "Vault auth on Share set up in linkVault");
-        }
     }
 
     function _assertDeployedVault(address vaultAddress, AssetId assetId, address asset, uint256 tokenId, bool isLinked)
@@ -735,7 +684,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         view
     {
         _assertVaultSetup(vaultAddress, assetId, asset, tokenId, isLinked);
-        _assertShareSetup(vaultAddress, isLinked);
+        _assertShareSetup();
     }
 
     function testDeployVaultWithoutLinkERC20(
@@ -786,19 +735,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         spoke.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), asyncVaultFactory);
     }
 
-    function testDeploVaultInvalidVaultFactory(
-        PoolId poolId_,
-        uint8 decimals_,
-        string memory tokenName_,
-        string memory tokenSymbol_,
-        ShareClassId scId_
-    ) public {
-        setUpPoolAndShare(poolId_, decimals_, tokenName_, tokenSymbol_, scId_);
-
-        vm.expectRevert(ISpoke.InvalidFactory.selector);
-        spoke.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), IVaultFactory(address(0)));
-    }
-
     function testDeployVaultUnauthorized() public {
         vm.prank(makeAddr("unauthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -840,7 +776,7 @@ contract SpokeRegisterAssetTest is BaseTest {
 
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), asset, 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -889,7 +825,8 @@ contract SpokeRegisterAssetTest is BaseTest {
             tokenId,
             erc6909.name(tokenId),
             erc6909.symbol(tokenId),
-            erc6909.decimals(tokenId)
+            erc6909.decimals(tokenId),
+            true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), message);
@@ -919,7 +856,7 @@ contract SpokeRegisterAssetTest is BaseTest {
     function testRegisterAssetTwice() public {
         vm.expectEmit();
         emit ISpoke.RegisterAsset(
-            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals()
+            AssetId.wrap(defaultAssetId), address(erc20), 0, erc20.name(), erc20.symbol(), erc20.decimals(), true
         );
         vm.expectEmit(false, false, false, false);
         emit IGateway.PrepareMessage(OTHER_CHAIN_ID, PoolId.wrap(0), bytes(""));
