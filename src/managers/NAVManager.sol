@@ -21,7 +21,6 @@ interface INAVHook {
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is Auth, ISnapshotHook {
-    error InvalidShareClassCount();
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
@@ -73,16 +72,16 @@ contract NAVManager is Auth, ISnapshotHook {
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId assetAccount = assetIdToAccountId[centrifugeId][assetId];
-        if (assetAccount.isNull()) assetAccount = withCentrifugeId(centrifugeId, index);
+        AccountId assetAccount_ = assetIdToAccountId[centrifugeId][assetId];
+        if (assetAccount_.isNull()) assetAccount_ = withCentrifugeId(centrifugeId, index);
 
-        hub.createAccount(poolId, assetAccount, true);
+        hub.createAccount(poolId, assetAccount_, true);
         hub.initializeHolding(
             poolId,
             scId,
             assetId,
             valuation,
-            assetAccount,
+            assetAccount_,
             equityAccount(centrifugeId),
             gainAccount(centrifugeId),
             lossAccount(centrifugeId)
@@ -97,11 +96,11 @@ contract NAVManager is Auth, ISnapshotHook {
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId expenseAccount = assetIdToAccountId[centrifugeId][assetId];
-        if (expenseAccount.isNull()) expenseAccount = withCentrifugeId(centrifugeId, index);
+        AccountId expenseAccount_ = assetIdToAccountId[centrifugeId][assetId];
+        if (expenseAccount_.isNull()) expenseAccount_ = withCentrifugeId(centrifugeId, index);
 
-        hub.createAccount(poolId, expenseAccount, true);
-        hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount, liabilityAccount(centrifugeId));
+        hub.createAccount(poolId, expenseAccount_, true);
+        hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount_, liabilityAccount(centrifugeId));
 
         accountCounter[centrifugeId] = index + 1;
     }
@@ -143,6 +142,14 @@ contract NAVManager is Auth, ISnapshotHook {
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
+
+    function assetAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
+        return assetIdToAccountId[centrifugeId][assetId];
+    }
+
+    function expenseAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
+        return assetAccount(centrifugeId, assetId);
+    }
 
     function equityAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 1);
