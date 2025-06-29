@@ -13,13 +13,13 @@ import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
-struct NetworkMetrics {
-    D18 netAssetValue;
-    uint128 issuance;
+interface INAVHook {
+    /// @notice Callback when there is a new net asset value (NAV) on a specific network.
+    function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue) external;
 }
 
+/// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is Auth, ISnapshotHook {
     error InvalidShareClassCount();
     error AlreadyInitialized();
@@ -32,22 +32,25 @@ contract NAVManager is Auth, ISnapshotHook {
     IHub public immutable hub;
     address public immutable holdings;
     IAccounting public immutable accounting;
-    IShareClassManager public immutable shareClassManager;
 
-    uint128 public globalIssuance;
-    D18 public globalNetAssetValue;
+    INAVHook public navHook;
     mapping(uint16 centrifugeId => uint16) public accountCounter;
-    mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address holdings_, address deployer) Auth(deployer) {
-        require(hub.shareClassManager().shareClassCount(poolId_) == 1, InvalidShareClassCount());
-
+    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address deployer) Auth(deployer) {
         poolId = poolId_;
         scId = scId_;
+
         hub = hub_;
-        holdings = holdings_;
+        holdings = address(hub.holdings());
         accounting = hub.accounting();
-        shareClassManager = hub.shareClassManager();
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    function setNAVHook(INAVHook navHook_) external auth {
+        navHook = navHook_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -73,6 +76,7 @@ contract NAVManager is Auth, ISnapshotHook {
 
         AccountId assetAccount = withCentrifugeId(centrifugeId, index);
         hub.createAccount(poolId, assetAccount, true);
+        // TOOD: should be adapted to asset account and holding per scId
         hub.initializeHolding(
             poolId,
             scId,
@@ -95,6 +99,7 @@ contract NAVManager is Auth, ISnapshotHook {
 
         AccountId expenseAccount = withCentrifugeId(centrifugeId, index);
         hub.createAccount(poolId, expenseAccount, true);
+        // TOOD: should be adapted to expense account and liability per scId
         hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount, liabilityAccount(centrifugeId));
 
         accountCounter[centrifugeId] = index + 1;
@@ -109,18 +114,8 @@ contract NAVManager is Auth, ISnapshotHook {
         require(poolId == poolId_ && scId == scId_);
         require(msg.sender == holdings, NotAuthorized());
 
-        NetworkMetrics storage networkMetrics = metrics[centrifugeId];
         D18 netAssetValue_ = netAssetValue(centrifugeId);
-        uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
-
-        globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
-        globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
-        D18 price = globalNetAssetValue / d18(globalIssuance);
-
-        networkMetrics.netAssetValue = netAssetValue_;
-        networkMetrics.issuance = issuance;
-
-        hub.updateSharePrice(poolId, scId, price);
+        navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
     }
 
     function updateHoldingValue(AssetId assetId) external {
@@ -142,10 +137,6 @@ contract NAVManager is Auth, ISnapshotHook {
         (, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
         return d18(equity) + d18(gain) - d18(loss) - d18(liability);
-    }
-
-    function navPoolPerShare() public view returns (D18) {
-        return globalNetAssetValue / d18(globalIssuance);
     }
 
     //----------------------------------------------------------------------------------------------
