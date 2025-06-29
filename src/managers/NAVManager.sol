@@ -6,15 +6,13 @@ import {D18, d18} from "src/misc/types/D18.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId, withCentrifugeId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {AccountId, withCentrifugeId} from "src/common/types/AccountId.sol";
 
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-
-import {console} from "forge-std/console.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
