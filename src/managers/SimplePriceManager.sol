@@ -30,6 +30,7 @@ contract SimplePriceManager is INAVHook {
     D18 public globalNetAssetValue;
     mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
+
     constructor(PoolId poolId_, ShareClassId scId_, IHub hub_) {
         poolId = poolId_;
         scId = scId_;
@@ -46,6 +47,8 @@ contract SimplePriceManager is INAVHook {
 
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue_) external {
+        require(poolId == poolId_);
+        require(scId == scId_);
         // TODO: check msg.sender
 
         NetworkMetrics storage networkMetrics = metrics[centrifugeId];
