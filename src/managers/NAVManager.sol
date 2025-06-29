@@ -14,6 +14,8 @@ import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 
+import { console } from "forge-std/console.sol";
+
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
     function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue) external;
@@ -24,6 +26,7 @@ contract NAVManager is Auth, ISnapshotHook {
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
+    error InvalidNAVHook();
 
     PoolId public immutable poolId;
 
@@ -113,6 +116,7 @@ contract NAVManager is Auth, ISnapshotHook {
     function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
         require(poolId == poolId_);
         require(msg.sender == holdings, NotAuthorized());
+        require(address(navHook) != address(0), InvalidNAVHook());
 
         D18 netAssetValue_ = netAssetValue(centrifugeId);
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);

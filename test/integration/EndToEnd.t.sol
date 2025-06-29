@@ -40,6 +40,7 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {NAVManager} from "src/managers/NAVManager.sol";
+import {SimplePriceManager} from "src/managers/SimplePriceManager.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
@@ -338,6 +339,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
+
+        h.navManager.setNAVHook(new SimplePriceManager(POOL_A, SC_1, h.hub));
 
         vm.stopPrank();
     }

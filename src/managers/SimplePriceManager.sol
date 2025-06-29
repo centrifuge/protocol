@@ -31,13 +31,13 @@ contract SimplePriceManager is INAVHook {
     mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
     constructor(PoolId poolId_, ShareClassId scId_, IHub hub_) {
-        require(hub.shareClassManager().shareClassCount(poolId_) == 1, InvalidShareClassCount());
-
         poolId = poolId_;
         scId = scId_;
 
         hub = hub_;
-        shareClassManager = hub.shareClassManager();
+        shareClassManager = hub_.shareClassManager();
+
+        require(shareClassManager.shareClassCount(poolId_) == 1, InvalidShareClassCount());
     }
 
     //----------------------------------------------------------------------------------------------
