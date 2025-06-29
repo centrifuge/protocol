@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
