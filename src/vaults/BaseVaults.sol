@@ -243,7 +243,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         // the sender is the owner, to bypass the allowance check
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
-        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
+        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender, true), RequestRedeemFailed());
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;

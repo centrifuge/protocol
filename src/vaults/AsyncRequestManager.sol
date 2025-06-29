@@ -122,11 +122,14 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address sender_)
-        public
-        auth
-        returns (bool)
-    {
+    function requestRedeem(
+        IBaseVault vault_,
+        uint256 shares,
+        address controller,
+        address owner,
+        address sender_,
+        bool transfer
+    ) public auth returns (bool) {
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmountNotAllowed());
         require(spoke.isLinked(vault_), AssetNotAllowed());
@@ -141,7 +144,11 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
 
         _sendRequest(vault_, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize());
-        balanceSheet.transferSharesFrom(vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_);
+        if (transfer) {
+            balanceSheet.transferSharesFrom(
+                vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_
+            );
+        }
 
         return true;
     }
