@@ -76,7 +76,10 @@ contract NAVManager is Auth, ISnapshotHook {
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
         AccountId assetAccount_ = assetIdToAccountId[centrifugeId][assetId];
-        if (assetAccount_.isNull()) assetAccount_ = withCentrifugeId(centrifugeId, index);
+        if (assetAccount_.isNull()) {
+            assetAccount_ = withCentrifugeId(centrifugeId, index);
+            assetIdToAccountId[centrifugeId][assetId] = assetAccount_;
+        }
 
         hub.createAccount(poolId, assetAccount_, true);
         hub.initializeHolding(
@@ -100,7 +103,10 @@ contract NAVManager is Auth, ISnapshotHook {
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
         AccountId expenseAccount_ = assetIdToAccountId[centrifugeId][assetId];
-        if (expenseAccount_.isNull()) expenseAccount_ = withCentrifugeId(centrifugeId, index);
+        if (expenseAccount_.isNull()) {
+            expenseAccount_ = withCentrifugeId(centrifugeId, index);
+            assetIdToAccountId[centrifugeId][assetId] = expenseAccount_;
+        }
 
         hub.createAccount(poolId, expenseAccount_, true);
         hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount_, liabilityAccount(centrifugeId));

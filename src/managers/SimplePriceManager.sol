@@ -51,7 +51,6 @@ contract SimplePriceManager is INAVHook {
         NetworkMetrics storage networkMetrics = metrics[centrifugeId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
-
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
         globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
         
@@ -61,13 +60,5 @@ contract SimplePriceManager is INAVHook {
         networkMetrics.issuance = issuance;
 
         hub.updateSharePrice(poolId, scId, price);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Calculations
-    //----------------------------------------------------------------------------------------------
-
-    function navPoolPerShare() public view returns (D18) {
-        return globalNetAssetValue / d18(globalIssuance);
     }
 }

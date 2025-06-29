@@ -537,10 +537,13 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(amount, USDC_AMOUNT_1, "expected amount");
         assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
 
-        // assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), nonZeroPrices ? 1 : 2, "expected snapshots");
-
         checkAccountValue(h.navManager.assetAccount(s.centrifugeId, s.usdcId), assetToPool(USDC_AMOUNT_1), true);
         checkAccountValue(h.navManager.equityAccount(s.centrifugeId), assetToPool(USDC_AMOUNT_1), true);
+
+        // (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
+        // assertEq(issuance, );
+        // assertEq(poolPerShare.raw(), d18(1, 1).raw());
+
     }
 
     function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
@@ -555,10 +558,12 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(amount, 0, "expected amount");
         assertEq(value, assetToPool(0), "expected value");
 
-        // assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 2, "expected snapshots");
-
         checkAccountValue(h.navManager.assetAccount(s.centrifugeId, s.usdcId), assetToPool(0), true);
         checkAccountValue(h.navManager.equityAccount(s.centrifugeId), assetToPool(0), true);
+
+        // (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
+        // assertEq(issuance, 0);
+        // assertEq(poolPerShare.raw(), d18(1, 1).raw());
     }
 }
 
@@ -603,12 +608,12 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(amount, USDC_AMOUNT_1 / 5);
         assertEq(value, assetToPool(USDC_AMOUNT_1 / 5));
 
+        checkAccountValue(h.navManager.assetAccount(s.centrifugeId, s.usdcId), assetToPool(USDC_AMOUNT_1 / 5), true);
+        checkAccountValue(h.navManager.equityAccount(s.centrifugeId), assetToPool(USDC_AMOUNT_1 / 5), true);
+
         (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
         assertEq(issuance, 0);
         assertEq(poolPerShare.raw(), d18(1, 1).raw());
-
-        checkAccountValue(h.navManager.assetAccount(s.centrifugeId, s.usdcId), assetToPool(USDC_AMOUNT_1 / 5), true);
-        checkAccountValue(h.navManager.equityAccount(s.centrifugeId), assetToPool(USDC_AMOUNT_1 / 5), true);
     }
 
     /// forge-config: default.isolate = true
