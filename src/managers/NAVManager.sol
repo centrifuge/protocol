@@ -27,7 +27,6 @@ contract NAVManager is Auth, ISnapshotHook {
     error ExceedsMaxAccounts();
 
     PoolId public immutable poolId;
-    ShareClassId public immutable scId;
 
     IHub public immutable hub;
     address public immutable holdings;
@@ -35,10 +34,10 @@ contract NAVManager is Auth, ISnapshotHook {
 
     INAVHook public navHook;
     mapping(uint16 centrifugeId => uint16) public accountCounter;
+    mapping(uint16 centrifugeId => mapping(AssetId => AccountId)) public assetIdToAccountId;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, IHub hub_, address deployer) Auth(deployer) {
         poolId = poolId_;
-        scId = scId_;
 
         hub = hub_;
         holdings = address(hub.holdings());
@@ -68,15 +67,16 @@ contract NAVManager is Auth, ISnapshotHook {
         accountCounter[centrifugeId] = 5;
     }
 
-    function initializeHolding(AssetId assetId, IValuation valuation) external auth {
+    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external auth {
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId assetAccount = withCentrifugeId(centrifugeId, index);
+        AccountId assetAccount = assetIdToAccountId[centrifugeId][assetId];
+        if (assetAccount.isNull()) assetAccount = withCentrifugeId(centrifugeId, index);
+
         hub.createAccount(poolId, assetAccount, true);
-        // TOOD: should be adapted to asset account and holding per scId
         hub.initializeHolding(
             poolId,
             scId,
@@ -91,15 +91,16 @@ contract NAVManager is Auth, ISnapshotHook {
         accountCounter[centrifugeId] = index + 1;
     }
 
-    function initializeLiability(AssetId assetId, IValuation valuation) external auth {
+    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external auth {
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId expenseAccount = withCentrifugeId(centrifugeId, index);
+        AccountId expenseAccount = assetIdToAccountId[centrifugeId][assetId];
+        if (expenseAccount.isNull()) expenseAccount = withCentrifugeId(centrifugeId, index);
+
         hub.createAccount(poolId, expenseAccount, true);
-        // TOOD: should be adapted to expense account and liability per scId
         hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount, liabilityAccount(centrifugeId));
 
         accountCounter[centrifugeId] = index + 1;
@@ -110,15 +111,15 @@ contract NAVManager is Auth, ISnapshotHook {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISnapshotHook
-    function onSync(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId) external {
-        require(poolId == poolId_ && scId == scId_);
+    function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
+        require(poolId == poolId_);
         require(msg.sender == holdings, NotAuthorized());
 
         D18 netAssetValue_ = netAssetValue(centrifugeId);
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
     }
 
-    function updateHoldingValue(AssetId assetId) external {
+    function updateHoldingValue(ShareClassId scId, AssetId assetId) external {
         hub.updateHoldingValue(poolId, scId, assetId);
     }
 
@@ -144,18 +145,18 @@ contract NAVManager is Auth, ISnapshotHook {
     //----------------------------------------------------------------------------------------------
 
     function equityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return equityAccount(centrifugeId);
+        return withCentrifugeId(centrifugeId, 1);
     }
 
     function liabilityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return liabilityAccount(centrifugeId);
+        return withCentrifugeId(centrifugeId, 2);
     }
 
     function gainAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return gainAccount(centrifugeId);
+        return withCentrifugeId(centrifugeId, 3);
     }
 
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return lossAccount(centrifugeId);
+        return withCentrifugeId(centrifugeId, 4);
     }
 }
