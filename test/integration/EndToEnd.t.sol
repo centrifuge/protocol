@@ -340,7 +340,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub);
         h.navManager.setNAVHook(priceManager);
-        
+
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
         h.hub.updateHubManager(POOL_A, address(priceManager), true);
 
@@ -543,7 +543,6 @@ contract EndToEndFlows is EndToEndUtils {
         // (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
         // assertEq(issuance, );
         // assertEq(poolPerShare.raw(), d18(1, 1).raw());
-
     }
 
     function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {

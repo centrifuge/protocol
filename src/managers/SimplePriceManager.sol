@@ -30,7 +30,6 @@ contract SimplePriceManager is INAVHook {
     D18 public globalNetAssetValue;
     mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
-
     constructor(PoolId poolId_, ShareClassId scId_, IHub hub_) {
         poolId = poolId_;
         scId = scId_;
@@ -56,7 +55,7 @@ contract SimplePriceManager is INAVHook {
 
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
         globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
-        
+
         D18 price = globalIssuance == 0 ? d18(1, 1) : globalNetAssetValue / d18(globalIssuance);
 
         networkMetrics.netAssetValue = netAssetValue_;

@@ -14,7 +14,7 @@ import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
 
-import { console } from "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
