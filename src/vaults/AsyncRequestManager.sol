@@ -498,8 +498,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) return 0;
         assets = uint256(_maxDeposit(vault_, user));
+        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, investments[vault_][user].maxMint)) return 0;
     }
 
     function _maxDeposit(IBaseVault vault_, address user) internal view returns (uint128 assets) {
@@ -509,20 +509,23 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) return 0;
         shares = uint256(investments[vault_][user].maxMint);
+        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, shares)) return 0;
     }
 
     /// @inheritdoc IRedeemManager
     function maxWithdraw(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vault_, user, address(0), 0)) return 0;
+        AsyncInvestmentState memory state = investments[vault_][user];
+        uint128 shares = _assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down);
+        if (!_canTransfer(vault_, user, address(0), shares)) return 0;
         assets = uint256(investments[vault_][user].maxWithdraw);
     }
 
     /// @inheritdoc IRedeemManager
     function maxRedeem(IBaseVault vault_, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vault_, user, address(0), 0)) return 0;
-        shares = uint256(_maxRedeem(vault_, user));
+        AsyncInvestmentState memory state = investments[vault_][user];
+        shares = uint256(_assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down));
+        if (!_canTransfer(vault_, user, address(0), shares)) return 0;
     }
 
     function _maxRedeem(IBaseVault vault_, address user) internal view returns (uint128 shares) {
