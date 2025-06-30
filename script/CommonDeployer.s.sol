@@ -41,6 +41,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
+    bool transient newRoot;
+
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
@@ -76,6 +78,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         adminSafe = input.adminSafe;
 
         if (address(input.root) == address(0)) {
+            newRoot = true;
             root = Root(
                 create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
             );
@@ -167,9 +170,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _commonRely() private {
-        root.rely(address(guardian));
-        root.rely(address(messageProcessor));
-        root.rely(address(messageDispatcher));
+        if (newRoot) {
+            root.rely(address(guardian));
+            root.rely(address(messageProcessor));
+            root.rely(address(messageDispatcher));
+        }
         gateway.rely(address(root));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(multiAdapter));
@@ -199,7 +204,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         guardian.file("safe", address(adminSafe));
 
-        root.deny(deployer);
+        if (newRoot) {
+            root.deny(deployer);
+        }
         gateway.deny(deployer);
         multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);
