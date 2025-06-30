@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/Guardian.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer} from "script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
-contract FullDeployer is HubDeployer, SpokeDeployer {
+contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
     function deployFull(CommonInput memory input, address deployer) public {
         deployHub(input, deployer);
-        deploySpoke(input, deployer);
+        deployExtendedSpoke(input, deployer);
     }
 
     function removeFullDeployerAccess(address deployer) public {
         removeHubDeployerAccess(deployer);
-        removeSpokeDeployerAccess(deployer);
+        removeExtendedSpokeDeployerAccess(deployer);
     }
 
     function run() public virtual {
@@ -39,13 +40,15 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
 
         console.log("Network:", network);
         console.log("Environment:", environment);
+        console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
         CommonInput memory input = CommonInput({
             centrifugeId: centrifugeId,
+            root: IRoot(vm.envAddress("ROOT")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             messageGasLimit: uint128(vm.envUint("MESSAGE_COST")),
             maxBatchSize: uint128(vm.envUint("MAX_BATCH_SIZE")),
-            isTests: false
+            version: vm.envOr("VERSION", bytes32(0))
         });
 
         // Use the regular deployment functions - they now use CreateX internally
@@ -55,9 +58,8 @@ contract FullDeployer is HubDeployer, SpokeDeployer {
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
 
-        bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
-
-        if (!isNotMainnet) {
+        bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
+        if (isMainnet) {
             removeFullDeployerAccess(msg.sender);
         }
 

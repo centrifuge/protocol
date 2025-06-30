@@ -16,12 +16,8 @@ contract JsonRegistry is Script {
         registeredContracts += 1;
     }
 
-    function startDeploymentOutput(bool isTests) public {
+    function startDeploymentOutput() public {
         deploymentOutput = '{\n  "contracts": {\n';
-
-        if (!isTests) {
-            console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
-        }
     }
 
     function saveDeploymentOutput() public {

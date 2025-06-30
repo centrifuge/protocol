@@ -1,26 +1,32 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
-contract CommonDeploymentTest is CommonDeployer, Test {
+contract CommonDeploymentInputTest is Test {
     uint16 constant CENTRIFUGE_ID = 23;
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
 
-    function setUp() public virtual {
-        CommonInput memory input = CommonInput({
+    function _commonInput() internal view returns (CommonInput memory) {
+        return CommonInput({
             centrifugeId: CENTRIFUGE_ID,
+            root: IRoot(address(0)),
             adminSafe: ADMIN_SAFE,
             messageGasLimit: 0,
             maxBatchSize: 0,
-            isTests: true
+            version: bytes32(0)
         });
+    }
+}
 
-        deployCommon(input, address(this));
+contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
+    function setUp() public virtual {
+        deployCommon(_commonInput(), address(this));
         removeCommonDeployerAccess(address(this));
     }
 

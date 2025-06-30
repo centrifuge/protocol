@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
@@ -18,18 +18,19 @@ import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
     uint16 centrifugeId;
+    IRoot root;
     ISafe adminSafe;
     uint128 messageGasLimit;
     uint128 maxBatchSize;
-    bool isTests;
+    bytes32 version;
 }
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
-    bytes32 immutable SALT;
 
-    string version;
+    bytes32 version;
     ISafe public adminSafe;
+
     Root public root;
     TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
@@ -40,12 +41,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
-    constructor() {
-        // If no salt is provided, a pseudo-random salt is generated,
-        // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
-        version = vm.envOr("VERSION", string(""));
-    }
+    bool transient newRoot;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -53,36 +49,94 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      * @return salt A deterministic salt based on contract name and optional VERSION
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
-        if (bytes(version).length > 0) {
+        if (version != bytes32(0)) {
             return keccak256(abi.encodePacked(contractName, version));
         }
         return keccak256(abi.encodePacked(contractName));
     }
 
     function deployCommon(CommonInput memory input, address deployer) public {
-        if (address(root) != address(0)) {
+        if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        if (input.isTests) {
-            // For tests we want to have different contract addreses per chain
-            version = string(abi.encodePacked(version, input.centrifugeId));
-        }
-
         setUpCreateXFactory();
-        startDeploymentOutput(input.isTests);
-
-        // Note: This function was split into smaller helper functions to avoid
-        // "stack too deep" compilation errors that occur when too many local
-        // variables are used in a single function scope.
-
-        // Deploy basic contracts first
-        _deployBasicContracts(deployer, input.messageGasLimit, input.maxBatchSize);
-
-        // Deploy more complex contracts
-        _deployComplexContracts(input.centrifugeId, deployer);
+        startDeploymentOutput();
 
         adminSafe = input.adminSafe;
+        version = input.version;
+
+        if (address(input.root) == address(0)) {
+            newRoot = true;
+            root = Root(
+                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
+            );
+        } else {
+            root = Root(address(input.root));
+        }
+
+        tokenRecoverer = TokenRecoverer(
+            create3(
+                generateSalt("tokenRecoverer"),
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer))
+            )
+        );
+
+        messageProcessor = MessageProcessor(
+            create3(
+                generateSalt("messageProcessor"),
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer))
+            )
+        );
+
+        gasService = GasService(
+            create3(
+                generateSalt("gasService"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchSize, input.messageGasLimit))
+            )
+        );
+
+        gateway = Gateway(
+            payable(
+                create3(
+                    generateSalt("gateway"),
+                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer))
+                )
+            )
+        );
+
+        multiAdapter = MultiAdapter(
+            create3(
+                generateSalt("multiAdapter"),
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, deployer))
+            )
+        );
+
+        messageDispatcher = MessageDispatcher(
+            create3(
+                generateSalt("messageDispatcher"),
+                abi.encodePacked(
+                    type(MessageDispatcher).creationCode,
+                    abi.encode(input.centrifugeId, root, gateway, tokenRecoverer, deployer)
+                )
+            )
+        );
+
+        guardian = Guardian(
+            create3(
+                generateSalt("guardian"),
+                abi.encodePacked(
+                    type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapter, root, messageDispatcher)
+                )
+            )
+        );
+
+        poolEscrowFactory = PoolEscrowFactory(
+            create3(
+                generateSalt("poolEscrowFactory"),
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer))
+            )
+        );
 
         _commonRegister();
         _commonRely();
@@ -90,9 +144,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _commonRegister() private {
-        register("root", address(root));
-        // Already present in load_vars.sh and not needed to be registered
-        // register("adminSafe", address(adminSafe));
+        if (newRoot) {
+            register("root", address(root));
+            // Otherwise already present in load_vars.sh and not needed to be registered
+        }
+        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
@@ -103,9 +159,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _commonRely() private {
-        root.rely(address(guardian));
-        root.rely(address(messageProcessor));
-        root.rely(address(messageDispatcher));
+        if (newRoot) {
+            root.rely(address(guardian));
+            root.rely(address(messageProcessor));
+            root.rely(address(messageDispatcher));
+        }
         gateway.rely(address(root));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(multiAdapter));
@@ -129,96 +187,21 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function removeCommonDeployerAccess(address deployer) public {
-        if (root.wards(deployer) == 0) {
+        if (gateway.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
+        // We override the deployer with the correct admin once everything is deployed
         guardian.file("safe", address(adminSafe));
 
-        root.deny(deployer);
+        if (newRoot) {
+            root.deny(deployer);
+        }
         gateway.deny(deployer);
         multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
         poolEscrowFactory.deny(deployer);
-    }
-
-    // Helper function to deploy basic contracts in a separate scope to avoid stack too deep errors
-    function _deployBasicContracts(address deployer, uint128 messageGasLimit, uint128 maxBatchSize) private {
-        // Root
-        bytes32 rootSalt = generateSalt("root");
-        bytes memory rootBytecode = abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer));
-        root = Root(create3(rootSalt, rootBytecode));
-
-        // TokenRecoverer
-        bytes32 tokenRecovererSalt = generateSalt("tokenRecoverer");
-        bytes memory tokenRecovererBytecode =
-            abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer));
-        tokenRecoverer = TokenRecoverer(create3(tokenRecovererSalt, tokenRecovererBytecode));
-
-        // MessageProcessor
-        bytes32 messageProcessorSalt = generateSalt("messageProcessor");
-        bytes memory messageProcessorBytecode =
-            abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer));
-        messageProcessor = MessageProcessor(create3(messageProcessorSalt, messageProcessorBytecode));
-
-        // GasService
-        bytes32 gasServiceSalt = generateSalt("gasService");
-        bytes memory gasServiceBytecode =
-            abi.encodePacked(type(GasService).creationCode, abi.encode(maxBatchSize, messageGasLimit));
-        gasService = GasService(create3(gasServiceSalt, gasServiceBytecode));
-    }
-
-    // Helper function to deploy more complex contracts in a separate scope to avoid stack too deep errors
-    function _deployComplexContracts(uint16 centrifugeId_, address deployer) private {
-        // Gateway
-        bytes32 gatewaySalt = generateSalt("gateway");
-        bytes memory gatewayBytecode =
-            abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer));
-        gateway = Gateway(payable(create3(gatewaySalt, gatewayBytecode)));
-
-        // MultiAdapter
-        bytes32 multiAdapterSalt = generateSalt("multiAdapter");
-        bytes memory multiAdapterBytecode =
-            abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(centrifugeId_, gateway, deployer));
-        multiAdapter = MultiAdapter(create3(multiAdapterSalt, multiAdapterBytecode));
-
-        // MessageDispatcher - use intermediate variables to avoid stack too deep
-        bytes32 messageDispatcherSalt = generateSalt("messageDispatcher");
-
-        // Store variables to reduce stack pressure
-        address rootAddr = address(root);
-        address gatewayAddr = address(gateway);
-        address tokenRecovererAddr = address(tokenRecoverer);
-
-        bytes memory messageDispatcherBytecode = abi.encodePacked(
-            type(MessageDispatcher).creationCode,
-            abi.encode(centrifugeId_, rootAddr, gatewayAddr, tokenRecovererAddr, deployer)
-        );
-        messageDispatcher = MessageDispatcher(create3(messageDispatcherSalt, messageDispatcherBytecode));
-
-        // Guardian - use intermediate variables to avoid stack too deep
-        bytes32 guardianSalt = generateSalt("guardian");
-
-        // Store variables to reduce stack pressure
-        address multiAdapterAddr = address(multiAdapter);
-        address messageDispatcherAddr = address(messageDispatcher);
-
-        bytes memory guardianBytecode = abi.encodePacked(
-            type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapterAddr, rootAddr, messageDispatcherAddr)
-        );
-        guardian = Guardian(create3(guardianSalt, guardianBytecode));
-
-        // PoolEscrowFactory
-        poolEscrowFactory = _deployPoolEscrowFactory(deployer);
-    }
-
-    // Helper function to deploy PoolEscrowFactory in a separate scope to avoid stack too deep errors
-    function _deployPoolEscrowFactory(address deployer) private returns (PoolEscrowFactory) {
-        bytes32 poolEscrowFactorySalt = generateSalt("poolEscrowFactory");
-        bytes memory poolEscrowFactoryBytecode =
-            abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer));
-        return PoolEscrowFactory(create3(poolEscrowFactorySalt, poolEscrowFactoryBytecode));
     }
 }
