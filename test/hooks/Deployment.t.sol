@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 
 import {HooksDeployer} from "script/HooksDeployer.s.sol";

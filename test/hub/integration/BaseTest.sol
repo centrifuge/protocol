@@ -4,8 +4,8 @@ pragma solidity ^0.8.28;
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
