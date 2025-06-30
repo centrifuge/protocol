@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
@@ -18,6 +18,7 @@ import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
     uint16 centrifugeId;
+    IRoot root;
     ISafe adminSafe;
     uint128 messageGasLimit;
     uint128 maxBatchSize;
@@ -40,6 +41,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
+    bool transient newRoot;
+
     constructor() {
         // If no salt is provided, a pseudo-random salt is generated,
         // thus effectively making the deployment non-deterministic
@@ -60,7 +63,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function deployCommon(CommonInput memory input, address deployer) public {
-        if (address(root) != address(0)) {
+        if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
@@ -74,8 +77,14 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         adminSafe = input.adminSafe;
 
-        root =
-            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer))));
+        if (address(input.root) == address(0)) {
+            newRoot = true;
+            root = Root(
+                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
+            );
+        } else {
+            root = Root(address(input.root));
+        }
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -140,13 +149,16 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
-        _commonRegister();
+        _commonRegister(address(input.root));
         _commonRely();
         _commonFile();
     }
 
-    function _commonRegister() private {
-        register("root", address(root));
+    function _commonRegister(address inputRoot) private {
+        if (inputRoot == address(0)) {
+            register("root", address(root));
+            // Otherwise already present in load_vars.sh and not needed to be registered
+        }
         // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
@@ -158,9 +170,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function _commonRely() private {
-        root.rely(address(guardian));
-        root.rely(address(messageProcessor));
-        root.rely(address(messageDispatcher));
+        if (newRoot) {
+            root.rely(address(guardian));
+            root.rely(address(messageProcessor));
+            root.rely(address(messageDispatcher));
+        }
         gateway.rely(address(root));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(multiAdapter));
@@ -184,13 +198,15 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function removeCommonDeployerAccess(address deployer) public {
-        if (root.wards(deployer) == 0) {
+        if (gateway.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
         guardian.file("safe", address(adminSafe));
 
-        root.deny(deployer);
+        if (newRoot) {
+            root.deny(deployer);
+        }
         gateway.deny(deployer);
         multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);

@@ -1,25 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
 
-import {CommonInput} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract VaultsDeploymentTest is VaultsDeployer, Test {
+contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        CommonInput memory input = CommonInput({
-            centrifugeId: 23,
-            adminSafe: ISafe(makeAddr("AdminSafe")),
-            messageGasLimit: 0,
-            maxBatchSize: 0,
-            isTests: true
-        });
-
-        deployVaults(input, address(this));
+        deployVaults(_commonInput(), address(this));
         removeVaultsDeployerAccess(address(this));
     }
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/Guardian.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
@@ -42,6 +43,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
 
         CommonInput memory input = CommonInput({
             centrifugeId: centrifugeId,
+            root: IRoot(vm.envAddress("ROOT")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             messageGasLimit: uint128(vm.envUint("MESSAGE_COST")),
             maxBatchSize: uint128(vm.envUint("MAX_BATCH_SIZE")),

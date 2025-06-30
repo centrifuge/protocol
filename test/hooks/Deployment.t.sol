@@ -3,27 +3,17 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 
 import {HooksDeployer} from "script/HooksDeployer.s.sol";
 
-import {CommonInput} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract VaultsDeploymentTest is HooksDeployer, Test {
+contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        CommonInput memory input = CommonInput({
-            centrifugeId: 23,
-            adminSafe: ISafe(makeAddr("AdminSafe")),
-            messageGasLimit: 0,
-            maxBatchSize: 0,
-            isTests: true
-        });
-
-        deployHooks(input, address(this));
+        deployHooks(_commonInput(), address(this));
         removeHooksDeployerAccess(address(this));
     }
 

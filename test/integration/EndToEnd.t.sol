@@ -8,8 +8,8 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -218,6 +218,7 @@ contract EndToEndDeployment is Test {
     {
         CommonInput memory input = CommonInput({
             centrifugeId: localCentrifugeId,
+            root: IRoot(address(0)),
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS),
             maxBatchSize: uint128(GAS) * 100,

@@ -1,25 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
-import {CommonInput} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract SpokeDeploymentTest is SpokeDeployer, Test {
+contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        CommonInput memory input = CommonInput({
-            centrifugeId: 23,
-            adminSafe: ISafe(makeAddr("AdminSafe")),
-            messageGasLimit: 0,
-            maxBatchSize: 0,
-            isTests: true
-        });
-
-        deploySpoke(input, address(this));
+        deploySpoke(_commonInput(), address(this));
         removeSpokeDeployerAccess(address(this));
     }
 

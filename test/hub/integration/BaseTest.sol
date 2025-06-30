@@ -5,6 +5,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -74,6 +75,7 @@ contract BaseTest is HubDeployer, Test {
         // Deployment
         CommonInput memory input = CommonInput({
             centrifugeId: CHAIN_CP,
+            root: IRoot(address(0)),
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS),
             maxBatchSize: uint128(GAS) * 100,
