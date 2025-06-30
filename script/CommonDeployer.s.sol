@@ -191,6 +191,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already removed. Make this method idempotent.
         }
 
+        // We override the deployer with the correct admin once everything is deployed
         guardian.file("safe", address(adminSafe));
 
         if (newRoot) {
