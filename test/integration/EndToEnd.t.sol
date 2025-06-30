@@ -39,8 +39,7 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {FullDeployer, CommonInput} from "script/FullDeployer.s.sol";
 
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
@@ -161,8 +160,6 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
 
@@ -175,9 +172,6 @@ contract EndToEndDeployment is Test {
         vm.deal(BSM, 1 ether);
         vm.deal(INVESTOR_A, 1 ether);
         vm.deal(ANY, 1 ether);
-
-        // We not use the VM chain
-        vm.chainId(0xDEAD);
 
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
@@ -205,28 +199,37 @@ contract EndToEndDeployment is Test {
     }
 
     function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy.guardian().safe()));
+        vm.startPrank(address(deploy));
         IAuth(address(adapter)).rely(address(deploy.root()));
         IAuth(address(adapter)).rely(address(deploy.guardian()));
         IAuth(address(adapter)).deny(address(deploy));
+        vm.stopPrank();
 
+        vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
-
         vm.stopPrank();
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
         internal
         returns (LocalAdapter adapter)
     {
-        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: localCentrifugeId,
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            isTests: true
+        });
+
+        deploy.deployFull(input, address(deploy));
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(address(deploy), "testnet");
+        deploy.removeFullDeployerAccess(address(deploy));
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
@@ -404,7 +407,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -440,7 +442,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -623,7 +624,6 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 

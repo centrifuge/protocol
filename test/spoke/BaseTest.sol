@@ -27,8 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {SpokeDeployer, CommonInput} from "script/SpokeDeployer.s.sol";
 
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
@@ -87,17 +86,21 @@ contract BaseTest is SpokeDeployer, Test {
     }
 
     function setUp() public virtual {
-        // We should not use the block ChainID
-        vm.chainId(BLOCK_CHAIN_ID);
-
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
-        deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS_COST_LIMIT),
+            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            isTests: true
+        });
+
+        deploySpoke(input, address(this));
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -168,6 +171,9 @@ contract BaseTest is SpokeDeployer, Test {
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
         excludeContract(address(poolEscrowFactory));
+
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
     }
 
     // helpers

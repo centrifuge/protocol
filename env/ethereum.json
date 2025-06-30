@@ -4,7 +4,6 @@
         "environment": "mainnet",
         "centrifugeId": 2,
         "network": "ethereum",
-        "etherscanUrl": "https://api.etherscan.io/api",
         "connectsTo": [
             "arbitrum",
             "base"
