@@ -19,7 +19,7 @@ contract CommonDeploymentInputTest is Test {
             adminSafe: ADMIN_SAFE,
             messageGasLimit: 0,
             maxBatchSize: 0,
-            isTests: true
+            version: bytes32(0)
         });
     }
 }

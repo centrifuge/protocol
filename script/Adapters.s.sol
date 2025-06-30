@@ -36,7 +36,7 @@ contract Adapters is Script, JsonRegistry {
         guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
 
         vm.startBroadcast();
-        startDeploymentOutput(false);
+        startDeploymentOutput();
 
         // Deploy and save adapters in config file
         if (vm.parseJsonBool(config, "$.adapters.wormhole.deploy")) {

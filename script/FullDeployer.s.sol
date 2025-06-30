@@ -40,6 +40,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
 
         console.log("Network:", network);
         console.log("Environment:", environment);
+        console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
         CommonInput memory input = CommonInput({
             centrifugeId: centrifugeId,
@@ -47,7 +48,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             messageGasLimit: uint128(vm.envUint("MESSAGE_COST")),
             maxBatchSize: uint128(vm.envUint("MAX_BATCH_SIZE")),
-            isTests: false
+            version: vm.envOr("VERSION", bytes32(0))
         });
 
         // Use the regular deployment functions - they now use CreateX internally
@@ -57,9 +58,8 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
         guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
 
-        bool isNotMainnet = keccak256(abi.encodePacked(environment)) != keccak256(abi.encodePacked("mainnet"));
-
-        if (!isNotMainnet) {
+        bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
+        if (isMainnet) {
             removeFullDeployerAccess(msg.sender);
         }
 

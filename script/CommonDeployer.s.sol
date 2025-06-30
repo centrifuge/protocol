@@ -22,15 +22,15 @@ struct CommonInput {
     ISafe adminSafe;
     uint128 messageGasLimit;
     uint128 maxBatchSize;
-    bool isTests;
+    bytes32 version;
 }
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
-    bytes32 immutable SALT;
 
-    string version;
+    bytes32 version;
     ISafe public adminSafe;
+
     Root public root;
     TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
@@ -43,20 +43,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
     bool transient newRoot;
 
-    constructor() {
-        // If no salt is provided, a pseudo-random salt is generated,
-        // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
-        version = vm.envOr("VERSION", string(""));
-    }
-
     /**
      * @dev Generates a salt for contract deployment
      * @param contractName The name of the contract
      * @return salt A deterministic salt based on contract name and optional VERSION
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
-        if (bytes(version).length > 0) {
+        if (version != bytes32(0)) {
             return keccak256(abi.encodePacked(contractName, version));
         }
         return keccak256(abi.encodePacked(contractName));
@@ -67,15 +60,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already deployed. Make this method idempotent.
         }
 
-        if (input.isTests) {
-            // For tests we want to have different contract addreses per chain
-            version = string(abi.encodePacked(version, input.centrifugeId));
-        }
-
         setUpCreateXFactory();
-        startDeploymentOutput(input.isTests);
+        startDeploymentOutput();
 
         adminSafe = input.adminSafe;
+        version = input.version;
 
         if (address(input.root) == address(0)) {
             newRoot = true;
