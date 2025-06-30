@@ -47,3 +47,7 @@ print_success() {
 print_error() {
     echo "    ✗ $1"
 }
+
+print_warning() {
+    echo "    ⚠ $1"
+}

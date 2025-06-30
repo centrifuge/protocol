@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -12,7 +12,15 @@ contract CommonDeploymentTest is CommonDeployer, Test {
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
 
     function setUp() public virtual {
-        deployCommon(CENTRIFUGE_ID, ADMIN_SAFE, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CENTRIFUGE_ID,
+            adminSafe: ADMIN_SAFE,
+            messageGasLimit: 0,
+            maxBatchSize: 0,
+            isTests: true
+        });
+
+        deployCommon(input, address(this));
         removeCommonDeployerAccess(address(this));
     }
 
