@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
@@ -124,6 +124,13 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
 /// @notice Interface for dispatch-only gateway
 interface ISpokeMessageSender is ILocalCentrifugeId {
+    struct UpdateData {
+        uint128 netAmount;
+        bool isIncrease;
+        bool isSnapshot;
+        uint64 nonce;
+    }
+
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
         uint16 centrifugeId,
@@ -141,24 +148,14 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        uint128 amount,
+        UpdateData calldata data,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        bool isSnapshot,
-        uint64 nonce,
         uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 shares,
-        bool isIssuance,
-        bool isSnapshot,
-        uint64 nonce,
-        uint128 extraGasLimit
-    ) external;
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, UpdateData calldata data, uint128 extraGasLimit)
+        external;
 
     /// @notice Creates and send the message
     function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;

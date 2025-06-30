@@ -654,7 +654,9 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
-        emit IBalanceSheet.SubmitQueuedAssets(POOL_A, SC_1, ASSET_20, 0, 0, IDENTITY_PRICE, IS_SNAPSHOT, 0);
+        emit IBalanceSheet.SubmitQueuedAssets(
+            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, true, IS_SNAPSHOT, 0), IDENTITY_PRICE
+        );
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
     }
 
@@ -668,7 +670,9 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         balanceSheet.withdraw(POOL_A, SC_1, erc20, 0, TO, AMOUNT);
 
         vm.expectEmit();
-        emit IBalanceSheet.SubmitQueuedAssets(POOL_A, SC_1, ASSET_20, AMOUNT * 3, AMOUNT, ASSET_PRICE, IS_SNAPSHOT, 0);
+        emit IBalanceSheet.SubmitQueuedAssets(
+            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(AMOUNT * 2, true, IS_SNAPSHOT, 0), ASSET_PRICE
+        );
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
 
         (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(POOL_A, SC_1, ASSET_20);
@@ -774,7 +778,9 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
 
         vm.expectEmit();
-        emit IBalanceSheet.SubmitQueuedShares(POOL_A, SC_1, AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0);
+        emit IBalanceSheet.SubmitQueuedShares(
+            POOL_A, SC_1, ISpokeMessageSender.UpdateData(AMOUNT, IS_ISSUANCE, IS_SNAPSHOT, 0)
+        );
         balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);

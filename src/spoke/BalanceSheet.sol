@@ -210,38 +210,26 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
 
+        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
 
-        emit SubmitQueuedAssets(
-            poolId,
-            scId,
-            assetId,
-            assetQueue.deposits,
-            assetQueue.withdrawals,
-            pricePoolPerAsset,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce
-        );
-        sender.sendUpdateHoldingAmount(
-            poolId,
-            scId,
-            assetId,
-            (assetQueue.deposits >= assetQueue.withdrawals)
+        ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
+            netAmount: (assetQueue.deposits >= assetQueue.withdrawals)
                 ? assetQueue.deposits - assetQueue.withdrawals
                 : assetQueue.withdrawals - assetQueue.deposits,
-            pricePoolPerAsset,
-            assetQueue.deposits >= assetQueue.withdrawals,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce,
-            extraGasLimit
-        );
+            isIncrease: assetQueue.deposits >= assetQueue.withdrawals,
+            isSnapshot: shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter,
+            nonce: shareQueue.nonce
+        });
 
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
         shareQueue.queuedAssetCounter -= assetCounter;
+
+        emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -251,15 +239,19 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
-        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        emit SubmitQueuedShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
-        sender.sendUpdateShares(
-            poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce, extraGasLimit
-        );
+        ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
+            netAmount: shareQueue.delta,
+            isIncrease: shareQueue.isPositive,
+            isSnapshot: queuedShares[poolId][scId].queuedAssetCounter == 0,
+            nonce: shareQueue.nonce
+        });
 
         shareQueue.delta = 0;
         shareQueue.isPositive = true;
         shareQueue.nonce++;
+
+        emit SubmitQueuedShares(poolId, scId, data);
+        sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 /// @notice Allows to call several calls of the same contract in a single transaction
