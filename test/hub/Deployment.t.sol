@@ -5,21 +5,13 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 
-import {CommonInput} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract HubDeploymentTest is HubDeployer, Test {
+contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        CommonInput memory input = CommonInput({
-            centrifugeId: 23,
-            adminSafe: ISafe(makeAddr("AdminSafe")),
-            messageGasLimit: 0,
-            maxBatchSize: 0,
-            isTests: true
-        });
-
-        deployHub(input, address(this));
+        deployHub(_commonInput(), address(this));
         removeHubDeployerAccess(address(this));
     }
 
