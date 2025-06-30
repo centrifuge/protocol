@@ -1,24 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/misc/Escrow.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-
-import {Spoke} from "src/spoke/Spoke.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-
-import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "src/managers/MerkleProofManager.sol";
 import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
 import {CircleDecoder} from "src/managers/decoders/CircleDecoder.sol";
+import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
+import {MerkleProofManagerFactory} from "src/managers/MerkleProofManager.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";

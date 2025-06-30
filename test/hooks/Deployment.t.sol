@@ -6,8 +6,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 import {HooksDeployer} from "script/HooksDeployer.s.sol";
 

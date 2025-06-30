@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {ManagersDeployer} from "script/ManagersDeployer.s.sol";

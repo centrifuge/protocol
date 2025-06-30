@@ -1,23 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/misc/Escrow.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
