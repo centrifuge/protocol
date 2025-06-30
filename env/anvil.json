@@ -1,0 +1,15 @@
+{
+    "network": {
+        "chainId": 1982,
+        "centrifugeId": 9,
+        "environment": "testnet",
+        "network": "anvil",
+        "catapultaNetwork": "anvil",
+        "connectsTo": [
+            "anvil"
+        ]
+    },
+    "contracts": {
+        "createx": "0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed"
+    }
+}

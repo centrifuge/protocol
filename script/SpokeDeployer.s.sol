@@ -5,8 +5,6 @@ import {Escrow} from "src/misc/Escrow.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
-
 import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
@@ -21,7 +19,7 @@ import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
@@ -42,26 +40,25 @@ contract SpokeDeployer is CommonDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deploySpoke(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
+    function deploySpoke(CommonInput memory input, address deployer) public {
+        deployCommon(input, deployer);
 
-        routerEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow2"))}(deployer);
-        globalEscrow = new Escrow{salt: keccak256(abi.encodePacked(SALT, "escrow3"))}(deployer);
-        tokenFactory = new TokenFactory{salt: SALT}(address(root), deployer);
+        // Note: This function was split into smaller helper functions to avoid
+        // "stack too deep" compilation errors that occur when too many local
+        // variables are used in a single function scope.
 
-        asyncRequestManager = new AsyncRequestManager(IEscrow(globalEscrow), deployer);
-        syncManager = new SyncManager(deployer);
-        asyncVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, deployer);
-        syncDepositVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, deployer);
+        // Deploy escrows, factories, and managers
+        _deployEscrowsAndFactories(deployer);
 
-        spoke = new Spoke(tokenFactory, deployer);
-        balanceSheet = new BalanceSheet(root, deployer);
-        vaultRouter = new VaultRouter(address(routerEscrow), gateway, spoke, deployer);
+        // Deploy main spoke contracts
+        _deployMainSpokeContracts(deployer);
 
-        // Hooks
-        freezeOnlyHook = address(new FreezeOnly{salt: SALT}(address(root), deployer));
-        fullRestrictionsHook = address(new FullRestrictions{salt: SALT}(address(root), deployer));
-        redemptionRestrictionsHook = address(new RedemptionRestrictions{salt: SALT}(address(root), deployer));
+        // Deploy hooks
+        _deployHooks(deployer);
+
+        // Deploy vault factories
+        _deployAsyncVaultFactory(deployer);
+        _deploySyncDepositVaultFactory(deployer);
 
         _spokeRegister();
         _spokeEndorse();
@@ -191,5 +188,96 @@ contract SpokeDeployer is CommonDeployer {
         routerEscrow.deny(deployer);
         globalEscrow.deny(deployer);
         vaultRouter.deny(deployer);
+    }
+
+    // Helper function to deploy escrows, factories, and managers in a separate scope to avoid stack too deep errors
+    function _deployEscrowsAndFactories(address deployer) private {
+        // RouterEscrow
+        bytes32 routerEscrowSalt = generateSalt("routerEscrow");
+        bytes memory routerEscrowBytecode = abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer));
+        routerEscrow = Escrow(create3(routerEscrowSalt, routerEscrowBytecode));
+
+        // GlobalEscrow
+        bytes32 globalEscrowSalt = generateSalt("globalEscrow");
+        bytes memory globalEscrowBytecode = abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer));
+        globalEscrow = Escrow(create3(globalEscrowSalt, globalEscrowBytecode));
+
+        // TokenFactory
+        bytes32 tokenFactorySalt = generateSalt("tokenFactory");
+        bytes memory tokenFactoryBytecode =
+            abi.encodePacked(type(TokenFactory).creationCode, abi.encode(address(root), deployer));
+        tokenFactory = TokenFactory(create3(tokenFactorySalt, tokenFactoryBytecode));
+
+        // AsyncRequestManager
+        bytes32 asyncRequestManagerSalt = generateSalt("asyncRequestManager");
+        bytes memory asyncRequestManagerBytecode =
+            abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(IEscrow(globalEscrow), deployer));
+        asyncRequestManager = AsyncRequestManager(create3(asyncRequestManagerSalt, asyncRequestManagerBytecode));
+
+        // SyncManager
+        bytes32 syncManagerSalt = generateSalt("syncManager");
+        bytes memory syncManagerBytecode = abi.encodePacked(type(SyncManager).creationCode, abi.encode(deployer));
+        syncManager = SyncManager(create3(syncManagerSalt, syncManagerBytecode));
+    }
+
+    // Helper function to deploy main spoke contracts in a separate scope to avoid stack too deep errors
+    function _deployMainSpokeContracts(address deployer) private {
+        // Spoke
+        bytes32 spokeSalt = generateSalt("spoke");
+        bytes memory spokeBytecode = abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, deployer));
+        spoke = Spoke(create3(spokeSalt, spokeBytecode));
+
+        // BalanceSheet
+        bytes32 balanceSheetSalt = generateSalt("balanceSheet");
+        bytes memory balanceSheetBytecode =
+            abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, deployer));
+        balanceSheet = BalanceSheet(create3(balanceSheetSalt, balanceSheetBytecode));
+
+        // VaultRouter
+        bytes32 vaultRouterSalt = generateSalt("vaultRouter");
+        bytes memory vaultRouterBytecode = abi.encodePacked(
+            type(VaultRouter).creationCode, abi.encode(address(routerEscrow), gateway, spoke, deployer)
+        );
+        vaultRouter = VaultRouter(create3(vaultRouterSalt, vaultRouterBytecode));
+    }
+
+    // Helper function to deploy hooks in a separate scope to avoid stack too deep errors
+    function _deployHooks(address deployer) private {
+        // Hooks - deploy using CreateX
+        bytes32 freezeOnlySalt = generateSalt("freezeOnlyHook");
+        bytes memory freezeOnlyBytecode =
+            abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), deployer));
+        freezeOnlyHook = create3(freezeOnlySalt, freezeOnlyBytecode);
+
+        bytes32 fullRestrictionsSalt = generateSalt("fullRestrictionsHook");
+        bytes memory fullRestrictionsBytecode =
+            abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), deployer));
+        fullRestrictionsHook = create3(fullRestrictionsSalt, fullRestrictionsBytecode);
+
+        bytes32 redemptionRestrictionsSalt = generateSalt("redemptionRestrictionsHook");
+        bytes memory redemptionRestrictionsBytecode =
+            abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), deployer));
+        redemptionRestrictionsHook = create3(redemptionRestrictionsSalt, redemptionRestrictionsBytecode);
+    }
+
+    // Helper function to deploy AsyncVaultFactory in a separate scope to avoid stack too deep errors
+    function _deployAsyncVaultFactory(address deployer) private {
+        bytes32 asyncVaultFactorySalt = generateSalt("asyncVaultFactory");
+        bytes memory asyncVaultFactoryBytecode = abi.encodePacked(
+            type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, deployer)
+        );
+        asyncVaultFactory = AsyncVaultFactory(create3(asyncVaultFactorySalt, asyncVaultFactoryBytecode));
+    }
+
+    // Helper function to deploy SyncDepositVaultFactory in a separate scope to avoid stack too deep errors
+    // This contract has 4 constructor parameters that were causing compilation issues
+    function _deploySyncDepositVaultFactory(address deployer) private {
+        bytes32 syncDepositVaultFactorySalt = generateSalt("syncDepositVaultFactory");
+        bytes memory syncDepositVaultFactoryBytecode = abi.encodePacked(
+            type(SyncDepositVaultFactory).creationCode,
+            abi.encode(address(root), syncManager, asyncRequestManager, deployer)
+        );
+        syncDepositVaultFactory =
+            SyncDepositVaultFactory(create3(syncDepositVaultFactorySalt, syncDepositVaultFactoryBytecode));
     }
 }
