@@ -222,7 +222,7 @@ contract EndToEndDeployment is Test {
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS),
             maxBatchSize: uint128(GAS) * 100,
-            isTests: true
+            version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
         deploy.deployFull(input, address(deploy));

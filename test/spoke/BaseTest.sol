@@ -98,7 +98,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test {
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS_COST_LIMIT),
             maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
-            isTests: true
+            version: bytes32(0)
         });
 
         deployExtendedSpoke(input, address(this));
