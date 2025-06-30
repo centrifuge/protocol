@@ -73,7 +73,7 @@ contract LegacyVaultAdapter is AsyncVault, ILegacyVaultAdapter, IInvestmentManag
         legacy
         returns (bool)
     {
-        return asyncManager().requestRedeem(this, shares, receiver, owner, source);
+        return asyncManager().requestRedeem(this, shares, receiver, owner, source, false);
     }
 
     /// @inheritdoc IInvestmentManager
