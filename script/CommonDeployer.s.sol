@@ -138,12 +138,12 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
-        _commonRegister(address(input.root));
+        _commonRegister();
         _commonRely();
         _commonFile();
     }
 
-    function _commonRegister(address inputRoot) private {
+    function _commonRegister() private {
         if (newRoot) {
             register("root", address(root));
             // Otherwise already present in load_vars.sh and not needed to be registered
