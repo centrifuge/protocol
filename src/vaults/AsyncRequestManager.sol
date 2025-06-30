@@ -515,16 +515,14 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IRedeemManager
     function maxWithdraw(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        AsyncInvestmentState memory state = investments[vault_][user];
-        uint128 shares = _assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down);
+        uint128 shares = _maxRedeem(vault_, user);
         if (!_canTransfer(vault_, user, address(0), shares)) return 0;
         assets = uint256(investments[vault_][user].maxWithdraw);
     }
 
     /// @inheritdoc IRedeemManager
     function maxRedeem(IBaseVault vault_, address user) public view returns (uint256 shares) {
-        AsyncInvestmentState memory state = investments[vault_][user];
-        shares = uint256(_assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down));
+        shares = _maxRedeem(vault_, user);
         if (!_canTransfer(vault_, user, address(0), shares)) return 0;
     }
 
