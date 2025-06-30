@@ -146,7 +146,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
     function asyncManager() public view returns (IAsyncRequestManager) {
-        return IAsyncRequestManager(address(IAsyncRedeemVault(this).asyncRedeemManager()));
+        return IAsyncRequestManager(address(asyncRedeemManager));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert
