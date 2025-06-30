@@ -599,12 +599,12 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
     }
 
     function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
         spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 
     function testUnlinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
         spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 

@@ -287,7 +287,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     {
         _validateController(controller);
         shares = asyncRedeemManager.claimCancelRedeemRequest(this, receiver, controller);
-        emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
+        emit CancelRedeemClaim(controller, receiver, REQUEST_ID, msg.sender, shares);
     }
 
     //----------------------------------------------------------------------------------------------

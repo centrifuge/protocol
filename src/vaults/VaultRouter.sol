@@ -123,7 +123,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
         vault.deposit(assets, receiver);
@@ -187,6 +187,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxMint = vault.maxMint(controller);
+
+        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.mint(maxMint, receiver, controller);
     }
 
@@ -230,7 +232,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
-        spoke.vaultDetails(vault);
+        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 

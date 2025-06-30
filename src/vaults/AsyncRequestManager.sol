@@ -380,7 +380,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         address receiver
     ) internal {
         require(sharesUp <= state.maxMint, ExceedsDepositLimits());
-        state.maxMint = state.maxMint > sharesUp ? state.maxMint - sharesUp : 0;
+        state.maxMint = state.maxMint - sharesUp;
 
         if (sharesDown > 0) {
             globalEscrow.authTransferTo(vault_.share(), 0, receiver, sharesDown);
@@ -433,7 +433,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         require(_canTransfer(vault_, receiver, address(0), convertToShares(vault_, assetsDown)), TransferNotAllowed());
 
         require(assetsUp <= state.maxWithdraw, ExceedsRedeemLimits());
-        state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
+        state.maxWithdraw = state.maxWithdraw - assetsUp;
 
         if (assetsDown > 0) {
             _withdraw(vault_, receiver, assetsDown);

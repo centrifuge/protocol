@@ -355,11 +355,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         returns (IVault)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        IVault vault = factory.newVault(
-            poolId, scId, assetIdKey.asset, assetIdKey.tokenId, shareClass.shareToken, new address[](0)
-        );
-        registerVault(poolId, scId, assetId, assetIdKey.asset, assetIdKey.tokenId, factory, vault);
+        (address asset, uint256 tokenId) = idToAsset(assetId);
+        IVault vault = factory.newVault(poolId, scId, asset, tokenId, shareClass.shareToken, new address[](0));
+        registerVault(poolId, scId, assetId, asset, tokenId, factory, vault);
 
         return vault;
     }
@@ -380,38 +378,38 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         IVaultManager manager = vault.manager();
-        manager.addVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
+        manager.addVault(poolId, scId, assetId, vault, asset, tokenId);
 
         shareClass.asset[assetId].numVaults++;
         _vaultDetails[vault].isLinked = true;
 
-        if (assetIdKey.tokenId == 0) {
-            shareClass.shareToken.updateVault(assetIdKey.asset, address(vault));
+        if (tokenId == 0) {
+            shareClass.shareToken.updateVault(asset, address(vault));
         }
 
-        emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
+        emit LinkVault(poolId, scId, asset, tokenId, vault);
     }
 
     /// @inheritdoc ISpoke
     function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         IVaultManager manager = vault.manager();
-        manager.removeVault(poolId, scId, assetId, vault, assetIdKey.asset, assetIdKey.tokenId);
+        manager.removeVault(poolId, scId, assetId, vault, asset, tokenId);
 
         shareClass.asset[assetId].numVaults--;
         _vaultDetails[vault].isLinked = false;
 
-        if (assetIdKey.tokenId == 0) {
-            shareClass.shareToken.updateVault(assetIdKey.asset, address(0));
+        if (tokenId == 0) {
+            shareClass.shareToken.updateVault(asset, address(0));
         }
 
-        emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault);
+        emit UnlinkVault(poolId, scId, asset, tokenId, vault);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -425,9 +423,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function shareToken(PoolId poolId, ShareClassId scId) public view returns (IShareToken) {
-        ShareClassDetails storage shareClass = pools[poolId].shareClasses[scId];
-        require(address(shareClass.shareToken) != address(0), UnknownToken());
-        return shareClass.shareToken;
+        IShareToken token = pools[poolId].shareClasses[scId].shareToken;
+        require(address(token) != address(0), UnknownToken());
+        return token;
     }
 
     /// @inheritdoc ISpoke
