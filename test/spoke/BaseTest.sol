@@ -27,7 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SpokeDeployer, CommonInput} from "script/SpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
@@ -36,7 +36,7 @@ import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is SpokeDeployer, Test {
+contract BaseTest is ExtendedSpokeDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -100,7 +100,7 @@ contract BaseTest is SpokeDeployer, Test {
             isTests: true
         });
 
-        deploySpoke(input, address(this));
+        deployExtendedSpoke(input, address(this));
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -118,8 +118,7 @@ contract BaseTest is SpokeDeployer, Test {
 
         // wire contracts
         _wire(OTHER_CHAIN_ID, adapter1);
-        // remove deployer access
-        // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
+        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);

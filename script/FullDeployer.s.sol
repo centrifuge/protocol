@@ -5,19 +5,19 @@ import {ISafe} from "src/common/Guardian.sol";
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer} from "script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
-contract FullDeployer is HubDeployer, SpokeDeployer {
+contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
     function deployFull(CommonInput memory input, address deployer) public {
         deployHub(input, deployer);
-        deploySpoke(input, deployer);
+        deployExtendedSpoke(input, deployer);
     }
 
     function removeFullDeployerAccess(address deployer) public {
         removeHubDeployerAccess(deployer);
-        removeSpokeDeployerAccess(deployer);
+        removeExtendedSpokeDeployerAccess(deployer);
     }
 
     function run() public virtual {
