@@ -410,16 +410,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        uint128 amount,
+        UpdateData calldata data,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        bool isSnapshot,
-        uint64 nonce,
         uint128 extraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.updateHoldingAmount(
-                localCentrifugeId, poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, isSnapshot, nonce
+                localCentrifugeId,
+                poolId,
+                scId,
+                assetId,
+                data.netAmount,
+                pricePoolPerAsset,
+                data.isIncrease,
+                data.isSnapshot,
+                data.nonce
             );
         } else {
             gateway.setExtraGasLimit(extraGasLimit);
@@ -429,29 +434,26 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     assetId: assetId.raw(),
-                    amount: amount,
+                    amount: data.netAmount,
                     pricePerUnit: pricePoolPerAsset.raw(),
                     timestamp: uint64(block.timestamp),
-                    isIncrease: isIncrease,
-                    isSnapshot: isSnapshot,
-                    nonce: nonce
+                    isIncrease: data.isIncrease,
+                    isSnapshot: data.isSnapshot,
+                    nonce: data.nonce
                 }).serialize()
             );
         }
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 shares,
-        bool isIssuance,
-        bool isSnapshot,
-        uint64 nonce,
-        uint128 extraGasLimit
-    ) external auth {
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, UpdateData calldata data, uint128 extraGasLimit)
+        external
+        auth
+    {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);
+            hub.updateShares(
+                localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
+            );
         } else {
             gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
@@ -459,11 +461,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.UpdateShares({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    shares: shares,
+                    shares: data.netAmount,
                     timestamp: uint64(block.timestamp),
-                    isIssuance: isIssuance,
-                    isSnapshot: isSnapshot,
-                    nonce: nonce
+                    isIssuance: data.isIncrease,
+                    isSnapshot: data.isSnapshot,
+                    nonce: data.nonce
                 }).serialize()
             );
         }

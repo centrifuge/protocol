@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
@@ -61,18 +61,13 @@ interface IBalanceSheet {
         address to,
         uint256 amount
     );
-    event SubmitQueuedShares(
-        PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance, bool isSnapshot, uint64 nonce
-    );
+    event SubmitQueuedShares(PoolId indexed poolId, ShareClassId indexed scId, ISpokeMessageSender.UpdateData data);
     event SubmitQueuedAssets(
         PoolId indexed poolId,
         ShareClassId indexed scId,
         AssetId indexed assetId,
-        uint128 deposits,
-        uint128 withdrawals,
-        D18 pricePoolPerAsset,
-        bool isSnapshot,
-        uint64 nonce
+        ISpokeMessageSender.UpdateData data,
+        D18 pricePoolPerAsset
     );
 
     // --- Errors ---
