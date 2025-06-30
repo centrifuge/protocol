@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
-import {CommonDeploymentTest, CommonInput} from "test/common/Deployment.t.sol";
+import {CommonInput} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
-    function setUp() public virtual override {
+contract SpokeDeploymentTest is SpokeDeployer, Test {
+    function setUp() public {
         CommonInput memory input = CommonInput({
-            centrifugeId: CENTRIFUGE_ID,
-            adminSafe: ADMIN_SAFE,
+            centrifugeId: 23,
+            adminSafe: ISafe(makeAddr("AdminSafe")),
             messageGasLimit: 0,
             maxBatchSize: 0,
             isTests: true
@@ -186,12 +188,14 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
 contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testMessageDispatcherExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(guardian)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
-        super.testMessageDispatcher(nonWard);
 
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
+        assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
@@ -206,22 +210,26 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
 
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(messageDispatcher)); // From common
+        vm.assume(nonWard != address(multiAdapter)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(vaultRouter));
-        super.testGateway(nonWard);
 
         assertEq(gateway.wards(address(spoke)), 1);
         assertEq(gateway.wards(address(balanceSheet)), 1);
         assertEq(gateway.wards(address(vaultRouter)), 1);
+        assertEq(gateway.wards(nonWard), 0);
     }
 
     function testPoolEscrowFactoryExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(spoke));
-        super.testPoolEscrowFactory(nonWard);
 
         assertEq(poolEscrowFactory.wards(address(spoke)), 1);
+        assertEq(poolEscrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(poolEscrowFactory.balanceSheet()), address(balanceSheet));
