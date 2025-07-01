@@ -15,8 +15,9 @@ contract RedemptionRestrictionsTest is BaseTest {
     function testRedemptionRestrictionsHook(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, redemptionRestrictionsHook, bytes16(bytes("1")), address(erc20), 0, 0);
+        (, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, 6, address(redemptionRestrictionsHook), bytes16(bytes("1")), address(erc20), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         RedemptionRestrictions hook = RedemptionRestrictions(redemptionRestrictionsHook);
         IShareToken shareToken = IShareToken(address(vault.share()));

@@ -226,8 +226,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return
-            deployVault(vaultKind, decimals, fullRestrictionsHook, scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID);
+        return deployVault(
+            vaultKind, decimals, address(fullRestrictionsHook), scId, address(erc20), erc20TokenId, OTHER_CHAIN_ID
+        );
     }
 
     function deploySimpleVault(VaultKind vaultKind)
@@ -235,7 +236,13 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
         return deployVault(
-            vaultKind, 6, fullRestrictionsHook, bytes16(bytes("1")), address(erc20), erc20TokenId, OTHER_CHAIN_ID
+            vaultKind,
+            6,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(erc20),
+            erc20TokenId,
+            OTHER_CHAIN_ID
         );
     }
 

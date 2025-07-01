@@ -28,6 +28,7 @@ import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
+import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
@@ -55,7 +56,8 @@ contract LocalhostDeployer is FullDeployer {
         spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
         hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
         shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
-        redemptionRestrictionsHook = vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook");
+        redemptionRestrictionsHook =
+            RedemptionRestrictions(vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"));
         identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
         asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
         syncDepositVaultFactory =
@@ -94,7 +96,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
@@ -220,7 +222,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);

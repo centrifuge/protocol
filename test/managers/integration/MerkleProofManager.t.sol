@@ -51,7 +51,7 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             "tsc",
             defaultDecimals,
             bytes32(""),
-            fullRestrictionsHook
+            address(fullRestrictionsHook)
         );
         spoke.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
