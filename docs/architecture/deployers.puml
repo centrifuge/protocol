@@ -1,7 +1,11 @@
 @startuml
 hide empty members
 
+note "CBD instances follow the same deployer pattern.\nEach deployer has associated its own CBD instance" as N1
+
 class JsonRegistry
+class CreateXScript
+
 class CommonDeployer
 class HubDeployer
 class SpokeDeployer
@@ -13,6 +17,7 @@ class HooksDeployer
 class ExtendedSpokeDeployer
 
 CommonDeployer -up-|> JsonRegistry
+CommonDeployer -up-|> CreateXScript
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
 

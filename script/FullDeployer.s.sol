@@ -4,21 +4,33 @@ pragma solidity 0.8.28;
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {HubDeployer} from "script/HubDeployer.s.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {ExtendedSpokeDeployer} from "script/ExtendedSpokeDeployer.s.sol";
+import {HubCBD, HubDeployer} from "script/HubDeployer.s.sol";
+import {ExtendedSpokeCBD, ExtendedSpokeDeployer} from "script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 
-contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
-    function deployFull(CommonInput memory input, address deployer) public {
-        deployHub(input, deployer);
-        deployExtendedSpoke(input, deployer);
+contract FullCBD is HubCBD, ExtendedSpokeCBD {
+    function deployFull(CommonInput memory input, ICreateX createX, address deployer) public {
+        deployHub(input, createX, deployer);
+        deployExtendedSpoke(input, createX, deployer);
     }
 
     function removeFullDeployerAccess(address deployer) public {
         removeHubDeployerAccess(deployer);
         removeExtendedSpokeDeployerAccess(deployer);
+    }
+}
+
+contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, FullCBD {
+    function deployFull(CommonInput memory input, address deployer) public {
+        super.deployFull(input, _createX(), deployer);
+    }
+
+    function fullRegister() internal {
+        hubRegister();
+        extendedSpokeRegister();
     }
 
     function run() public virtual {
@@ -51,16 +63,17 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             version: vm.envOr("VERSION", bytes32(0))
         });
 
-        // Use the regular deployment functions - they now use CreateX internally
         deployFull(input, msg.sender);
 
-        // Since `wire()` is not called, separately adding the safe here
-        guardian.file("safe", address(adminSafe));
+        startDeploymentOutput();
+        fullRegister();
         saveDeploymentOutput();
 
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
         if (isMainnet) {
             removeFullDeployerAccess(msg.sender);
+        } else {
+            guardian.file("safe", address(adminSafe));
         }
 
         vm.stopBroadcast();

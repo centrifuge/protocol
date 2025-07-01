@@ -5,52 +5,46 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
-import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonCBD, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 
-contract SpokeDeployer is CommonDeployer {
+contract SpokeCBD is CommonCBD {
     Spoke public spoke;
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
 
-    function deploySpoke(CommonInput memory input, address deployer) public {
+    function deploySpoke(CommonInput memory input, ICreateX createX, address deployer) public {
         if (address(spoke) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        deployCommon(input, deployer);
+        deployCommon(input, createX, deployer);
 
         tokenFactory = TokenFactory(
-            create3(
+            createX.deployCreate3(
                 generateSalt("tokenFactory"),
                 abi.encodePacked(type(TokenFactory).creationCode, abi.encode(address(root), deployer))
             )
         );
 
         spoke = Spoke(
-            create3(
+            createX.deployCreate3(
                 generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, deployer))
             )
         );
 
         balanceSheet = BalanceSheet(
-            create3(
+            createX.deployCreate3(
                 generateSalt("balanceSheet"),
                 abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, deployer))
             )
         );
 
-        _spokeRegister();
         _spokeEndorse();
         _spokeRely();
         _spokeFile();
-    }
-
-    function _spokeRegister() private {
-        register("tokenFactory", address(tokenFactory));
-        register("spoke", address(spoke));
-        register("balanceSheet", address(balanceSheet));
     }
 
     function _spokeEndorse() private {
@@ -117,5 +111,23 @@ contract SpokeDeployer is CommonDeployer {
         tokenFactory.deny(deployer);
         spoke.deny(deployer);
         balanceSheet.deny(deployer);
+    }
+}
+
+contract SpokeDeployer is CommonDeployer, SpokeCBD {
+    bool wasSpokeRegistered;
+
+    function deploySpoke(CommonInput memory input, address deployer) public {
+        super.deploySpoke(input, _createX(), deployer);
+    }
+
+    function spokeRegister() internal {
+        if (wasSpokeRegistered) return;
+        wasSpokeRegistered = true;
+
+        commonRegister();
+        register("tokenFactory", address(tokenFactory));
+        register("spoke", address(spoke));
+        register("balanceSheet", address(balanceSheet));
     }
 }

@@ -12,11 +12,12 @@ import {HubHelpers} from "src/hub/HubHelpers.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
-import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
+import {CommonCBD, CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 
-contract HubDeployer is CommonDeployer {
+contract HubCBD is CommonCBD {
     // Main contracts
     HubRegistry public hubRegistry;
     Accounting public accounting;
@@ -33,40 +34,44 @@ contract HubDeployer is CommonDeployer {
     AssetId public immutable USD_ID = newAssetId(840);
     AssetId public immutable EUR_ID = newAssetId(978);
 
-    function deployHub(CommonInput memory input, address deployer) public {
-        deployCommon(input, deployer);
+    function deployHub(CommonInput memory input, ICreateX createX, address deployer) public {
+        deployCommon(input, createX, deployer);
 
         hubRegistry = HubRegistry(
-            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(deployer)))
+            createX.deployCreate3(
+                generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(deployer))
+            )
         );
 
         identityValuation = IdentityValuation(
-            create3(
+            createX.deployCreate3(
                 generateSalt("identityValuation"),
                 abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry, deployer))
             )
         );
 
         accounting = Accounting(
-            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(deployer)))
+            createX.deployCreate3(
+                generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(deployer))
+            )
         );
 
         holdings = Holdings(
-            create3(
+            createX.deployCreate3(
                 generateSalt("holdings"),
                 abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, deployer))
             )
         );
 
         shareClassManager = ShareClassManager(
-            create3(
+            createX.deployCreate3(
                 generateSalt("shareClassManager"),
                 abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, deployer))
             )
         );
 
         hubHelpers = HubHelpers(
-            create3(
+            createX.deployCreate3(
                 generateSalt("hubHelpers"),
                 abi.encodePacked(
                     type(HubHelpers).creationCode,
@@ -83,7 +88,7 @@ contract HubDeployer is CommonDeployer {
         );
 
         hub = Hub(
-            create3(
+            createX.deployCreate3(
                 generateSalt("hub"),
                 abi.encodePacked(
                     type(Hub).creationCode,
@@ -100,22 +105,12 @@ contract HubDeployer is CommonDeployer {
             )
         );
 
-        _poolsRegister();
-        _poolsRely();
-        _poolsFile();
-        _poolsInitialConfig();
+        _hubRely();
+        _hubFile();
+        _hubInitialConfig();
     }
 
-    function _poolsRegister() private {
-        register("hubRegistry", address(hubRegistry));
-        register("accounting", address(accounting));
-        register("holdings", address(holdings));
-        register("shareClassManager", address(shareClassManager));
-        register("hub", address(hub));
-        register("identityValuation", address(identityValuation));
-    }
-
-    function _poolsRely() private {
+    function _hubRely() private {
         // Rely hub
         hubRegistry.rely(address(hub));
         holdings.rely(address(hub));
@@ -146,7 +141,7 @@ contract HubDeployer is CommonDeployer {
         hubHelpers.rely(address(root));
     }
 
-    function _poolsFile() private {
+    function _hubFile() private {
         messageProcessor.file("hub", address(hub));
         messageDispatcher.file("hub", address(hub));
 
@@ -158,7 +153,7 @@ contract HubDeployer is CommonDeployer {
         hubHelpers.file("hub", address(hub));
     }
 
-    function _poolsInitialConfig() private {
+    function _hubInitialConfig() private {
         hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
         hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
@@ -173,5 +168,21 @@ contract HubDeployer is CommonDeployer {
         hub.deny(deployer);
         hubHelpers.deny(deployer);
         identityValuation.deny(deployer);
+    }
+}
+
+contract HubDeployer is CommonDeployer, HubCBD {
+    function deployHub(CommonInput memory input, address deployer) public {
+        super.deployHub(input, _createX(), deployer);
+    }
+
+    function hubRegister() internal {
+        commonRegister();
+        register("hubRegistry", address(hubRegistry));
+        register("accounting", address(accounting));
+        register("holdings", address(holdings));
+        register("shareClassManager", address(shareClassManager));
+        register("hub", address(hub));
+        register("identityValuation", address(identityValuation));
     }
 }

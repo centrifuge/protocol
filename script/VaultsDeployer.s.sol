@@ -13,11 +13,12 @@ import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFact
 import {Spoke} from "src/spoke/Spoke.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeCBD} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 
-contract VaultsDeployer is SpokeDeployer {
+contract VaultsCBD is SpokeCBD {
     SyncManager public syncManager;
     AsyncRequestManager public asyncRequestManager;
     Escrow public routerEscrow;
@@ -26,30 +27,36 @@ contract VaultsDeployer is SpokeDeployer {
     AsyncVaultFactory public asyncVaultFactory;
     SyncDepositVaultFactory public syncDepositVaultFactory;
 
-    function deployVaults(CommonInput memory input, address deployer) public {
-        deploySpoke(input, deployer);
+    function deployVaults(CommonInput memory input, ICreateX createX, address deployer) public {
+        deploySpoke(input, createX, deployer);
 
         routerEscrow = Escrow(
-            create3(generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer)))
+            createX.deployCreate3(
+                generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))
+            )
         );
 
         globalEscrow = Escrow(
-            create3(generateSalt("globalEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer)))
+            createX.deployCreate3(
+                generateSalt("globalEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(deployer))
+            )
         );
 
         asyncRequestManager = AsyncRequestManager(
-            create3(
+            createX.deployCreate3(
                 generateSalt("asyncRequestManager"),
                 abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(IEscrow(globalEscrow), deployer))
             )
         );
 
         syncManager = SyncManager(
-            create3(generateSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(deployer)))
+            createX.deployCreate3(
+                generateSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(deployer))
+            )
         );
 
         vaultRouter = VaultRouter(
-            create3(
+            createX.deployCreate3(
                 generateSalt("vaultRouter"),
                 abi.encodePacked(
                     type(VaultRouter).creationCode, abi.encode(address(routerEscrow), gateway, spoke, deployer)
@@ -58,7 +65,7 @@ contract VaultsDeployer is SpokeDeployer {
         );
 
         asyncVaultFactory = AsyncVaultFactory(
-            create3(
+            createX.deployCreate3(
                 generateSalt("asyncVaultFactory"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, deployer)
@@ -67,7 +74,7 @@ contract VaultsDeployer is SpokeDeployer {
         );
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
-            create3(
+            createX.deployCreate3(
                 generateSalt("syncDepositVaultFactory"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
@@ -76,20 +83,9 @@ contract VaultsDeployer is SpokeDeployer {
             )
         );
 
-        _vaultsRegister();
         _vaultsEndorse();
         _vaultsRely();
         _vaultsFile();
-    }
-
-    function _vaultsRegister() private {
-        register("routerEscrow", address(routerEscrow));
-        register("globalEscrow", address(globalEscrow));
-        register("asyncRequestManager", address(asyncRequestManager));
-        register("syncManager", address(syncManager));
-        register("asyncVaultFactory", address(asyncVaultFactory));
-        register("syncDepositVaultFactory", address(syncDepositVaultFactory));
-        register("vaultRouter", address(vaultRouter));
     }
 
     function _vaultsEndorse() private {
@@ -143,5 +139,22 @@ contract VaultsDeployer is SpokeDeployer {
         routerEscrow.deny(deployer);
         globalEscrow.deny(deployer);
         vaultRouter.deny(deployer);
+    }
+}
+
+contract VaultsDeployer is SpokeDeployer, VaultsCBD {
+    function deployVaults(CommonInput memory input, address deployer) public {
+        super.deployVaults(input, _createX(), deployer);
+    }
+
+    function vaultsRegister() internal {
+        spokeRegister();
+        register("routerEscrow", address(routerEscrow));
+        register("globalEscrow", address(globalEscrow));
+        register("asyncRequestManager", address(asyncRequestManager));
+        register("syncManager", address(syncManager));
+        register("asyncVaultFactory", address(asyncVaultFactory));
+        register("syncDepositVaultFactory", address(syncDepositVaultFactory));
+        register("vaultRouter", address(vaultRouter));
     }
 }

@@ -14,6 +14,7 @@ import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
@@ -25,10 +26,11 @@ struct CommonInput {
     bytes32 version;
 }
 
-abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
+abstract contract CommonCBD {
     uint256 constant DELAY = 48 hours;
 
-    bytes32 version;
+    bytes32 transient version;
+    bool public transient newRoot;
     ISafe public adminSafe;
 
     Root public root;
@@ -40,8 +42,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
-
-    bool transient newRoot;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -55,13 +55,10 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         return keccak256(abi.encodePacked(contractName));
     }
 
-    function deployCommon(CommonInput memory input, address deployer) public {
+    function deployCommon(CommonInput memory input, ICreateX createX, address deployer) public {
         if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
-
-        setUpCreateXFactory();
-        startDeploymentOutput();
 
         adminSafe = input.adminSafe;
         version = input.version;
@@ -69,28 +66,30 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         if (address(input.root) == address(0)) {
             newRoot = true;
             root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
+                createX.deployCreate3(
+                    generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer))
+                )
             );
         } else {
             root = Root(address(input.root));
         }
 
         tokenRecoverer = TokenRecoverer(
-            create3(
+            createX.deployCreate3(
                 generateSalt("tokenRecoverer"),
                 abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer))
             )
         );
 
         messageProcessor = MessageProcessor(
-            create3(
+            createX.deployCreate3(
                 generateSalt("messageProcessor"),
                 abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer))
             )
         );
 
         gasService = GasService(
-            create3(
+            createX.deployCreate3(
                 generateSalt("gasService"),
                 abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchSize, input.messageGasLimit))
             )
@@ -98,7 +97,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         gateway = Gateway(
             payable(
-                create3(
+                createX.deployCreate3(
                     generateSalt("gateway"),
                     abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer))
                 )
@@ -106,14 +105,14 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         );
 
         multiAdapter = MultiAdapter(
-            create3(
+            createX.deployCreate3(
                 generateSalt("multiAdapter"),
                 abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, deployer))
             )
         );
 
         messageDispatcher = MessageDispatcher(
-            create3(
+            createX.deployCreate3(
                 generateSalt("messageDispatcher"),
                 abi.encodePacked(
                     type(MessageDispatcher).creationCode,
@@ -123,7 +122,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         );
 
         guardian = Guardian(
-            create3(
+            createX.deployCreate3(
                 generateSalt("guardian"),
                 abi.encodePacked(
                     type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapter, root, messageDispatcher)
@@ -132,30 +131,14 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         );
 
         poolEscrowFactory = PoolEscrowFactory(
-            create3(
+            createX.deployCreate3(
                 generateSalt("poolEscrowFactory"),
                 abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer))
             )
         );
 
-        _commonRegister();
         _commonRely();
         _commonFile();
-    }
-
-    function _commonRegister() private {
-        if (newRoot) {
-            register("root", address(root));
-            // Otherwise already present in load_vars.sh and not needed to be registered
-        }
-        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
-        register("guardian", address(guardian));
-        register("gasService", address(gasService));
-        register("gateway", address(gateway));
-        register("multiAdapter", address(multiAdapter));
-        register("messageProcessor", address(messageProcessor));
-        register("messageDispatcher", address(messageDispatcher));
-        register("poolEscrowFactory", address(poolEscrowFactory));
     }
 
     function _commonRely() private {
@@ -203,5 +186,35 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         messageProcessor.deny(deployer);
         messageDispatcher.deny(deployer);
         poolEscrowFactory.deny(deployer);
+    }
+}
+
+abstract contract CommonDeployer is Script, CommonCBD, JsonRegistry, CreateXScript {
+    bool wasCommonRegistered;
+
+    function deployCommon(CommonInput memory input, address deployer) public {
+        super.deployCommon(input, _createX(), deployer);
+    }
+
+    function commonRegister() internal {
+        if (wasCommonRegistered) return;
+        wasCommonRegistered = true;
+
+        if (newRoot) {
+            register("root", address(root));
+            // Otherwise already present in load_vars.sh and not needed to be registered
+        }
+        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
+        register("guardian", address(guardian));
+        register("gasService", address(gasService));
+        register("gateway", address(gateway));
+        register("multiAdapter", address(multiAdapter));
+        register("messageProcessor", address(messageProcessor));
+        register("messageDispatcher", address(messageDispatcher));
+        register("poolEscrowFactory", address(poolEscrowFactory));
+    }
+
+    function _createX() internal withCreateX returns (ICreateX) {
+        return CreateX;
     }
 }

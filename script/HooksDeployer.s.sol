@@ -10,42 +10,36 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeCBD} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
+import {ICreateX} from "createx-forge/script/ICreateX.sol";
 
-contract HooksDeployer is SpokeDeployer {
+contract HooksCBD is SpokeCBD {
     // TODO: Add typed interfaces instead of addresses (only current reason is avoid test refactor)
     address public freezeOnlyHook;
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deployHooks(CommonInput memory input, address deployer) public {
-        deploySpoke(input, deployer);
+    function deployHooks(CommonInput memory input, ICreateX createX, address deployer) public {
+        deploySpoke(input, createX, deployer);
 
-        freezeOnlyHook = create3(
+        freezeOnlyHook = createX.deployCreate3(
             generateSalt("freezeOnlyHook"),
             abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), deployer))
         );
 
-        fullRestrictionsHook = create3(
+        fullRestrictionsHook = createX.deployCreate3(
             generateSalt("fullRestrictionsHook"),
             abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), deployer))
         );
 
-        redemptionRestrictionsHook = create3(
+        redemptionRestrictionsHook = createX.deployCreate3(
             generateSalt("redemptionRestrictionsHook"),
             abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), deployer))
         );
 
-        _hooksRegister();
         _hooksRely();
-    }
-
-    function _hooksRegister() private {
-        register("freezeOnlyHook", address(freezeOnlyHook));
-        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
-        register("fullRestrictionsHook", address(fullRestrictionsHook));
     }
 
     function _hooksRely() private {
@@ -66,5 +60,18 @@ contract HooksDeployer is SpokeDeployer {
         IAuth(freezeOnlyHook).deny(deployer);
         IAuth(fullRestrictionsHook).deny(deployer);
         IAuth(redemptionRestrictionsHook).deny(deployer);
+    }
+}
+
+contract HooksDeployer is SpokeDeployer, HooksCBD {
+    function deployHooks(CommonInput memory input, address deployer) public {
+        super.deployHooks(input, _createX(), deployer);
+    }
+
+    function hooksRegister() internal {
+        spokeRegister();
+        register("freezeOnlyHook", address(freezeOnlyHook));
+        register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
+        register("fullRestrictionsHook", address(fullRestrictionsHook));
     }
 }
