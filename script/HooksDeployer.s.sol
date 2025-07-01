@@ -40,7 +40,6 @@ contract HooksActionBatcher is SpokeActionBatcher {
 }
 
 contract HooksDeployer is SpokeDeployer {
-    // TODO: Add typed interfaces instead of addresses (only current reason is avoid test refactor)
     FreezeOnly public freezeOnlyHook;
     FullRestrictions public fullRestrictionsHook;
     RedemptionRestrictions public redemptionRestrictionsHook;
