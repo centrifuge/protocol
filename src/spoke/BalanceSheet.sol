@@ -168,10 +168,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (shareQueue.isPositive || shareQueue.delta == 0) {
             shareQueue.delta += shares;
-            shareQueue.isPositive = true;
-            if (shareQueue.delta == 0) {
-                shareQueue.isPositive = false;
-            }
+            shareQueue.isPositive = shareQueue.delta != 0;
         } else if (shareQueue.delta >= shares) {
             shareQueue.delta -= shares;
             shareQueue.isPositive = false;
