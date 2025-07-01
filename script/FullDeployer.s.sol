@@ -4,21 +4,23 @@ pragma solidity 0.8.28;
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {HubDeployer} from "script/HubDeployer.s.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {ExtendedSpokeDeployer} from "script/ExtendedSpokeDeployer.s.sol";
+import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
+import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
+contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher {}
+
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
-    function deployFull(CommonInput memory input, address deployer) public {
-        deployHub(input, deployer);
-        deployExtendedSpoke(input, deployer);
+    function deployFull(CommonInput memory input, FullActionBatcher batcher) public {
+        deployHub(input, batcher);
+        deployExtendedSpoke(input, batcher);
     }
 
-    function removeFullDeployerAccess(address deployer) public {
-        removeHubDeployerAccess(deployer);
-        removeExtendedSpokeDeployerAccess(deployer);
+    function removeFullDeployerAccess(FullActionBatcher batcher) public {
+        removeHubDeployerAccess(batcher);
+        removeExtendedSpokeDeployerAccess(batcher);
     }
 
     function run() public virtual {
@@ -42,6 +44,8 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
         console.log("Environment:", environment);
         console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
+        startDeploymentOutput();
+
         CommonInput memory input = CommonInput({
             centrifugeId: centrifugeId,
             root: IRoot(vm.envAddress("ROOT")),
@@ -51,16 +55,16 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             version: vm.envOr("VERSION", bytes32(0))
         });
 
-        // Use the regular deployment functions - they now use CreateX internally
-        deployFull(input, msg.sender);
+        FullActionBatcher batcher = new FullActionBatcher();
+        deployFull(input, batcher);
 
-        // Since `wire()` is not called, separately adding the safe here
-        guardian.file("safe", address(adminSafe));
         saveDeploymentOutput();
 
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
         if (isMainnet) {
-            removeFullDeployerAccess(msg.sender);
+            removeFullDeployerAccess(batcher);
+        } else {
+            guardian.file("safe", address(adminSafe));
         }
 
         vm.stopBroadcast();

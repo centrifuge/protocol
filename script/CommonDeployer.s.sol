@@ -25,6 +25,62 @@ struct CommonInput {
     bytes32 version;
 }
 
+struct CommonReport {
+    ISafe adminSafe;
+    Root root;
+    TokenRecoverer tokenRecoverer;
+    Guardian guardian;
+    GasService gasService;
+    Gateway gateway;
+    MultiAdapter multiAdapter;
+    MessageProcessor messageProcessor;
+    MessageDispatcher messageDispatcher;
+    PoolEscrowFactory poolEscrowFactory;
+}
+
+contract CommonActionBatcher {
+    function engageCommon(CommonReport memory report, bool newRoot) public {
+        if (newRoot) {
+            report.root.rely(address(report.guardian));
+            report.root.rely(address(report.messageProcessor));
+            report.root.rely(address(report.messageDispatcher));
+        }
+        report.gateway.rely(address(report.root));
+        report.gateway.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.multiAdapter));
+        report.multiAdapter.rely(address(report.root));
+        report.multiAdapter.rely(address(report.guardian));
+        report.multiAdapter.rely(address(report.gateway));
+        report.messageDispatcher.rely(address(report.root));
+        report.messageDispatcher.rely(address(report.guardian));
+        report.messageProcessor.rely(address(report.root));
+        report.messageProcessor.rely(address(report.gateway));
+        report.tokenRecoverer.rely(address(report.root));
+        report.tokenRecoverer.rely(address(report.messageDispatcher));
+        report.tokenRecoverer.rely(address(report.messageProcessor));
+        report.poolEscrowFactory.rely(address(report.root));
+
+        report.gateway.file("processor", address(report.messageProcessor));
+        report.gateway.file("adapter", address(report.multiAdapter));
+        report.poolEscrowFactory.file("gateway", address(report.gateway));
+    }
+
+    function revokeCommon(CommonReport memory report, bool newRoot) public {
+        // We override the deployer with the correct admin once everything is deployed
+        report.guardian.file("safe", address(report.adminSafe));
+
+        if (newRoot) {
+            report.root.deny(address(this));
+        }
+        report.gateway.deny(address(this));
+        report.multiAdapter.deny(address(this));
+        report.tokenRecoverer.deny(address(this));
+        report.messageProcessor.deny(address(this));
+        report.messageDispatcher.deny(address(this));
+        report.poolEscrowFactory.deny(address(this));
+    }
+}
+
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
 
@@ -41,7 +97,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
-    bool transient newRoot;
+    bool newRoot;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -55,13 +111,12 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         return keccak256(abi.encodePacked(contractName));
     }
 
-    function deployCommon(CommonInput memory input, address deployer) public {
+    function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
         if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
         setUpCreateXFactory();
-        startDeploymentOutput();
 
         adminSafe = input.adminSafe;
         version = input.version;
@@ -69,7 +124,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         if (address(input.root) == address(0)) {
             newRoot = true;
             root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
+                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
             );
         } else {
             root = Root(address(input.root));
@@ -78,14 +133,14 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         tokenRecoverer = TokenRecoverer(
             create3(
                 generateSalt("tokenRecoverer"),
-                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer))
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
             )
         );
 
         messageProcessor = MessageProcessor(
             create3(
                 generateSalt("messageProcessor"),
-                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer))
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, batcher))
             )
         );
 
@@ -100,7 +155,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer))
+                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, batcher))
                 )
             )
         );
@@ -108,7 +163,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         multiAdapter = MultiAdapter(
             create3(
                 generateSalt("multiAdapter"),
-                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, deployer))
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
             )
         );
 
@@ -117,7 +172,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
                 generateSalt("messageDispatcher"),
                 abi.encodePacked(
                     type(MessageDispatcher).creationCode,
-                    abi.encode(input.centrifugeId, root, gateway, tokenRecoverer, deployer)
+                    abi.encode(input.centrifugeId, root, gateway, tokenRecoverer, batcher)
                 )
             )
         );
@@ -126,7 +181,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             create3(
                 generateSalt("guardian"),
                 abi.encodePacked(
-                    type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapter, root, messageDispatcher)
+                    type(Guardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), multiAdapter, root, messageDispatcher)
                 )
             )
         );
@@ -134,16 +190,12 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), batcher))
             )
         );
 
-        _commonRegister();
-        _commonRely();
-        _commonFile();
-    }
+        batcher.engageCommon(_commonReport(), newRoot);
 
-    function _commonRegister() private {
         if (newRoot) {
             register("root", address(root));
             // Otherwise already present in load_vars.sh and not needed to be registered
@@ -158,50 +210,26 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("poolEscrowFactory", address(poolEscrowFactory));
     }
 
-    function _commonRely() private {
-        if (newRoot) {
-            root.rely(address(guardian));
-            root.rely(address(messageProcessor));
-            root.rely(address(messageDispatcher));
-        }
-        gateway.rely(address(root));
-        gateway.rely(address(messageDispatcher));
-        gateway.rely(address(multiAdapter));
-        multiAdapter.rely(address(root));
-        multiAdapter.rely(address(guardian));
-        multiAdapter.rely(address(gateway));
-        messageDispatcher.rely(address(root));
-        messageDispatcher.rely(address(guardian));
-        messageProcessor.rely(address(root));
-        messageProcessor.rely(address(gateway));
-        tokenRecoverer.rely(address(root));
-        tokenRecoverer.rely(address(messageDispatcher));
-        tokenRecoverer.rely(address(messageProcessor));
-        poolEscrowFactory.rely(address(root));
-    }
-
-    function _commonFile() private {
-        gateway.file("processor", address(messageProcessor));
-        gateway.file("adapter", address(multiAdapter));
-        poolEscrowFactory.file("gateway", address(gateway));
-    }
-
-    function removeCommonDeployerAccess(address deployer) public {
-        if (gateway.wards(deployer) == 0) {
+    function removeCommonDeployerAccess(CommonActionBatcher batcher) public {
+        if (gateway.wards(address(batcher)) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
-        // We override the deployer with the correct admin once everything is deployed
-        guardian.file("safe", address(adminSafe));
+        batcher.revokeCommon(_commonReport(), newRoot);
+    }
 
-        if (newRoot) {
-            root.deny(deployer);
-        }
-        gateway.deny(deployer);
-        multiAdapter.deny(deployer);
-        tokenRecoverer.deny(deployer);
-        messageProcessor.deny(deployer);
-        messageDispatcher.deny(deployer);
-        poolEscrowFactory.deny(deployer);
+    function _commonReport() internal view returns (CommonReport memory) {
+        return CommonReport(
+            adminSafe,
+            root,
+            tokenRecoverer,
+            guardian,
+            gasService,
+            gateway,
+            multiAdapter,
+            messageProcessor,
+            messageDispatcher,
+            poolEscrowFactory
+        );
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
+import {VaultsDeployer, VaultsActionBatcher} from "script/VaultsDeployer.s.sol";
 
 import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
@@ -9,8 +9,9 @@ import "forge-std/Test.sol";
 
 contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        deployVaults(_commonInput(), address(this));
-        removeVaultsDeployerAccess(address(this));
+        VaultsActionBatcher batcher = new VaultsActionBatcher();
+        deployVaults(_commonInput(), batcher);
+        removeVaultsDeployerAccess(batcher);
     }
 
     function testRouterEscrow(address nonWard) public view {

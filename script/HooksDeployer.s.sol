@@ -10,9 +10,36 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
+
+struct HooksReport {
+    SpokeReport spoke;
+    address freezeOnlyHook;
+    address redemptionRestrictionsHook;
+    address fullRestrictionsHook;
+}
+
+contract HooksActionBatcher is SpokeActionBatcher {
+    function engageHooks(HooksReport memory report) public {
+        // Rely Spoke
+        IAuth(report.freezeOnlyHook).rely(address(report.spoke.spoke));
+        IAuth(report.fullRestrictionsHook).rely(address(report.spoke.spoke));
+        IAuth(report.redemptionRestrictionsHook).rely(address(report.spoke.spoke));
+
+        // Rely Root
+        IAuth(report.freezeOnlyHook).rely(address(report.spoke.common.root));
+        IAuth(report.fullRestrictionsHook).rely(address(report.spoke.common.root));
+        IAuth(report.redemptionRestrictionsHook).rely(address(report.spoke.common.root));
+    }
+
+    function revokeHooks(HooksReport memory report) public {
+        IAuth(report.freezeOnlyHook).deny(address(this));
+        IAuth(report.fullRestrictionsHook).deny(address(this));
+        IAuth(report.redemptionRestrictionsHook).deny(address(this));
+    }
+}
 
 contract HooksDeployer is SpokeDeployer {
     // TODO: Add typed interfaces instead of addresses (only current reason is avoid test refactor)
@@ -20,51 +47,38 @@ contract HooksDeployer is SpokeDeployer {
     address public redemptionRestrictionsHook;
     address public fullRestrictionsHook;
 
-    function deployHooks(CommonInput memory input, address deployer) public {
-        deploySpoke(input, deployer);
+    function deployHooks(CommonInput memory input, HooksActionBatcher batcher) public {
+        deploySpoke(input, batcher);
 
         freezeOnlyHook = create3(
             generateSalt("freezeOnlyHook"),
-            abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), deployer))
+            abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
         );
 
         fullRestrictionsHook = create3(
             generateSalt("fullRestrictionsHook"),
-            abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), deployer))
+            abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
         );
 
         redemptionRestrictionsHook = create3(
             generateSalt("redemptionRestrictionsHook"),
-            abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), deployer))
+            abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
         );
 
-        _hooksRegister();
-        _hooksRely();
-    }
+        batcher.engageHooks(_hooksReport());
 
-    function _hooksRegister() private {
         register("freezeOnlyHook", address(freezeOnlyHook));
         register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
         register("fullRestrictionsHook", address(fullRestrictionsHook));
     }
 
-    function _hooksRely() private {
-        // Rely Spoke
-        IAuth(freezeOnlyHook).rely(address(spoke));
-        IAuth(fullRestrictionsHook).rely(address(spoke));
-        IAuth(redemptionRestrictionsHook).rely(address(spoke));
+    function removeHooksDeployerAccess(HooksActionBatcher batcher) public {
+        removeSpokeDeployerAccess(batcher);
 
-        // Rely Root
-        IAuth(freezeOnlyHook).rely(address(root));
-        IAuth(fullRestrictionsHook).rely(address(root));
-        IAuth(redemptionRestrictionsHook).rely(address(root));
+        batcher.revokeHooks(_hooksReport());
     }
 
-    function removeHooksDeployerAccess(address deployer) public {
-        removeSpokeDeployerAccess(deployer);
-
-        IAuth(freezeOnlyHook).deny(deployer);
-        IAuth(fullRestrictionsHook).deny(deployer);
-        IAuth(redemptionRestrictionsHook).deny(deployer);
+    function _hooksReport() internal view returns (HooksReport memory) {
+        return HooksReport(_spokeReport(), freezeOnlyHook, redemptionRestrictionsHook, fullRestrictionsHook);
     }
 }

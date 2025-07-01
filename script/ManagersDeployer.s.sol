@@ -7,9 +7,27 @@ import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
 import {MerkleProofManagerFactory} from "src/managers/MerkleProofManager.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
+
+struct ManagersReport {
+    SpokeReport spoke;
+    OnOfframpManagerFactory onOfframpManagerFactory;
+    MerkleProofManagerFactory merkleProofManagerFactory;
+    VaultDecoder vaultDecoder;
+    CircleDecoder circleDecoder;
+}
+
+contract ManagersActionBatcher is SpokeActionBatcher {
+    function engageManagers(ManagersReport memory report) public {
+        // Empty
+    }
+
+    function revokeManagers(ManagersReport memory report) public {
+        // Empty
+    }
+}
 
 contract ManagersDeployer is SpokeDeployer {
     OnOfframpManagerFactory public onOfframpManagerFactory;
@@ -17,8 +35,8 @@ contract ManagersDeployer is SpokeDeployer {
     VaultDecoder public vaultDecoder;
     CircleDecoder public circleDecoder;
 
-    function deployManagers(CommonInput memory input, address deployer) public {
-        deploySpoke(input, deployer);
+    function deployManagers(CommonInput memory input, ManagersActionBatcher batcher) public {
+        deploySpoke(input, batcher);
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
@@ -40,17 +58,23 @@ contract ManagersDeployer is SpokeDeployer {
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
-        _managersRegister();
-    }
+        batcher.engageManagers(_managersReport());
 
-    function _managersRegister() private {
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));
         register("merkleProofManagerFactory", address(merkleProofManagerFactory));
         register("vaultDecoder", address(vaultDecoder));
         register("circleDecoder", address(circleDecoder));
     }
 
-    function removeManagersDeployerAccess(address deployer) public {
-        removeSpokeDeployerAccess(deployer);
+    function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
+        removeSpokeDeployerAccess(batcher);
+
+        batcher.revokeManagers(_managersReport());
+    }
+
+    function _managersReport() internal view returns (ManagersReport memory) {
+        return ManagersReport(
+            _spokeReport(), onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
+        );
     }
 }

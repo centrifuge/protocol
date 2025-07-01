@@ -5,117 +5,127 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
-import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
+
+struct SpokeReport {
+    CommonReport common;
+    Spoke spoke;
+    BalanceSheet balanceSheet;
+    TokenFactory tokenFactory;
+}
+
+contract SpokeActionBatcher is CommonActionBatcher {
+    function engageSpoke(SpokeReport memory report) public {
+        // Rely Spoke
+        report.tokenFactory.rely(address(report.spoke));
+        report.common.messageDispatcher.rely(address(report.spoke));
+        report.common.poolEscrowFactory.rely(address(report.spoke));
+        report.common.gateway.rely(address(report.spoke));
+
+        // Rely BalanceSheet
+        report.common.messageDispatcher.rely(address(report.balanceSheet));
+        report.common.gateway.rely(address(report.balanceSheet));
+
+        // Rely Root
+        report.spoke.rely(address(report.common.root));
+        report.balanceSheet.rely(address(report.common.root));
+        report.tokenFactory.rely(address(report.common.root));
+
+        // Rely messageProcessor
+        report.spoke.rely(address(report.common.messageProcessor));
+        report.balanceSheet.rely(address(report.common.messageProcessor));
+
+        // Rely messageDispatcher
+        report.spoke.rely(address(report.common.messageDispatcher));
+        report.balanceSheet.rely(address(report.common.messageDispatcher));
+
+        // File methods
+        report.common.messageDispatcher.file("spoke", address(report.spoke));
+        report.common.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
+
+        report.common.messageProcessor.file("spoke", address(report.spoke));
+        report.common.messageProcessor.file("balanceSheet", address(report.balanceSheet));
+
+        report.spoke.file("gateway", address(report.common.gateway));
+        report.spoke.file("sender", address(report.common.messageDispatcher));
+        report.spoke.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
+
+        report.balanceSheet.file("spoke", address(report.spoke));
+        report.balanceSheet.file("sender", address(report.common.messageDispatcher));
+        report.balanceSheet.file("gateway", address(report.common.gateway));
+        report.balanceSheet.file("poolEscrowProvider", address(report.common.poolEscrowFactory));
+
+        report.common.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
+
+        address[] memory tokenWards = new address[](2);
+        tokenWards[0] = address(report.spoke);
+        tokenWards[1] = address(report.balanceSheet);
+
+        report.tokenFactory.file("wards", tokenWards);
+
+        // Endorse methods
+        report.common.root.endorse(address(report.balanceSheet));
+    }
+
+    function revokeSpoke(SpokeReport memory report) public {
+        report.tokenFactory.deny(address(this));
+        report.spoke.deny(address(this));
+        report.balanceSheet.deny(address(this));
+    }
+}
 
 contract SpokeDeployer is CommonDeployer {
     Spoke public spoke;
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
 
-    function deploySpoke(CommonInput memory input, address deployer) public {
+    function deploySpoke(CommonInput memory input, SpokeActionBatcher batcher) public {
         if (address(spoke) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        deployCommon(input, deployer);
+        deployCommon(input, batcher);
 
         tokenFactory = TokenFactory(
             create3(
                 generateSalt("tokenFactory"),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(address(root), deployer))
+                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(address(root), batcher))
             )
         );
 
         spoke = Spoke(
             create3(
-                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, deployer))
+                generateSalt("spoke"), abi.encodePacked(type(Spoke).creationCode, abi.encode(tokenFactory, batcher))
             )
         );
 
         balanceSheet = BalanceSheet(
             create3(
                 generateSalt("balanceSheet"),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, deployer))
+                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
             )
         );
 
-        _spokeRegister();
-        _spokeEndorse();
-        _spokeRely();
-        _spokeFile();
-    }
+        batcher.engageSpoke(_spokeReport());
 
-    function _spokeRegister() private {
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
     }
 
-    function _spokeEndorse() private {
-        root.endorse(address(balanceSheet));
-    }
-
-    function _spokeRely() private {
-        // Rely Spoke
-        tokenFactory.rely(address(spoke));
-        messageDispatcher.rely(address(spoke));
-        poolEscrowFactory.rely(address(spoke));
-        gateway.rely(address(spoke));
-
-        // Rely BalanceSheet
-        messageDispatcher.rely(address(balanceSheet));
-        gateway.rely(address(balanceSheet));
-
-        // Rely Root
-        spoke.rely(address(root));
-        balanceSheet.rely(address(root));
-        tokenFactory.rely(address(root));
-
-        // Rely messageProcessor
-        spoke.rely(address(messageProcessor));
-        balanceSheet.rely(address(messageProcessor));
-
-        // Rely messageDispatcher
-        spoke.rely(address(messageDispatcher));
-        balanceSheet.rely(address(messageDispatcher));
-    }
-
-    function _spokeFile() public {
-        messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("balanceSheet", address(balanceSheet));
-
-        messageProcessor.file("spoke", address(spoke));
-        messageProcessor.file("balanceSheet", address(balanceSheet));
-
-        spoke.file("gateway", address(gateway));
-        spoke.file("sender", address(messageDispatcher));
-        spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-
-        balanceSheet.file("spoke", address(spoke));
-        balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("gateway", address(gateway));
-        balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-
-        poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(spoke);
-        tokenWards[1] = address(balanceSheet);
-
-        tokenFactory.file("wards", tokenWards);
-    }
-
-    function removeSpokeDeployerAccess(address deployer) public {
-        if (spoke.wards(deployer) == 0) {
+    function removeSpokeDeployerAccess(SpokeActionBatcher batcher) public {
+        if (spoke.wards(address(batcher)) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
-        removeCommonDeployerAccess(deployer);
+        removeCommonDeployerAccess(batcher);
 
-        tokenFactory.deny(deployer);
-        spoke.deny(deployer);
-        balanceSheet.deny(deployer);
+        batcher.revokeSpoke(_spokeReport());
+    }
+
+    function _spokeReport() internal view returns (SpokeReport memory) {
+        return SpokeReport(_commonReport(), spoke, balanceSheet, tokenFactory);
     }
 }
