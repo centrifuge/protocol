@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
@@ -14,17 +14,23 @@ import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
-string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant MAX_BATCH_SIZE_ENV = "MAX_BATCH_SIZE";
+struct CommonInput {
+    uint16 centrifugeId;
+    IRoot root;
+    ISafe adminSafe;
+    uint128 messageGasLimit;
+    uint128 maxBatchSize;
+    bytes32 version;
+}
 
-abstract contract CommonDeployer is Script, JsonRegistry {
+abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     uint256 constant DELAY = 48 hours;
-    bytes32 immutable SALT;
-    uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
-    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
 
+    bytes32 version;
     ISafe public adminSafe;
+
     Root public root;
     TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
@@ -35,39 +41,102 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
-    constructor() {
-        // If no salt is provided, a pseudo-random salt is generated,
-        // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
+    bool transient newRoot;
+
+    /**
+     * @dev Generates a salt for contract deployment
+     * @param contractName The name of the contract
+     * @return salt A deterministic salt based on contract name and optional VERSION
+     */
+    function generateSalt(string memory contractName) internal view returns (bytes32) {
+        if (version != bytes32(0)) {
+            return keccak256(abi.encodePacked(contractName, version));
+        }
+        return keccak256(abi.encodePacked(contractName));
     }
 
-    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
-        if (address(root) != address(0)) {
+    function deployCommon(CommonInput memory input, address deployer) public {
+        if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        startDeploymentOutput(isTests);
+        setUpCreateXFactory();
+        startDeploymentOutput();
 
-        uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
+        adminSafe = input.adminSafe;
+        version = input.version;
 
-        root = new Root(DELAY, deployer);
-        tokenRecoverer = new TokenRecoverer(root, deployer);
+        if (address(input.root) == address(0)) {
+            newRoot = true;
+            root = Root(
+                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, deployer)))
+            );
+        } else {
+            root = Root(address(input.root));
+        }
 
-        messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
+        tokenRecoverer = TokenRecoverer(
+            create3(
+                generateSalt("tokenRecoverer"),
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, deployer))
+            )
+        );
 
-        gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(root, gasService, deployer);
-        multiAdapter = new MultiAdapter(centrifugeId_, gateway, deployer);
+        messageProcessor = MessageProcessor(
+            create3(
+                generateSalt("messageProcessor"),
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, deployer))
+            )
+        );
 
-        messageDispatcher = new MessageDispatcher(centrifugeId_, root, gateway, tokenRecoverer, deployer);
+        gasService = GasService(
+            create3(
+                generateSalt("gasService"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchSize, input.messageGasLimit))
+            )
+        );
 
-        adminSafe = adminSafe_;
+        gateway = Gateway(
+            payable(
+                create3(
+                    generateSalt("gateway"),
+                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, deployer))
+                )
+            )
+        );
 
-        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
-        guardian = new Guardian(ISafe(deployer), multiAdapter, root, messageDispatcher);
+        multiAdapter = MultiAdapter(
+            create3(
+                generateSalt("multiAdapter"),
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, deployer))
+            )
+        );
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
+        messageDispatcher = MessageDispatcher(
+            create3(
+                generateSalt("messageDispatcher"),
+                abi.encodePacked(
+                    type(MessageDispatcher).creationCode,
+                    abi.encode(input.centrifugeId, root, gateway, tokenRecoverer, deployer)
+                )
+            )
+        );
+
+        guardian = Guardian(
+            create3(
+                generateSalt("guardian"),
+                abi.encodePacked(
+                    type(Guardian).creationCode, abi.encode(ISafe(deployer), multiAdapter, root, messageDispatcher)
+                )
+            )
+        );
+
+        poolEscrowFactory = PoolEscrowFactory(
+            create3(
+                generateSalt("poolEscrowFactory"),
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), deployer))
+            )
+        );
 
         _commonRegister();
         _commonRely();
@@ -75,9 +144,11 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRegister() private {
-        register("root", address(root));
-        // Already present in load_vars.sh and not needed to be registered
-        // register("adminSafe", address(adminSafe));
+        if (newRoot) {
+            register("root", address(root));
+            // Otherwise already present in load_vars.sh and not needed to be registered
+        }
+        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
@@ -88,9 +159,11 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function _commonRely() private {
-        root.rely(address(guardian));
-        root.rely(address(messageProcessor));
-        root.rely(address(messageDispatcher));
+        if (newRoot) {
+            root.rely(address(guardian));
+            root.rely(address(messageProcessor));
+            root.rely(address(messageDispatcher));
+        }
         gateway.rely(address(root));
         gateway.rely(address(messageDispatcher));
         gateway.rely(address(multiAdapter));
@@ -114,13 +187,16 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     }
 
     function removeCommonDeployerAccess(address deployer) public {
-        if (root.wards(deployer) == 0) {
+        if (gateway.wards(deployer) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
+        // We override the deployer with the correct admin once everything is deployed
         guardian.file("safe", address(adminSafe));
 
-        root.deny(deployer);
+        if (newRoot) {
+            root.deny(deployer);
+        }
         gateway.deny(deployer);
         multiAdapter.deny(deployer);
         tokenRecoverer.deny(deployer);

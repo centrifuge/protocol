@@ -5,12 +5,12 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
-import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {HubDeployer, CommonInput} from "script/HubDeployer.s.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
@@ -50,6 +50,7 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
     uint64 constant GAS = 100 wei;
+    uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;
@@ -72,11 +73,17 @@ contract BaseTest is HubDeployer, Test {
     }
 
     function setUp() public virtual {
-        // Pre deployment
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CHAIN_CP,
+            root: IRoot(address(0)),
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            version: bytes32(0)
+        });
+
+        deployHub(input, address(this));
         _mockStuff();
         removeHubDeployerAccess(address(this));
 

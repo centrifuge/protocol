@@ -3,7 +3,6 @@
         "chainId": 12345,
         "environment": "testnet OR mainnet",
         "centrifugeId": 2,
-        "etherscanUrl": "https://api.etherscan.io/api OR https://api.basescan.org/api OR https://api-sepolia.etherscan.io/api",
         "connectsTo": [
             "sepolia",
             "base-sepolia",

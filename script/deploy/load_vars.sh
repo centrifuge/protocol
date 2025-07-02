@@ -215,11 +215,6 @@ load_env() {
             return 1
         fi
     fi
-    # Check if catapulta_network exists in config and set CATAPULTA_NET
-    if [ -n "$(jq -r '.network.catapultaNetwork // empty' "$network_config")" ]; then
-        CATAPULTA_NET=$(jq -r '.network.catapultaNetwork' "$network_config")
-        print_success "Catapulta network configured: $CATAPULTA_NET"
-    fi
 
 }
 

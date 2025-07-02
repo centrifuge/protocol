@@ -32,9 +32,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     IBaseRequestManager public baseManager;
 
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     PoolId public immutable poolId;
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
@@ -243,7 +243,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         // the sender is the owner, to bypass the allowance check
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
-        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
+        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender, true), RequestRedeemFailed());
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -287,7 +287,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     {
         _validateController(controller);
         shares = asyncRedeemManager.claimCancelRedeemRequest(this, receiver, controller);
-        emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
+        emit CancelRedeemClaim(controller, receiver, REQUEST_ID, msg.sender, shares);
     }
 
     //----------------------------------------------------------------------------------------------

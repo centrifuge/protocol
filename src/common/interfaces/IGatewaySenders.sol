@@ -109,7 +109,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -119,18 +120,32 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 
     /// @notice Creates and send the message
-    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
+    function sendRequestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external;
 }
 
 /// @notice Interface for dispatch-only gateway
 interface ISpokeMessageSender is ILocalCentrifugeId {
+    struct UpdateData {
+        uint128 netAmount;
+        bool isIncrease;
+        bool isSnapshot;
+        uint64 nonce;
+    }
+
     /// @notice Creates and send the message
     function sendInitiateTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 remoteExtraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -141,24 +156,14 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        uint128 amount,
+        UpdateData calldata data,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        bool isSnapshot,
-        uint64 nonce,
         uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
-    function sendUpdateShares(
-        PoolId poolId,
-        ShareClassId scId,
-        uint128 shares,
-        bool isIssuance,
-        bool isSnapshot,
-        uint64 nonce,
-        uint128 extraGasLimit
-    ) external;
+    function sendUpdateShares(PoolId poolId, ShareClassId scId, UpdateData calldata data, uint128 extraGasLimit)
+        external;
 
     /// @notice Creates and send the message
     function sendRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;

@@ -34,6 +34,7 @@ contract SpokeTestHelper is BaseTest {
     ShareClassId scId;
     address assetErc20;
     AssetId assetIdErc20;
+    IVault immutable VAULT = IVault(makeAddr("Vault"));
 
     // helpers
     function hasDuplicates(ShareClassId[4] calldata array) internal pure returns (bool) {
@@ -216,17 +217,17 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(ISpoke.UnknownToken.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, centChainAddress, amount
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, centChainAddress, amount, 0
         );
 
         // send the transfer from EVM -> Cent Chain
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount, 0);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
         bytes memory message = MessageLib.InitiateTransferShares(
-            poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount
+            poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount, 0
         ).serialize();
         assertEq(adapter1.sent(message), 1);
     }
@@ -296,13 +297,13 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(ISpoke.UnknownToken.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount, 0
         );
 
         // Transfer amount from this address to destinationAddress
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount, 0
         );
         assertEq(shareToken.balanceOf(address(this)), 0);
     }
@@ -577,7 +578,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
 
         spoke.updateRestriction(
             vault.poolId(),
@@ -588,24 +591,68 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         );
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         spoke.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
     }
 
+    function testLinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(poolId.raw() != 1);
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testLinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(scId.raw() != bytes16("2"));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
     function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
+
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testUnlinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(poolId.raw() != 1);
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testUnlinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(scId.raw() != bytes16("2"));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
     }
 
     function testUnlinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
+
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
     }
 
     function testLinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {

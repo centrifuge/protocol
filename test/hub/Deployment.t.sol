@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {HubDeployer} from "script/HubDeployer.s.sol";
 
-import {CommonDeploymentTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract HubDeploymentTest is HubDeployer, CommonDeploymentTest {
-    function setUp() public virtual override {
-        deployHub(CENTRIFUGE_ID, ADMIN_SAFE, address(this), true);
+contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
+    function setUp() public {
+        deployHub(_commonInput(), address(this));
         removeHubDeployerAccess(address(this));
     }
 
@@ -125,12 +125,14 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentTest {
 contract HubDeploymentCommonExtTest is HubDeploymentTest {
     function testMessageDispatcherExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(guardian)); // From common
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHelpers));
-        super.testMessageDispatcher(nonWard);
 
         assertEq(messageDispatcher.wards(address(hub)), 1);
         assertEq(messageDispatcher.wards(address(hubHelpers)), 1);
+        assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(messageDispatcher.hub()), address(hub));
@@ -143,18 +145,22 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
 
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(messageDispatcher)); // From common
+        vm.assume(nonWard != address(multiAdapter)); // From common
         vm.assume(nonWard != address(hub));
-        super.testGateway(nonWard);
 
         assertEq(gateway.wards(address(hub)), 1);
+        assertEq(gateway.wards(nonWard), 0);
     }
 
     function testPoolEscrowFactoryExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(hub));
-        super.testPoolEscrowFactory(nonWard);
 
         assertEq(poolEscrowFactory.wards(address(hub)), 1);
+        assertEq(poolEscrowFactory.wards(nonWard), 0);
     }
 
     function testGuardianExt() public view {

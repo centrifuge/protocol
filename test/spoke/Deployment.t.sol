@@ -3,37 +3,14 @@ pragma solidity 0.8.28;
 
 import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
 
-import {CommonDeploymentTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
-contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
-    function setUp() public virtual override {
-        deploySpoke(CENTRIFUGE_ID, ADMIN_SAFE, address(this), true);
+contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
+    function setUp() public {
+        deploySpoke(_commonInput(), address(this));
         removeSpokeDeployerAccess(address(this));
-    }
-
-    function testRouterEscrow(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(vaultRouter));
-
-        assertEq(routerEscrow.wards(address(root)), 1);
-        assertEq(routerEscrow.wards(address(vaultRouter)), 1);
-        assertEq(routerEscrow.wards(nonWard), 0);
-    }
-
-    function testGlobalEscrow(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(asyncRequestManager));
-
-        assertEq(globalEscrow.wards(address(root)), 1);
-        assertEq(globalEscrow.wards(address(asyncRequestManager)), 1);
-        assertEq(globalEscrow.wards(nonWard), 0);
-
-        // root endorsements
-        assertEq(root.endorsed(address(globalEscrow)), true);
     }
 
     function testTokenFactory(address nonWard) public {
@@ -52,70 +29,6 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
 
         vm.expectRevert();
         tokenFactory.tokenWards(2);
-    }
-
-    function testAsyncRequestManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(syncManager));
-
-        assertEq(asyncRequestManager.wards(address(root)), 1);
-        assertEq(asyncRequestManager.wards(address(spoke)), 1);
-        assertEq(asyncRequestManager.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
-        assertEq(address(asyncRequestManager.globalEscrow()), address(globalEscrow));
-
-        // root endorsements
-        assertEq(root.endorsed(address(balanceSheet)), true);
-    }
-
-    function testAsyncVaultFactory(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
-
-        assertEq(asyncVaultFactory.wards(address(root)), 1);
-        assertEq(asyncVaultFactory.wards(address(spoke)), 1);
-        assertEq(asyncVaultFactory.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(asyncVaultFactory.root()), address(root));
-        assertEq(address(asyncVaultFactory.asyncRequestManager()), address(asyncRequestManager));
-    }
-
-    function testSyncDepositVaultFactory(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
-
-        assertEq(syncDepositVaultFactory.wards(address(root)), 1);
-        assertEq(syncDepositVaultFactory.wards(address(spoke)), 1);
-        assertEq(syncDepositVaultFactory.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(syncDepositVaultFactory.root()), address(root));
-        assertEq(address(syncDepositVaultFactory.syncDepositManager()), address(syncManager));
-        assertEq(address(syncDepositVaultFactory.asyncRedeemManager()), address(asyncRequestManager));
-    }
-
-    function testSyncManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(syncDepositVaultFactory));
-
-        assertEq(syncManager.wards(address(root)), 1);
-        assertEq(syncManager.wards(address(spoke)), 1);
-        assertEq(syncManager.wards(address(syncDepositVaultFactory)), 1);
-        assertEq(syncManager.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(syncManager.spoke()), address(spoke));
-        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
     }
 
     function testSpoke(address nonWard) public view {
@@ -156,34 +69,20 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentTest {
         // root endorsements
         assertEq(root.endorsed(address(balanceSheet)), true);
     }
-
-    function testVaultRouter(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-
-        assertEq(vaultRouter.wards(address(root)), 1);
-        assertEq(vaultRouter.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(vaultRouter.spoke()), address(spoke));
-        assertEq(address(vaultRouter.escrow()), address(routerEscrow));
-        assertEq(address(vaultRouter.gateway()), address(gateway));
-
-        // root endorsements
-        assertEq(root.endorsed(address(vaultRouter)), true);
-    }
 }
 
 /// This checks the nonWard and the integrity of the common contract after spoke changes
 contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
     function testMessageDispatcherExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(guardian)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
-        super.testMessageDispatcher(nonWard);
 
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
+        assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(messageDispatcher.spoke()), address(spoke));
@@ -198,22 +97,24 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
 
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(messageDispatcher)); // From common
+        vm.assume(nonWard != address(multiAdapter)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
-        vm.assume(nonWard != address(vaultRouter));
-        super.testGateway(nonWard);
 
         assertEq(gateway.wards(address(spoke)), 1);
         assertEq(gateway.wards(address(balanceSheet)), 1);
-        assertEq(gateway.wards(address(vaultRouter)), 1);
+        assertEq(gateway.wards(nonWard), 0);
     }
 
     function testPoolEscrowFactoryExt(address nonWard) public view {
         // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(spoke));
-        super.testPoolEscrowFactory(nonWard);
 
         assertEq(poolEscrowFactory.wards(address(spoke)), 1);
+        assertEq(poolEscrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(poolEscrowFactory.balanceSheet()), address(balanceSheet));

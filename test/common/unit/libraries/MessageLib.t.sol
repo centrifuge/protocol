@@ -188,14 +188,16 @@ contract TestMessageLibIdentities is Test {
         bytes16 scId,
         uint16 centrifugeId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) public pure {
         MessageLib.InitiateTransferShares memory a = MessageLib.InitiateTransferShares({
             poolId: poolId,
             scId: scId,
             centrifugeId: centrifugeId,
             receiver: receiver,
-            amount: amount
+            amount: amount,
+            extraGasLimit: extraGasLimit
         });
         MessageLib.InitiateTransferShares memory b = MessageLib.deserializeInitiateTransferShares(a.serialize());
 
@@ -204,6 +206,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.centrifugeId, b.centrifugeId);
         assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
