@@ -17,7 +17,7 @@ struct SpokeReport {
 }
 
 contract SpokeActionBatcher is CommonActionBatcher {
-    function engageSpoke(SpokeReport memory report) public {
+    function engageSpoke(SpokeReport memory report, bool newRoot) public {
         // Rely Spoke
         report.tokenFactory.rely(address(report.spoke));
         report.common.messageDispatcher.rely(address(report.spoke));
@@ -66,7 +66,9 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.tokenFactory.file("wards", tokenWards);
 
         // Endorse methods
-        report.common.root.endorse(address(report.balanceSheet));
+        if (newRoot) {
+            report.common.root.endorse(address(report.balanceSheet));
+        }
     }
 
     function revokeSpoke(SpokeReport memory report) public {
@@ -108,7 +110,7 @@ contract SpokeDeployer is CommonDeployer {
             )
         );
 
-        batcher.engageSpoke(_spokeReport());
+        batcher.engageSpoke(_spokeReport(), newRoot);
 
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
