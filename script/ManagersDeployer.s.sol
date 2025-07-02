@@ -20,11 +20,11 @@ struct ManagersReport {
 }
 
 contract ManagersActionBatcher is SpokeActionBatcher {
-    function engageManagers(ManagersReport memory report) public {
+    function engageManagers(ManagersReport memory report) public unlocked {
         // Empty
     }
 
-    function revokeManagers(ManagersReport memory report) public {
+    function revokeManagers(ManagersReport memory report) public unlocked {
         // Empty
     }
 }

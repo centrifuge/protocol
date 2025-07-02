@@ -29,7 +29,7 @@ struct VaultsReport {
 }
 
 contract VaultsActionBatcher is SpokeActionBatcher {
-    function engageVaults(VaultsReport memory report, bool newRoot) public {
+    function engageVaults(VaultsReport memory report, bool newRoot) public unlocked {
         // Rely Spoke
         report.asyncVaultFactory.rely(address(report.spoke.spoke));
         report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
@@ -70,7 +70,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         }
     }
 
-    function revokeVaults(VaultsReport memory report) public {
+    function revokeVaults(VaultsReport memory report) public unlocked {
         report.asyncVaultFactory.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));

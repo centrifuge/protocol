@@ -22,7 +22,7 @@ struct HooksReport {
 }
 
 contract HooksActionBatcher is SpokeActionBatcher {
-    function engageHooks(HooksReport memory report) public {
+    function engageHooks(HooksReport memory report) public unlocked {
         // Rely Spoke
         IAuth(report.freezeOnlyHook).rely(address(report.spoke.spoke));
         IAuth(report.fullRestrictionsHook).rely(address(report.spoke.spoke));
@@ -34,7 +34,7 @@ contract HooksActionBatcher is SpokeActionBatcher {
         IAuth(report.redemptionRestrictionsHook).rely(address(report.spoke.common.root));
     }
 
-    function revokeHooks(HooksReport memory report) public {
+    function revokeHooks(HooksReport memory report) public unlocked {
         IAuth(report.freezeOnlyHook).deny(address(this));
         IAuth(report.fullRestrictionsHook).deny(address(this));
         IAuth(report.redemptionRestrictionsHook).deny(address(this));
