@@ -36,11 +36,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
-    IHubRegistry public hubRegistry;
     IGateway public gateway;
     IHoldings public holdings;
     IHubHelpers public hubHelpers;
     IAccounting public accounting;
+    IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
     IPoolEscrowFactory public poolEscrowFactory;
