@@ -136,7 +136,7 @@ contract LocalhostDeployer is FullDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Issue and claim
-        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
@@ -164,7 +164,7 @@ contract LocalhostDeployer is FullDeployer {
 
         // Fulfill redeem request
         hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
-        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 

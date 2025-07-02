@@ -87,12 +87,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
-    function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-        payable
-        payTransaction
-        protected
-    {
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable payTransaction protected {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
@@ -103,8 +105,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
-        emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
+        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
     }
 
     /// @inheritdoc ISpoke

@@ -36,12 +36,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     using MathLib for uint256;
     using RequestCallbackMessageLib for *;
 
-    IHubRegistry public immutable hubRegistry;
-
     IGateway public gateway;
     IHoldings public holdings;
     IHubHelpers public hubHelpers;
     IAccounting public accounting;
+    IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
     IPoolEscrowFactory public poolEscrowFactory;
@@ -138,7 +137,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
                     investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
-                ).serialize()
+                ).serialize(),
+                0
             );
         }
     }
@@ -161,7 +161,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
                     investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
-                ).serialize()
+                ).serialize(),
+                0
             );
         }
     }
@@ -341,7 +342,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId,
             scId,
             depositAssetId,
-            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize()
+            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize(),
+            0
         );
     }
 
@@ -366,7 +368,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         ShareClassId scId,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     )
         external
         payable
@@ -382,7 +385,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             poolId,
             scId,
             depositAssetId,
-            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize()
+            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize(),
+            extraGasLimit
         );
     }
 
@@ -392,7 +396,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         ShareClassId scId,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     )
         external
         payable
@@ -409,7 +414,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             scId,
             payoutAssetId,
             RequestCallbackMessageLib.RevokedShares(payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw())
-                .serialize()
+                .serialize(),
+            extraGasLimit
         );
     }
 
@@ -430,7 +436,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 depositAssetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize()
+                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize(),
+                0
             );
         }
     }
@@ -451,7 +458,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 poolId,
                 scId,
                 payoutAssetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize()
+                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize(),
+                0
             );
         }
     }
@@ -462,14 +470,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         ShareClassId scId,
         uint16 centrifugeId,
         bytes calldata payload,
-        uint128 gasLimit
+        uint128 extraGasLimit
     ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
-        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload, gasLimit);
+        sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload, extraGasLimit);
     }
 
     /// @inheritdoc IHub
@@ -479,14 +487,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
-        uint128 gasLimit
+        uint128 extraGasLimit
     ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
-        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind, gasLimit);
+        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit);
     }
 
     /// @inheritdoc IHub
@@ -496,14 +504,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         uint16 centrifugeId,
         bytes32 target,
         bytes calldata payload,
-        uint128 gasLimit
+        uint128 extraGasLimit
     ) external payable payTransaction {
         _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload, gasLimit);
+        sender.sendUpdateContract(centrifugeId, poolId, scId, target, payload, extraGasLimit);
     }
 
     /// @inheritdoc IHub
@@ -695,12 +703,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external {
         _auth();
 
         emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount, extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------

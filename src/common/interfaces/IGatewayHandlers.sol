@@ -43,7 +43,8 @@ interface IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Updates the total issuance of shares by request from vaults.

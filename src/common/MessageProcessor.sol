@@ -112,7 +112,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hub.initiateTransferShares(
-                m.centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount
+                m.centrifugeId, PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount, m.extraGasLimit
             );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);

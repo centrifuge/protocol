@@ -89,7 +89,7 @@ library MessageLib {
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
-        (75  << uint8(MessageType.InitiateTransferShares) * 8) +
+        (91  << uint8(MessageType.InitiateTransferShares) * 8) +
         (73  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (25  << uint8(MessageType.UpdateRestriction) * 8) +
         (57  << uint8(MessageType.UpdateContract) * 8) +
@@ -415,6 +415,7 @@ library MessageLib {
         uint16 centrifugeId;
         bytes32 receiver;
         uint128 amount;
+        uint128 extraGasLimit;
     }
 
     function deserializeInitiateTransferShares(bytes memory data)
@@ -428,13 +429,15 @@ library MessageLib {
             scId: data.toBytes16(9),
             centrifugeId: data.toUint16(25),
             receiver: data.toBytes32(27),
-            amount: data.toUint128(59)
+            amount: data.toUint128(59),
+            extraGasLimit: data.toUint128(75)
         });
     }
 
     function serialize(InitiateTransferShares memory t) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(MessageType.InitiateTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount);
+        return abi.encodePacked(
+            MessageType.InitiateTransferShares, t.poolId, t.scId, t.centrifugeId, t.receiver, t.amount, t.extraGasLimit
+        );
     }
 
     //---------------------------------------
