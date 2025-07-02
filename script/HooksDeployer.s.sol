@@ -48,7 +48,12 @@ contract HooksDeployer is SpokeDeployer {
     address public fullRestrictionsHook;
 
     function deployHooks(CommonInput memory input, HooksActionBatcher batcher) public {
-        deploySpoke(input, batcher);
+        preDeployHooks(input, batcher);
+        postDeployHooks(batcher);
+    }
+
+    function preDeployHooks(CommonInput memory input, HooksActionBatcher batcher) internal {
+        preDeploySpoke(input, batcher);
 
         freezeOnlyHook = create3(
             generateSalt("freezeOnlyHook"),
@@ -70,6 +75,10 @@ contract HooksDeployer is SpokeDeployer {
         register("freezeOnlyHook", address(freezeOnlyHook));
         register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
         register("fullRestrictionsHook", address(fullRestrictionsHook));
+    }
+
+    function postDeployHooks(HooksActionBatcher batcher) internal {
+        postDeploySpoke(batcher);
     }
 
     function removeHooksDeployerAccess(HooksActionBatcher batcher) public {

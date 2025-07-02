@@ -76,10 +76,12 @@ contract CommonActionBatcher {
         report.poolEscrowFactory.file("gateway", address(report.gateway));
     }
 
-    function revokeCommon(CommonReport memory report, bool newRoot) public unlocked {
+    function postEngageCommon(CommonReport memory report) public unlocked {
         // We override the deployer with the correct admin once everything is deployed
         report.guardian.file("safe", address(report.adminSafe));
+    }
 
+    function revokeCommon(CommonReport memory report, bool newRoot) public unlocked {
         if (newRoot) {
             report.root.deny(address(this));
         }
@@ -89,12 +91,6 @@ contract CommonActionBatcher {
         report.messageProcessor.deny(address(this));
         report.messageDispatcher.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
-    }
-
-    /// @notice Transfer Guardian ownership to admin safe without affecting any other permissions
-    /// @dev Safe for testnet use - only transfers Guardian control, leaves all other permissions intact
-    function transferGuardianOwnership(CommonReport memory report) public {
-        report.guardian.file("safe", address(report.adminSafe));
     }
 }
 
@@ -129,6 +125,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
+        preDeployCommon(input, batcher);
+        postDeployCommon(batcher);
+    }
+
+    function preDeployCommon(CommonInput memory input, CommonActionBatcher batcher) internal {
         if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -225,6 +226,14 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
+    }
+
+    function postDeployCommon(CommonActionBatcher batcher) internal {
+        if (guardian.safe() == _commonReport().adminSafe) {
+            return; // Already configured. Make this method idempotent.
+        }
+
+        batcher.postEngageCommon(_commonReport());
     }
 
     function removeCommonDeployerAccess(CommonActionBatcher batcher) public {

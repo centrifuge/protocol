@@ -104,7 +104,12 @@ contract HubDeployer is CommonDeployer, HubConstants {
     IdentityValuation public identityValuation;
 
     function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
-        deployCommon(input, batcher);
+        preDeployHub(input, batcher);
+        postDeployHub(batcher);
+    }
+
+    function preDeployHub(CommonInput memory input, HubActionBatcher batcher) internal {
+        preDeployCommon(input, batcher);
 
         hubRegistry = HubRegistry(
             create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
@@ -179,6 +184,10 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("hubHelpers", address(hubHelpers));
         register("hub", address(hub));
         register("identityValuation", address(identityValuation));
+    }
+
+    function postDeployHub(HubActionBatcher batcher) internal {
+        postDeployCommon(batcher);
     }
 
     function removeHubDeployerAccess(HubActionBatcher batcher) public {

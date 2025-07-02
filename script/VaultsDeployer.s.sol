@@ -91,7 +91,12 @@ contract VaultsDeployer is SpokeDeployer {
     SyncDepositVaultFactory public syncDepositVaultFactory;
 
     function deployVaults(CommonInput memory input, VaultsActionBatcher batcher) public {
-        deploySpoke(input, batcher);
+        preDeployVaults(input, batcher);
+        postDeployVaults(batcher);
+    }
+
+    function preDeployVaults(CommonInput memory input, VaultsActionBatcher batcher) internal {
+        preDeploySpoke(input, batcher);
 
         routerEscrow = Escrow(
             create3(generateSalt("routerEscrow"), abi.encodePacked(type(Escrow).creationCode, abi.encode(batcher)))
@@ -149,6 +154,10 @@ contract VaultsDeployer is SpokeDeployer {
         register("asyncVaultFactory", address(asyncVaultFactory));
         register("syncDepositVaultFactory", address(syncDepositVaultFactory));
         register("vaultRouter", address(vaultRouter));
+    }
+
+    function postDeployVaults(VaultsActionBatcher batcher) internal {
+        postDeploySpoke(batcher);
     }
 
     function removeVaultsDeployerAccess(VaultsActionBatcher batcher) public {

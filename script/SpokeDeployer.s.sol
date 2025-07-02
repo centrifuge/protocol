@@ -84,11 +84,16 @@ contract SpokeDeployer is CommonDeployer {
     TokenFactory public tokenFactory;
 
     function deploySpoke(CommonInput memory input, SpokeActionBatcher batcher) public {
+        preDeploySpoke(input, batcher);
+        postDeploySpoke(batcher);
+    }
+
+    function preDeploySpoke(CommonInput memory input, SpokeActionBatcher batcher) internal {
         if (address(spoke) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        deployCommon(input, batcher);
+        preDeployCommon(input, batcher);
 
         tokenFactory = TokenFactory(
             create3(
@@ -115,6 +120,10 @@ contract SpokeDeployer is CommonDeployer {
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
+    }
+
+    function postDeploySpoke(SpokeActionBatcher batcher) internal {
+        postDeployCommon(batcher);
     }
 
     function removeSpokeDeployerAccess(SpokeActionBatcher batcher) public {

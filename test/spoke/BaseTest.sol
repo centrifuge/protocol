@@ -102,7 +102,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         });
 
         deployExtendedSpoke(input, this);
-        guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);

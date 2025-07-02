@@ -14,8 +14,18 @@ contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher {}
 
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
     function deployFull(CommonInput memory input, FullActionBatcher batcher) public {
-        deployHub(input, batcher);
-        deployExtendedSpoke(input, batcher);
+        preDeployFull(input, batcher);
+        postDeployFull(batcher);
+    }
+
+    function preDeployFull(CommonInput memory input, FullActionBatcher batcher) internal {
+        preDeployHub(input, batcher);
+        preDeployExtendedSpoke(input, batcher);
+    }
+
+    function postDeployFull(FullActionBatcher batcher) internal {
+        postDeployHub(batcher);
+        postDeployExtendedSpoke(batcher);
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
@@ -61,8 +71,6 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
         if (isMainnet) {
             removeFullDeployerAccess(batcher);
-        } else {
-            guardian.file("safe", address(adminSafe));
         }
 
         batcher.lock();

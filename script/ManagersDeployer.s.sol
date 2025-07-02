@@ -19,15 +19,7 @@ struct ManagersReport {
     CircleDecoder circleDecoder;
 }
 
-contract ManagersActionBatcher is SpokeActionBatcher {
-    function engageManagers(ManagersReport memory report) public unlocked {
-        // Empty
-    }
-
-    function revokeManagers(ManagersReport memory report) public unlocked {
-        // Empty
-    }
-}
+contract ManagersActionBatcher is SpokeActionBatcher {}
 
 contract ManagersDeployer is SpokeDeployer {
     OnOfframpManagerFactory public onOfframpManagerFactory;
@@ -36,7 +28,12 @@ contract ManagersDeployer is SpokeDeployer {
     CircleDecoder public circleDecoder;
 
     function deployManagers(CommonInput memory input, ManagersActionBatcher batcher) public {
-        deploySpoke(input, batcher);
+        preDeployManagers(input, batcher);
+        postDeployManagers(batcher);
+    }
+
+    function preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
+        preDeploySpoke(input, batcher);
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
@@ -58,18 +55,18 @@ contract ManagersDeployer is SpokeDeployer {
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
-        batcher.engageManagers(_managersReport());
-
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));
         register("merkleProofManagerFactory", address(merkleProofManagerFactory));
         register("vaultDecoder", address(vaultDecoder));
         register("circleDecoder", address(circleDecoder));
     }
 
+    function postDeployManagers(ManagersActionBatcher batcher) internal {
+        postDeploySpoke(batcher);
+    }
+
     function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
         removeSpokeDeployerAccess(batcher);
-
-        batcher.revokeManagers(_managersReport());
     }
 
     function _managersReport() internal view returns (ManagersReport memory) {
