@@ -12,20 +12,20 @@ contract ExtendedSpokeActionBatcher is VaultsActionBatcher, HooksActionBatcher, 
 
 contract ExtendedSpokeDeployer is VaultsDeployer, HooksDeployer, ManagersDeployer {
     function deployExtendedSpoke(CommonInput memory input, ExtendedSpokeActionBatcher batcher) public {
-        preDeployExtendedSpoke(input, batcher);
-        postDeployExtendedSpoke(batcher);
+        _preDeployExtendedSpoke(input, batcher);
+        _postDeployExtendedSpoke(batcher);
     }
 
-    function preDeployExtendedSpoke(CommonInput memory input, ExtendedSpokeActionBatcher batcher) internal {
-        preDeployVaults(input, batcher);
-        preDeployHooks(input, batcher);
-        preDeployManagers(input, batcher);
+    function _preDeployExtendedSpoke(CommonInput memory input, ExtendedSpokeActionBatcher batcher) internal {
+        _preDeployVaults(input, batcher);
+        _preDeployHooks(input, batcher);
+        _preDeployManagers(input, batcher);
     }
 
-    function postDeployExtendedSpoke(ExtendedSpokeActionBatcher batcher) internal {
-        postDeployVaults(batcher);
-        postDeployHooks(batcher);
-        postDeployManagers(batcher);
+    function _postDeployExtendedSpoke(ExtendedSpokeActionBatcher batcher) internal {
+        _postDeployVaults(batcher);
+        _postDeployHooks(batcher);
+        _postDeployManagers(batcher);
     }
 
     function removeExtendedSpokeDeployerAccess(ExtendedSpokeActionBatcher batcher) public {

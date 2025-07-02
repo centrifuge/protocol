@@ -14,18 +14,18 @@ contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher {}
 
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
     function deployFull(CommonInput memory input, FullActionBatcher batcher) public {
-        preDeployFull(input, batcher);
-        postDeployFull(batcher);
+        _preDeployFull(input, batcher);
+        _postDeployFull(batcher);
     }
 
-    function preDeployFull(CommonInput memory input, FullActionBatcher batcher) internal {
-        preDeployHub(input, batcher);
-        preDeployExtendedSpoke(input, batcher);
+    function _preDeployFull(CommonInput memory input, FullActionBatcher batcher) internal {
+        _preDeployHub(input, batcher);
+        _preDeployExtendedSpoke(input, batcher);
     }
 
-    function postDeployFull(FullActionBatcher batcher) internal {
-        postDeployHub(batcher);
-        postDeployExtendedSpoke(batcher);
+    function _postDeployFull(FullActionBatcher batcher) internal {
+        _postDeployHub(batcher);
+        _postDeployExtendedSpoke(batcher);
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {

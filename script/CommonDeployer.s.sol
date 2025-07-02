@@ -125,11 +125,11 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
-        preDeployCommon(input, batcher);
-        postDeployCommon(batcher);
+        _preDeployCommon(input, batcher);
+        _postDeployCommon(batcher);
     }
 
-    function preDeployCommon(CommonInput memory input, CommonActionBatcher batcher) internal {
+    function _preDeployCommon(CommonInput memory input, CommonActionBatcher batcher) internal {
         if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
@@ -228,7 +228,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("poolEscrowFactory", address(poolEscrowFactory));
     }
 
-    function postDeployCommon(CommonActionBatcher batcher) internal {
+    function _postDeployCommon(CommonActionBatcher batcher) internal {
         if (guardian.safe() == _commonReport().adminSafe) {
             return; // Already configured. Make this method idempotent.
         }

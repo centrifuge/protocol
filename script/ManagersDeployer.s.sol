@@ -28,12 +28,12 @@ contract ManagersDeployer is SpokeDeployer {
     CircleDecoder public circleDecoder;
 
     function deployManagers(CommonInput memory input, ManagersActionBatcher batcher) public {
-        preDeployManagers(input, batcher);
-        postDeployManagers(batcher);
+        _preDeployManagers(input, batcher);
+        _postDeployManagers(batcher);
     }
 
-    function preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
-        preDeploySpoke(input, batcher);
+    function _preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
+        _preDeploySpoke(input, batcher);
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
@@ -61,8 +61,8 @@ contract ManagersDeployer is SpokeDeployer {
         register("circleDecoder", address(circleDecoder));
     }
 
-    function postDeployManagers(ManagersActionBatcher batcher) internal {
-        postDeploySpoke(batcher);
+    function _postDeployManagers(ManagersActionBatcher batcher) internal {
+        _postDeploySpoke(batcher);
     }
 
     function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
