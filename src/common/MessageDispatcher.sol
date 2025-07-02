@@ -216,7 +216,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit
     ) external auth {
         if (centrifugeId == localCentrifugeId) {
-            contractUpdater.updateContract(poolId, scId, target.toAddress(), payload);
+            contractUpdater.execute(poolId, scId, target.toAddress(), payload);
         } else {
             gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(

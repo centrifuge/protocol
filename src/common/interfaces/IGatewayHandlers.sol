@@ -171,7 +171,7 @@ interface IUpdateContractGatewayHandler {
     /// @param  scId The share class id
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+    function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
 }
 
 /// @notice Interface for methods implemented by a balance sheet

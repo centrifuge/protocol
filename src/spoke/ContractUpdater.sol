@@ -15,7 +15,7 @@ contract ContractUpdater is Auth, IUpdateContractGatewayHandler {
     constructor(address deployer) Auth(deployer) {}
 
     /// @inheritdoc IUpdateContractGatewayHandler
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) public auth {
+    function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) public auth {
         IUpdateContract(target).update(poolId, scId, update);
         emit UpdateContract(poolId, scId, target, update);
     }
