@@ -34,6 +34,7 @@ contract SpokeTestHelper is BaseTest {
     ShareClassId scId;
     address assetErc20;
     AssetId assetIdErc20;
+    IVault immutable VAULT = IVault(makeAddr("Vault"));
 
     // helpers
     function hasDuplicates(ShareClassId[4] calldata array) internal pure returns (bool) {
@@ -598,14 +599,54 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
     }
 
+    function testLinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(poolId.raw() != 1);
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testLinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(scId.raw() != bytes16("2"));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
     function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
+
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
+        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testUnlinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(poolId.raw() != 1);
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
+    }
+
+    function testUnlinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
+        vm.assume(scId.raw() != bytes16("2"));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
+
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
     }
 
     function testUnlinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
+
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
+        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
     }
 
     function testLinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {
