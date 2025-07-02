@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {ContractUpdater} from "src/spoke/ContractUpdater.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
@@ -14,6 +15,7 @@ struct SpokeReport {
     Spoke spoke;
     BalanceSheet balanceSheet;
     TokenFactory tokenFactory;
+    ContractUpdater contractUpdater;
 }
 
 contract SpokeActionBatcher is CommonActionBatcher {
@@ -32,21 +34,26 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.spoke.rely(address(report.common.root));
         report.balanceSheet.rely(address(report.common.root));
         report.tokenFactory.rely(address(report.common.root));
+        report.contractUpdater.rely(address(report.common.root));
 
         // Rely messageProcessor
         report.spoke.rely(address(report.common.messageProcessor));
         report.balanceSheet.rely(address(report.common.messageProcessor));
+        report.contractUpdater.rely(address(report.common.messageProcessor));
 
         // Rely messageDispatcher
         report.spoke.rely(address(report.common.messageDispatcher));
         report.balanceSheet.rely(address(report.common.messageDispatcher));
+        report.contractUpdater.rely(address(report.common.messageDispatcher));
 
         // File methods
         report.common.messageDispatcher.file("spoke", address(report.spoke));
         report.common.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
+        report.common.messageDispatcher.file("contractUpdater", address(report.contractUpdater));
 
         report.common.messageProcessor.file("spoke", address(report.spoke));
         report.common.messageProcessor.file("balanceSheet", address(report.balanceSheet));
+        report.common.messageProcessor.file("contractUpdater", address(report.contractUpdater));
 
         report.spoke.file("gateway", address(report.common.gateway));
         report.spoke.file("sender", address(report.common.messageDispatcher));
@@ -82,6 +89,7 @@ contract SpokeDeployer is CommonDeployer {
     Spoke public spoke;
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
+    ContractUpdater public contractUpdater;
 
     function deploySpoke(CommonInput memory input, SpokeActionBatcher batcher) public {
         _preDeploySpoke(input, batcher);
@@ -115,6 +123,13 @@ contract SpokeDeployer is CommonDeployer {
             )
         );
 
+        contractUpdater = ContractUpdater(
+            create3(
+                generateSalt("contractUpdater"),
+                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
+            )
+        );
+
         batcher.engageSpoke(_spokeReport(), newRoot);
 
         register("tokenFactory", address(tokenFactory));
@@ -137,6 +152,6 @@ contract SpokeDeployer is CommonDeployer {
     }
 
     function _spokeReport() internal view returns (SpokeReport memory) {
-        return SpokeReport(_commonReport(), spoke, balanceSheet, tokenFactory);
+        return SpokeReport(_commonReport(), spoke, balanceSheet, tokenFactory, contractUpdater);
     }
 }

@@ -63,7 +63,7 @@ interface IHubGatewayHandler {
 ///  Vaults Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for Vaults methods related to pools called by messages
+/// @notice Interface for spoke related methods called by messages
 interface ISpokeGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @param     poolId The pool id
@@ -142,13 +142,6 @@ interface ISpokeGatewayHandler {
         VaultUpdateKind kind
     ) external;
 
-    /// @notice Updates the target address. Generic update function from Hub to Vaults
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  target The target address to be called
-    /// @param  update The payload to be processed by the target address
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
-
     /// @notice Updates the max price age of an asset
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
@@ -171,7 +164,17 @@ interface ISpokeGatewayHandler {
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 }
 
-/// @notice Interface for Vaults methods related to epoch called by messages
+/// @notice Interface for the update contract method, called by message
+interface IUpdateContractGatewayHandler {
+    /// @notice Updates the target address. Generic update function from Hub to Vaults
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  target The target address to be called
+    /// @param  update The payload to be processed by the target address
+    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+}
+
+/// @notice Interface for methods implemented by a balance sheet
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;
 }

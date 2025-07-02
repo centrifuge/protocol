@@ -21,7 +21,8 @@ import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "src/co
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
-    IHubGatewayHandler
+    IHubGatewayHandler,
+    IUpdateContractGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 
 contract MessageDispatcher is Auth, IMessageDispatcher {
@@ -39,6 +40,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IBalanceSheetGatewayHandler public balanceSheet;
+    IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -62,6 +64,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -213,7 +216,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit
     ) external auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.updateContract(poolId, scId, target.toAddress(), payload);
+            contractUpdater.updateContract(poolId, scId, target.toAddress(), payload);
         } else {
             gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(

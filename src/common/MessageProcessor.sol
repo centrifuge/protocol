@@ -20,7 +20,8 @@ import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/Mes
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
-    IHubGatewayHandler
+    IHubGatewayHandler,
+    IUpdateContractGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
@@ -34,6 +35,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IBalanceSheetGatewayHandler public balanceSheet;
+    IUpdateContractGatewayHandler public contractUpdater;
 
     constructor(IRoot root_, ITokenRecoverer tokenRecoverer_, address deployer) Auth(deployer) {
         root = root_;
@@ -49,6 +51,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
+        else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -122,7 +125,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
         } else if (kind == MessageType.UpdateContract) {
             MessageLib.UpdateContract memory m = MessageLib.deserializeUpdateContract(message);
-            spoke.updateContract(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload);
+            contractUpdater.updateContract(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
+            );
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spoke.requestCallback(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);

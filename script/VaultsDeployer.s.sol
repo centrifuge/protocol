@@ -34,7 +34,9 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.asyncVaultFactory.rely(address(report.spoke.spoke));
         report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
         report.asyncRequestManager.rely(address(report.spoke.spoke));
-        report.syncManager.rely(address(report.spoke.spoke));
+
+        // Rely ContractUpdater
+        report.syncManager.rely(address(report.spoke.contractUpdater));
 
         // Rely async requests manager
         report.globalEscrow.rely(address(report.asyncRequestManager));

@@ -38,14 +38,16 @@ contract ManagersDeployer is SpokeDeployer {
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
                 generateSalt("onOfframpManagerFactory"),
-                abi.encodePacked(type(OnOfframpManagerFactory).creationCode, abi.encode(spoke, balanceSheet))
+                abi.encodePacked(type(OnOfframpManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet))
             )
         );
 
         merkleProofManagerFactory = MerkleProofManagerFactory(
             create3(
                 generateSalt("merkleProofManagerFactory"),
-                abi.encodePacked(type(MerkleProofManagerFactory).creationCode, abi.encode(spoke))
+                abi.encodePacked(
+                    type(MerkleProofManagerFactory).creationCode, abi.encode(contractUpdater, balanceSheet)
+                )
             )
         );
 

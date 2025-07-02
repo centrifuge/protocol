@@ -16,12 +16,13 @@ contract ManagersDeploymentTest is ManagersDeployer, CommonDeploymentInputTest {
 
     function testOnOfframpManagerFactory() public view {
         // dependencies set correctly
-        assertEq(address(onOfframpManagerFactory.spoke()), address(spoke));
+        assertEq(address(onOfframpManagerFactory.contractUpdater()), address(contractUpdater));
         assertEq(address(onOfframpManagerFactory.balanceSheet()), address(balanceSheet));
     }
 
     function testMerkleProofManagerFactory() public view {
         // dependencies set correctly
-        assertEq(address(merkleProofManagerFactory.spoke()), address(spoke));
+        assertEq(address(merkleProofManagerFactory.contractUpdater()), address(contractUpdater));
+        assertEq(address(merkleProofManagerFactory.balanceSheet()), address(balanceSheet));
     }
 }
