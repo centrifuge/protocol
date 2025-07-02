@@ -3,25 +3,27 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC7726} from "src/misc/interfaces/IERC7726.sol";
 import {Auth} from "src/misc/Auth.sol";
 import {Multicall, IMulticall} from "src/misc/Multicall.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IPoolMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
-import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
+import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
@@ -35,23 +37,32 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     IGateway public gateway;
     IHoldings public holdings;
+    IHubHelpers public hubHelpers;
     IAccounting public accounting;
-    IPoolMessageSender public sender;
+    IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
 
     constructor(
-        IShareClassManager shareClassManager_,
-        IHubRegistry hubRegistry_,
-        IAccounting accounting_,
-        IHoldings holdings_,
         IGateway gateway_,
+        IHoldings holdings_,
+        IHubHelpers hubHelpers_,
+        IAccounting accounting_,
+        IHubRegistry hubRegistry_,
+        IShareClassManager shareClassManager_,
         address deployer
     ) Auth(deployer) {
-        shareClassManager = shareClassManager_;
-        hubRegistry = hubRegistry_;
-        accounting = accounting_;
-        holdings = holdings_;
         gateway = gateway_;
+        holdings = holdings_;
+        hubHelpers = hubHelpers_;
+        accounting = accounting_;
+        hubRegistry = hubRegistry_;
+        shareClassManager = shareClassManager_;
+    }
+
+    modifier payTransaction() {
+        _startTransactionPayment();
+        _;
+        _endTransactionPayment();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -62,13 +73,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function file(bytes32 what, address data) external {
         _auth();
 
-        if (what == "sender") sender = IPoolMessageSender(data);
+        if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
+        else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
-
         emit File(what, data);
     }
 
@@ -78,13 +89,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
-            gateway.payTransaction{value: msg.value}(msg.sender);
+            gateway.startTransactionPayment{value: msg.value}(msg.sender);
         }
 
         super.multicall(data);
 
         if (!wasBatching) {
             gateway.endBatching();
+            gateway.endTransactionPayment();
         }
     }
 
@@ -104,39 +116,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
+        payTransaction
     {
-        _pay();
+        (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
+            hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
-        uint128 totalPayoutShareAmount;
-        uint128 totalPaymentAssetAmount;
-        uint128 cancelledAssetAmount;
-
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
-
-            totalPayoutShareAmount += payoutShareAmount;
-            totalPaymentAssetAmount += paymentAssetAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after deposit fulfillment message
-            if (cancelled > 0) {
-                cancelledAssetAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-
-        sender.sendFulfilledDepositRequest(
-            poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount
-        );
-
-        // If cancellation was queued, notify about delayed cancellation
-        if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledCancelDepositRequest(poolId, scId, assetId, investor, cancelledAssetAmount);
+        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
+            sender.sendFulfilledDepositRequest(
+                poolId, scId, assetId, investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+            );
         }
     }
 
@@ -144,39 +132,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
         payable
+        payTransaction
     {
-        _pay();
+        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
+            hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
-        uint128 totalPayoutAssetAmount;
-        uint128 totalPaymentShareAmount;
-        uint128 cancelledShareAmount;
-
-        for (uint32 i = 0; i < maxClaims; i++) {
-            (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
-
-            totalPayoutAssetAmount += payoutAssetAmount;
-            totalPaymentShareAmount += paymentShareAmount;
-
-            // Should be written at most once with non-zero amount iff the last claimable epoch was processed and
-            // the user had a pending cancellation
-            // NOTE: Purposely delaying corresponding message dispatch after redemption fulfillment message
-            if (cancelled > 0) {
-                cancelledShareAmount = cancelled;
-            }
-
-            if (!canClaimAgain) {
-                break;
-            }
-        }
-
-        sender.sendFulfilledRedeemRequest(
-            poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount
-        );
-
-        // If cancellation was queued, notify about delayed cancellation
-        if (cancelledShareAmount > 0) {
-            sender.sendFulfilledCancelRedeemRequest(poolId, scId, assetId, investor, cancelledShareAmount);
+        if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
+            sender.sendFulfilledRedeemRequest(
+                poolId, scId, assetId, investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+            );
         }
     }
 
@@ -185,16 +149,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function notifyPool(PoolId poolId, uint16 centrifugeId) external payable {
-        _isManagerAndPaid(poolId);
+    function notifyPool(PoolId poolId, uint16 centrifugeId) external payable payTransaction {
+        _isManager(poolId);
 
         emit NotifyPool(centrifugeId, poolId);
         sender.sendNotifyPool(centrifugeId, poolId);
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external payable {
-        _isManagerAndPaid(poolId);
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -206,8 +174,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable {
-        _isManagerAndPaid(poolId);
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable payTransaction {
+        _isManager(poolId);
 
         (string memory name, string memory symbol,) = shareClassManager.metadata(scId);
 
@@ -216,16 +184,20 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) public payable {
-        _isManagerAndPaid(poolId);
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook)
+        public
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
 
         emit UpdateShareHook(centrifugeId, poolId, scId, hook);
         sender.sendUpdateShareHook(centrifugeId, poolId, scId, hook);
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable {
-        _isManagerAndPaid(poolId);
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) public payable payTransaction {
+        _isManager(poolId);
 
         (, D18 poolPerShare) = shareClassManager.metrics(scId);
 
@@ -234,42 +206,42 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
-        _isManagerAndPaid(poolId);
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) public payable payTransaction {
+        _isManager(poolId);
+        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset);
         sender.sendNotifyPricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
     }
 
     /// @inheritdoc IHub
-    function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        public
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
         payable
+        payTransaction
     {
-        _isManagerAndPaid(poolId);
+        _isManager(poolId);
 
-        sender.sendTriggerIssueShares(centrifugeId, poolId, scId, who, shares);
+        emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+        sender.sendMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
     }
 
     /// @inheritdoc IHub
-    function triggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) public payable {
-        _isManagerAndPaid(poolId);
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
 
-        sender.sendTriggerSubmitQueuedShares(centrifugeId, poolId, scId);
+        emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
+        sender.sendMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
     }
 
     /// @inheritdoc IHub
-    function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
-        _isManagerAndPaid(poolId);
+    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) public payable {
+        _isManager(poolId);
 
-        sender.sendTriggerSubmitQueuedAssets(poolId, scId, assetId);
-    }
-
-    /// @inheritdoc IHub
-    function setQueue(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bool enabled) public payable {
-        _isManagerAndPaid(poolId);
-
-        sender.sendSetQueue(centrifugeId, poolId, scId, enabled);
+        sender.sendSetQueue(poolId, scId, enabled);
     }
 
     /// @inheritdoc IHub
@@ -277,6 +249,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         hubRegistry.setMetadata(poolId, metadata);
+    }
+
+    /// @inheritdoc IHub
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
+        _isManager(poolId);
+
+        holdings.setSnapshotHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
@@ -290,10 +269,21 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updateManager(PoolId poolId, address who, bool canManage) external payable {
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
         _isManager(poolId);
 
         hubRegistry.updateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc IHub
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        sender.sendUpdateBalanceSheetManager(centrifugeId, poolId, who, canManage);
     }
 
     /// @inheritdoc IHub
@@ -314,9 +304,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         AssetId depositAssetId,
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount
-    ) external payable returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
-        _isManagerAndPaid(poolId);
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, depositAssetId);
+    ) external payable payTransaction returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
+        _isManager(poolId);
+        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, depositAssetId);
         (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
             poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
@@ -334,7 +324,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external payable returns (uint128 pendingShareAmount) {
         _isManager(poolId);
 
-        D18 price = _pricePoolPerAsset(poolId, scId, payoutAssetId);
+        D18 price = hubHelpers.pricePoolPerAsset(poolId, scId, payoutAssetId);
         (pendingShareAmount) =
             shareClassManager.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price);
     }
@@ -346,8 +336,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
         D18 navPoolPerShare
-    ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
-        _isManagerAndPaid(poolId);
+    )
+        external
+        payable
+        payTransaction
+        returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount)
+    {
+        _isManager(poolId);
 
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
             shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
@@ -362,8 +357,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare
-    ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
-        _isManagerAndPaid(poolId);
+    )
+        external
+        payable
+        payTransaction
+        returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount)
+    {
+        _isManager(poolId);
 
         (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) =
             shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
@@ -372,16 +372,66 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
+    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        uint128 cancelledAssetAmount =
+            shareClassManager.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
+
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledAssetAmount > 0) {
+            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
+        }
+    }
+
+    /// @inheritdoc IHub
+    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        uint128 cancelledShareAmount = shareClassManager.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
+
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledShareAmount > 0) {
+            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
+        }
+    }
+
+    /// @inheritdoc IHub
     function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
         external
         payable
+        payTransaction
     {
-        _isManagerAndPaid(poolId);
+        _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
         sender.sendUpdateRestriction(centrifugeId, poolId, scId, payload);
+    }
+
+    /// @inheritdoc IHub
+    function updateVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind
+    ) external payable payTransaction {
+        _isManager(poolId);
+
+        require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
+
+        emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
+        sender.sendUpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
     }
 
     /// @inheritdoc IHub
@@ -391,8 +441,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         uint16 centrifugeId,
         bytes32 target,
         bytes calldata payload
-    ) external payable {
-        _isManagerAndPaid(poolId);
+    ) external payable payTransaction {
+        _isManager(poolId);
 
         require(shareClassManager.exists(poolId, scId), IShareClassManager.ShareClassNotFound());
 
@@ -401,18 +451,18 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updatePricePerShare(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
 
-        shareClassManager.updatePricePerShare(poolId, scId, navPoolPerShare);
+        shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
     }
 
     /// @inheritdoc IHub
-    function createHolding(
+    function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId assetAccount,
         AccountId equityAccount,
         AccountId gainAccount,
@@ -422,76 +472,64 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         require(
+            assetAccount != equityAccount && assetAccount != gainAccount && assetAccount != lossAccount,
+            IHub.InvalidAccountCombination()
+        );
+        require(
             accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
                 && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
             IAccounting.AccountDoesNotExist()
         );
 
-        HoldingAccount[] memory accounts = new HoldingAccount[](4);
-        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
-        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[3] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-        accounts[2] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
+        holdings.initialize(
+            poolId,
+            scId,
+            assetId,
+            valuation,
+            false,
+            hubHelpers.holdingAccounts(assetAccount, equityAccount, gainAccount, lossAccount)
+        );
 
-        holdings.create(poolId, scId, assetId, valuation, false, accounts);
+        // If increase/decrease was called before initialize, we add journal entries for this
+        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
-    function createLiability(
+    function initializeLiability(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        IERC7726 valuation,
+        IValuation valuation,
         AccountId expenseAccount,
         AccountId liabilityAccount
     ) external payable {
         _isManager(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
+        require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
         require(
             accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
             IAccounting.AccountDoesNotExist()
         );
 
-        HoldingAccount[] memory accounts = new HoldingAccount[](2);
-        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
-        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
+        holdings.initialize(
+            poolId, scId, assetId, valuation, true, hubHelpers.liabilityAccounts(expenseAccount, liabilityAccount)
+        );
 
-        holdings.create(poolId, scId, assetId, valuation, true, accounts);
+        // If increase/decrease was called before initialize, we add journal entries for this
+        hubHelpers.updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
     }
 
     /// @inheritdoc IHub
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) public payable {
         _isManager(poolId);
 
-        accounting.unlock(poolId);
-
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
-
-        // Save a diff=0 update gas cost
-        if (isPositive && diff > 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Gain)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
-            }
-        } else if (diff > 0) {
-            if (holdings.isLiability(poolId, scId, assetId)) {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Liability)), diff);
-            } else {
-                accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset)), diff);
-                accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(AccountType.Loss)), diff);
-            }
-        }
-
-        accounting.lock();
+        hubHelpers.updateAccountingValue(poolId, scId, assetId, isPositive, diff);
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IERC7726 valuation)
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
         external
         payable
     {
@@ -572,7 +610,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            sender.sendFulfilledCancelDepositRequest(poolId, scId, depositAssetId, investor, cancelledAssetAmount);
+            sender.sendFulfilledDepositRequest(poolId, scId, depositAssetId, investor, 0, 0, cancelledAssetAmount);
         }
     }
 
@@ -584,52 +622,64 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            sender.sendFulfilledCancelRedeemRequest(poolId, scId, payoutAssetId, investor, cancelledShareAmount);
+            sender.sendFulfilledRedeemRequest(poolId, scId, payoutAssetId, investor, 0, 0, cancelledShareAmount);
         }
     }
 
     /// @inheritdoc IHubGatewayHandler
     function updateHoldingAmount(
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) external {
         _auth();
 
-        accounting.unlock(poolId);
+        uint128 value = isIncrease
+            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
+            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
 
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitAccountType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditAccountType = isLiability ? AccountType.Liability : AccountType.Equity;
-
-        if (isIncrease) {
-            uint128 value = holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-        } else {
-            uint128 value = holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
-            accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(creditAccountType)), value);
-            accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(debitAccountType)), value);
+        if (holdings.isInitialized(poolId, scId, assetId)) {
+            hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
 
-        accounting.lock();
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function increaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
+    function updateShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) external {
         _auth();
 
-        shareClassManager.increaseShareClassIssuance(poolId, scId, amount);
+        shareClassManager.updateShares(centrifugeId, poolId, scId, amount, isIssuance);
+
+        holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function decreaseShareIssuance(PoolId poolId, ShareClassId scId, uint128 amount) external {
+    function initiateTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
+    ) external {
         _auth();
 
-        shareClassManager.decreaseShareClassIssuance(poolId, scId, amount);
+        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -644,31 +694,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
     }
 
-    /// @dev Ensure the sender is authorized
-    function _isManagerAndPaid(PoolId poolId) internal {
-        _isManager(poolId);
-        _pay();
-    }
-
     /// @notice Send native tokens to the gateway for transaction payment if it's not in a multicall.
-    function _pay() internal {
+    function _startTransactionPayment() internal {
         if (!gateway.isBatching()) {
-            gateway.payTransaction{value: msg.value}(msg.sender);
+            gateway.startTransactionPayment{value: msg.value}(msg.sender);
         }
     }
 
-    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
-        AssetId poolCurrency = hubRegistry.currency(poolId);
-        // NOTE: We assume symmetric prices are provided by holdings valuation
-        IERC7726 valuation = holdings.valuation(poolId, scId, assetId);
-
-        // Retrieve amount of 1 asset unit in pool currency
-        uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
-        uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset =
-            valuation.getQuote(assetUnitAmount, assetId.addr(), poolCurrency.addr()).toUint128();
-
-        // Retrieve price by normalizing by pool denomination
-        return d18(poolAmountPerAsset, poolUnitAmount);
+    function _endTransactionPayment() internal {
+        if (!gateway.isBatching()) {
+            gateway.endTransactionPayment();
+        }
     }
 }

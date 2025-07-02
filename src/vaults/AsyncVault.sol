@@ -9,11 +9,12 @@ import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncRedeemVault, VaultKind} from "src/vaults/interfaces/IBaseVaults.sol";
-import {BaseVault, BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/investments/IAsyncRequestManager.sol";
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IAsyncRedeemVault, IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {BaseVault} from "src/vaults/BaseVaults.sol";
+import {BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
@@ -45,7 +46,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
         require(IERC20(asset).balanceOf(owner) >= assets, InsufficientBalance());
 
         require(asyncManager().requestDeposit(this, assets, controller, owner, msg.sender), RequestDepositFailed());
-        SafeTransferLib.safeTransferFrom(asset, owner, address(manager.globalEscrow()), assets);
+        SafeTransferLib.safeTransferFrom(asset, owner, address(baseManager.globalEscrow()), assets);
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;

@@ -69,6 +69,30 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
+    function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.CancelDepositRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw()
+            }).serialize()
+        );
+    }
+
+    function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
+        handler.handle(
+            sourceChainId,
+            MessageLib.CancelRedeemRequest({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                investor: investor,
+                assetId: assetId.raw()
+            }).serialize()
+        );
+    }
+
     function send(uint16, bytes memory data, uint256, address) external payable returns (bytes32 adapterData) {
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();
@@ -88,7 +112,9 @@ contract MockVaults is Test, Auth, IAdapter {
         AssetId assetId,
         uint128 amount,
         D18 pricePoolPerAsset,
-        bool isIncrease
+        bool isIncrease,
+        bool isSnapshot,
+        uint64 nonce
     ) public {
         handler.handle(
             sourceChainId,
@@ -96,16 +122,24 @@ contract MockVaults is Test, Auth, IAdapter {
                 poolId: poolId.raw(),
                 scId: scId.raw(),
                 assetId: assetId.raw(),
-                who: bytes32(0),
                 amount: amount,
                 pricePerUnit: pricePoolPerAsset.raw(),
                 timestamp: 0,
-                isIncrease: isIncrease
+                isIncrease: isIncrease,
+                isSnapshot: isSnapshot,
+                nonce: nonce
             }).serialize()
         );
     }
 
-    function updateShares(PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance) public {
+    function updateShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint128 amount,
+        bool isIssuance,
+        bool isSnapshot,
+        uint64 nonce
+    ) public {
         handler.handle(
             sourceChainId,
             MessageLib.UpdateShares({
@@ -113,7 +147,9 @@ contract MockVaults is Test, Auth, IAdapter {
                 scId: scId.raw(),
                 shares: amount,
                 timestamp: 0,
-                isIssuance: isIssuance
+                isIssuance: isIssuance,
+                isSnapshot: isSnapshot,
+                nonce: nonce
             }).serialize()
         );
     }

@@ -11,18 +11,19 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-import {IShareToken} from "src/vaults/interfaces/token/IShareToken.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IBaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract LocalhostDeployer is FullDeployer {
-    using CastLib for address;
-    using MessageLib for *;
+    using CastLib for *;
+    using UpdateRestrictionMessageLib for *;
 
     function run() public {
         uint16 centrifugeId = uint16(vm.envUint("CENTRIFUGE_ID"));
@@ -47,7 +48,7 @@ contract LocalhostDeployer is FullDeployer {
         token.file("name", "USD Coin");
         token.file("symbol", "USDC");
         token.mint(msg.sender, 10_000_000e6);
-        poolManager.registerAsset(centrifugeId, address(token), 0);
+        spoke.registerAsset(centrifugeId, address(token), 0);
 
         AssetId assetId = newAssetId(centrifugeId, 1);
 
@@ -57,8 +58,8 @@ contract LocalhostDeployer is FullDeployer {
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
-        hub.createPool(poolId, msg.sender, USD);
-        hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
+        hub.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
@@ -72,7 +73,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        hub.createHolding(
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
@@ -83,24 +84,14 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateContract(
-            poolId,
-            scId,
-            centrifugeId,
-            bytes32(bytes20(address(poolManager))),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32(bytes20(address(asyncVaultFactory))),
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
-        );
+        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
 
-        hub.updatePricePerShare(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Submit deposit request
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         token.approve(address(vault), 1_000_000e6);
@@ -120,20 +111,22 @@ contract LocalhostDeployer is FullDeployer {
         balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
 
         // Update price, deposit principal + yield
-        hub.updatePricePerShare(poolId, scId, d18(11, 10));
+        hub.updateSharePrice(poolId, scId, d18(11, 10));
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         token.approve(address(balanceSheet), 1_100_000e18);
-        balanceSheet.deposit(poolId, scId, address(token), 0, msg.sender, 1_100_000e6);
+        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Make sender a member to submit redeem request
         hub.updateRestriction(
             poolId,
             scId,
             centrifugeId,
-            MessageLib.UpdateRestrictionMember({user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max})
-                .serialize()
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: bytes32(bytes20(msg.sender)),
+                validUntil: type(uint64).max
+            }).serialize()
         );
 
         // Submit redeem request
@@ -151,8 +144,8 @@ contract LocalhostDeployer is FullDeployer {
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
-        hub.createPool(poolId, msg.sender, USD);
-        hub.updateManager(poolId, vm.envAddress("ADMIN"), true);
+        hub.createPool(poolId, msg.sender, USD_ID);
+        hub.updateHubManager(poolId, vm.envAddress("ADMIN"), true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
         D18 navPerShare = d18(1, 1);
@@ -166,7 +159,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
         hub.createAccount(poolId, AccountId.wrap(0x04), false);
-        hub.createHolding(
+        hub.initializeHolding(
             poolId,
             scId,
             assetId,
@@ -177,24 +170,16 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateContract(
-            poolId,
-            scId,
-            centrifugeId,
-            bytes32(bytes20(address(poolManager))),
-            MessageLib.UpdateContractVaultUpdate({
-                vaultOrFactory: bytes32(bytes20(address(syncDepositVaultFactory))),
-                assetId: assetId.raw(),
-                kind: uint8(VaultUpdateKind.DeployAndLink)
-            }).serialize()
+        hub.updateVault(
+            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
         );
 
-        hub.updatePricePerShare(poolId, scId, navPerShare);
+        hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
         hub.notifyAssetPrice(poolId, scId, assetId);
 
         // Deposit
-        IShareToken shareToken = IShareToken(poolManager.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         uint128 investAmount = 1_000_000e6;
