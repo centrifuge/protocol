@@ -496,13 +496,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload)
-        external
-        auth
-    {
+    function sendRequestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.requestCallback(poolId, scId, assetId, payload);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 assetId.centrifugeId(),
                 MessageLib.RequestCallback({

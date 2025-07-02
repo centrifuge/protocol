@@ -119,7 +119,13 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
 
     /// @notice Creates and send the message
-    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
+    function sendRequestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external;
 }
 
 /// @notice Interface for dispatch-only gateway

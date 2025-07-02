@@ -212,7 +212,8 @@ interface IHub {
         ShareClassId id,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
@@ -225,7 +226,8 @@ interface IHub {
         ShareClassId scId,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Force cancels a pending deposit request.

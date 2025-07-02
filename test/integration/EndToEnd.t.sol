@@ -115,6 +115,7 @@ contract EndToEndDeployment is Test {
     uint16 constant CENTRIFUGE_ID_B = 6;
     uint64 constant GAS = 10 wei;
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
+    uint128 constant SHARE_HOOK_GAS = 0 ether;
 
     address immutable DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -429,7 +430,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 issueEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, s.usdcId);
         (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
-        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
@@ -492,7 +493,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 revokeEpochId = h.shareClassManager.nowRevokeEpoch(SC_1, s.usdcId);
         (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
-        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice);
+        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxRedeemClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
