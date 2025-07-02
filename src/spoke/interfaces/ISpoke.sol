@@ -138,6 +138,7 @@ interface ISpoke {
     error MoreThanZeroLinkedVaults();
     error RequestManagerNotSet();
     error InvalidManager();
+    error InvalidVault();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist

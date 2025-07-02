@@ -32,9 +32,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     IBaseRequestManager public baseManager;
 
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     PoolId public immutable poolId;
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
