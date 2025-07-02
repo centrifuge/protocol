@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 import {Hub} from "src/hub/Hub.sol";
@@ -13,7 +12,7 @@ import {HubHelpers} from "src/hub/HubHelpers.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
@@ -34,16 +33,72 @@ contract HubDeployer is CommonDeployer {
     AssetId public immutable USD_ID = newAssetId(840);
     AssetId public immutable EUR_ID = newAssetId(978);
 
-    function deployHub(uint16 centrifugeId, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId, adminSafe_, deployer, isTests);
+    function deployHub(CommonInput memory input, address deployer) public {
+        deployCommon(input, deployer);
 
-        hubRegistry = new HubRegistry(deployer);
-        identityValuation = new IdentityValuation(hubRegistry, deployer);
-        accounting = new Accounting(deployer);
-        holdings = new Holdings(hubRegistry, deployer);
-        shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer);
-        hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
+        hubRegistry = HubRegistry(
+            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(deployer)))
+        );
+
+        identityValuation = IdentityValuation(
+            create3(
+                generateSalt("identityValuation"),
+                abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry, deployer))
+            )
+        );
+
+        accounting = Accounting(
+            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(deployer)))
+        );
+
+        holdings = Holdings(
+            create3(
+                generateSalt("holdings"),
+                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, deployer))
+            )
+        );
+
+        shareClassManager = ShareClassManager(
+            create3(
+                generateSalt("shareClassManager"),
+                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, deployer))
+            )
+        );
+
+        hubHelpers = HubHelpers(
+            create3(
+                generateSalt("hubHelpers"),
+                abi.encodePacked(
+                    type(HubHelpers).creationCode,
+                    abi.encode(
+                        address(holdings),
+                        address(accounting),
+                        address(hubRegistry),
+                        address(messageDispatcher),
+                        address(shareClassManager),
+                        deployer
+                    )
+                )
+            )
+        );
+
+        hub = Hub(
+            create3(
+                generateSalt("hub"),
+                abi.encodePacked(
+                    type(Hub).creationCode,
+                    abi.encode(
+                        address(gateway),
+                        address(holdings),
+                        address(hubHelpers),
+                        address(accounting),
+                        address(hubRegistry),
+                        address(shareClassManager),
+                        deployer
+                    )
+                )
+            )
+        );
 
         _poolsRegister();
         _poolsRely();

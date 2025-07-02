@@ -3,16 +3,18 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
@@ -37,8 +39,7 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {FullDeployer, CommonInput} from "script/FullDeployer.s.sol";
 
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
@@ -114,6 +115,7 @@ contract EndToEndDeployment is Test {
     uint16 constant CENTRIFUGE_ID_B = 6;
     uint64 constant GAS = 10 wei;
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
+    uint128 constant SHARE_HOOK_GAS = 0 ether;
 
     address immutable DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -159,8 +161,6 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
 
@@ -173,9 +173,6 @@ contract EndToEndDeployment is Test {
         vm.deal(BSM, 1 ether);
         vm.deal(INVESTOR_A, 1 ether);
         vm.deal(ANY, 1 ether);
-
-        // We not use the VM chain
-        vm.chainId(0xDEAD);
 
         h = CHub({
             centrifugeId: CENTRIFUGE_ID_A,
@@ -202,18 +199,39 @@ contract EndToEndDeployment is Test {
         vm.label(address(h.hub), "Hub");
     }
 
-    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe safeAdmin)
+    function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
+        vm.startPrank(address(deploy));
+        IAuth(address(adapter)).rely(address(deploy.root()));
+        IAuth(address(adapter)).rely(address(deploy.guardian()));
+        IAuth(address(adapter)).deny(address(deploy));
+        vm.stopPrank();
+
+        vm.startPrank(address(deploy.guardian().safe()));
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
+        vm.stopPrank();
+    }
+
+    function _deployChain(FullDeployer deploy, uint16 localCentrifugeId, uint16 remoteCentrifugeId, ISafe adminSafe)
         internal
         returns (LocalAdapter adapter)
     {
-        deploy.deployFull(localCentrifugeId, safeAdmin, address(deploy), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: localCentrifugeId,
+            root: IRoot(address(0)),
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            version: bytes32(abi.encodePacked(localCentrifugeId))
+        });
+
+        deploy.deployFull(input, address(deploy));
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
-        deploy.wire(remoteCentrifugeId, adapter, address(deploy));
+        _wire(deploy, remoteCentrifugeId, adapter);
 
-        // TODO(later): Re-enable if wire is moved to Guardian
-        //             (ref: https://github.com/centrifuge/protocol-v3/pull/415#discussion_r2121671364)
-        // deploy.removeFullDeployerAccess(address(deploy));
+        deploy.removeFullDeployerAccess(address(deploy));
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
@@ -391,7 +409,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -413,7 +430,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 issueEpochId = h.hub.shareClassManager().nowIssueEpoch(SC_1, s.usdcId);
         (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
-        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice);
+        h.hub.issueShares{value: GAS}(POOL_A, SC_1, s.usdcId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxDepositClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
@@ -427,7 +444,6 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 
@@ -477,7 +493,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         uint32 revokeEpochId = h.shareClassManager.nowRevokeEpoch(SC_1, s.usdcId);
         (, D18 sharePrice) = h.shareClassManager.metrics(SC_1);
-        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice);
+        h.hub.revokeShares{value: GAS}(POOL_A, SC_1, s.usdcId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
 
         vm.startPrank(ANY);
         uint32 maxClaims = h.shareClassManager.maxRedeemClaims(SC_1, INVESTOR_A.toBytes32(), s.usdcId);
@@ -610,7 +626,6 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
-        _setSpoke(sameChain);
         _configurePool(sameChain);
         nonZeroPrices ? _configurePrices(ASSET_PRICE, SHARE_PRICE) : _configurePrices(ZERO_PRICE, ZERO_PRICE);
 

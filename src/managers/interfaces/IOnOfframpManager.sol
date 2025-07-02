@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {PoolId} from "src/common/types/PoolId.sol";
@@ -17,9 +17,11 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContrac
     error InvalidAmount();
     error InvalidOfframpDestination();
     error InvalidPoolId();
+    error InvalidShareClassId();
     error NotSpoke();
     error NotRelayer();
     error ERC6909NotSupported();
+    error UnknownUpdateContractKind();
 
     function poolId() external view returns (PoolId);
     function scId() external view returns (ShareClassId);

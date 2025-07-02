@@ -13,6 +13,17 @@ package managers {
     class MerkleProofManager
 }
 
+package vaults {
+    class AsyncRequestManager
+    class SyncManager
+}
+
+package hooks {
+    class FreezeOnly
+    class RedemptionRestrictions
+    class FullRestrictions
+}
+
 class Hidden
 
 class Spoke
@@ -24,6 +35,11 @@ interface IVaultFactory
 interface IVault
 interface IVaultManager
 interface IRequestManager
+interface ITransferHook
+
+ITransferHook -up-> FreezeOnly
+ITransferHook -up-> RedemptionRestrictions
+ITransferHook -up-> FullRestrictions
 
 Spoke -left-> TokenFactory
 Spoke -down--> PoolEscrowFactory
@@ -41,11 +57,14 @@ BalanceSheet --> Gateway
 
 PoolEscrowFactory .right.> PoolEscrow
 
+ShareToken -up-> ITransferHook
 ShareToken -right-> IVault
 IVault -up-> IVaultManager
 
 OnOfframpManager -down-> BalanceSheet
 MerkleProofManager -up-> BalanceSheet
+AsyncRequestManager -up-> BalanceSheet
+SyncManager -up-> BalanceSheet
 
 TokenFactory .up.> ShareToken
 IVaultFactory .left.> IVault

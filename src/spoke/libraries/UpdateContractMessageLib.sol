@@ -9,7 +9,8 @@ enum UpdateContractType {
     Invalid,
     Valuation,
     SyncDepositMaxReserve,
-    UpdateAddress
+    UpdateAddress,
+    Policy
 }
 
 library UpdateContractMessageLib {
@@ -94,5 +95,24 @@ library UpdateContractMessageLib {
 
     function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.assetId, t.what, t.isEnabled);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Policy (submsg)
+    //---------------------------------------
+
+    struct UpdateContractPolicy {
+        bytes32 who;
+        bytes32 what;
+    }
+
+    function deserializeUpdateContractPolicy(bytes memory data) internal pure returns (UpdateContractPolicy memory) {
+        require(updateContractType(data) == UpdateContractType.Policy, UnknownMessageType());
+
+        return UpdateContractPolicy({who: data.toBytes32(1), what: data.toBytes32(33)});
+    }
+
+    function serialize(UpdateContractPolicy memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Policy, t.who, t.what);
     }
 }

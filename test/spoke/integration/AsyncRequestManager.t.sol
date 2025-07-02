@@ -48,26 +48,6 @@ contract AsyncRequestManagerHarness is AsyncRequestManager {
 }
 
 contract AsyncRequestManagerTest is BaseTest {
-    // Deployment
-    function testDeploymentAsync(address nonWard) public {
-        vm.assume(
-            nonWard != address(root) && nonWard != address(spoke) && nonWard != address(syncManager)
-                && nonWard != address(this)
-        );
-
-        // redeploying within test to increase coverage
-        new AsyncRequestManager(globalEscrow, address(this));
-
-        // values set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
-
-        // permissions set correctly
-        assertEq(asyncRequestManager.wards(address(root)), 1);
-        assertEq(asyncRequestManager.wards(address(spoke)), 1);
-        assertEq(asyncRequestManager.wards(nonWard), 0);
-    }
-
     // --- Administration ---
     function testFile() public {
         // fail: unrecognized param

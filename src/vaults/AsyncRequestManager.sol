@@ -89,7 +89,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
     {
         require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) != address(0), VaultDoesNotExist());
+        require(address(vault[poolId][scId][assetId]) == address(vault_), VaultDoesNotExist());
 
         delete vault[poolId][scId][assetId];
         deny(address(vault_));
@@ -122,11 +122,14 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     }
 
     /// @inheritdoc IAsyncRedeemManager
-    function requestRedeem(IBaseVault vault_, uint256 shares, address controller, address owner, address sender_)
-        public
-        auth
-        returns (bool)
-    {
+    function requestRedeem(
+        IBaseVault vault_,
+        uint256 shares,
+        address controller,
+        address owner,
+        address sender_,
+        bool transfer
+    ) public auth returns (bool) {
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmountNotAllowed());
         require(spoke.isLinked(vault_), AssetNotAllowed());
@@ -141,7 +144,11 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
 
         _sendRequest(vault_, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize());
-        balanceSheet.transferSharesFrom(vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_);
+        if (transfer) {
+            balanceSheet.transferSharesFrom(
+                vault_.poolId(), vault_.scId(), sender_, owner, address(globalEscrow), shares_
+            );
+        }
 
         return true;
     }
@@ -317,7 +324,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         // Calculate new weighted average redeem price and update order book values
         state.redeemPrice = _calculatePriceAssetPerShare(
             vault_,
-            ((maxRedeem(vault_, user)) + fulfilledShares).toUint128(),
+            _maxRedeem(vault_, user) + fulfilledShares,
             state.maxWithdraw + fulfilledAssets,
             MathLib.Rounding.Down
         );
@@ -373,7 +380,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         address receiver
     ) internal {
         require(sharesUp <= state.maxMint, ExceedsDepositLimits());
-        state.maxMint = state.maxMint > sharesUp ? state.maxMint - sharesUp : 0;
+        state.maxMint = state.maxMint - sharesUp;
 
         if (sharesDown > 0) {
             globalEscrow.authTransferTo(vault_.share(), 0, receiver, sharesDown);
@@ -426,7 +433,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         require(_canTransfer(vault_, receiver, address(0), convertToShares(vault_, assetsDown)), TransferNotAllowed());
 
         require(assetsUp <= state.maxWithdraw, ExceedsRedeemLimits());
-        state.maxWithdraw = state.maxWithdraw > assetsUp ? state.maxWithdraw - assetsUp : 0;
+        state.maxWithdraw = state.maxWithdraw - assetsUp;
 
         if (assetsDown > 0) {
             _withdraw(vault_, receiver, assetsDown);
@@ -491,38 +498,37 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) {
-            return 0;
-        }
         assets = uint256(_maxDeposit(vault_, user));
+        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, investments[vault_][user].maxMint)) return 0;
     }
 
     function _maxDeposit(IBaseVault vault_, address user) internal view returns (uint128 assets) {
         AsyncInvestmentState memory state = investments[vault_][user];
-
         assets = _shareToAssetAmount(vault_, state.maxMint, state.depositPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IDepositManager
     function maxMint(IBaseVault vault_, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, 0)) {
-            return 0;
-        }
         shares = uint256(investments[vault_][user].maxMint);
+        if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, shares)) return 0;
     }
 
     /// @inheritdoc IRedeemManager
     function maxWithdraw(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        if (!_canTransfer(vault_, user, address(0), 0)) return 0;
+        uint128 shares = _maxRedeem(vault_, user);
+        if (!_canTransfer(vault_, user, address(0), shares)) return 0;
         assets = uint256(investments[vault_][user].maxWithdraw);
     }
 
     /// @inheritdoc IRedeemManager
     function maxRedeem(IBaseVault vault_, address user) public view returns (uint256 shares) {
-        if (!_canTransfer(vault_, user, address(0), 0)) return 0;
-        AsyncInvestmentState memory state = investments[vault_][user];
+        shares = _maxRedeem(vault_, user);
+        if (!_canTransfer(vault_, user, address(0), shares)) return 0;
+    }
 
-        shares = uint256(_assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down));
+    function _maxRedeem(IBaseVault vault_, address user) internal view returns (uint128 shares) {
+        AsyncInvestmentState memory state = investments[vault_][user];
+        shares = _assetToShareAmount(vault_, state.maxWithdraw, state.redeemPrice, MathLib.Rounding.Down);
     }
 
     /// @inheritdoc IAsyncDepositManager

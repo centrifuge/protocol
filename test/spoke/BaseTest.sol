@@ -4,10 +4,11 @@ pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
+import {Root, IRoot} from "src/common/Root.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
@@ -26,8 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {ExtendedSpokeDeployer, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
@@ -36,7 +36,7 @@ import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is SpokeDeployer, Test {
+contract BaseTest is ExtendedSpokeDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -60,11 +60,11 @@ contract BaseTest is SpokeDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
-    uint256 public constant ESTIMATE_ADAPTER_1 = 1 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_2 = 1.25 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_3 = 1.75 gwei;
+    uint256 public constant ESTIMATE_ADAPTER_1 = 1_000_000; // 1M gas
+    uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
+    uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = 0.5 gwei;
+    uint256 public constant GAS_COST_LIMIT = 500_000; // 500K gas
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
@@ -75,18 +75,33 @@ contract BaseTest is SpokeDeployer, Test {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
-    function setUp() public virtual {
-        // We should not use the block ChainID
-        vm.chainId(BLOCK_CHAIN_ID);
+    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).rely(address(guardian));
+        IAuth(address(adapter)).deny(address(this));
 
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        multiAdapter.file("adapters", centrifugeId, adapters);
+    }
+
+    function setUp() public virtual {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
-        deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            root: IRoot(address(0)),
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS_COST_LIMIT),
+            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            version: bytes32(0)
+        });
+
+        deployExtendedSpoke(input, address(this));
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -103,9 +118,8 @@ contract BaseTest is SpokeDeployer, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(OTHER_CHAIN_ID, adapter1, address(this));
-        // remove deployer access
-        // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
+        _wire(OTHER_CHAIN_ID, adapter1);
+        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
@@ -157,6 +171,9 @@ contract BaseTest is SpokeDeployer, Test {
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
         excludeContract(address(poolEscrowFactory));
+
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
     }
 
     // helpers

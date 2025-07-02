@@ -1,0 +1,26 @@
+{
+    "network": {
+        "chainId": 1,
+        "environment": "mainnet",
+        "centrifugeId": 2,
+        "network": "ethereum",
+        "connectsTo": [
+            "arbitrum",
+            "base"
+        ]
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": "2",
+            "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+            "deploy": false
+        },
+        "axelar": {
+            "axelarId": "Ethereum",
+            "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
+            "gasService": "0x2d5d7d31F671F86C782533cc367F14136aCD5838",
+            "deploy": false
+        }
+    },
+    "contracts": {}
+}

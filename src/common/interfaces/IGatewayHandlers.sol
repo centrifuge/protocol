@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
@@ -43,7 +43,8 @@ interface IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Updates the total issuance of shares by request from vaults.

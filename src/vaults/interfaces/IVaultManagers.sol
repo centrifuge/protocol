@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import {D18} from "src/misc/types/D18.sol";
@@ -154,9 +154,15 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
     ///         The receiver becomes the owner of redeem request fulfillment.
     /// @param  source Deprecated
-    function requestRedeem(IBaseVault vault, uint256 shares, address receiver, address owner, address source)
-        external
-        returns (bool);
+    /// @param  transfer Set `false` for legacy vaults which already execute the transfer in the vault implementation
+    function requestRedeem(
+        IBaseVault vault,
+        uint256 shares,
+        address receiver,
+        address owner,
+        address source,
+        bool transfer
+    ) external returns (bool);
 
     /// @notice Requests the cancellation of an pending redeem request. Vaults have to request the
     ///         cancellation of outstanding requests from Centrifuge before actual shares can be unlocked and

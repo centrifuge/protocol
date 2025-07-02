@@ -70,7 +70,7 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             }).serialize()
         );
 
-        factory = new OnOfframpManagerFactory(address(spoke), balanceSheet);
+        factory = new OnOfframpManagerFactory(spoke, balanceSheet);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
     }
 
