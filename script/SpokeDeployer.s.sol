@@ -135,6 +135,7 @@ contract SpokeDeployer is CommonDeployer {
         register("tokenFactory", address(tokenFactory));
         register("spoke", address(spoke));
         register("balanceSheet", address(balanceSheet));
+        register("contractUpdater", address(contractUpdater));
     }
 
     function _postDeploySpoke(SpokeActionBatcher batcher) internal {
