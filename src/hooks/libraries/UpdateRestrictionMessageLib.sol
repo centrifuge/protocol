@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 enum UpdateRestrictionType {
     /// @dev Placeholder for null update restriction type

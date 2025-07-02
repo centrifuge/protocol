@@ -1,23 +1,22 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
 import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -162,6 +161,9 @@ interface IHub {
     /// @notice Allow/disallow an account to interact as hub manager this pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
+    /// @notice Allow/disallow an account to interact as request manager
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external payable;
+
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
@@ -205,12 +207,15 @@ interface IHub {
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
     /// @param nowIssueEpochId The epoch for which shares will be issued.
     /// @param navPoolPerShare Total value of assets of the share class per share
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function issueShares(
         PoolId poolId,
         ShareClassId id,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     ) external payable returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
@@ -218,12 +223,15 @@ interface IHub {
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// @param nowRevokeEpochId The epoch for which shares will be issued.
     /// @param navPoolPerShare Total value of assets of the share class per share
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function revokeShares(
         PoolId poolId,
         ShareClassId scId,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
     ) external payable returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Force cancels a pending deposit request.
@@ -236,29 +244,18 @@ interface IHub {
         external
         payable;
 
-    /// @notice Tells the BalanceSheet to issue/revoke shares.
-    function triggerIssueShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, address who, uint128 shares)
-        external
-        payable;
-
-    /// @notice Tell the BalanceSheet to send a message back with the queued issued/revoked shares.
-    function triggerSubmitQueuedShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId) external payable;
-
-    /// @notice  Tell the BalanceSheet to send a message back with the queued deposits/withdrawals.
-    /// @param assetId Identifier of the asset which has queued deposits/withdrawals
-    function triggerSubmitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
-
-    /// @notice Tell the BalanceSheet to enable or disable the shares queue.
-    /// @dev    Can only be disabled on the local chain. On remote chains, queuing is enforced to reduce
-    ///         issues with asynchronous updates of the state.
-    function setQueue(PoolId poolId, ShareClassId scId, bool enabled) external payable;
-
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    function updateRestriction(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes calldata payload)
-        external
-        payable;
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
+    function updateRestriction(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external payable;
 
     /// @notice Updates a vault based on VaultUpdateKind
     /// @param  poolId The centrifuge pool id
@@ -266,24 +263,30 @@ interface IHub {
     /// @param  assetId The asset id
     /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param  kind The kind of action applied
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateVault(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         bytes32 vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        uint128 extraGasLimit
     ) external payable;
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param payload content of the update to execute.
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateContract(
         PoolId poolId,
         ShareClassId scId,
         uint16 centrifugeId,
         bytes32 target,
-        bytes calldata payload
+        bytes calldata payload,
+        uint128 extraGasLimit
     ) external payable;
 
     /// @notice Update the price per share of a share class

@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 struct Holding {
@@ -23,7 +23,10 @@ struct HoldingAccount {
 }
 
 struct Snapshot {
+    /// @notice Indicates if the current accounting state is a correct snapshot of the balance sheet state, i.e. asset
+    /// and/or share amounts are in sync between Hub and Spoke
     bool isSnapshot;
+    /// @notice The nonce of the snapshot. Incremented after each snapshot is taken.
     uint64 nonce;
 }
 

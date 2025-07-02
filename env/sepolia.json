@@ -1,0 +1,60 @@
+{
+  "network": {
+    "chainId": 11155111,
+    "environment": "testnet",
+    "centrifugeId": 1,
+    "network": "ethereum",
+    "connectsTo": [
+      "arbitrum-sepolia",
+      "base-sepolia"
+    ]
+  },
+  "adapters": {
+    "wormhole": {
+      "wormholeId": "10002",
+      "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "deploy": true
+    },
+    "axelar": {
+      "axelarId": "ethereum-sepolia",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": "0xA64c4590DD907aD6764c0D72ab1979F62F9be2da",
+    "guardian": "0xE57D6568F61bE38af1Fbd18BdcCC2821508e31F7",
+    "gasService": "0x5E09182f127a5090a0Cd33fff43A229abC0232e1",
+    "gateway": "0xe8b577350DBC54fb375F078599eFF423Bb33431e",
+    "multiAdapter": "0xDbA741c0D4e621B25fad25858813c5Df92c5d365",
+    "messageProcessor": "0xa435C8a73c3fA9f21f4527a2e167491d5cF9Df6F",
+    "messageDispatcher": "0xb0adcFe8b94c9a2e55b2dc4821b1D4e63b633232",
+    "hubRegistry": "0xaE38f563a3308fb1F5D086c01Ca41e8fBD37a367",
+    "accounting": "0xf0CD76AaCAb5A2217F46BE3634cd4C0f89908f3c",
+    "holdings": "0x8C0914378e3dbE0a460eAC6601b433fc4b934E58",
+    "shareClassManager": "0xAef41495BfD09E18528AA0757C303a0E707A0A87",
+    "hub": "0x44F84e93d8dA2F9Cf949551bc261199C51B77602",
+    "identityValuation": "0xDAa27a4F93f5FC58666342EC39E454e2e47418F3",
+    "poolEscrowFactory": "0x8231363802aeDa5c7f76307b21f9eD28256b4DaB",
+    "routerEscrow": "0x01d29a9D3f1e406dC9a788B8f573E21E7e74bB7e",
+    "globalEscrow": "0x20D35Ac2f17a0Ffb0ac2Ed4B20FDC60A7688C6ef",
+    "freezeOnlyHook": "0x7FA5042DA388781B7c010DeB3F8101B3060B816B",
+    "redemptionRestrictionsHook": "0x5748436c645F4C946B5fA66f822d38BfB7131531",
+    "fullRestrictionsHook": "0x868B4b8ee74AF4A9db433Ec27Bd930f5E587A14c",
+    "tokenFactory": "0xe01E5f9AAF65b07A7982F98DB77180b0c9C60bDa",
+    "asyncRequestManager": "0x66b769860afEB0ec26c256d4B4F6B32702C792e6",
+    "syncManager": "0xff26091Bd16BbF7A8469ffA3a8c441E7C1E6eecf",
+    "asyncVaultFactory": "0xC27e2Be1B7908c9EFfb5631887954C99e98000EA",
+    "syncDepositVaultFactory": "0x0524d8602959aD982cFEbABD684499E056a5aB1d",
+    "spoke": "0xF5cD9669f52b913f94A54816836C0a6029bBfB50",
+    "vaultRouter": "0x1152fBD0Caa75Fa92d62A4e13851B539017e3fc4",
+    "balanceSheet": "0x7B680cE7af18d097EcB23149ABc090cA1129B557",
+    "wormholeAdapter": "0xA77DF260E79fC0E9E2baaf5Fa7c4E8234210cCaD",
+    "axelarAdapter": "0x3a10D135D00747e36eBb61Cb1554aF29f59675b5"
+  },
+  "deploymentInfo": {
+    "gitCommit": "ebc0fe49",
+    "timestamp": "2025-06-25T10:41:23Z"
+  }
+}

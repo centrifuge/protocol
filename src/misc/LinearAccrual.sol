@@ -35,11 +35,11 @@ contract LinearAccrual is ILinearAccrual {
         if (periodsPassed > 0) {
             rate.accumulatedRate = d18(
                 rate.accumulatedRate.mulUint128(
-                    uint256(group.ratePerPeriod.inner()).rpow(periodsPassed, 1e18).toUint128(), MathLib.Rounding.Up
+                    uint256(group.ratePerPeriod.raw()).rpow(periodsPassed, 1e18).toUint128(), MathLib.Rounding.Up
                 )
             );
 
-            emit RateAccumulated(rateId, rate.accumulatedRate.inner(), periodsPassed);
+            emit RateAccumulated(rateId, rate.accumulatedRate.raw(), periodsPassed);
             rate.lastUpdated = uint64(block.timestamp);
         }
     }
@@ -55,12 +55,12 @@ contract LinearAccrual is ILinearAccrual {
 
         rateId = keccak256(abi.encode(group));
 
-        require(rates[rateId].lastUpdated == 0, RateIdExists(rateId, ratePerPeriod.inner(), period));
+        require(rates[rateId].lastUpdated == 0, RateIdExists(rateId, ratePerPeriod.raw(), period));
 
         groups[rateId] = group;
         rates[rateId] = Rate(ratePerPeriod, uint64(block.timestamp));
 
-        emit NewRateId(rateId, ratePerPeriod.inner(), period);
+        emit NewRateId(rateId, ratePerPeriod.raw(), period);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -126,9 +126,9 @@ contract LinearAccrual is ILinearAccrual {
         // Casting to int128 safe because we don't exceed number of digits of normalizedDebt
         // Casting to uint256 necessary for mulDiv
         if (normalizedDebt >= 0) {
-            return normalizedDebt.toUint256().mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128().toInt128();
+            return normalizedDebt.toUint256().mulDiv(rates[rateId].accumulatedRate.raw(), 1e18).toUint128().toInt128();
         } else {
-            return -(-normalizedDebt).toUint256().mulDiv(rates[rateId].accumulatedRate.inner(), 1e18).toUint128().toInt128();
+            return -(-normalizedDebt).toUint256().mulDiv(rates[rateId].accumulatedRate.raw(), 1e18).toUint128().toInt128();
         }
     }
 
@@ -141,7 +141,7 @@ contract LinearAccrual is ILinearAccrual {
     /// @dev Throws if rate is zero-rate
     /// @param rateId Identifier of the rate group
     function _requireNonZeroUpdatedRateId(bytes32 rateId) internal view {
-        require(rates[rateId].lastUpdated != 0 && rates[rateId].accumulatedRate.inner() != 0, RateIdMissing(rateId));
+        require(rates[rateId].lastUpdated != 0 && rates[rateId].accumulatedRate.raw() != 0, RateIdMissing(rateId));
         require(rates[rateId].lastUpdated == block.timestamp, RateIdOutdated(rateId, rates[rateId].lastUpdated));
     }
 }

@@ -143,7 +143,7 @@ contract LoansManager is Auth, IValuation {
         require(loan.borrower == msg.sender, NotTheOwner());
         require(
             linearAccrual.debt(loan.rateId, loan.normalizedDebt) + int128(amount)
-                <= int128(loan.maxBorrowAmount.inner()),
+                <= int128(loan.maxBorrowAmount.raw()),
             ExceedsLTV()
         );
 

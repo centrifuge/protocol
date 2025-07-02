@@ -1,0 +1,43 @@
+{
+    "network": {
+        "chainId": 12345,
+        "environment": "testnet OR mainnet",
+        "centrifugeId": 2,
+        "connectsTo": [
+            "sepolia",
+            "base-sepolia",
+            "example",
+            "another-network"
+        ]
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": "https://wormhole.com/docs/build/reference/chain-ids/",
+            "relayer": "https://wormhole.com/docs/build/reference/contract-addresses",
+            "deploy": false
+        },
+        "axelar": {
+            "axelarId": "Chain Name",
+            "gateway": "0x...",
+            "gasService": "0x...",
+            "deploy": false
+        }
+    },
+    "contracts": {},
+    "metadata": {
+        "network": {
+            "chainId": "The chain ID of the network (e.g. 84532 for Base Sepolia). Avaibale in many places like https://chainlist.org/",
+            "environment": "The environment type - can be 'testnet' or 'mainnet'",
+            "centrifugeId": "Unique identifier for this network in the Centrifuge ecosystem. Sequence 1,2,3,4 etc.",
+            "etherscanUrl": "The Etherscan API URL for contract verification. Examples: https://api.etherscan.io/api (mainnet), https://api-sepolia.etherscan.io/api (sepolia), https://api.basescan.org/api (base)",
+            "connectsTo": "Only used by Wireadapters.s.sol - List of networks this network can connect to. Use the same name as the env/$chainName.json files"
+        },
+        "adapters": {
+            "wormhole": "Get values from https://wormhole.com/docs/build/reference/",
+            "axelar": "Get values from https://docs.axelar.dev/resources/contract-addresses/mainnet/ or /testnet - axelarId is the Chain Name field",
+            "Note1": "Every adapter in this list will be deployed by Adapters.s.sol. Remove it if you do not want one of them to be deployed in this network.",
+            "Note2": "Additional logic needs to be added on Adapters.s.sol for each adapter."
+        },
+        "contracts": "Deployed contract addresses. Leave empty, it'll be populated by the deployment script."
+    }
+}

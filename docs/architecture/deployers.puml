@@ -7,22 +7,27 @@ class HubDeployer
 class SpokeDeployer
 class FullDeployer
 
-class Axelar
-class Wormhole
-class Localhost
+class ManagersDeployer
+class VaultsDeployer
+class HooksDeployer
+class ExtendedSpokeDeployer
 
 CommonDeployer -up-|> JsonRegistry
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
-FullDeployer -up-|> HubDeployer
-FullDeployer -up-|> SpokeDeployer
 
-Axelar -up-|> FullDeployer
-Wormhole -up-|> FullDeployer
-Localhost -up-|> FullDeployer
+ManagersDeployer -up-|> SpokeDeployer
+VaultsDeployer -up-|> SpokeDeployer
+HooksDeployer -up-|> SpokeDeployer
 
-note right of SpokeDeployer: Used in CV ITs
-note left of HubDeployer: Used in CP ITs
-note right of FullDeployer: Used in CP-CV ITs
-note bottom of Localhost: Used in Testnets
+ExtendedSpokeDeployer -up-|> ManagersDeployer
+ExtendedSpokeDeployer -up-|> VaultsDeployer
+ExtendedSpokeDeployer -up-|> HooksDeployer
+
+FullDeployer -up---|> HubDeployer
+FullDeployer -up-|> ExtendedSpokeDeployer
+
+note right of ExtendedSpokeDeployer: Used in spoke ITs
+note right of HubDeployer: Used in hub ITs
+note right of FullDeployer: Used in end-to-end ITs,\ntestnets and productions
 @enduml

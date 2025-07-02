@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 

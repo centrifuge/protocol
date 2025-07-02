@@ -3,8 +3,6 @@ pragma solidity ^0.8.28;
 
 import "test/hub/integration/BaseTest.sol";
 
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-
 contract TestBatchingAndPayment is BaseTest {
     /// Test the following:
     /// - multicall()

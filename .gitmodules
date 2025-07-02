@@ -4,3 +4,6 @@
 [submodule "lib/chimera"]
 	path = lib/chimera
 	url = https://github.com/Recon-Fuzz/chimera
+[submodule "lib/createx-forge"]
+	path = lib/createx-forge
+	url = https://github.com/radeksvarz/createx-forge

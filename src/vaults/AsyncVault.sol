@@ -3,17 +3,18 @@ pragma solidity 0.8.28;
 
 import "src/misc/interfaces/IERC7540.sol";
 import "src/misc/interfaces/IERC7575.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {IAsyncRedeemVault, IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault
@@ -145,7 +146,7 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     /// @dev Strongly-typed accessor to the generic async redeem manager
     function asyncManager() public view returns (IAsyncRequestManager) {
-        return IAsyncRequestManager(address(IAsyncRedeemVault(this).asyncRedeemManager()));
+        return IAsyncRequestManager(address(asyncRedeemManager));
     }
 
     /// @dev Preview functions for ERC-7540 vaults revert

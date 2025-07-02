@@ -1,30 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "forge-std/Test.sol";
-
 import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
-import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
-import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
+import {HubDeployer, CommonInput} from "script/HubDeployer.s.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
+
+import "forge-std/Test.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
@@ -40,6 +31,8 @@ contract BaseTest is HubDeployer, Test {
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
+    address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
+    address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);
@@ -57,23 +50,40 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
     uint64 constant GAS = 100 wei;
+    uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;
 
     function _mockStuff() private {
         cv = new MockVaults(CHAIN_CV, multiAdapter);
-        wire(CHAIN_CV, cv, address(this));
+        _wire(CHAIN_CV, cv);
 
         valuation = new MockValuation(hubRegistry);
     }
 
-    function setUp() public virtual {
-        // Pre deployment
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
+    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).rely(address(guardian));
+        IAuth(address(adapter)).deny(address(this));
 
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        multiAdapter.file("adapters", centrifugeId, adapters);
+    }
+
+    function setUp() public virtual {
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: CHAIN_CP,
+            root: IRoot(address(0)),
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS),
+            maxBatchSize: uint128(GAS) * 100,
+            version: bytes32(0)
+        });
+
+        deployHub(input, address(this));
         _mockStuff();
         removeHubDeployerAccess(address(this));
 

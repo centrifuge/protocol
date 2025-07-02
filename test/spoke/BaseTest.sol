@@ -3,46 +3,40 @@ pragma solidity 0.8.28;
 pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
-import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
-import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {Root, IRoot} from "src/common/Root.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-// core contracts
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {Spoke} from "src/spoke/Spoke.sol";
-import {Escrow} from "src/spoke/Escrow.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+
+import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-// scripts
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 
-// mocks
-import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
-import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
+import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
+import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
 
-// test env
 import "forge-std/Test.sol";
 
-contract BaseTest is SpokeDeployer, Test {
+contract BaseTest is ExtendedSpokeDeployer, Test {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -66,11 +60,11 @@ contract BaseTest is SpokeDeployer, Test {
     uint16 public constant THIS_CHAIN_ID = OTHER_CHAIN_ID + 100;
     uint32 public constant BLOCK_CHAIN_ID = 23;
     PoolId public immutable POOL_A = newPoolId(OTHER_CHAIN_ID, 1);
-    uint256 public constant ESTIMATE_ADAPTER_1 = 1 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_2 = 1.25 gwei;
-    uint256 public constant ESTIMATE_ADAPTER_3 = 1.75 gwei;
+    uint256 public constant ESTIMATE_ADAPTER_1 = 1_000_000; // 1M gas
+    uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
+    uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = 0.5 gwei;
+    uint256 public constant GAS_COST_LIMIT = 500_000; // 500K gas
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
@@ -81,18 +75,33 @@ contract BaseTest is SpokeDeployer, Test {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
-    function setUp() public virtual {
-        // We should not use the block ChainID
-        vm.chainId(BLOCK_CHAIN_ID);
+    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
+        IAuth(address(adapter)).rely(address(root));
+        IAuth(address(adapter)).rely(address(guardian));
+        IAuth(address(adapter)).deny(address(this));
 
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = adapter;
+        multiAdapter.file("adapters", centrifugeId, adapters);
+    }
+
+    function setUp() public virtual {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
         pausers[0] = self;
         ISafe adminSafe = new MockSafe(pausers, 1);
 
         // deploy core contracts
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS_COST_LIMIT));
-        deploySpoke(THIS_CHAIN_ID, adminSafe, address(this), true);
+        CommonInput memory input = CommonInput({
+            centrifugeId: THIS_CHAIN_ID,
+            root: IRoot(address(0)),
+            adminSafe: adminSafe,
+            messageGasLimit: uint128(GAS_COST_LIMIT),
+            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            version: bytes32(0)
+        });
+
+        deployExtendedSpoke(input, address(this));
         guardian.file("safe", address(adminSafe));
 
         // deploy mock adapters
@@ -109,11 +118,10 @@ contract BaseTest is SpokeDeployer, Test {
         testAdapters.push(adapter3);
 
         // wire contracts
-        wire(OTHER_CHAIN_ID, adapter1, address(this));
-        // remove deployer access
-        // removeSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
+        _wire(OTHER_CHAIN_ID, adapter1);
+        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
-        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncRequestManager);
+        centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
@@ -122,7 +130,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Label contracts
         vm.label(address(root), "Root");
         vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncRequestManager), "SyncRequestManager");
+        vm.label(address(syncManager), "SyncManager");
         vm.label(address(spoke), "Spoke");
         vm.label(address(balanceSheet), "BalanceSheet");
         vm.label(address(gateway), "Gateway");
@@ -146,7 +154,7 @@ contract BaseTest is SpokeDeployer, Test {
         // Exclude predeployed contracts from invariant tests by default
         excludeContract(address(root));
         excludeContract(address(asyncRequestManager));
-        excludeContract(address(syncRequestManager));
+        excludeContract(address(syncManager));
         excludeContract(address(balanceSheet));
         excludeContract(address(spoke));
         excludeContract(address(gateway));
@@ -163,6 +171,9 @@ contract BaseTest is SpokeDeployer, Test {
         excludeContract(address(asyncVaultFactory));
         excludeContract(address(syncDepositVaultFactory));
         excludeContract(address(poolEscrowFactory));
+
+        // We should not use the block ChainID
+        vm.chainId(BLOCK_CHAIN_ID);
     }
 
     // helpers
@@ -192,6 +203,12 @@ contract BaseTest is SpokeDeployer, Test {
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)
             );
         }
+
+        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+        balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
+        balanceSheet.updateManager(POOL_A, address(syncManager), true);
+
+        syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
 

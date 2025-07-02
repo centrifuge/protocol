@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
-
 import "src/misc/interfaces/IERC20.sol";
-import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+
 import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import "test/spoke/BaseTest.sol";
 
 interface Authlike {
     function rely(address) external;
@@ -47,14 +48,15 @@ contract NonAsyncVault {
 contract VaultRouterTest is BaseTest {
     using CastLib for *;
     using MessageLib for *;
+    using MathLib for uint256;
 
     uint16 constant CHAIN_ID = 1;
-    uint256 constant GAS_BUFFER = 10 gwei;
+    uint256 constant GAS_BUFFER = 10_000_000; // 10M gas
     bytes PAYLOAD_FOR_GAS_ESTIMATION = MessageLib.NotifyPool(1).serialize();
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(address(routerEscrow), gateway, spoke, messageDispatcher, address(this));
+        new VaultRouter(address(routerEscrow), gateway, spoke, address(this));
 
         assertEq(address(vaultRouter.escrow()), address(routerEscrow));
         assertEq(address(vaultRouter.gateway()), address(gateway));
@@ -97,20 +99,13 @@ contract VaultRouterTest is BaseTest {
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
-        uint256 gas = DEFAULT_GAS * 2; // two messages under the hood
-
-        balanceSheet.setQueue(vault.poolId(), vault.scId(), false);
 
         erc20.approve(address(vault_), amount);
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
-        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        vaultRouter.deposit(vault, amount, self, self);
 
         erc20.approve(address(vaultRouter), amount);
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.deposit{value: gas - 1}(vault, amount, self, self);
-
-        erc20.approve(address(vaultRouter), amount);
-        vaultRouter.deposit{value: gas}(vault, amount, self, self);
+        vaultRouter.deposit(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 
