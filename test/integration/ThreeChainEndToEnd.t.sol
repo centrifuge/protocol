@@ -133,7 +133,9 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.transferShares{value: GAS}(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
+        sB.spoke.crossTransferShares{value: GAS}(
+            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, SHARE_HOOK_GAS
+        );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
 
         // C: Transfer expected to be pending on A due to message being unpaid

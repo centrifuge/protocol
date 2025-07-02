@@ -109,7 +109,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Creates and send the message
@@ -143,7 +144,8 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 remoteExtraGasLimit
     ) external;
 
     /// @notice Creates and send the message

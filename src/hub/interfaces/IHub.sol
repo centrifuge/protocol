@@ -207,6 +207,8 @@ interface IHub {
     /// @param depositAssetId Identifier of the deposit asset for which shares should be issued
     /// @param nowIssueEpochId The epoch for which shares will be issued.
     /// @param navPoolPerShare Total value of assets of the share class per share
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function issueShares(
         PoolId poolId,
         ShareClassId id,
@@ -221,6 +223,8 @@ interface IHub {
     /// @param payoutAssetId Identifier of the asset for which all requests want to exchange their share class tokens
     /// @param nowRevokeEpochId The epoch for which shares will be issued.
     /// @param navPoolPerShare Total value of assets of the share class per share
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function revokeShares(
         PoolId poolId,
         ShareClassId scId,
@@ -243,8 +247,8 @@ interface IHub {
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
     /// @param payload content of the restriction update to execute.
-    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
-    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateRestriction(
         PoolId poolId,
         ShareClassId scId,
@@ -259,8 +263,8 @@ interface IHub {
     /// @param  assetId The asset id
     /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param  kind The kind of action applied
-    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
-    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateVault(
         PoolId poolId,
         ShareClassId scId,
@@ -274,8 +278,8 @@ interface IHub {
     /// @param centrifugeId Chain where CV instance lives.
     /// @param target contract where to execute in CV. Check IUpdateContract interface.
     /// @param payload content of the update to execute.
-    /// @param extraGasLimit extra gas limit used for some extra computation happens by some callback in the remote
-    /// centrifugeId. Avoid this param if the message applies to the same centrifugeId.
+    /// @param extraGasLimit extra gas limit used for some extra computation that can happen by some callback in the
+    /// remote centrifugeId. Avoid this param if the message applies to the same centrifugeId.
     function updateContract(
         PoolId poolId,
         ShareClassId scId,

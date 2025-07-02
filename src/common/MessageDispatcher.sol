@@ -364,10 +364,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 remoteExtraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+            hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -376,7 +377,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     poolId: poolId.raw(),
                     scId: scId.raw(),
                     receiver: receiver,
-                    amount: amount
+                    amount: amount,
+                    extraGasLimit: remoteExtraGasLimit
                 }).serialize()
             );
         }
@@ -388,11 +390,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external auth {
         if (centrifugeId == localCentrifugeId) {
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.addUnpaidMessage(
                 centrifugeId,
                 MessageLib.ExecuteTransferShares({

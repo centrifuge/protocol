@@ -216,17 +216,17 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(ISpoke.UnknownToken.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, centChainAddress, amount
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, centChainAddress, amount, 0
         );
 
         // send the transfer from EVM -> Cent Chain
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount);
+        spoke.crossTransferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, centChainAddress, amount, 0);
         assertEq(shareToken.balanceOf(address(this)), 0);
 
         // Finally, verify the connector called `adapter.send`
         bytes memory message = MessageLib.InitiateTransferShares(
-            poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount
+            poolId.raw(), scId.raw(), OTHER_CHAIN_ID, centChainAddress, amount, 0
         ).serialize();
         assertEq(adapter1.sent(message), 1);
     }
@@ -296,13 +296,13 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         vm.expectRevert(ISpoke.UnknownToken.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount, 0
         );
 
         // Transfer amount from this address to destinationAddress
-        spoke.transferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount, 0
         );
         assertEq(shareToken.balanceOf(address(this)), 0);
     }
@@ -577,7 +577,9 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
 
         spoke.updateRestriction(
             vault.poolId(),
@@ -588,13 +590,17 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         );
 
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         spoke.updateRestriction(
             poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
         );
-        spoke.transferShares{value: DEFAULT_GAS}(OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount);
+        spoke.crossTransferShares{value: DEFAULT_GAS}(
+            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
+        );
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
     }
 
