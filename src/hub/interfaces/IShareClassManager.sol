@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {D18} from "src/misc/types/D18.sol";
+
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -127,7 +128,7 @@ interface IShareClassManager {
         uint128 revokedPoolAmount
     );
     event RemoteRevokeShares(
-        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedAssetAmount
+        uint16 centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 revokedShareAmount
     );
     event ClaimDeposit(
         PoolId indexed poolId,

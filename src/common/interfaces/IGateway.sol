@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
@@ -75,6 +75,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Retry a failed message.
     function retry(uint16 centrifugeId, bytes memory message) external;
+
+    /// @notice Set an extra gas to the gas limit of the message
+    function setExtraGasLimit(uint128 gas) external;
 
     /// @notice Set the refund address for message associated to a poolId
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;

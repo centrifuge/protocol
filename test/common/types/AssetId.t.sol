@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+
+import "forge-std/Test.sol";
 
 contract AssetIdTest is Test {
     function testAssetId(uint32 counter, uint16 centrifugeId) public pure {

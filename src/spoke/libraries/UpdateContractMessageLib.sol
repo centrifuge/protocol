@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
 enum UpdateContractType {
     /// @dev Placeholder for null update restriction type
     Invalid,
     Valuation,
-    SyncDepositMaxReserve
+    SyncDepositMaxReserve,
+    UpdateAddress,
+    Policy
 }
 
 library UpdateContractMessageLib {
@@ -63,5 +65,54 @@ library UpdateContractMessageLib {
 
     function serialize(UpdateContractSyncDepositMaxReserve memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(UpdateContractType.SyncDepositMaxReserve, t.assetId, t.maxReserve);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.UpdateAddress (submsg)
+    //---------------------------------------
+
+    struct UpdateContractUpdateAddress {
+        bytes32 kind;
+        uint128 assetId;
+        bytes32 what;
+        bool isEnabled;
+    }
+
+    function deserializeUpdateContractUpdateAddress(bytes memory data)
+        internal
+        pure
+        returns (UpdateContractUpdateAddress memory)
+    {
+        require(updateContractType(data) == UpdateContractType.UpdateAddress, UnknownMessageType());
+
+        return UpdateContractUpdateAddress({
+            kind: data.toBytes32(1),
+            assetId: data.toUint128(33),
+            what: data.toBytes32(49),
+            isEnabled: data.toBool(81)
+        });
+    }
+
+    function serialize(UpdateContractUpdateAddress memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.UpdateAddress, t.kind, t.assetId, t.what, t.isEnabled);
+    }
+
+    //---------------------------------------
+    //   UpdateContract.Policy (submsg)
+    //---------------------------------------
+
+    struct UpdateContractPolicy {
+        bytes32 who;
+        bytes32 what;
+    }
+
+    function deserializeUpdateContractPolicy(bytes memory data) internal pure returns (UpdateContractPolicy memory) {
+        require(updateContractType(data) == UpdateContractType.Policy, UnknownMessageType());
+
+        return UpdateContractPolicy({who: data.toBytes32(1), what: data.toBytes32(33)});
+    }
+
+    function serialize(UpdateContractPolicy memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(UpdateContractType.Policy, t.who, t.what);
     }
 }

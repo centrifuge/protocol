@@ -2,19 +2,17 @@
 pragma solidity ^0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-
+import {D18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {BytesLib} from "src/misc/libraries/BytesLib.sol";
 
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-
-import {AssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-
+import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -22,6 +20,7 @@ contract MockVaults is Test, Auth, IAdapter {
     using MessageLib for *;
     using CastLib for string;
     using BytesLib for bytes;
+    using RequestMessageLib for *;
 
     IMessageHandler public handler;
     uint16 public sourceChainId;
@@ -44,13 +43,12 @@ contract MockVaults is Test, Auth, IAdapter {
     {
         handler.handle(
             sourceChainId,
-            MessageLib.DepositRequest({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                investor: investor,
-                assetId: assetId.raw(),
-                amount: amount
-            }).serialize()
+            MessageLib.Request(
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                RequestMessageLib.DepositRequest({investor: investor, amount: amount}).serialize()
+            ).serialize()
         );
     }
 
@@ -59,37 +57,36 @@ contract MockVaults is Test, Auth, IAdapter {
     {
         handler.handle(
             sourceChainId,
-            MessageLib.RedeemRequest({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                investor: investor,
-                assetId: assetId.raw(),
-                amount: amount
-            }).serialize()
+            MessageLib.Request(
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                RequestMessageLib.RedeemRequest({investor: investor, amount: amount}).serialize()
+            ).serialize()
         );
     }
 
     function cancelDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
         handler.handle(
             sourceChainId,
-            MessageLib.CancelDepositRequest({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                investor: investor,
-                assetId: assetId.raw()
-            }).serialize()
+            MessageLib.Request(
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                RequestMessageLib.CancelDepositRequest({investor: investor}).serialize()
+            ).serialize()
         );
     }
 
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor) public {
         handler.handle(
             sourceChainId,
-            MessageLib.CancelRedeemRequest({
-                poolId: poolId.raw(),
-                scId: scId.raw(),
-                investor: investor,
-                assetId: assetId.raw()
-            }).serialize()
+            MessageLib.Request(
+                poolId.raw(),
+                scId.raw(),
+                assetId.raw(),
+                RequestMessageLib.CancelRedeemRequest({investor: investor}).serialize()
+            ).serialize()
         );
     }
 

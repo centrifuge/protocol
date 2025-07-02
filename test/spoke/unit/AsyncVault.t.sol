@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
-
-import "src/misc/interfaces/IERC7575.sol";
 import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+
+import "test/spoke/BaseTest.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment
-    function testDeployment(bytes16 scId, uint128 assetId, address nonWard) public {
+    function testFactorySetup(bytes16 scId, uint128 assetId, address nonWard) public {
         vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
@@ -71,7 +69,7 @@ contract AsyncVaultTest is BaseTest {
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
         vault.convertToAssets(amount);
 
-        vm.expectRevert(IBaseRequestManager.ExceedsMaxDeposit.selector);
+        vm.expectRevert(IAsyncRequestManager.ExceedsMaxDeposit.selector);
         vault.deposit(amount, randomUser, self);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);

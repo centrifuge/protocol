@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "forge-std/Test.sol";
-
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+
+import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+
+import "forge-std/Test.sol";
 
 import {
     IShareClassManager,
@@ -24,9 +27,6 @@ import {
     QueuedOrder,
     RequestType
 } from "src/hub/interfaces/IShareClassManager.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 uint16 constant CHAIN_ID = 1;
 uint64 constant POOL_ID = 42;
@@ -106,7 +106,7 @@ abstract contract ShareClassManagerBaseTest is Test {
             IHubRegistry(hubRegistryMock).decimals(assetId),
             IHubRegistry(hubRegistryMock).decimals(poolId),
             _pricePoolPerAsset(assetId)
-        ).toUint128();
+        );
     }
 
     function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
@@ -115,7 +115,7 @@ abstract contract ShareClassManagerBaseTest is Test {
             IHubRegistry(hubRegistryMock).decimals(poolId),
             IHubRegistry(hubRegistryMock).decimals(assetId),
             _pricePoolPerAsset(assetId).reciprocal()
-        ).toUint128();
+        );
     }
 
     function _calcSharesIssued(AssetId assetId, uint128 depositAmountAsset, D18 pricePoolPerShare)
@@ -246,25 +246,17 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     using MathLib for uint128;
     using CastLib for string;
 
-    function testDeployment(address nonWard) public view {
-        vm.assume(nonWard != address(shareClass.hubRegistry()) && nonWard != address(this));
-
-        assertEq(address(shareClass.hubRegistry()), hubRegistryMock);
+    function testInitialValues() public view {
         assertEq(shareClass.nowDepositEpoch(scId, USDC), 1);
         assertEq(shareClass.nowRedeemEpoch(scId, USDC), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
-
-        assertEq(shareClass.wards(address(this)), 1);
-        assertEq(shareClass.wards(address(shareClass.hubRegistry())), 0);
-
-        assertEq(shareClass.wards(nonWard), 0);
     }
 
     function testDefaultGetShareClassNavPerShare() public view {
         (uint128 totalIssuance, D18 navPerShare) = shareClass.metrics(scId);
         assertEq(totalIssuance, 0);
-        assertEq(navPerShare.inner(), 0);
+        assertEq(navPerShare.raw(), 0);
     }
 
     function testExistence() public view {
@@ -334,7 +326,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, amount);
-        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
     }
 
     function testDecreaseShareClassIssuance(uint128 amount) public {
@@ -345,7 +337,7 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
 
         (uint128 totalIssuance_, D18 navPerShareMetric) = shareClass.metrics(scId);
         assertEq(totalIssuance_, 0, "TotalIssuance should be reset");
-        assertEq(navPerShareMetric.inner(), 0, "navPerShare metric should not be updated");
+        assertEq(navPerShareMetric.raw(), 0, "navPerShare metric should not be updated");
     }
 
     function testMaxDepositClaims() public {
@@ -1544,7 +1536,7 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
         uint128 redeemApprovedShares
     ) public {
         D18 navPerShareDeposit = d18(uint128(bound(navPerShare_, 1e10, type(uint128).max / 1e18)));
-        D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.inner())));
+        D18 navPerShareRedeem = d18(uint128(bound(navPerShare_, 1e10, navPerShareDeposit.raw())));
         uint128 shares = navPerShareDeposit.reciprocalMulUint128(
             _intoPoolAmount(USDC, MAX_REQUEST_AMOUNT_USDC), MathLib.Rounding.Down
         );
@@ -1599,7 +1591,7 @@ contract ShareClassManagerDepositRedeem is ShareClassManagerBaseTest {
         shareClass.revokeShares(poolId, scId, USDC, epochId - 1, navPerShareRedeem);
         shares -= redeemApprovedShares;
         (, D18 navPerShare) = shareClass.metrics(scId);
-        assertEq(navPerShare.inner(), 0, "Metrics nav should only be set in updateShareClass");
+        assertEq(navPerShare.raw(), 0, "Metrics nav should only be set in updateShareClass");
 
         // Step 2f: Claim deposit and redeem
         epochId += 1;

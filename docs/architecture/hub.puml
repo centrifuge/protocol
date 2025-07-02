@@ -16,7 +16,12 @@ class Holdings
 class HubRegistry
 class ShareClassManager
 class Accounting
-class Hub
+class "Hub/HubHelpers" as Hub
+
+note right of Hub: "HubHelpers is conceptually Hub.\nIt's just a split contract to avoid\ncontract max size limitations"
+
+interface ISnapshotHook
+interface IValuation
 
 Hub -up-|> Multicall
 Multicall -up-|> ReentrancyProtection
@@ -28,6 +33,8 @@ Hub --> ShareClassManager
 Hub --> Accounting
 Hub -up-> MessageDispatcher
 Hub -up-> Gateway
+Holdings --> IValuation
+Holdings --> ISnapshotHook
 
 Holdings --> HubRegistry
 ShareClassManager --> HubRegistry

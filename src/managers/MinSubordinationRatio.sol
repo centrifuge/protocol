@@ -62,16 +62,16 @@ contract MinSubordination is Auth {
         hub.updateSharePrice(poolId, juniorScId, juniorNavPerShare);
 
         hub.approveDeposits(poolId, seniorScId, assetId, scm.nowDepositEpoch(seniorScId, assetId), seniorDeposit);
-        hub.issueShares(poolId, seniorScId, assetId, scm.nowIssueEpoch(seniorScId, assetId), seniorNavPerShare);
+        hub.issueShares(poolId, seniorScId, assetId, scm.nowIssueEpoch(seniorScId, assetId), seniorNavPerShare, 0);
 
         hub.approveRedeems(poolId, seniorScId, assetId, scm.nowRedeemEpoch(seniorScId, assetId), seniorRedeem);
-        hub.revokeShares(poolId, seniorScId, assetId, scm.nowRevokeEpoch(seniorScId, assetId), seniorNavPerShare);
+        hub.revokeShares(poolId, seniorScId, assetId, scm.nowRevokeEpoch(seniorScId, assetId), seniorNavPerShare, 0);
 
         hub.approveDeposits(poolId, juniorScId, assetId, scm.nowDepositEpoch(juniorScId, assetId), juniorDeposit);
-        hub.issueShares(poolId, juniorScId, assetId, scm.nowIssueEpoch(juniorScId, assetId), juniorNavPerShare);
+        hub.issueShares(poolId, juniorScId, assetId, scm.nowIssueEpoch(juniorScId, assetId), juniorNavPerShare, 0);
 
         hub.approveRedeems(poolId, juniorScId, assetId, scm.nowRedeemEpoch(juniorScId, assetId), juniorRedeem);
-        hub.revokeShares(poolId, juniorScId, assetId, scm.nowRevokeEpoch(juniorScId, assetId), juniorNavPerShare);
+        hub.revokeShares(poolId, juniorScId, assetId, scm.nowRevokeEpoch(juniorScId, assetId), juniorNavPerShare, 0);
 
         _checkRatio();
     }

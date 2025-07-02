@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {GasService} from "src/common/GasService.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
 import "forge-std/Test.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {GasService, IGasService} from "src/common/GasService.sol";
 
 contract GasServiceTest is Test {
     using MessageLib for *;

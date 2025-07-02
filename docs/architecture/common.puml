@@ -3,16 +3,15 @@ hide empty members
 
 package misc {
     abstract Recoverable
+    class Escrow
 }
 
 package hub {
-    class Hub
+    class "Hub/HubHelpers" as Hub
 }
 
-package vaults {
-    class PoolEscrow
+package spoke {
     class Spoke
-    class AsyncRequestManager
     class BalanceSheet
 }
 
@@ -27,6 +26,7 @@ class AxelarAdapter
 class WormholeAdapter
 class Guardian
 class GasService
+class PoolEscrow
 
 AxelarAdapter -up-|> IAdapter
 AxelarAdapter -up--> Gateway
@@ -38,28 +38,29 @@ MessageProcessor --up-> Root
 MessageProcessor --up-> TokenRecoverer
 MessageProcessor --up-> Hub
 MessageProcessor --up-> Spoke
-MessageProcessor --up-> AsyncRequestManager
 MessageProcessor --up-> BalanceSheet
-MessageProcessor --up-> Gateway
+MessageProcessor <--up-> Gateway
 
-MessageDispatcher ---> Root
-MessageDispatcher ---> TokenRecoverer
-MessageDispatcher ---> Gateway
-MessageDispatcher ---> Hub
-MessageDispatcher ---> Spoke
-MessageDispatcher ---> AsyncRequestManager
-MessageDispatcher ---> BalanceSheet
+MessageDispatcher <---> Root
+MessageDispatcher <---> TokenRecoverer
+MessageDispatcher <---> Gateway
+MessageDispatcher <-right-> Hub
+MessageDispatcher <---> Spoke
+MessageDispatcher <---> BalanceSheet
 
 Guardian ---> Hub
 Guardian -left---> Root
 Guardian ---> MessageDispatcher
+Guardian -> MultiAdapter
 
 Gateway -up--> GasService
 Gateway -up--|> Recoverable
 Gateway -right-> Root
-Gateway -down-->"n" IAdapter
-Gateway --> PoolEscrow
+Gateway -down--> MultiAdapter
+MultiAdapter -down->"n" IAdapter
+Gateway -up->PoolEscrow
 
-note bottom of PoolEscrow: Used as refund address
+PoolEscrow -up-|> Escrow
+Escrow -right-|> Recoverable
 
 @enduml

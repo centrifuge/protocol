@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -86,4 +86,16 @@ interface IAxelarAdapter is IAdapter, IAxelarExecutable {
 
     function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external;
     function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination) external;
+
+    /// @notice Returns the source configuration for a given axelar chain id
+    /// @param axelarId The Axelar ID of the remote chain
+    /// @return centrifugeId The remote chain id
+    /// @return addressHash The hash of the remote axelar adapter address
+    function sources(string calldata axelarId) external view returns (uint16 centrifugeId, bytes32 addressHash);
+
+    /// @notice Returns the destination configuration for a given chain id
+    /// @param centrifugeId The remote chain id
+    /// @return axelarId The Axelar ID of the remote chain
+    /// @return addr The address of the remote axelar adapter
+    function destinations(uint16 centrifugeId) external view returns (string memory axelarId, string memory addr);
 }
