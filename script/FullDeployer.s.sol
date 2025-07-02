@@ -58,14 +58,16 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
         FullActionBatcher batcher = new FullActionBatcher();
         deployFull(input, batcher);
 
-        saveDeploymentOutput();
-
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
         if (isMainnet) {
             removeFullDeployerAccess(batcher);
         } else {
             guardian.file("safe", address(adminSafe));
         }
+
+        batcher.lock();
+
+        saveDeploymentOutput();
 
         vm.stopBroadcast();
     }
