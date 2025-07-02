@@ -89,7 +89,7 @@ interface ISpoke {
         uint64 computedAt
     );
     event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
-    event TransferShares(
+    event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -170,7 +170,7 @@ interface ISpoke {
     /// @param  amount The amount of tokens to transfer
     /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
     /// the transfer is executed.
-    function crossTransferShares(
+    function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,

@@ -120,7 +120,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         // B: Initiate transfer of shares
         vm.expectEmit();
-        emit ISpoke.TransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
+        emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
         emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
@@ -133,7 +133,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.crossTransferShares{value: GAS}(
+        sB.spoke.crosschainTransferShares{value: GAS}(
             sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, SHARE_HOOK_GAS
         );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
