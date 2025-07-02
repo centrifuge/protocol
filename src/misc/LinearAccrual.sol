@@ -128,7 +128,8 @@ contract LinearAccrual is ILinearAccrual {
         if (normalizedDebt >= 0) {
             return normalizedDebt.toUint256().mulDiv(rates[rateId].accumulatedRate.raw(), 1e18).toUint128().toInt128();
         } else {
-            return -(-normalizedDebt).toUint256().mulDiv(rates[rateId].accumulatedRate.raw(), 1e18).toUint128().toInt128();
+            return
+                -(-normalizedDebt).toUint256().mulDiv(rates[rateId].accumulatedRate.raw(), 1e18).toUint128().toInt128();
         }
     }
 
