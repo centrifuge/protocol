@@ -90,6 +90,12 @@ contract CommonActionBatcher {
         report.messageDispatcher.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
     }
+
+    /// @notice Transfer Guardian ownership to admin safe without affecting any other permissions
+    /// @dev Safe for testnet use - only transfers Guardian control, leaves all other permissions intact
+    function transferGuardianOwnership(CommonReport memory report) public {
+        report.guardian.file("safe", address(report.adminSafe));
+    }
 }
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
