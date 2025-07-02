@@ -2,11 +2,12 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
-
-import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+
+import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 /// @notice In a transaction there can be multiple journal entries for different pools,
 /// which can be interleaved. We want entries for the same pool to share the same journal ID.

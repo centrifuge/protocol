@@ -1,30 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "forge-std/Test.sol";
-
 import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
 import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
-import {AccountType} from "src/hub/interfaces/IHub.sol";
-import {JournalEntry} from "src/hub/interfaces/IAccounting.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/misc/mocks/MockValuation.sol";
+import {MockValuation} from "test/common/mocks/MockValuation.sol";
+
+import "forge-std/Test.sol";
 
 contract BaseTest is HubDeployer, Test {
     uint16 constant CHAIN_CP = 5;
@@ -40,6 +29,8 @@ contract BaseTest is HubDeployer, Test {
     address immutable FM = makeAddr("FM");
     address immutable ANY = makeAddr("Anyone");
     bytes32 immutable INVESTOR = bytes32("Investor");
+    address immutable ASYNC_REQUEST_MANAGER = makeAddr("AsyncRequestManager");
+    address immutable SYNC_REQUEST_MANAGER = makeAddr("SyncManager");
 
     AssetId immutable USDC_C2 = newAssetId(CHAIN_CV, 1);
     AssetId immutable EUR_STABLE_C2 = newAssetId(CHAIN_CV, 2);

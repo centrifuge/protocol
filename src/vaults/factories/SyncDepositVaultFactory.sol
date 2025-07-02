@@ -2,16 +2,18 @@
 pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -39,7 +41,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         uint256 tokenId,
         IShareToken token,
         address[] calldata wards_
-    ) public auth returns (IBaseVault) {
+    ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
         SyncDepositVault vault =
             new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
@@ -47,6 +49,8 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         vault.rely(root);
         vault.rely(address(syncDepositManager));
         vault.rely(address(asyncRedeemManager));
+
+        IAuth(address(syncDepositManager)).rely(address(vault));
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

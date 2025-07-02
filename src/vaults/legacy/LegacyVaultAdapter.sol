@@ -4,13 +4,14 @@ pragma solidity 0.8.28;
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {ILegacyVault} from "src/vaults/legacy/interfaces/ILegacyVault.sol";
-import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
-import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {ILegacyVault} from "src/vaults/legacy/interfaces/ILegacyVault.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {BaseAsyncRedeemVault, IAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
+import {IInvestmentManager} from "src/vaults/legacy/interfaces/IInvestmentManager.sol";
+import {ILegacyVaultAdapter} from "src/vaults/legacy/interfaces/ILegacyVaultAdapter.sol";
+
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  LegacyVaultAdapter
 /// @notice An adapter connecting legacy ERC-7540 vaults from Centrifuge V2 to Centrifuge V3.

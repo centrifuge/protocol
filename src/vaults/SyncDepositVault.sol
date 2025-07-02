@@ -7,12 +7,13 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
+
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits
@@ -30,7 +31,7 @@ contract SyncDepositVault is BaseSyncDepositVault, BaseAsyncRedeemVault {
         ISyncDepositManager syncDepositManager_,
         IAsyncRedeemManager asyncRedeemManager_
     )
-        BaseVault(poolId_, scId_, asset_, token_, root_, syncDepositManager_)
+        BaseVault(poolId_, scId_, asset_, token_, root_, IBaseRequestManager(address(asyncRedeemManager_)))
         BaseSyncDepositVault(syncDepositManager_)
         BaseAsyncRedeemVault(asyncRedeemManager_)
     {}

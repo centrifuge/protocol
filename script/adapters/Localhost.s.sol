@@ -5,18 +5,19 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+
+import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 
@@ -69,6 +70,9 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
+
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -84,7 +88,7 @@ contract LocalhostDeployer is FullDeployer {
             AccountId.wrap(0x04)
         );
 
-        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink);
+        hub.updateVault(poolId, scId, assetId, address(asyncVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0);
 
         hub.updateSharePrice(poolId, scId, navPerShare);
         hub.notifySharePrice(poolId, scId, centrifugeId);
@@ -126,7 +130,8 @@ contract LocalhostDeployer is FullDeployer {
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
                 user: bytes32(bytes20(msg.sender)),
                 validUntil: type(uint64).max
-            }).serialize()
+            }).serialize(),
+            0
         );
 
         // Submit redeem request
@@ -155,6 +160,10 @@ contract LocalhostDeployer is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
 
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);
+
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
         hub.createAccount(poolId, AccountId.wrap(0x03), false);
@@ -171,7 +180,7 @@ contract LocalhostDeployer is FullDeployer {
         );
 
         hub.updateVault(
-            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink
+            poolId, scId, assetId, address(syncDepositVaultFactory).toBytes32(), VaultUpdateKind.DeployAndLink, 0
         );
 
         hub.updateSharePrice(poolId, scId, navPerShare);

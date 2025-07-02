@@ -7,10 +7,10 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
+import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;

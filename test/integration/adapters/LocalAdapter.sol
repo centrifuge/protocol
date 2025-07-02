@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
+
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+
 import "forge-std/Test.sol";
 
-import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-
-/// An adapter that sends the message to the another MessageHandler and acts as MessageHandler too.
+/// An adapter that sends the message to another MessageHandler and acts as MessageHandler too.
 contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     uint16 localCentrifugeId;
     IMessageHandler public entrypoint;
@@ -40,7 +40,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         // Local messages must be bypassed
         assertNotEq(remoteCentrifugeId, localCentrifugeId, "Local messages must be bypassed");
 
-        // The other handler will receive the message as comming from this
+        // The other handler will receive the message as coming from this
         endpoint.handle(localCentrifugeId, payload);
 
         adapterData = bytes32("");
