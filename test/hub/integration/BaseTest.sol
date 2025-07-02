@@ -50,6 +50,7 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
     uint64 constant GAS = 100 wei;
+    uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;

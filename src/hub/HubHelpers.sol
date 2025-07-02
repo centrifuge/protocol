@@ -193,7 +193,8 @@ contract HubHelpers is Auth, IHubHelpers {
                     scId,
                     assetId,
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    )
+                    ),
+                    0
                 );
             }
         } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
@@ -206,7 +207,8 @@ contract HubHelpers is Auth, IHubHelpers {
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize()
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
+                    0
                 );
             }
         } else {

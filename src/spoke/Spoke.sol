@@ -87,12 +87,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
-    function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-        payable
-        payTransaction
-        protected
-    {
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable payTransaction protected {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
@@ -103,8 +105,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         share.authTransferFrom(msg.sender, msg.sender, address(this), amount);
         share.burn(address(this), amount);
 
-        emit TransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount);
+        emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
+        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
     }
 
     /// @inheritdoc ISpoke
@@ -378,14 +380,19 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
+        require(vault.poolId() == poolId, InvalidVault());
+        require(vault.scId() == scId, InvalidVault());
+
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(!vaultDetails_.isLinked);
 
         IVaultManager manager = vault.manager();
         manager.addVault(poolId, scId, assetId, vault, asset, tokenId);
 
         shareClass.asset[assetId].numVaults++;
-        _vaultDetails[vault].isLinked = true;
+        vaultDetails_.isLinked = true;
 
         if (tokenId == 0) {
             shareClass.shareToken.updateVault(asset, address(vault));
@@ -396,14 +403,19 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) public auth {
+        require(vault.poolId() == poolId, InvalidVault());
+        require(vault.scId() == scId, InvalidVault());
+
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(vaultDetails_.isLinked);
 
         IVaultManager manager = vault.manager();
         manager.removeVault(poolId, scId, assetId, vault, asset, tokenId);
 
         shareClass.asset[assetId].numVaults--;
-        _vaultDetails[vault].isLinked = false;
+        vaultDetails_.isLinked = false;
 
         if (tokenId == 0) {
             shareClass.shareToken.updateVault(asset, address(0));

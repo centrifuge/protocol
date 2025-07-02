@@ -89,7 +89,7 @@ interface ISpoke {
         uint64 computedAt
     );
     event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
-    event TransferShares(
+    event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -138,6 +138,7 @@ interface ISpoke {
     error MoreThanZeroLinkedVaults();
     error RequestManagerNotSet();
     error InvalidManager();
+    error InvalidVault();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -167,9 +168,16 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
-    function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-        payable;
+    /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
+    /// the transfer is executed.
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable;
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
