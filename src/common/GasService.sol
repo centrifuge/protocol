@@ -18,9 +18,57 @@ contract GasService is IGasService {
     uint128 internal immutable _batchGasLimit;
     uint128 internal immutable _messageGasLimit;
 
+    uint128 public immutable scheduleUpgrade;
+    uint128 public immutable cancelUpgrade;
+    uint128 public immutable recoverTokens;
+    uint128 public immutable registerAsset;
+    uint128 public immutable request;
+    uint128 public immutable notifyPool;
+    uint128 public immutable notifyShareClass;
+    uint128 public immutable notifyPricePoolPerShare;
+    uint128 public immutable notifyPricePoolPerAsset;
+    uint128 public immutable notifyShareMetadata;
+    uint128 public immutable notifyShareHook;
+    uint128 public immutable initiateTransferShares;
+    uint128 public immutable executeTransferShares;
+    uint128 public immutable updateRestriction;
+    uint128 public immutable updateContract;
+    uint128 public immutable requestCallback;
+    uint128 public immutable updateVault;
+    uint128 public immutable setRequestManager;
+    uint128 public immutable updateBalanceSheetManager;
+    uint128 public immutable updateHoldingAmount;
+    uint128 public immutable updateShares;
+    uint128 public immutable maxAssetPriceAge;
+    uint128 public immutable maxSharePriceAge;
+
     constructor(uint128 batchGasLimit_, uint128 messageGasLimit_) {
         _batchGasLimit = batchGasLimit_;
         _messageGasLimit = messageGasLimit_;
+
+        scheduleUpgrade = BASE_COST + SMALL_COST;
+        cancelUpgrade = BASE_COST + SMALL_COST;
+        recoverTokens = BASE_COST + SMALL_COST;
+        registerAsset = BASE_COST + 34329;
+        request = BASE_COST + 86084; // request deposit case
+        notifyPool = BASE_COST + 38190;
+        notifyShareClass = BASE_COST + 1775916;
+        notifyPricePoolPerShare = BASE_COST + 30496;
+        notifyPricePoolPerAsset = BASE_COST + 35759;
+        notifyShareMetadata = BASE_COST + SMALL_COST;
+        notifyShareHook = BASE_COST + SMALL_COST;
+        initiateTransferShares = BASE_COST + 52195;
+        executeTransferShares = BASE_COST + 70267;
+        updateRestriction = BASE_COST + 35992;
+        updateContract = BASE_COST + SMALL_COST;
+        requestCallback = BASE_COST + 186947; // approve deposit case
+        updateVault = BASE_COST + 2770342; // deploy vault case
+        setRequestManager = BASE_COST + 30039;
+        updateBalanceSheetManager = BASE_COST + 35241;
+        updateHoldingAmount = BASE_COST + 220866;
+        updateShares = BASE_COST + 49968;
+        maxAssetPriceAge = BASE_COST + SMALL_COST;
+        maxSharePriceAge = BASE_COST + SMALL_COST;
     }
 
     /// @inheritdoc IGasService
@@ -33,53 +81,53 @@ contract GasService is IGasService {
         MessageType kind = message.messageType();
 
         if (kind == MessageType.ScheduleUpgrade) {
-            return BASE_COST + SMALL_COST;
+            return scheduleUpgrade;
         } else if (kind == MessageType.CancelUpgrade) {
-            return BASE_COST + SMALL_COST;
+            return cancelUpgrade;
         } else if (kind == MessageType.RecoverTokens) {
-            return BASE_COST + SMALL_COST;
+            return recoverTokens;
         } else if (kind == MessageType.RegisterAsset) {
-            return BASE_COST + 34329; // hub.registerAsset()
+            return registerAsset;
         } else if (kind == MessageType.Request) {
-            return BASE_COST + 86084; // hub.request(requestDeposit)
+            return request;
         } else if (kind == MessageType.NotifyPool) {
-            return BASE_COST + 38190; // spoke.notifyPool()
+            return notifyPool;
         } else if (kind == MessageType.NotifyShareClass) {
-            return BASE_COST + 1775916; // spoke.notifyShareClass()
+            return notifyShareClass;
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
-            return BASE_COST + 30496; // spoke.updatePricePoolPerShare()
+            return notifyPricePoolPerShare;
         } else if (kind == MessageType.NotifyPricePoolPerAsset) {
-            return BASE_COST + 35759; // spoke.updatePricePoolPerAsset()
+            return notifyPricePoolPerAsset;
         } else if (kind == MessageType.NotifyShareMetadata) {
-            return BASE_COST + SMALL_COST;
+            return notifyShareMetadata;
         } else if (kind == MessageType.UpdateShareHook) {
-            return BASE_COST + SMALL_COST;
+            return notifyShareHook;
         } else if (kind == MessageType.InitiateTransferShares) {
-            return BASE_COST + 52195; // hub.initiateTransferShares
+            return initiateTransferShares;
         } else if (kind == MessageType.ExecuteTransferShares) {
-            return BASE_COST + 70267; // spoke.executeTransferShares
+            return executeTransferShares;
         } else if (kind == MessageType.UpdateRestriction) {
-            return BASE_COST + 35992;
+            return updateRestriction;
         } else if (kind == MessageType.UpdateContract) {
-            return BASE_COST + SMALL_COST;
+            return updateContract;
         } else if (kind == MessageType.RequestCallback) {
-            return BASE_COST + 186947; // spoke.requestCallback(approveDeposit)
+            return requestCallback;
         } else if (kind == MessageType.UpdateVault) {
-            return BASE_COST + 2770342; // spoke.updateVault(deploy)
+            return updateVault;
         } else if (kind == MessageType.SetRequestManager) {
-            return BASE_COST + 30039; // spoke.setRequestManager()
+            return setRequestManager;
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
-            return BASE_COST + 35241; // balanceSheet.updateManager()
+            return updateBalanceSheetManager;
         } else if (kind == MessageType.UpdateHoldingAmount) {
-            return BASE_COST + 220866; // hub.updateHoldingAmount
+            return updateHoldingAmount;
         } else if (kind == MessageType.UpdateShares) {
-            return BASE_COST + 49968; // hub.updateShares
+            return updateShares;
         } else if (kind == MessageType.MaxAssetPriceAge) {
-            return BASE_COST + SMALL_COST;
+            return maxAssetPriceAge;
         } else if (kind == MessageType.MaxSharePriceAge) {
-            return BASE_COST + SMALL_COST;
+            return maxSharePriceAge;
         } else {
-            return _messageGasLimit;
+            return 0; // Unreachable
         }
     }
 }

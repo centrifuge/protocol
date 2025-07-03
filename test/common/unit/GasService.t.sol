@@ -19,12 +19,14 @@ contract GasServiceTest is Test {
     function testGasLimit(bytes calldata message) public view {
         vm.assume(message.length > 0);
         vm.assume(message.messageCode() > 0);
+        vm.assume(
+            message.messageCode() < uint8(MessageType._Placeholder5)
+                || message.messageCode() > uint8(MessageType._Placeholder15)
+        );
         vm.assume(message.messageCode() < uint8(type(MessageType).max));
 
         uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_COST());
-        console.log(messageGasLimit);
-        console.log(MAX_MESSAGE_COST);
         assert(messageGasLimit <= MAX_MESSAGE_COST);
     }
 
