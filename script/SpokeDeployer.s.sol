@@ -82,6 +82,7 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.tokenFactory.deny(address(this));
         report.spoke.deny(address(this));
         report.balanceSheet.deny(address(this));
+        report.contractUpdater.deny(address(this));
     }
 }
 
