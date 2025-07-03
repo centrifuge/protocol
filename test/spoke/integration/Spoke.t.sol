@@ -12,12 +12,12 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
 import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";

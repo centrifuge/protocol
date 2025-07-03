@@ -10,13 +10,13 @@ import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
 
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
-
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
 import "test/spoke/BaseTest.sol";
 
