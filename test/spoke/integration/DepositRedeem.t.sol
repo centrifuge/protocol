@@ -11,8 +11,9 @@ contract DepositRedeem is BaseTest {
         uint8 INVESTMENT_CURRENCY_DECIMALS = 6; // 6, like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
 
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
