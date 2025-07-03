@@ -10,10 +10,10 @@ interface IGasService {
     /// @param centrifugeId Where to the cost is defined
     /// @param message Individual message
     /// @return Estimated cost in WEI units
-    function gasLimit(uint16 centrifugeId, bytes calldata message) external view returns (uint128);
+    function messageGasLimit(uint16 centrifugeId, bytes calldata message) external view returns (uint128);
 
     /// @notice Gas limit for the execution cost of a batch in a remote chain.
     /// @param centrifugeId Where to the cost is defined
     /// @return Max cost in WEI units
-    function maxBatchSize(uint16 centrifugeId) external view returns (uint128);
+    function batchGasLimit(uint16 centrifugeId) external view returns (uint128);
 }

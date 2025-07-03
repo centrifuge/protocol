@@ -97,7 +97,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             root: IRoot(address(0)),
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS_COST_LIMIT),
-            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            batchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
 

@@ -16,12 +16,12 @@ contract GasServiceTest is Test {
     GasService service = new GasService(MAX_BATCH_SIZE, MESSAGE_GAS_LIMIT);
 
     function testGasLimit(bytes calldata message) public view {
-        uint256 messageGasLimit = service.gasLimit(CENTRIFUGE_ID, message);
+        uint256 messageGasLimit = service.messageGasLimit(CENTRIFUGE_ID, message);
         assertEq(messageGasLimit, MESSAGE_GAS_LIMIT);
     }
 
-    function testMaxBatchSize(bytes calldata) public view {
-        uint256 maxBatchSize = service.maxBatchSize(CENTRIFUGE_ID);
-        assertEq(maxBatchSize, MAX_BATCH_SIZE);
+    function testBatchGasLimit(bytes calldata) public view {
+        uint256 batchGasLimit = service.batchGasLimit(CENTRIFUGE_ID);
+        assertEq(batchGasLimit, MAX_BATCH_SIZE);
     }
 }

@@ -226,7 +226,7 @@ contract EndToEndDeployment is Test {
             root: IRoot(address(0)),
             adminSafe: adminSafe,
             messageGasLimit: uint128(GAS),
-            maxBatchSize: uint128(GAS) * 100,
+            batchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
