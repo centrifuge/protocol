@@ -19,6 +19,7 @@ import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 import {Hub} from "src/hub/Hub.sol";
 import {Holdings} from "src/hub/Holdings.sol";
@@ -117,7 +118,7 @@ contract EndToEndDeployment is Test {
 
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
-    uint64 constant GAS = 10 wei;
+    uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
     uint128 constant SHARE_HOOK_GAS = 0 ether;
 

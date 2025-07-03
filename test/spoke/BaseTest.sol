@@ -16,6 +16,7 @@ import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
@@ -64,7 +65,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
     uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = 500_000; // 500K gas
+    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST; // 3M gas
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
