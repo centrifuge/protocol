@@ -127,7 +127,7 @@ contract GasService is IGasService {
         } else if (kind == MessageType.MaxSharePriceAge) {
             return maxSharePriceAge;
         } else {
-            return 0; // Unreachable
+            return type(uint128).max; // Unreachable
         }
     }
 }
