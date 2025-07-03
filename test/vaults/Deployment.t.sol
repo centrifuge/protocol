@@ -88,11 +88,11 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function testSyncManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
         vm.assume(nonWard != address(syncDepositVaultFactory));
 
         assertEq(syncManager.wards(address(root)), 1);
-        assertEq(syncManager.wards(address(spoke)), 1);
+        assertEq(syncManager.wards(address(contractUpdater)), 1);
         assertEq(syncManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(syncManager.wards(nonWard), 0);
 
