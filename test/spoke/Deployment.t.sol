@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
 import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
@@ -9,8 +9,9 @@ import "forge-std/Test.sol";
 
 contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        deploySpoke(_commonInput(), address(this));
-        removeSpokeDeployerAccess(address(this));
+        SpokeActionBatcher batcher = new SpokeActionBatcher();
+        deploySpoke(_commonInput(), batcher);
+        removeSpokeDeployerAccess(batcher);
     }
 
     function testTokenFactory(address nonWard) public {

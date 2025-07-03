@@ -39,7 +39,7 @@ import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessag
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer, CommonInput} from "script/FullDeployer.s.sol";
+import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
 
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
@@ -117,7 +117,7 @@ contract EndToEndDeployment is Test {
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
     uint128 constant SHARE_HOOK_GAS = 0 ether;
 
-    address immutable DEPLOYER = address(this);
+    address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
     address immutable BSM = makeAddr("BSM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
@@ -226,12 +226,14 @@ contract EndToEndDeployment is Test {
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
-        deploy.deployFull(input, address(deploy));
+        FullActionBatcher batcher = new FullActionBatcher();
+
+        deploy.deployFull(input, batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(address(deploy));
+        deploy.removeFullDeployerAccess(batcher);
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
@@ -331,7 +333,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _configureAsset(CSpoke memory s_) internal {
-        vm.startPrank(DEPLOYER);
+        vm.startPrank(ERC20_DEPLOYER);
         s_.usdc.mint(INVESTOR_A, USDC_AMOUNT_1);
 
         vm.startPrank(ANY);
@@ -591,7 +593,7 @@ contract EndToEndUseCases is EndToEndFlows {
         _configurePool(s);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
-        vm.startPrank(DEPLOYER);
+        vm.startPrank(ERC20_DEPLOYER);
         s.usdc.mint(BSM, USDC_AMOUNT_1);
 
         vm.startPrank(BSM);

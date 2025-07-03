@@ -27,7 +27,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {ExtendedSpokeDeployer, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 
 import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
@@ -36,7 +36,7 @@ import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
-contract BaseTest is ExtendedSpokeDeployer, Test {
+contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     using MessageLib for *;
 
     MockCentrifugeChain centrifugeChain;
@@ -101,8 +101,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test {
             version: bytes32(0)
         });
 
-        deployExtendedSpoke(input, address(this));
-        guardian.file("safe", address(adminSafe));
+        deployExtendedSpoke(input, this);
 
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
