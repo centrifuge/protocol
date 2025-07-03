@@ -13,8 +13,8 @@ import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 interface IDepositManager {
-    /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
-    /// the deposit order
+    /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding hub instance and
+    ///         the deposit order has been successfully processed (partial fulfillment possible).
     ///         has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of assets and the owner's share price.
@@ -26,9 +26,8 @@ interface IDepositManager {
         external
         returns (uint256 shares);
 
-    /// @notice Processes owner's share mint after the epoch has been executed on the corresponding CP instance and the
-    /// deposit order has
-    ///         been successfully processed (partial fulfillment possible).
+    /// @notice Processes owner's share mint after the epoch has been executed on the corresponding hub instance and the
+    ///         deposit order has been successfully processed (partial fulfillment possible).
     ///         Shares are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The assets required to fulfill the mint are already locked in escrow upon calling requestDeposit.
@@ -40,11 +39,11 @@ interface IDepositManager {
         returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
-    ///         deposit order fulfillment on the corresponding CP instance.
+    ///         deposit order fulfillment on the corresponding hub instance.
     function maxDeposit(IBaseVault vault, address user) external view returns (uint256);
 
     /// @notice Returns the max amount of shares a user can claim after at least one successful deposit order
-    ///         fulfillment on the corresponding CP instance.
+    ///         fulfillment on the corresponding hub instance.
     function maxMint(IBaseVault vault, address user) external view returns (uint256 shares);
 }
 
@@ -56,7 +55,7 @@ interface ISyncDepositManager is IDepositManager {
 interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     /// @notice Requests assets deposit. Vaults have to request investments from Centrifuge before
     ///         shares can be minted. The deposit requests are added to the order book
-    ///         on the corresponding CP instance. Once the next epoch is executed on the corresponding CP instance,
+    ///         on the corresponding hub instance. Once the next epoch is executed on the corresponding hub instance,
     ///         vaults can proceed with share payouts in case the order got fulfilled.
     /// @dev    The assets required to fulfill the deposit request have to be locked and are transferred from the
     ///         owner to the escrow, even though the share payout can only happen after epoch execution.
@@ -70,15 +69,15 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     ///         cancellation of outstanding requests from Centrifuge before actual assets can be unlocked and
     ///         transferred to the owner.
     ///         While users have outstanding cancellation requests no new deposit requests can be submitted.
-    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with asset payouts
+    ///         Once the next epoch is executed on the corresponding hub instance, vaults can proceed with asset payouts
     ///         if orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending deposit order already got fulfilled on
     ///         Centrifuge.
     /// @param  source Deprecated
     function cancelDepositRequest(IBaseVault vault, address owner, address source) external;
 
-    /// @notice Processes owner's deposit request cancellation after the epoch has been executed on the corresponding CP
-    ///         instance and the deposit order cancellation has been successfully processed (partial fulfillment
+    /// @notice Processes owner's deposit request cancellation after the epoch has been executed on the corresponding
+    ///         hub instance and the deposit order cancellation has been successfully processed (partial fulfillment
     ///         possible).
     ///         Assets are transferred from the escrow to the receiver.
     /// @dev    The assets required to fulfill the claim have already been reserved for the owner in escrow on
@@ -109,46 +108,44 @@ interface IRedeemManager {
         uint128 shares
     );
 
-    /// @notice Processes owner's share redemption after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    /// @notice Processes owner's share redemption after the epoch has been executed on the corresponding hub instance
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of assets is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the redemption were already locked in escrow on requestRedeem and burned
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the redemption have already been reserved in escrow on
-    ///         fulfillRedeemtRequest.
+    ///         fulfillRedeemRequest.
     function redeem(IBaseVault vault, uint256 shares, address receiver, address owner)
         external
         returns (uint256 assets);
 
-    /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding CP instance
-    /// and the redeem order
-    ///         has been successfully processed (partial fulfillment possible).
+    /// @notice Processes owner's asset withdrawal after the epoch has been executed on the corresponding hub instance
+    ///         and the redeem order has been successfully processed (partial fulfillment possible).
     ///         Assets are transferred from the escrow to the receiver. Amount of shares is computed based of the amount
     ///         of shares and the owner's share price.
     /// @dev    The shares required to fulfill the withdrawal were already locked in escrow on requestRedeem and burned
     ///         on fulfillRedeemRequest.
     ///         The assets required to fulfill the withdrawal have already been reserved in escrow on
-    ///         fulfillRedeemtRequest.
+    ///         fulfillRedeemRequest.
     function withdraw(IBaseVault vault, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
 
     /// @notice Returns the max amount of shares based on the unclaimed number of assets after at least one successful
-    ///         redeem order fulfillment on the corresponding CP instance.
+    ///         redeem order fulfillment on the corresponding hub instance.
     function maxRedeem(IBaseVault vault, address user) external view returns (uint256 shares);
 
     /// @notice Returns the max amount of assets a user can claim after at least one successful redeem order fulfillment
-    ///         on the corresponding CP instance.
+    ///         on the corresponding hub instance.
     function maxWithdraw(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
 interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     /// @notice Requests share redemption. Vaults have to request redemptions
     ///         from Centrifuge before actual asset payouts can be done. The redemption
-    ///         requests are added to the order book on the corresponding CP instance. Once the next epoch is
-    ///         executed on the corresponding CP instance, vaults can proceed with asset payouts
+    ///         requests are added to the order book on the corresponding hub instance. Once the next epoch is
+    ///         executed on the corresponding hub instance, vaults can proceed with asset payouts
     ///         in case the order got fulfilled.
     /// @dev    The shares required to fulfill the redemption request have to be locked and are transferred from the
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
@@ -169,13 +166,13 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         transferred to the owner.
     ///         While users have outstanding cancellation requests no new redeem requests can be submitted (exception:
     ///         trigger through governance).
-    ///         Once the next epoch is executed on the corresponding CP instance, vaults can proceed with share payouts
+    ///         Once the next epoch is executed on the corresponding hub instance, vaults can proceed with share payouts
     ///         if the orders could be cancelled successfully.
     /// @dev    The cancellation request might fail in case the pending redeem order already got fulfilled on
     ///         Centrifuge.
     function cancelRedeemRequest(IBaseVault vault, address owner, address source) external;
 
-    /// @notice Processes owner's redeem request cancellation after the epoch has been executed on the corresponding CP
+    /// @notice Processes owner's redeem request cancellation after the epoch has been executed on the corresponding hub
     ///         instance and the redeem order cancellation has been successfully processed (partial fulfillment
     ///         possible).
     ///         Shares are transferred from the escrow to the receiver.
