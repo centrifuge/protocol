@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {Spoke} from "src/spoke/Spoke.sol";
 
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
@@ -16,36 +14,35 @@ import "forge-std/Script.sol";
 
 struct HooksReport {
     SpokeReport spoke;
-    address freezeOnlyHook;
-    address redemptionRestrictionsHook;
-    address fullRestrictionsHook;
+    FreezeOnly freezeOnlyHook;
+    FullRestrictions fullRestrictionsHook;
+    RedemptionRestrictions redemptionRestrictionsHook;
 }
 
 contract HooksActionBatcher is SpokeActionBatcher {
     function engageHooks(HooksReport memory report) public unlocked {
         // Rely Spoke
-        IAuth(report.freezeOnlyHook).rely(address(report.spoke.spoke));
-        IAuth(report.fullRestrictionsHook).rely(address(report.spoke.spoke));
-        IAuth(report.redemptionRestrictionsHook).rely(address(report.spoke.spoke));
+        report.freezeOnlyHook.rely(address(report.spoke.spoke));
+        report.fullRestrictionsHook.rely(address(report.spoke.spoke));
+        report.redemptionRestrictionsHook.rely(address(report.spoke.spoke));
 
         // Rely Root
-        IAuth(report.freezeOnlyHook).rely(address(report.spoke.common.root));
-        IAuth(report.fullRestrictionsHook).rely(address(report.spoke.common.root));
-        IAuth(report.redemptionRestrictionsHook).rely(address(report.spoke.common.root));
+        report.freezeOnlyHook.rely(address(report.spoke.common.root));
+        report.fullRestrictionsHook.rely(address(report.spoke.common.root));
+        report.redemptionRestrictionsHook.rely(address(report.spoke.common.root));
     }
 
     function revokeHooks(HooksReport memory report) public unlocked {
-        IAuth(report.freezeOnlyHook).deny(address(this));
-        IAuth(report.fullRestrictionsHook).deny(address(this));
-        IAuth(report.redemptionRestrictionsHook).deny(address(this));
+        report.freezeOnlyHook.deny(address(this));
+        report.fullRestrictionsHook.deny(address(this));
+        report.redemptionRestrictionsHook.deny(address(this));
     }
 }
 
 contract HooksDeployer is SpokeDeployer {
-    // TODO: Add typed interfaces instead of addresses (only current reason is avoid test refactor)
-    address public freezeOnlyHook;
-    address public redemptionRestrictionsHook;
-    address public fullRestrictionsHook;
+    FreezeOnly public freezeOnlyHook;
+    FullRestrictions public fullRestrictionsHook;
+    RedemptionRestrictions public redemptionRestrictionsHook;
 
     function deployHooks(CommonInput memory input, HooksActionBatcher batcher) public {
         _preDeployHooks(input, batcher);
@@ -55,19 +52,25 @@ contract HooksDeployer is SpokeDeployer {
     function _preDeployHooks(CommonInput memory input, HooksActionBatcher batcher) internal {
         _preDeploySpoke(input, batcher);
 
-        freezeOnlyHook = create3(
-            generateSalt("freezeOnlyHook"),
-            abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
+        freezeOnlyHook = FreezeOnly(
+            create3(
+                generateSalt("freezeOnlyHook"),
+                abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
+            )
         );
 
-        fullRestrictionsHook = create3(
-            generateSalt("fullRestrictionsHook"),
-            abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
+        fullRestrictionsHook = FullRestrictions(
+            create3(
+                generateSalt("fullRestrictionsHook"),
+                abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
+            )
         );
 
-        redemptionRestrictionsHook = create3(
-            generateSalt("redemptionRestrictionsHook"),
-            abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
+        redemptionRestrictionsHook = RedemptionRestrictions(
+            create3(
+                generateSalt("redemptionRestrictionsHook"),
+                abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
+            )
         );
 
         batcher.engageHooks(_hooksReport());
@@ -88,6 +91,6 @@ contract HooksDeployer is SpokeDeployer {
     }
 
     function _hooksReport() internal view returns (HooksReport memory) {
-        return HooksReport(_spokeReport(), freezeOnlyHook, redemptionRestrictionsHook, fullRestrictionsHook);
+        return HooksReport(_spokeReport(), freezeOnlyHook, fullRestrictionsHook, redemptionRestrictionsHook);
     }
 }

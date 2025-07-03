@@ -37,6 +37,9 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
+import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
+import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
@@ -101,8 +104,9 @@ contract EndToEndDeployment is Test {
         AsyncRequestManager asyncRequestManager;
         SyncManager syncManager;
         // Hooks
-        address fullRestrictionsHook;
-        address redemptionRestrictionsHook;
+        FreezeOnly freezeOnlyHook;
+        FullRestrictions fullRestrictionsHook;
+        RedemptionRestrictions redemptionRestrictionsHook;
         // Others
         ERC20 usdc;
         AssetId usdcId;
@@ -246,6 +250,7 @@ contract EndToEndDeployment is Test {
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
         s_.router = deploy.vaultRouter();
+        s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
         s_.redemptionRestrictionsHook = deploy.redemptionRestrictionsHook();
         s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
@@ -365,7 +370,9 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s_.centrifugeId, s_.redemptionRestrictionsHook.toBytes32());
+        h.hub.notifyShareClass{value: GAS}(
+            POOL_A, SC_1, s_.centrifugeId, address(s_.redemptionRestrictionsHook).toBytes32()
+        );
 
         h.hub.initializeHolding(
             POOL_A, SC_1, s_.usdcId, h.valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT

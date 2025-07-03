@@ -173,7 +173,13 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, bytes16(bytes("1")), address(asset), 0, 0
+            VaultKind.Async,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0,
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -443,7 +449,13 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, bytes16(bytes("1")), address(asset), 0, 0
+            VaultKind.Async,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0,
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -510,7 +522,7 @@ contract DepositTest is BaseTest {
     function testDepositAndRedeemPrecisionWithInverseDecimals(bytes16 scId) public {
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, fullRestrictionsHook, scId, address(asset), 0, 0);
+            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
@@ -581,8 +593,9 @@ contract DepositTest is BaseTest {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -620,8 +633,9 @@ contract DepositTest is BaseTest {
         uint8 SHARE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
