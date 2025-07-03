@@ -3,9 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-
-import {HooksDeployer} from "script/HooksDeployer.s.sol";
+import {HooksDeployer, HooksActionBatcher} from "script/HooksDeployer.s.sol";
 
 import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
@@ -13,8 +11,9 @@ import "forge-std/Test.sol";
 
 contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        deployHooks(_commonInput(), address(this));
-        removeHooksDeployerAccess(address(this));
+        HooksActionBatcher batcher = new HooksActionBatcher();
+        deployHooks(_commonInput(), batcher);
+        removeHooksDeployerAccess(batcher);
     }
 
     function testFreezeOnly(address nonWard) public view {
@@ -27,7 +26,7 @@ contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
         assertEq(IAuth(freezeOnlyHook).wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(FreezeOnly(freezeOnlyHook).root()), address(root));
+        assertEq(address(freezeOnlyHook.root()), address(root));
     }
 
     function testRedemptionRestriction(address nonWard) public view {
@@ -35,12 +34,12 @@ contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
 
-        assertEq(IAuth(redemptionRestrictionsHook).wards(address(root)), 1);
-        assertEq(IAuth(redemptionRestrictionsHook).wards(address(spoke)), 1);
-        assertEq(IAuth(redemptionRestrictionsHook).wards(nonWard), 0);
+        assertEq(redemptionRestrictionsHook.wards(address(root)), 1);
+        assertEq(redemptionRestrictionsHook.wards(address(spoke)), 1);
+        assertEq(redemptionRestrictionsHook.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(FreezeOnly(redemptionRestrictionsHook).root()), address(root));
+        assertEq(address(redemptionRestrictionsHook.root()), address(root));
     }
 
     function testFullRestriction(address nonWard) public view {
@@ -53,6 +52,6 @@ contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
         assertEq(IAuth(fullRestrictionsHook).wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(FreezeOnly(fullRestrictionsHook).root()), address(root));
+        assertEq(address(fullRestrictionsHook.root()), address(root));
     }
 }

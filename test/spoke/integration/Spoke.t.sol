@@ -438,7 +438,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         vm.prank(randomUser);
         spoke.updateShareHook(poolId, scId, newHook);
 
-        assertEq(shareToken.hook(), fullRestrictionsHook);
+        assertEq(shareToken.hook(), address(fullRestrictionsHook));
 
         spoke.updateShareHook(poolId, scId, newHook);
         assertEq(shareToken.hook(), newHook);

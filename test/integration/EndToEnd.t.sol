@@ -37,12 +37,15 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
+import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
+import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {NAVManager} from "src/managers/NAVManager.sol";
 import {SimplePriceManager} from "src/managers/SimplePriceManager.sol";
 
-import {FullDeployer, CommonInput} from "script/FullDeployer.s.sol";
+import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
 
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
 import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
@@ -103,8 +106,9 @@ contract EndToEndDeployment is Test {
         AsyncRequestManager asyncRequestManager;
         SyncManager syncManager;
         // Hooks
-        address fullRestrictionsHook;
-        address redemptionRestrictionsHook;
+        FreezeOnly freezeOnlyHook;
+        FullRestrictions fullRestrictionsHook;
+        RedemptionRestrictions redemptionRestrictionsHook;
         // Others
         ERC20 usdc;
         AssetId usdcId;
@@ -119,7 +123,7 @@ contract EndToEndDeployment is Test {
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
     uint128 constant SHARE_HOOK_GAS = 0 ether;
 
-    address immutable DEPLOYER = address(this);
+    address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
     address immutable BSM = makeAddr("BSM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
@@ -226,12 +230,14 @@ contract EndToEndDeployment is Test {
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
-        deploy.deployFull(input, address(deploy));
+        FullActionBatcher batcher = new FullActionBatcher();
+
+        deploy.deployFull(input, batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
 
-        deploy.removeFullDeployerAccess(address(deploy));
+        deploy.removeFullDeployerAccess(batcher);
     }
 
     function _setSpoke(FullDeployer deploy, uint16 centrifugeId, CSpoke storage s_) internal {
@@ -244,6 +250,7 @@ contract EndToEndDeployment is Test {
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
         s_.router = deploy.vaultRouter();
+        s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
         s_.redemptionRestrictionsHook = deploy.redemptionRestrictionsHook();
         s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
@@ -331,7 +338,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _configureAsset(CSpoke memory s_) internal {
-        vm.startPrank(DEPLOYER);
+        vm.startPrank(ERC20_DEPLOYER);
         s_.usdc.mint(INVESTOR_A, USDC_AMOUNT_1);
 
         vm.startPrank(ANY);
@@ -364,7 +371,9 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s_.centrifugeId, s_.redemptionRestrictionsHook.toBytes32());
+        h.hub.notifyShareClass{value: GAS}(
+            POOL_A, SC_1, s_.centrifugeId, address(s_.redemptionRestrictionsHook).toBytes32()
+        );
 
         h.navManager.initializeNetwork(s_.centrifugeId);
         h.navManager.initializeHolding(SC_1, s_.usdcId, h.valuation);
@@ -596,7 +605,7 @@ contract EndToEndUseCases is EndToEndFlows {
         _configurePool(s);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
-        vm.startPrank(DEPLOYER);
+        vm.startPrank(ERC20_DEPLOYER);
         s.usdc.mint(BSM, USDC_AMOUNT_1);
 
         vm.startPrank(BSM);

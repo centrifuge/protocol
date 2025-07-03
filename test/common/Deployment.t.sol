@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {CommonDeployer, CommonInput} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonActionBatcher} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -26,8 +26,9 @@ contract CommonDeploymentInputTest is Test {
 
 contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function setUp() public virtual {
-        deployCommon(_commonInput(), address(this));
-        removeCommonDeployerAccess(address(this));
+        CommonActionBatcher batcher = new CommonActionBatcher();
+        deployCommon(_commonInput(), batcher);
+        removeCommonDeployerAccess(batcher);
     }
 
     function testRoot(address nonWard) public view {

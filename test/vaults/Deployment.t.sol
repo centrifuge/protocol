@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {VaultsDeployer} from "script/VaultsDeployer.s.sol";
+import {VaultsDeployer, VaultsActionBatcher} from "script/VaultsDeployer.s.sol";
 
 import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
 
@@ -9,8 +9,9 @@ import "forge-std/Test.sol";
 
 contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        deployVaults(_commonInput(), address(this));
-        removeVaultsDeployerAccess(address(this));
+        VaultsActionBatcher batcher = new VaultsActionBatcher();
+        deployVaults(_commonInput(), batcher);
+        removeVaultsDeployerAccess(batcher);
     }
 
     function testRouterEscrow(address nonWard) public view {
@@ -87,11 +88,11 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
     function testSyncManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(contractUpdater));
         vm.assume(nonWard != address(syncDepositVaultFactory));
 
         assertEq(syncManager.wards(address(root)), 1);
-        assertEq(syncManager.wards(address(spoke)), 1);
+        assertEq(syncManager.wards(address(contractUpdater)), 1);
         assertEq(syncManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(syncManager.wards(nonWard), 0);
 
