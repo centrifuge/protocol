@@ -16,7 +16,6 @@ contract GasService is IGasService {
     uint128 public constant SMALL_COST = 100_000;
 
     uint128 internal immutable _batchGasLimit;
-    uint128 internal immutable _messageGasLimit;
 
     uint128 public immutable scheduleUpgrade;
     uint128 public immutable cancelUpgrade;
@@ -42,9 +41,8 @@ contract GasService is IGasService {
     uint128 public immutable maxAssetPriceAge;
     uint128 public immutable maxSharePriceAge;
 
-    constructor(uint128 batchGasLimit_, uint128 messageGasLimit_) {
+    constructor(uint128 batchGasLimit_) {
         _batchGasLimit = batchGasLimit_;
-        _messageGasLimit = messageGasLimit_;
 
         scheduleUpgrade = BASE_COST + SMALL_COST;
         cancelUpgrade = BASE_COST + SMALL_COST;

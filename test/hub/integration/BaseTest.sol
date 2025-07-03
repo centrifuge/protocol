@@ -83,7 +83,6 @@ contract BaseTest is HubDeployer, Test {
             centrifugeId: CHAIN_CP,
             root: IRoot(address(0)),
             adminSafe: adminSafe,
-            messageGasLimit: uint128(GAS),
             batchGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
         });

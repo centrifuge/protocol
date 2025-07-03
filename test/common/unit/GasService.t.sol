@@ -10,11 +10,10 @@ import "forge-std/Test.sol";
 contract GasServiceTest is Test {
     using MessageLib for *;
 
-    uint128 constant MESSAGE_GAS_LIMIT = MAX_MESSAGE_COST;
     uint128 constant BATCH_GAS_LIMIT = 10_000_000 ether;
     uint16 constant CENTRIFUGE_ID = 1;
 
-    GasService service = new GasService(BATCH_GAS_LIMIT, MESSAGE_GAS_LIMIT);
+    GasService service = new GasService(BATCH_GAS_LIMIT);
 
     function testGasLimit(bytes calldata message) public view {
         vm.assume(message.length > 0);
