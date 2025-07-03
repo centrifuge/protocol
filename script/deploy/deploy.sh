@@ -279,17 +279,18 @@ run_forge_script() {
     # Construct the forge command
     FORGE_CMD="ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
+        --tc $script \
         --optimize \
         --rpc-url \"$RPC_URL\" \
         --private-key \"$PRIVATE_KEY\" \
         --verify \
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
-        --verbosity 4 \
         ${FORGE_ARGS[*]}"
 
     CATAPULTA_CMD="NETWORK=$NETWORK catapulta script \
         --private-key $PRIVATE_KEY \
+        --tc $script \
         --account $ADMIN \
         --chain-id \"$CHAIN_ID\" \
         \"$ROOT_DIR/script/$script.s.sol\" \
