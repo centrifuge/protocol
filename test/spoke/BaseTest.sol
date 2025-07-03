@@ -15,8 +15,8 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
