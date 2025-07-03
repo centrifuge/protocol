@@ -1,7 +1,11 @@
 @startuml
 hide empty members
 
+note "Each deployer has associated its own ActionBatcher and Report\nfollowing the same shown pattern" as N1
+
 class JsonRegistry
+class CreateXScript
+
 class CommonDeployer
 class HubDeployer
 class SpokeDeployer
@@ -13,6 +17,7 @@ class HooksDeployer
 class ExtendedSpokeDeployer
 
 CommonDeployer -up-|> JsonRegistry
+CommonDeployer -up-|> CreateXScript
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
 

@@ -10,7 +10,7 @@ import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
-import {HubDeployer, CommonInput} from "script/HubDeployer.s.sol";
+import {HubDeployer, HubActionBatcher, CommonInput} from "script/HubDeployer.s.sol";
 
 import {MockVaults} from "test/hub/mocks/MockVaults.sol";
 import {MockValuation} from "test/common/mocks/MockValuation.sol";
@@ -55,11 +55,15 @@ contract BaseTest is HubDeployer, Test {
     MockVaults cv;
     MockValuation valuation;
 
-    function _mockStuff() private {
+    function _mockStuff(HubActionBatcher batcher) private {
+        vm.startPrank(address(batcher));
+
         cv = new MockVaults(CHAIN_CV, multiAdapter);
         _wire(CHAIN_CV, cv);
 
         valuation = new MockValuation(hubRegistry);
+
+        vm.stopPrank();
     }
 
     function _wire(uint16 centrifugeId, IAdapter adapter) internal {
@@ -83,9 +87,10 @@ contract BaseTest is HubDeployer, Test {
             version: bytes32(0)
         });
 
-        deployHub(input, address(this));
-        _mockStuff();
-        removeHubDeployerAccess(address(this));
+        HubActionBatcher batcher = new HubActionBatcher();
+        deployHub(input, batcher);
+        _mockStuff(batcher);
+        removeHubDeployerAccess(batcher);
 
         // Initialize accounts
         vm.deal(FM, 1 ether);

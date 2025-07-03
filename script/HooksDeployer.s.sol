@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {Spoke} from "src/spoke/Spoke.sol";
 
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
@@ -10,61 +8,89 @@ import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer} from "script/SpokeDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
-contract HooksDeployer is SpokeDeployer {
-    // TODO: Add typed interfaces instead of addresses (only current reason is avoid test refactor)
-    address public freezeOnlyHook;
-    address public redemptionRestrictionsHook;
-    address public fullRestrictionsHook;
+struct HooksReport {
+    SpokeReport spoke;
+    FreezeOnly freezeOnlyHook;
+    FullRestrictions fullRestrictionsHook;
+    RedemptionRestrictions redemptionRestrictionsHook;
+}
 
-    function deployHooks(CommonInput memory input, address deployer) public {
-        deploySpoke(input, deployer);
+contract HooksActionBatcher is SpokeActionBatcher {
+    function engageHooks(HooksReport memory report) public unlocked {
+        // Rely Spoke
+        report.freezeOnlyHook.rely(address(report.spoke.spoke));
+        report.fullRestrictionsHook.rely(address(report.spoke.spoke));
+        report.redemptionRestrictionsHook.rely(address(report.spoke.spoke));
 
-        freezeOnlyHook = create3(
-            generateSalt("freezeOnlyHook"),
-            abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), deployer))
-        );
-
-        fullRestrictionsHook = create3(
-            generateSalt("fullRestrictionsHook"),
-            abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), deployer))
-        );
-
-        redemptionRestrictionsHook = create3(
-            generateSalt("redemptionRestrictionsHook"),
-            abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), deployer))
-        );
-
-        _hooksRegister();
-        _hooksRely();
+        // Rely Root
+        report.freezeOnlyHook.rely(address(report.spoke.common.root));
+        report.fullRestrictionsHook.rely(address(report.spoke.common.root));
+        report.redemptionRestrictionsHook.rely(address(report.spoke.common.root));
     }
 
-    function _hooksRegister() private {
+    function revokeHooks(HooksReport memory report) public unlocked {
+        report.freezeOnlyHook.deny(address(this));
+        report.fullRestrictionsHook.deny(address(this));
+        report.redemptionRestrictionsHook.deny(address(this));
+    }
+}
+
+contract HooksDeployer is SpokeDeployer {
+    FreezeOnly public freezeOnlyHook;
+    FullRestrictions public fullRestrictionsHook;
+    RedemptionRestrictions public redemptionRestrictionsHook;
+
+    function deployHooks(CommonInput memory input, HooksActionBatcher batcher) public {
+        _preDeployHooks(input, batcher);
+        _postDeployHooks(batcher);
+    }
+
+    function _preDeployHooks(CommonInput memory input, HooksActionBatcher batcher) internal {
+        _preDeploySpoke(input, batcher);
+
+        freezeOnlyHook = FreezeOnly(
+            create3(
+                generateSalt("freezeOnlyHook"),
+                abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
+            )
+        );
+
+        fullRestrictionsHook = FullRestrictions(
+            create3(
+                generateSalt("fullRestrictionsHook"),
+                abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
+            )
+        );
+
+        redemptionRestrictionsHook = RedemptionRestrictions(
+            create3(
+                generateSalt("redemptionRestrictionsHook"),
+                abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
+            )
+        );
+
+        batcher.engageHooks(_hooksReport());
+
         register("freezeOnlyHook", address(freezeOnlyHook));
         register("redemptionRestrictionsHook", address(redemptionRestrictionsHook));
         register("fullRestrictionsHook", address(fullRestrictionsHook));
     }
 
-    function _hooksRely() private {
-        // Rely Spoke
-        IAuth(freezeOnlyHook).rely(address(spoke));
-        IAuth(fullRestrictionsHook).rely(address(spoke));
-        IAuth(redemptionRestrictionsHook).rely(address(spoke));
-
-        // Rely Root
-        IAuth(freezeOnlyHook).rely(address(root));
-        IAuth(fullRestrictionsHook).rely(address(root));
-        IAuth(redemptionRestrictionsHook).rely(address(root));
+    function _postDeployHooks(HooksActionBatcher batcher) internal {
+        _postDeploySpoke(batcher);
     }
 
-    function removeHooksDeployerAccess(address deployer) public {
-        removeSpokeDeployerAccess(deployer);
+    function removeHooksDeployerAccess(HooksActionBatcher batcher) public {
+        removeSpokeDeployerAccess(batcher);
 
-        IAuth(freezeOnlyHook).deny(deployer);
-        IAuth(fullRestrictionsHook).deny(deployer);
-        IAuth(redemptionRestrictionsHook).deny(deployer);
+        batcher.revokeHooks(_hooksReport());
+    }
+
+    function _hooksReport() internal view returns (HooksReport memory) {
+        return HooksReport(_spokeReport(), freezeOnlyHook, fullRestrictionsHook, redemptionRestrictionsHook);
     }
 }
