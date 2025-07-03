@@ -70,6 +70,18 @@ contract SpokeDeploymentTest is SpokeDeployer, CommonDeploymentInputTest {
         // root endorsements
         assertEq(root.endorsed(address(balanceSheet)), true);
     }
+
+    function testContractUpdater(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(messageProcessor));
+        vm.assume(nonWard != address(messageDispatcher));
+
+        assertEq(contractUpdater.wards(address(root)), 1);
+        assertEq(contractUpdater.wards(address(messageProcessor)), 1);
+        assertEq(contractUpdater.wards(address(messageDispatcher)), 1);
+        assertEq(contractUpdater.wards(nonWard), 0);
+    }
 }
 
 /// This checks the nonWard and the integrity of the common contract after spoke changes
@@ -80,6 +92,7 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
         vm.assume(nonWard != address(guardian)); // From common
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(balanceSheet));
+        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
@@ -94,6 +107,7 @@ contract SpokeDeploymentCommonExtTest is SpokeDeploymentTest {
         // dependencies set correctly
         assertEq(address(messageProcessor.spoke()), address(spoke));
         assertEq(address(messageProcessor.balanceSheet()), address(balanceSheet));
+        assertEq(address(messageProcessor.contractUpdater()), address(contractUpdater));
     }
 
     function testGatewayExt(address nonWard) public view {

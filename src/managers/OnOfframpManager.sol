@@ -9,7 +9,6 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
@@ -28,7 +27,7 @@ contract OnOfframpManager is IOnOfframpManager {
     using CastLib for *;
 
     PoolId public immutable poolId;
-    address public immutable spoke;
+    address public immutable contractUpdater;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
@@ -39,7 +38,7 @@ contract OnOfframpManager is IOnOfframpManager {
     constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
         scId = scId_;
-        spoke = spoke_;
+        contractUpdater = spoke_;
         balanceSheet = balanceSheet_;
     }
 
@@ -51,7 +50,7 @@ contract OnOfframpManager is IOnOfframpManager {
     function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == spoke, NotSpoke());
+        require(msg.sender == contractUpdater, NotSpoke());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
@@ -120,20 +119,20 @@ contract OnOfframpManager is IOnOfframpManager {
 }
 
 contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
-    ISpoke public immutable spoke;
+    address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
-    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_) {
-        spoke = spoke_;
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+        contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
     }
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        require(address(spoke.shareToken(poolId, scId)) != address(0), InvalidIds());
+        require(address(balanceSheet.spoke().shareToken(poolId, scId)) != address(0), InvalidIds());
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, address(spoke), balanceSheet
+            poolId, scId, contractUpdater, balanceSheet
         );
 
         emit DeployOnOfframpManager(poolId, scId, address(manager));
