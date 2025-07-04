@@ -287,10 +287,9 @@ run_forge_script() {
         --chain-id \"$CHAIN_ID\" \
         ${FORGE_ARGS[*]}"
 
-    CATAPULTA_CMD="NETWORK=$NETWORK catapulta script \
+    CATAPULTA_CMD="VERSION=$VERSION ADMIN=$ADMIN NETWORK=$NETWORK catapulta script \
         --private-key $PRIVATE_KEY \
         --tc $script \
-        --account $ADMIN \
         --chain-id \"$CHAIN_ID\" \
         \"$ROOT_DIR/script/$script.s.sol\" \
         --optimize \
