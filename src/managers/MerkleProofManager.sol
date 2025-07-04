@@ -24,9 +24,9 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
 
     mapping(address strategist => bytes32 root) public policy;
 
-    constructor(PoolId poolId_, address spoke_) {
+    constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
-        contractUpdater = spoke_;
+        contractUpdater = contractUpdater_;
     }
 
     receive() external payable {}
