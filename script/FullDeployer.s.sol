@@ -71,6 +71,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             revert("NETWORK environment variable is required");
         }
 
+        console.log("Version:", vm.envOr("VERSION", string("")));
         console.log("Network:", network);
         console.log("Environment:", environment);
         console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
@@ -82,7 +83,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             root: IRoot(rootAddress),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             batchGasLimit: uint128(batchGasLimit),
-            version: vm.envOr("VERSION", bytes32(0))
+            version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 
         FullActionBatcher batcher = FullActionBatcher(
