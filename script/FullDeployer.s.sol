@@ -71,9 +71,9 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             revert("NETWORK environment variable is required");
         }
 
-        console.log("Version:", vm.envOr("VERSION", string("")));
         console.log("Network:", network);
         console.log("Environment:", environment);
+        console.log("Version:", vm.envOr("VERSION", string("")));
         console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
         startDeploymentOutput();
