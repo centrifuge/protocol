@@ -234,6 +234,40 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
         manager.withdraw(address(erc20), erc20TokenId, amount, receiver);
     }
 
+    function testDisabledDestination(uint128 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(address(contractUpdater));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("relayer"),
+                assetId: 0,
+                what: relayer.toBytes32(),
+                isEnabled: true
+            }).serialize()
+        );
+
+        vm.prank(address(contractUpdater));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("offramp"),
+                assetId: defaultAssetId,
+                what: receiver.toBytes32(),
+                isEnabled: false
+            }).serialize()
+        );
+
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        vm.prank(relayer);
+        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        manager.withdraw(address(erc20), erc20TokenId, amount, receiver);
+    }
+
     function testNotBalanceSheetManager(uint128 amount) public {
         vm.prank(address(contractUpdater));
         manager.update(
