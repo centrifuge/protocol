@@ -88,7 +88,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
 
         FullActionBatcher batcher = FullActionBatcher(
             create3(
-                keccak256(abi.encodePacked("fullActionBatcher", version)),
+                keccak256(abi.encodePacked("fullActionBatcher", input.version)),
                 abi.encodePacked(type(FullActionBatcher).creationCode)
             )
         );
