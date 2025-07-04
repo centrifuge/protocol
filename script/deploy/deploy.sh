@@ -476,7 +476,7 @@ fi
 case "$STEP" in
 "deploy:protocol")
     print_section "Building Protocol"
-    forge clean; forge build
+    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
     print_section "Running Deployment"
     print_subtitle "Deploying core protocol contracts for $NETWORK"
     run_forge_script "FullDeployer"
@@ -486,7 +486,7 @@ case "$STEP" in
     ;;
 "deploy:adapters")
     print_section "Building Protocol"
-    forge clean; forge build
+    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
     print_section "Running Deployment"
     print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
