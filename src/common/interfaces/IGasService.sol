@@ -30,7 +30,7 @@ interface IGasService {
     function notifyPricePoolPerShare() external view returns (uint128);
     function notifyPricePoolPerAsset() external view returns (uint128);
     function notifyShareMetadata() external view returns (uint128);
-    function notifyShareHook() external view returns (uint128);
+    function updateShareHook() external view returns (uint128);
     function initiateTransferShares() external view returns (uint128);
     function executeTransferShares() external view returns (uint128);
     function updateRestriction() external view returns (uint128);

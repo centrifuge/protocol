@@ -27,7 +27,7 @@ contract GasService is IGasService {
     uint128 public immutable notifyPricePoolPerShare;
     uint128 public immutable notifyPricePoolPerAsset;
     uint128 public immutable notifyShareMetadata;
-    uint128 public immutable notifyShareHook;
+    uint128 public immutable updateShareHook;
     uint128 public immutable initiateTransferShares;
     uint128 public immutable executeTransferShares;
     uint128 public immutable updateRestriction;
@@ -56,7 +56,7 @@ contract GasService is IGasService {
         notifyPricePoolPerShare = BASE_COST + 30496;
         notifyPricePoolPerAsset = BASE_COST + 35759;
         notifyShareMetadata = BASE_COST + SMALL_COST;
-        notifyShareHook = BASE_COST + SMALL_COST;
+        updateShareHook = BASE_COST + SMALL_COST;
         initiateTransferShares = BASE_COST + 52195;
         executeTransferShares = BASE_COST + 70267;
         updateRestriction = BASE_COST + 35992;
@@ -101,7 +101,7 @@ contract GasService is IGasService {
         } else if (kind == MessageType.NotifyShareMetadata) {
             return notifyShareMetadata;
         } else if (kind == MessageType.UpdateShareHook) {
-            return notifyShareHook;
+            return updateShareHook;
         } else if (kind == MessageType.InitiateTransferShares) {
             return initiateTransferShares;
         } else if (kind == MessageType.ExecuteTransferShares) {
