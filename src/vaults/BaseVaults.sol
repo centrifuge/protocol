@@ -15,15 +15,15 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-
-import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0

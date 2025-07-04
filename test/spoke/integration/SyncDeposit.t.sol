@@ -13,14 +13,14 @@ import {MessageLib} from "src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
+import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
+
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
-
-import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 
 import "test/spoke/BaseTest.sol";
 
