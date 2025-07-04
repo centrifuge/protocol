@@ -475,6 +475,8 @@ fi
 
 case "$STEP" in
 "deploy:protocol")
+    print_section "Building Protocol"
+    forge clean; forge build
     print_section "Running Deployment"
     print_subtitle "Deploying core protocol contracts for $NETWORK"
     run_forge_script "FullDeployer"
@@ -483,6 +485,8 @@ case "$STEP" in
     print_section "Deployment Complete"
     ;;
 "deploy:adapters")
+    print_section "Building Protocol"
+    forge clean; forge build
     print_section "Running Deployment"
     print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
@@ -509,18 +513,6 @@ case "$STEP" in
     print_section "Verifying Adapters contracts for $NETWORK"
     verify_contracts "Adapters"
     print_section "Verification Complete"
-    ;;
-"forge:clean")
-    print_subtitle "Cleaning up forge files and folders"
-    print_step "rm -rf $ROOT_DIR/broadcast/ "
-    rm -rf "$ROOT_DIR/broadcast/*"
-    print_step "Removing out files"
-    rm -rf "$ROOT_DIR/out/*"
-    print_step "Removing cache files"
-    rm -rf "$ROOT_DIR/cache/*"
-    print_step "Running forge clean"
-    forge clean
-    print_subtitle "Forge files and folders cleaned"
     ;;
 *)
     echo "Invalid step: $STEP"
