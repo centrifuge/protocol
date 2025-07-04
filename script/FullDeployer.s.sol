@@ -85,7 +85,12 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             version: vm.envOr("VERSION", bytes32(0))
         });
 
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = FullActionBatcher(
+            create3(
+                keccak256(abi.encodePacked("FullActionBatcher", input.version)),
+                abi.encodePacked(type(FullActionBatcher).creationCode)
+            )
+        );
         deployFull(input, batcher);
 
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));

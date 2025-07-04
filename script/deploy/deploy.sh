@@ -277,13 +277,12 @@ run_forge_script() {
     print_info "Chain ID: $CHAIN_ID"
 
     # Construct the forge command
-    FORGE_CMD="ADMIN=$ADMIN NETWORK=$NETWORK forge script \
+    FORGE_CMD="VERSION=$VERSION ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
         --tc $script \
         --optimize \
         --rpc-url \"$RPC_URL\" \
         --private-key \"$PRIVATE_KEY\" \
-        --verify \
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
         ${FORGE_ARGS[*]}"
@@ -327,6 +326,7 @@ run_forge_script() {
         print_info "Using Forge deployment"
         print_info "Running: forge script $script ..."
         eval "$FORGE_CMD"
+        # eval "$FORGE_CMD --skip FullActionBatcher --resume --verify"
         if [[ $? -ne 0 ]]; then
             # Check if deployment succeeded but verification failed
             local latest_deployment="$ROOT_DIR/env/latest/${CHAIN_ID}-latest.json"
