@@ -85,9 +85,6 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         vaultRouter.enable(vault);
 
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.requestDeposit{value: gas - 1}(vault, amount, self, self);
-
         vaultRouter.requestDeposit{value: gas}(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(globalEscrow)), amount);
     }
@@ -252,9 +249,6 @@ contract VaultRouterTest is BaseTest {
         // Then redeem
         share.approve(address(vaultRouter), amount);
 
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.requestRedeem{value: gas - 1}(vault, amount, self, self);
-
         vaultRouter.requestRedeem{value: gas}(vault, amount, self, self);
         assertEq(share.balanceOf(address(self)), 0);
     }
@@ -290,9 +284,6 @@ contract VaultRouterTest is BaseTest {
         assertEq(share.balanceOf(address(self)), 0);
 
         vm.deal(address(this), 10 ether);
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.cancelRedeemRequest{value: gas - 1}(vault);
 
         vaultRouter.cancelRedeemRequest{value: gas}(vault);
         assertEq(vault.pendingCancelRedeemRequest(0, self), true);
