@@ -12,6 +12,12 @@ package common {
     class Gateway
 }
 
+package managers {
+    class NAVManager
+    class SimplePriceManager
+    interface INAVHook
+}
+
 class Holdings
 class HubRegistry
 class ShareClassManager
@@ -34,7 +40,11 @@ Hub --> Accounting
 Hub -up-> MessageDispatcher
 Hub -up-> Gateway
 Holdings --> IValuation
-Holdings --> ISnapshotHook
+Holdings -|> ISnapshotHook
+
+NAVManager -|> ISnapshotHook
+NAVManager -down-|> INAVHook
+SimplePriceManager -up-|> INAVHook
 
 Holdings --> HubRegistry
 ShareClassManager --> HubRegistry
