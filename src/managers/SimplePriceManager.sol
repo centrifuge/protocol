@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Auth} from "src/misc/Auth.sol";
 import {D18, d18} from "src/misc/types/D18.sol";
+import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 import {IHub} from "src/hub/interfaces/IHub.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
@@ -17,7 +20,7 @@ struct NetworkMetrics {
 }
 
 /// @notice Share price calculation manager for single share class pools.
-contract SimplePriceManager is INAVHook {
+contract SimplePriceManager is Auth, INAVHook {
     error InvalidShareClassCount();
 
     PoolId public immutable poolId;
@@ -26,11 +29,12 @@ contract SimplePriceManager is INAVHook {
     IHub public immutable hub;
     IShareClassManager public immutable shareClassManager;
 
+    uint16[] public networks;
     uint128 public globalIssuance;
     D18 public globalNetAssetValue;
     mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_) {
+    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, address deployer) Auth(deployer) {
         poolId = poolId_;
         scId = scId_;
 
@@ -41,11 +45,20 @@ contract SimplePriceManager is INAVHook {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Network management
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Ensure the number of network updates can fit in a single block
+    function setNetworks(uint16[] calldata centrifugeIds) external auth {
+        networks = centrifugeIds;
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Price updates
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue_) external {
+    function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue) external {
         require(poolId == poolId_);
         require(scId == scId_);
         // TODO: check msg.sender
@@ -54,13 +67,21 @@ contract SimplePriceManager is INAVHook {
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
-        globalNetAssetValue = globalNetAssetValue + netAssetValue_ - networkMetrics.netAssetValue;
+        globalNetAssetValue = globalNetAssetValue + netAssetValue - networkMetrics.netAssetValue;
 
         D18 price = globalIssuance == 0 ? d18(1, 1) : globalNetAssetValue / d18(globalIssuance);
 
-        networkMetrics.netAssetValue = netAssetValue_;
+        networkMetrics.netAssetValue = netAssetValue;
         networkMetrics.issuance = issuance;
 
-        hub.updateSharePrice(poolId, scId, price);
+        uint256 networkCount = networks.length;
+        bytes[] memory cs = new bytes[](networkCount + 1);
+        cs[0] = abi.encodeWithSelector(hub.updateSharePrice.selector, poolId, scId, price);
+
+        for (uint256 i; i < networkCount; i++) {
+            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, centrifugeId);
+        }
+
+        IMulticall(address(hub)).multicall{value: MAX_MESSAGE_COST * (cs.length)}(cs);
     }
 }

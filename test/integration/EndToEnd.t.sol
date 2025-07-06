@@ -353,7 +353,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
-        SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub);
+        SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub, address(this));
         h.navManager.setNAVHook(priceManager);
 
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
