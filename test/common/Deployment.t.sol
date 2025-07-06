@@ -17,8 +17,7 @@ contract CommonDeploymentInputTest is Test {
             centrifugeId: CENTRIFUGE_ID,
             root: IRoot(address(0)),
             adminSafe: ADMIN_SAFE,
-            messageGasLimit: 0,
-            maxBatchSize: 0,
+            batchGasLimit: 0,
             version: bytes32(0)
         });
     }

@@ -9,6 +9,7 @@ import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 import {HubDeployer, HubActionBatcher, CommonInput} from "script/HubDeployer.s.sol";
 
@@ -49,7 +50,7 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
-    uint64 constant GAS = 100 wei;
+    uint128 constant GAS = MAX_MESSAGE_COST;
     uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
@@ -82,8 +83,7 @@ contract BaseTest is HubDeployer, Test {
             centrifugeId: CHAIN_CP,
             root: IRoot(address(0)),
             adminSafe: adminSafe,
-            messageGasLimit: uint128(GAS),
-            maxBatchSize: uint128(GAS) * 100,
+            batchGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
         });
 

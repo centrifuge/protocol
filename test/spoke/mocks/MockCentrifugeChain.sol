@@ -10,12 +10,12 @@ import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+
+import {SyncManager} from "src/vaults/SyncManager.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 

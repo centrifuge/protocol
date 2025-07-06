@@ -12,13 +12,6 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
-
 import {Hub} from "src/hub/Hub.sol";
 import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
@@ -27,6 +20,13 @@ import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+
+import {SyncManager} from "src/vaults/SyncManager.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";

@@ -7,16 +7,15 @@ import "src/misc/interfaces/IERC7575.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
-import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {MessageLib} from "src/common/libraries/MessageLib.sol";
+
+import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
-
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
 
 import "test/spoke/BaseTest.sol";
 
@@ -56,7 +55,6 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit{value: 1 wei}(vault, amount, self, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
-        uint256 preBalance = address(gateway).balance;
         uint256 gas = DEFAULT_GAS + GAS_BUFFER;
 
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
@@ -77,17 +75,11 @@ contract VaultRouterTest is BaseTest {
             vm.stopSnapshotGas();
         }
 
-        assertEq(address(gateway).balance, preBalance + GAS_BUFFER, "Gateway balance mismatch");
         for (uint8 i; i < testAdapters.length; i++) {
             MockAdapter adapter = MockAdapter(address(testAdapters[i]));
             uint256[] memory payCalls = adapter.callsWithValue("send");
             // Messages: registerAsset and requestDeposit
             assertEq(payCalls.length, 2);
-            assertEq(
-                payCalls[1],
-                adapter.estimate(OTHER_CHAIN_ID, PAYLOAD_FOR_GAS_ESTIMATION, GAS_COST_LIMIT),
-                "payload gas mismatch"
-            );
         }
 
         // trigger - deposit order fulfillment
@@ -494,9 +486,6 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
-
-        vm.expectRevert(IGateway.NotEnoughTransactionGas.selector);
-        vaultRouter.multicall{value: gasCost - 1}(calls);
 
         assertEq(address(vaultRouter).balance, 0);
         vaultRouter.multicall{value: gasCost}(calls);

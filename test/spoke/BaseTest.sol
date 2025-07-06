@@ -15,17 +15,18 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+
+import {AsyncVault} from "src/vaults/AsyncVault.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 
@@ -64,7 +65,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint256 public constant ESTIMATE_ADAPTER_2 = 1_250_000; // 1.25M gas
     uint256 public constant ESTIMATE_ADAPTER_3 = 1_750_000; // 1.75M gas
     uint256 public constant ESTIMATE_ADAPTERS = ESTIMATE_ADAPTER_1 + ESTIMATE_ADAPTER_2 + ESTIMATE_ADAPTER_3;
-    uint256 public constant GAS_COST_LIMIT = 500_000; // 500K gas
+    uint256 public constant GAS_COST_LIMIT = MAX_MESSAGE_COST; // 3M gas
     uint256 public constant DEFAULT_GAS = ESTIMATE_ADAPTERS + GAS_COST_LIMIT * 3;
     uint256 public constant DEFAULT_SUBSIDY = DEFAULT_GAS * 100;
 
@@ -96,8 +97,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             centrifugeId: THIS_CHAIN_ID,
             root: IRoot(address(0)),
             adminSafe: adminSafe,
-            messageGasLimit: uint128(GAS_COST_LIMIT),
-            maxBatchSize: uint128(GAS_COST_LIMIT) * 100,
+            batchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
 

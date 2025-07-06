@@ -7,13 +7,13 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts

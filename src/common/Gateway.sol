@@ -127,7 +127,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = gasService.gasLimit(centrifugeId, message) + extraGasLimit;
+        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         extraGasLimit = 0;
 
         if (isBatching) {
@@ -136,7 +136,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
             uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasLimit;
-            require(newGasLimit <= gasService.maxBatchSize(centrifugeId), ExceedsMaxBatchSize());
+            require(newGasLimit <= gasService.batchGasLimit(centrifugeId), ExceedsBatchGasLimit());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
@@ -184,7 +184,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
-        _addUnpaidBatch(centrifugeId, message, gasService.gasLimit(centrifugeId, message));
+        _addUnpaidBatch(centrifugeId, message, gasService.messageGasLimit(centrifugeId, message));
     }
 
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {

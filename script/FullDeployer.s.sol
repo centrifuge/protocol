@@ -60,8 +60,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             centrifugeId: centrifugeId,
             root: IRoot(vm.envAddress("ROOT")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
-            messageGasLimit: uint128(vm.envUint("MESSAGE_COST")),
-            maxBatchSize: uint128(vm.envUint("MAX_BATCH_SIZE")),
+            batchGasLimit: uint128(vm.envUint("BATCH_GAS_LIMIT")),
             version: vm.envOr("VERSION", bytes32(0))
         });
 
