@@ -262,6 +262,15 @@ contract TestUpdateIsLiability is TestCommon {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
         holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, false);
     }
+
+    function testErrHoldingNotZero() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+
+        vm.expectRevert(IHoldings.HoldingNotZero.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+    }
 }
 
 contract TestSetAccountId is TestCommon {
