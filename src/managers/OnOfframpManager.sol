@@ -33,7 +33,7 @@ contract OnOfframpManager is IOnOfframpManager {
 
     mapping(address asset => bool) public onramp;
     mapping(address relayer => bool) public relayer;
-    mapping(address asset => address receiver) public offramp;
+    mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
     constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
@@ -78,8 +78,8 @@ contract OnOfframpManager is IOnOfframpManager {
                 require(tokenId == 0, ERC6909NotSupported());
                 address receiver = m.what.toAddress();
 
-                offramp[asset] = receiver;
-                emit UpdateOfframp(asset, receiver);
+                offramp[asset][receiver] = m.isEnabled;
+                emit UpdateOfframp(asset, receiver, m.isEnabled);
             } else {
                 revert UnknownUpdateContractKind();
             }
@@ -102,7 +102,7 @@ contract OnOfframpManager is IOnOfframpManager {
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
         require(relayer[msg.sender], NotRelayer());
-        require(receiver != address(0) && receiver == offramp[asset], InvalidOfframpDestination());
+        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }

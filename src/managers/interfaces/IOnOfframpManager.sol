@@ -11,7 +11,7 @@ import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanc
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
     event UpdateOnramp(address indexed asset, bool isEnabled);
     event UpdateRelayer(address indexed relayer, bool isEnabled);
-    event UpdateOfframp(address indexed asset, address receiver);
+    event UpdateOfframp(address indexed asset, address receiver, bool isEnabled);
 
     error NotAllowedOnrampAsset();
     error InvalidAmount();
