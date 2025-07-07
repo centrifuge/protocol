@@ -175,6 +175,9 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.updateHoldingIsLiability(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), true);
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);

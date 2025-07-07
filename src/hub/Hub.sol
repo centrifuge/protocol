@@ -603,6 +603,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
+    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
+        external
+        payable
+    {
+        _isManager(poolId);
+
+        holdings.updateIsLiability(poolId, scId, assetId, isLiability);
+    }
+
+    /// @inheritdoc IHub
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external
         payable
