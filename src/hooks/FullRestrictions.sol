@@ -20,7 +20,6 @@ import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libr
 /// @notice Hook implementation that:
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
-///         * Allows authTransferFrom calls
 ///
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
