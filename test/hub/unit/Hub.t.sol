@@ -77,6 +77,9 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.initiateTransferShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+
         vm.stopPrank();
     }
 
