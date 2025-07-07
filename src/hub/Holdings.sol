@@ -90,6 +90,17 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
+    function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability_) external auth {
+        Holding storage holding_ = holding[poolId][scId][assetId];
+        require(address(holding_.valuation) == address(0), HoldingNotFound());
+        require(holding_.assetAmount == 0, HoldingNotZero());
+
+        holding_.isLiability = isLiability_;
+
+        emit UpdateIsLiability(poolId, scId, assetId, isLiability_);
+    }
+
+    /// @inheritdoc IHoldings
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external auth {
         snapshotHook[poolId] = hook;
 
