@@ -127,7 +127,7 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            spoke_addShareClass(_scId, 18, address(fullRestrictions));
+            spoke_addShareClass(uint128(_scId), 18, address(fullRestrictions));
             ShareToken(_getShareToken()).rely(address(spoke));
             ShareToken(_getShareToken()).rely(address(balanceSheet));
         }
@@ -200,7 +200,7 @@ abstract contract TargetFunctions is
         IBaseVault vault = IBaseVault(_getVault());
 
         transientValuation_setPrice_clamped(navPerShare);
-        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), navPerShare);
+        hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);
@@ -214,7 +214,7 @@ abstract contract TargetFunctions is
         IBaseVault vault = IBaseVault(_getVault());
 
         transientValuation_setPrice_clamped(navPerShare);
-        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), navPerShare);
+        hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice(CENTRIFUGE_CHAIN_ID);

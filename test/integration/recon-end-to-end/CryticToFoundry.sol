@@ -247,7 +247,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
         hub_setHoldingAccountId(4370001, 255, 1524785992);
 
-        hub_notifyShareClass_clamped(bytes32(0));
+        hub_notifyShareClass_clamped(uint256(bytes32(0)));
 
         hub_createHolding_clamped(true, 42, 255, 200, 255);
 

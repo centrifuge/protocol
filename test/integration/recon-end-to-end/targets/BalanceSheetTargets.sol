@@ -35,9 +35,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         sumOfManagerDeposits[vault.asset()] += amount;
     }
 
-    function balanceSheet_file(bytes32 what, address data) public updateGhosts asActor {
-        balanceSheet.file(what, data);
-    }
+    // NOTE: removed because not useful for fuzzing
+    // function balanceSheet_file(bytes32 what, address data) public updateGhosts asActor {
+    //     balanceSheet.file(what, data);
+    // }
 
     function balanceSheet_issue(uint128 shares) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());

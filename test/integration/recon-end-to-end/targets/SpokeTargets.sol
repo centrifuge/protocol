@@ -88,13 +88,14 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 3
-    function spoke_addShareClass(bytes16 scId, uint8 decimals, address hook)
+    function spoke_addShareClass(uint128 scIdAsUint, uint8 decimals, address hook)
         public
         asAdmin
         returns (address, bytes16)
     {
         string memory name = "Test ShareClass";
         string memory symbol = "TSC";
+        bytes16 scId = bytes16(scIdAsUint);
 
         spoke.addShareClass(
             PoolId.wrap(_getPool()),
