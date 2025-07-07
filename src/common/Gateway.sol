@@ -159,7 +159,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-        } else { // Subsidized pool payment
+        } else {
+            // Subsidized pool payment
             if (cost > subsidy[poolId].value) {
                 _requestPoolFunding(poolId);
             }

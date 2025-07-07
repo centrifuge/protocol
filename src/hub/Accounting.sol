@@ -78,7 +78,7 @@ contract Accounting is Auth, IAccounting {
         accounts[poolId][account].metadata = metadata;
         emit SetAccountMetadata(poolId, account, metadata);
     }
-    
+
     //----------------------------------------------------------------------------------------------
     // Account updates
     //----------------------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ contract Accounting is Auth, IAccounting {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAccounting
-    function accountValue(PoolId poolId, AccountId account) external view returns (bool /* isPositive */, uint128) {
+    function accountValue(PoolId poolId, AccountId account) external view returns (bool, /* isPositive */ uint128) {
         Account storage acc = accounts[poolId][account];
         require(acc.lastUpdated != 0, AccountDoesNotExist());
 
