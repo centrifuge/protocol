@@ -57,6 +57,12 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.file(bytes32(""), address(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.createPool(PoolId.wrap(0), address(0), AssetId.wrap(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.registerAsset(AssetId.wrap(0), 0);
 
         bytes memory EMPTY_BYTES;

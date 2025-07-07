@@ -79,7 +79,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
-        else if (what == "accounting") accounting = IAccounting(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
