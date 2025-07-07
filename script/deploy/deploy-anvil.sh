@@ -30,9 +30,9 @@ echo "Running main deployment..."
 
 # Generate a unique version based on timestamp to avoid CREATE3 collisions
 VERSION_TIMESTAMP=$(date +%s)
-echo "Using VERSION: $VERSION_TIMESTAMP"
+echo "Using VERSION: anvil-$VERSION_TIMESTAMP"
 
-NETWORK="anvil" ADMIN="0x70997970C51812dc3A010C7d01b50e0d17dc79C8" VERSION="0x$(printf '%064x' "$VERSION_TIMESTAMP")" \
+NETWORK="anvil" ADMIN="0x70997970C51812dc3A010C7d01b50e0d17dc79C8" VERSION="anvil-$VERSION_TIMESTAMP" \
     forge script script/FullDeployer.s.sol:FullDeployer \
     --rpc-url http://localhost:8545 \
     --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \

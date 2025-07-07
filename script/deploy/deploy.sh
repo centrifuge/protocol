@@ -181,22 +181,9 @@ verify_contracts() {
 
     # Handle unverified contracts
     if [[ ${#unverified_contracts[@]} -gt 0 ]]; then
-
-        # Handle retry logic for both standalone and deployment contexts
-        if [[ "$CI_MODE" == "true" ]]; then
-            print_info "CI mode detected. Automatically running forge --resume to verify contracts..."
-            retry_deploy "$deployment_script"
-        else
-            print_info "If you run forge --resume, it will use the /broadcast data from the previous deployment, make sure this is what you want"
-            read -p "Would you like to run forge --resume to verify contracts? (y/N): " -n 1 -r
-            echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                retry_deploy "$deployment_script"
-            else
-                print_info "Retry using forge --resume cancelled by the user, run it again to retry"
-                return 1
-            fi
-        fi
+        print_error "Some contracts failed verification, run again with --resume"
+        print_error "  $0 ${ORIGINAL_ARGS[*]} --resume"
+        exit 1
     else
         print_success "All contracts are verified!"
 
@@ -210,65 +197,6 @@ verify_contracts() {
     return 0
 }
 
-# Function to handle forge --resume with retry logic
-retry_deploy() {
-    local deployment_script=$1
-
-    # Retry logic for verification
-    local max_retries=5
-    local retry_count=0
-    local resume_success=false
-    local broadcast_dir="$ROOT_DIR/broadcast/${deployment_script}.s.sol"
-
-    # Check if broadcast directory exists
-    if [[ ! -d "$broadcast_dir" ]]; then
-        print_error "No broadcast directory found at $broadcast_dir"
-        print_error "Cannot resume verification without a previous deployment"
-        print_info "Please run a deployment first using deploy:protocol or deploy:adapters"
-        print_info "If the deploy was run by someone else, unfortunately manual verification or redeployment will be needed"
-        return 1
-    fi
-
-    while [[ $retry_count -lt $max_retries && "$resume_success" == "false" ]]; do
-        retry_count=$((retry_count + 1))
-
-        if [[ $retry_count -eq 1 ]]; then
-            print_step "Running forge --resume to verify contracts..."
-        else
-            print_step "Retry attempt $retry_count/$max_retries for forge --resume..."
-        fi
-
-        # Save current FORGE_ARGS and add --resume
-        local original_forge_args=("${FORGE_ARGS[@]}")
-        FORGE_ARGS+=("--resume --delay 10")
-        # Use the existing run_forge_script function
-        if run_forge_script "$deployment_script"; then
-            resume_success=true
-            print_success "Forge --resume completed successfully"
-
-            # Re-run verification check
-            print_step "Re-checking verification status..."
-            verify_contracts "$deployment_script"
-        else
-            # Restore original FORGE_ARGS
-            FORGE_ARGS=("${original_forge_args[@]}")
-
-            if [[ $retry_count -lt $max_retries ]]; then
-                local wait_time=$((retry_count * 10))
-                print_error "Forge --resume failed (attempt $retry_count/$max_retries)"
-                print_info "Waiting ${wait_time} seconds before retry..."
-                sleep $wait_time
-            else
-                print_error "Forge --resume failed after $max_retries attempts"
-                print_info "Env file $ROOT_DIR/env/$NETWORK.json will not be updated"
-                exit 1
-            fi
-        fi
-    done
-
-    return 0
-}
-
 # Function to run a forge script
 run_forge_script() {
     local script=$1
@@ -276,25 +204,66 @@ run_forge_script() {
     print_info "Network: $NETWORK"
     print_info "Chain ID: $CHAIN_ID"
 
+    # Determine authentication method (private key vs Ledger)
+    local auth_args=""
+
+    if [[ "$IS_TESTNET" == "false" ]] || [[ -n "$PRIVATE_KEY" ]]; then
+        # Use private key for testnet or when PRIVATE_KEY is available
+        print_info "Using private key authentication"
+        auth_args="--private-key \"$PRIVATE_KEY\""
+    else
+        # Use Ledger for mainnet when no private key is available
+        print_info "Mainnet detected - using Ledger hardware wallet"
+        print_warning "Please ensure your Ledger device is connected and the Ethereum app is open"
+
+        # Prompt for derivation path
+        print_step "Ledger Derivation Path Configuration"
+        print_info "Common derivation paths:"
+        print_info "  m/44'/60'/0'/0/0   - Default Ethereum (Legacy)"
+        print_info "  m/44'/60'/0'/0     - Ledger Live (default)"
+        print_info "  m/44'/60'/1'/0/0   - Alternative path"
+        print_info "  m/44'/60'/0'       - Account-level path"
+        echo
+
+        local derivation_path=""
+        while [[ -z "$derivation_path" ]]; do
+            read -p "Enter Ledger derivation path (default: m/44'/60'/0'/0): " derivation_path
+            if [[ -z "$derivation_path" ]]; then
+                derivation_path="m/44'/60'/0'/0"
+            fi
+
+            # Basic validation of derivation path format
+            if [[ ! "$derivation_path" =~ ^m/[0-9]+\'?(/[0-9]+\'?)*$ ]]; then
+                print_error "Invalid derivation path format. Should start with 'm/' and contain numbers with optional apostrophes"
+                derivation_path=""
+                continue
+            fi
+
+            print_info "Using derivation path: $derivation_path"
+            break
+        done
+
+        auth_args="--ledger --hd-paths \"$derivation_path\""
+    fi
+
     # Construct the forge command
     FORGE_CMD="VERSION=$VERSION ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
+        $auth_args \
         --tc $script \
         --optimize \
         --rpc-url \"$RPC_URL\" \
-        --private-key \"$PRIVATE_KEY\" \
+        $auth_args \
+        --verify \
         --broadcast \
         --chain-id \"$CHAIN_ID\" \
         ${FORGE_ARGS[*]}"
 
     CATAPULTA_CMD="VERSION=$VERSION ADMIN=$ADMIN NETWORK=$NETWORK catapulta script \
-        --private-key $PRIVATE_KEY \
-        --tc $script \
-        --chain-id \"$CHAIN_ID\" \
         \"$ROOT_DIR/script/$script.s.sol\" \
-        --optimize \
-        --verify \
-        --broadcast \
+        $auth_args \
+        --tc $script \
+        --network \"$CHAIN_ID\" \        
         ${FORGE_ARGS[*]}"
 
     print_step "Executing Command"
@@ -302,12 +271,16 @@ run_forge_script() {
     # Show the command being executed (with variable names for easy copy-paste)
     if [ "$USE_CATAPULTA" = true ]; then
         local debug_cmd="$CATAPULTA_CMD"
-        debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        if [[ -n "$PRIVATE_KEY" ]]; then
+            debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        fi
         debug_cmd="${debug_cmd//$ETHERSCAN_API_KEY/\$ETHERSCAN_API_KEY}"
         print_info "Executing Catapulta: $debug_cmd"
     else
         local debug_cmd="$FORGE_CMD"
-        debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        if [[ -n "$PRIVATE_KEY" ]]; then
+            debug_cmd="${debug_cmd//$PRIVATE_KEY/\$PRIVATE_KEY}"
+        fi
         debug_cmd="${debug_cmd//$ETHERSCAN_API_KEY/\$ETHERSCAN_API_KEY}"
         print_info "Executing Forge: $debug_cmd"
     fi
@@ -344,10 +317,18 @@ run_forge_script() {
                 print_info "1. Run ./deploy.sh $NETWORK $STEP --resume to pick up where this run left off"
                 print_info "2. Run ./deploy.sh $NETWORK forge:clean for a new clean deployment (sometimes lingering old deploys conflict with new code)"
                 print_info "3. Try running the command manually:"
-                print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
-                print_info "   OR"
-                print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
-                print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
+
+                if [[ "$IS_TESTNET" == "true" ]] || [[ -n "$PRIVATE_KEY" ]]; then
+                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
+                    print_info "   OR"
+                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
+                    print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
+                else
+                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --ledger --hd-paths \"<derivation-path>\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
+                    print_info "   OR"
+                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --ledger --hd-paths \"<derivation-path>\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
+                    print_info "NOTE: Replace <derivation-path> with your Ledger derivation path (e.g., m/44'/60'/0'/0)"
+                fi
                 exit 1
             fi
         fi
@@ -475,8 +456,6 @@ fi
 
 case "$STEP" in
 "deploy:protocol")
-    print_section "Building Protocol"
-    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
     print_section "Running Deployment"
     print_subtitle "Deploying core protocol contracts for $NETWORK"
     run_forge_script "FullDeployer"
@@ -485,8 +464,6 @@ case "$STEP" in
     print_section "Deployment Complete"
     ;;
 "deploy:adapters")
-    print_section "Building Protocol"
-    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
     print_section "Running Deployment"
     print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
