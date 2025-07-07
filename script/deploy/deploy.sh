@@ -249,7 +249,6 @@ run_forge_script() {
     # Construct the forge command
     FORGE_CMD="VERSION=$VERSION ADMIN=$ADMIN NETWORK=$NETWORK forge script \
         \"$ROOT_DIR/script/$script.s.sol\" \
-        $auth_args \
         --tc $script \
         --optimize \
         --rpc-url \"$RPC_URL\" \
@@ -263,7 +262,7 @@ run_forge_script() {
         \"$ROOT_DIR/script/$script.s.sol\" \
         $auth_args \
         --tc $script \
-        --network \"$CHAIN_ID\" \        
+        --network \"$CHAIN_ID\" \
         ${FORGE_ARGS[*]}"
 
     print_step "Executing Command"
