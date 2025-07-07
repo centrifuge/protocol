@@ -66,7 +66,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         (poolId, scId) = shortcut_create_pool_and_holding(decimals, isoCode, salt, isIdentityValuation);
 
         // request deposit
-        hub_depositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), amount);
+        hub_depositRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)), amount);
 
         // approve and issue shares as the pool admin
         shortcut_approve_and_issue_shares(
@@ -118,7 +118,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)));
 
         return (poolId, scId);
     }
@@ -139,7 +139,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
             shortcut_deposit(decimals, isoCode, salt, isIdentityValuation, amount, maxApproval, navPerShare);
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)));
 
         return (poolId, scId);
     }
@@ -164,7 +164,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         hub_notifyDeposit(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw(), MAX_CLAIMS);
 
         // cancel deposit
-        hub_cancelDepositRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
+        hub_cancelDepositRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)));
 
         return (poolId, scId);
     }
@@ -179,7 +179,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         bool isIdentityValuation
     ) public clearQueuedCalls {
         // request redemption
-        hub_redeemRequest(poolId, scId, isoCode, shareAmount);
+        hub_redeemRequest(poolId, uint128(scId), isoCode, shareAmount);
 
         // approve and revoke shares as the pool admin
         shortcut_approve_and_revoke_shares(poolId, scId, isoCode, maxApproval, navPerShare, isIdentityValuation);
@@ -227,7 +227,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         );
 
         // request redemption
-        hub_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
+        hub_redeemRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)), isoCode, shareAmount);
 
         // approve and revoke shares as the pool admin
         // revokes the shares that were issued in the deposit
@@ -262,10 +262,10 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         );
 
         // request redemption
-        hub_redeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), isoCode, shareAmount);
+        hub_redeemRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)), isoCode, shareAmount);
 
         // cancel redemption
-        hub_cancelRedeemRequest(PoolId.unwrap(poolId), ShareClassId.unwrap(scId));
+        hub_cancelRedeemRequest(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)));
     }
 
     function shortcut_create_pool_and_update_holding(
@@ -309,7 +309,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
 
             hub_updateHoldingAmount(
                 PoolId.unwrap(poolId),
-                ShareClassId.unwrap(scId),
+                uint128(ShareClassId.unwrap(scId)),
                 assetId.raw(),
                 amount,
                 pricePoolPerAsset,
@@ -336,7 +336,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
             transientValuation_setPrice(assetId, assetId, INITIAL_PRICE.raw());
         }
 
-        hub_updateHoldingValue(PoolId.unwrap(poolId), ShareClassId.unwrap(scId), assetId.raw());
+        hub_updateHoldingValue(PoolId.unwrap(poolId), uint128(ShareClassId.unwrap(scId)), assetId.raw());
     }
 
     function shortcut_create_pool_and_update_journal(
@@ -377,7 +377,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         AssetId assetId = newAssetId(isoCode);
         hub_updateHoldingValuation(
             poolId.raw(),
-            ShareClassId.unwrap(scId),
+            uint128(ShareClassId.unwrap(scId)),
             assetId.raw(),
             isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation))
         );
@@ -400,7 +400,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         );
 
         // set chainId and hook to constants because we're mocking Gateway so they're not needed
-        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, ShareClassId.unwrap(scId), bytes32("ExampleHookData"));
+        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, uint128(ShareClassId.unwrap(scId)), uint256(bytes32("ExampleHookData")));
     }
 
     /// === POOL ADMIN SHORTCUTS === ///
@@ -420,7 +420,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         hub_createAccount(poolId, LOSS_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId, GAIN_ACCOUNT, IS_DEBIT_NORMAL);
 
-        hub_initializeHolding(poolId, scId, valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
+        hub_initializeHolding(poolId, uint128(scId), valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
     }
 
     function shortcut_approve_and_issue_shares(
@@ -439,8 +439,8 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         transientValuation_setPrice(assetId, assetId, INITIAL_PRICE.raw());
 
         uint32 depositEpochId = shareClassManager.nowDepositEpoch(ShareClassId.wrap(scId), assetId);
-        hub_approveDeposits(poolId, scId, assetId.raw(), depositEpochId, maxApproval);
-        hub_issueShares(poolId, scId, assetId.raw(), depositEpochId, navPerShare);
+        hub_approveDeposits(poolId, uint128(scId), assetId.raw(), depositEpochId, maxApproval);
+        hub_issueShares(poolId, uint128(scId), assetId.raw(), depositEpochId, navPerShare);
     }
 
     function shortcut_approve_and_revoke_shares(
@@ -457,11 +457,11 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
         AssetId assetId = newAssetId(isoCode);
 
         uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(ShareClassId.wrap(scId), assetId);
-        hub_approveRedeems(poolId, scId, assetId.raw(), redeemEpochId, maxApproval);
-        hub_revokeShares(poolId, scId, redeemEpochId, navPerShare);
+        hub_approveRedeems(poolId, uint128(scId), assetId.raw(), redeemEpochId, maxApproval);
+        hub_revokeShares(poolId, uint128(scId), redeemEpochId, navPerShare);
     }
 
-    function shortcut_update_restriction(uint16 poolIdEntropy, uint16 shareClassEntropy, bytes calldata payload)
+    function shortcut_update_restriction(uint16 poolIdEntropy, uint16 shareClassEntropy, uint256 payloadAsUint)
         public
     {
         if (createdPools.length > 0) {
@@ -471,7 +471,7 @@ abstract contract TargetFunctions is AdminTargets, ManagerTargets, HubTargets, T
 
             // get a random share class id
             ShareClassId scId = shareClassManager.previewShareClassId(poolId, shareClassEntropy % shareClassCount);
-            hub_updateRestriction(poolId.raw(), scId.raw(), CENTIFUGE_CHAIN_ID, payload);
+            hub_updateRestriction(poolId.raw(), uint128(scId.raw()), CENTIFUGE_CHAIN_ID, payloadAsUint);
         }
     }
 
