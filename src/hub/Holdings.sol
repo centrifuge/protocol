@@ -93,7 +93,7 @@ contract Holdings is Auth, IHoldings {
     function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability_) external auth {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
-        require(holding_.assetAmount == 0, HoldingNotZero());
+        require(holding_.assetAmount == 0 && holding_.assetAmountValue == 0, HoldingNotZero());
 
         holding_.isLiability = isLiability_;
 
