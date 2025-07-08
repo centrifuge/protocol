@@ -14,6 +14,7 @@ import argparse
 import pathlib
 import sys
 import os
+import traceback
 from lib.formatter import Formatter
 from lib.load_config import EnvironmentLoader
 from lib.runner import DeploymentRunner
@@ -82,9 +83,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
     if not args.step:
         Formatter.print_error("Deployment step is required.")
         Formatter.print_info("Run python3 deploy.py --help for available steps")
-        raise SystemExit(1)
-    
-    # Check if network config file exists
+        raise SystemExit(1)        
     network_config = root_dir / "env" / f"{args.network}.json"
     if not network_config.exists():
         Formatter.print_error(f"Network config file not found: {network_config}")
@@ -92,18 +91,19 @@ def validate_arguments(args, root_dir: pathlib.Path):
         env_dir = root_dir / "env"
         if env_dir.exists():
             available_networks = [f.stem for f in env_dir.glob("*.json") if f.name != "latest"]
+            available_networks.append("anvil")  # Add anvil as special case
             if available_networks:
                 for network in sorted(available_networks):
                     Formatter.print_info(f"  - {network}")
             else:
-                Formatter.print_info("  No network configurations found")
+                Formatter.print_info("  - anvil (local)")
         raise SystemExit(1)
-    
+
     # Check if VERSION environment variable is set for deployment steps
     if args.step.startswith("deploy:") and not os.environ.get("VERSION") and not args.dry_run:
         Formatter.print_warning("VERSION environment variable not set. Create3 address collisions may occur.")
         Formatter.print_info("Consider running: VERSION=XYZ python3 deploy.py ...")
-    
+
     # Validate forge arguments don't conflict with script defaults
     if args.forge_args:
         conflicting_args = ["--verify", "--broadcast", "--chain-id", "--tc", "--optimize"]
@@ -123,20 +123,9 @@ def main():
     script_dir = pathlib.Path(__file__).parent
     root_dir = script_dir.parent.parent
     
-    # Handle forge:clean separately as it doesn't need network config
-    if args.network == "forge:clean" or args.step == "forge:clean":
-        Formatter.print_section("Cleaning Forge Build")
-        try:
-            import subprocess
-            subprocess.run(["forge", "clean"], check=True)
-            Formatter.print_success("Forge build cleaned successfully")
-        except subprocess.CalledProcessError:
-            Formatter.print_error("Failed to clean forge build")
-            sys.exit(1)
-        return
-    
     # Validate arguments
-    validate_arguments(args, root_dir)
+    if args.network != "anvil":
+        validate_arguments(args, root_dir)
 
     try:
         # Handle Anvil deployment specially - it's completely self-contained
@@ -145,12 +134,10 @@ def main():
             success = anvil_manager.deploy_full_protocol()
             sys.exit(0 if success else 1)
         
-        # Create environment loader with deployment mode settings
+        # Create environment loader
         env_loader = EnvironmentLoader(
             network_name=args.network,
-            root_dir=root_dir,
-            use_ledger=args.ledger,
-            catapulta_mode=args.catapulta
+            root_dir=root_dir
         )
         
         Formatter.print_step(f"Network: {args.network}")
@@ -200,6 +187,8 @@ def main():
     
     except Exception as e:
         Formatter.print_error(f"Deployment failed: {str(e)}")
+        Formatter.print_error("Full traceback:")
+        traceback.print_exc()
         sys.exit(1)
 
 

@@ -26,8 +26,7 @@ class DeploymentRunner:
         self.env_loader = env_loader
         self.args = args
 
-    def run_deploy(self, script_name: str, use_catapulta: bool = False, 
-                   forge_args: List[str] = None) -> bool:
+    def run_deploy(self, script_name: str, forge_args: List[str] = None) -> bool:
         """Run a forge script deployment"""
         if forge_args is None:
             forge_args = []
@@ -38,22 +37,22 @@ class DeploymentRunner:
 
         auth_args = self._setup_auth()
         
-        if use_catapulta:
+        if self.args.catapulta:
             return self._run_catapulta(script_name, auth_args, forge_args)
         else:
             return self._run_forge(script_name, auth_args, forge_args)
         
     def _setup_auth(self) -> List[str]:
         """Setup authentication arguments for forge/catapulta"""
-        is_testnet = self.env_loader.env_vars.get("IS_TESTNET", "false") == "true"
+        is_testnet = self.env_loader.is_testnet
         
         if self.args.ledger:
             return LedgerManager(self.args).get_ledger_args()
-        elif is_testnet and self.env_loader.env_vars.get("PRIVATE_KEY"):
+        elif is_testnet and not self.args.ledger:
             Formatter.print_info("Using private key authentication")
-            return ["--private-key", self.env_loader.env_vars["PRIVATE_KEY"]]
-        elif not is_testnet:
-            raise ValueError("No authentication method specified. Use --ledger or --private-key.")
+            return ["--private-key", self.env_loader.private_key]
+        elif not is_testnet and not self.args.ledger:
+            raise ValueError("No authentication method specified. Use --ledger for mainnet.")
 
 
     def _run_forge(self, script_name: str, auth_args: List[str], forge_args: List[str]) -> bool:
@@ -64,28 +63,32 @@ class DeploymentRunner:
             "forge", "script", str(script_path),
             "--tc", script_name,
             "--optimize",
-            "--rpc-url", self.env_loader.env_vars["RPC_URL"],
+            "--rpc-url", self.env_loader.rpc_url,
             "--verify",
             "--broadcast", 
             "--chain-id", self.env_loader.chain_id,
             *auth_args,
             *forge_args
         ]
-
+        # Remove --verify if the network is anvil
+        if self.env_loader.network_name == "anvil":
+                cmd.remove("--verify")
+        
         # Set up environment variables
         env = os.environ.copy()
-        env.update(self.env_loader.env_vars)
+        env["ADMIN"] = self.env_loader.admin_address
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
+
 
         Formatter.print_step("Deployment Command")
         debug_cmd = " ".join(cmd)
         # Mask secrets in debug output
-        if "PRIVATE_KEY" in self.env_loader.env_vars:
-            debug_cmd = debug_cmd.replace(self.env_loader.env_vars["PRIVATE_KEY"], "$PRIVATE_KEY")
+        if self.env_loader.private_key:
+            debug_cmd = debug_cmd.replace(self.env_loader.private_key, "$PRIVATE_KEY")
         # Mask Alchemy API key in RPC URL
-        if "RPC_URL" in self.env_loader.env_vars and "alchemy" in self.env_loader.env_vars["RPC_URL"]:
-            alchemy_key = self.env_loader.env_vars["RPC_URL"].split("/")[-1]
+        if self.env_loader.rpc_url and "alchemy" in self.env_loader.rpc_url:
+            alchemy_key = self.env_loader.rpc_url.split("/")[-1]
             debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
         
         # Show relative path in debug output for readability, but use full path in actual command
@@ -125,18 +128,17 @@ class DeploymentRunner:
 
         # Set up environment variables
         env = os.environ.copy()
-        env.update(self.env_loader.env_vars)
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
 
         Formatter.print_step("Deployment Command")
         debug_cmd = " ".join(cmd)
         # Mask secrets in debug output
-        if "PRIVATE_KEY" in self.env_loader.env_vars:
-            debug_cmd = debug_cmd.replace(self.env_loader.env_vars["PRIVATE_KEY"], "$PRIVATE_KEY")
+        if self.env_loader.private_key:
+            debug_cmd = debug_cmd.replace(self.env_loader.private_key, "$PRIVATE_KEY")
         # Mask Alchemy API key in RPC URL
-        if "RPC_URL" in self.env_loader.env_vars and "alchemy" in self.env_loader.env_vars["RPC_URL"]:
-            alchemy_key = self.env_loader.env_vars["RPC_URL"].split("/")[-1]
+        if self.env_loader.rpc_url and "alchemy" in self.env_loader.rpc_url:
+            alchemy_key = self.env_loader.rpc_url.split("/")[-1]
             debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
         
         # Show relative path in debug output for readability, but use full path in actual command

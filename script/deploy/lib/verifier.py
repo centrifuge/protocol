@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import pathlib
 import argparse
-from typing import Dict
+
 from .formatter import Formatter
 from .load_config import EnvironmentLoader
 
@@ -137,7 +137,7 @@ class ContractVerifier:
                 Formatter.print_info("No choice made, defaulting to network config")
                 return "2"
 
-    def _get_contract_addresses(self, contracts_file: pathlib.Path, deployment_script: str) -> Dict[str, str]:
+    def _get_contract_addresses(self, contracts_file: pathlib.Path, deployment_script: str) -> dict[str, str]:
         """Get contract addresses based on deployment type"""
         with open(contracts_file, 'r') as f:
             data = json.load(f)
@@ -175,7 +175,7 @@ class ContractVerifier:
 
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
-        rpc_url = self.env_loader.env_vars["RPC_URL"]
+        rpc_url = self.env_loader.rpc_url
         payload = {
             "jsonrpc": "2.0",
             "method": "eth_getCode",
@@ -198,7 +198,7 @@ class ContractVerifier:
 
     def _is_contract_verified(self, address: str) -> bool:
         """Check if contract is verified on Etherscan"""
-        api_key = self.env_loader.env_vars["ETHERSCAN_API_KEY"]
+        api_key = self.env_loader.etherscan_api_key
         chain_id = self.env_loader.chain_id
         
         url = f"https://api.etherscan.io/v2/api?chainid={chain_id}&module=contract&action=getsourcecode&address={address}&apikey={api_key}"
