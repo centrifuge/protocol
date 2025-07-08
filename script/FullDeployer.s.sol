@@ -24,7 +24,7 @@ contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, Adap
  */
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     // Config variables
-    uint256 public batchGasLimit;
+    uint256 public maxGasLimit;
 
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
@@ -124,11 +124,11 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
 
-        // Parse batchGasLimit with defaults
-        try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
-            batchGasLimit = _batchGasLimit;
+        // Parse maxGasLimit with defaults
+        try vm.parseJsonUint(config, "$.network.maxGasLimit") returns (uint256 _batchGasLimit) {
+            maxGasLimit = _batchGasLimit;
         } catch {
-            batchGasLimit = 25_000_000; // 25M gas
+            maxGasLimit = 25_000_000; // 25M gas
         }
 
         console.log("Network:", network);
@@ -141,7 +141,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
-            batchGasLimit: uint128(batchGasLimit),
+            maxGasLimit: uint128(maxGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 

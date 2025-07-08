@@ -33,7 +33,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         CommonInput memory input = CommonInput({
             centrifugeId: LOCAL_CENTRIFUGE_ID,
             adminSafe: adminSafe,
-            batchGasLimit: uint128(GAS) * 100,
+            maxGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
         });
 

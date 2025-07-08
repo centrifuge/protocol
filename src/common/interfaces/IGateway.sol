@@ -60,7 +60,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     error InsufficientFundsForRepayment();
 
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
-    error ExceedsBatchGasLimit();
+    error ExceedsMaxGasLimit();
 
     /// @notice Dispatched when a refund address is not set.
     error RefundAddressNotSet();

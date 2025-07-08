@@ -20,7 +20,7 @@ interface IGasService {
     /// @notice Gas limit for the execution cost of a batch in a remote chain.
     /// @param centrifugeId Where to the cost is defined
     /// @return Max cost in WEI units
-    function batchGasLimit(uint16 centrifugeId) external view returns (uint128);
+    function maxGasLimit(uint16 centrifugeId) external view returns (uint128);
 
     function scheduleUpgrade() external view returns (uint128);
     function cancelUpgrade() external view returns (uint128);
