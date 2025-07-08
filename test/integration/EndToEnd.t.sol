@@ -6,8 +6,8 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
+import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
 import {Gateway} from "src/common/Gateway.sol";
 import {Root, IRoot} from "src/common/Root.sol";
@@ -29,9 +29,9 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
 
 import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
