@@ -52,6 +52,7 @@ contract CommonActionBatcher {
     function engageCommon(CommonReport memory report, bool newRoot) public unlocked {
         if (newRoot) {
             report.root.rely(address(report.guardian));
+            report.root.rely(address(report.tokenRecoverer));
             report.root.rely(address(report.messageProcessor));
             report.root.rely(address(report.messageDispatcher));
         }

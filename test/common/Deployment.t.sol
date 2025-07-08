@@ -33,10 +33,12 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testRoot(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(tokenRecoverer));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(root.wards(address(guardian)), 1);
+        assertEq(root.wards(address(tokenRecoverer)), 1);
         assertEq(root.wards(address(messageProcessor)), 1);
         assertEq(root.wards(address(messageDispatcher)), 1);
         assertEq(root.wards(nonWard), 0);
