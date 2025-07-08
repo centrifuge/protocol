@@ -335,6 +335,11 @@ interface IHub {
     /// @notice Updates the pool currency value of this holding based of the associated valuation.
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
+    /// @notice Updates whether the holding represents a liability or not.
+    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
+        external
+        payable;
+
     /// @notice Updates the valuation used by a holding
     /// @param valuation Used to transform between the holding asset and pool currency
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
