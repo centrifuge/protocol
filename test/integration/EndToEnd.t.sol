@@ -6,6 +6,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
 import {Gateway} from "src/common/Gateway.sol";
@@ -28,6 +29,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -113,8 +115,8 @@ contract EndToEndDeployment is Test {
         AssetId usdcId;
     }
 
-    ISafe immutable safeAdminA = ISafe(makeAddr("SafeAdminA"));
-    ISafe immutable safeAdminB = ISafe(makeAddr("SafeAdminB"));
+    ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
+    ISafe immutable SAFE_ADMIN_B = ISafe(makeAddr("SafeAdminB"));
 
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
@@ -166,8 +168,8 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
-        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
+        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
+        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
         // We connect both deploys through the adapters
         adapterAToB.setEndpoint(adapterBToA);
@@ -581,6 +583,44 @@ contract EndToEndUseCases is EndToEndFlows {
     using MathLib for *;
 
     /// forge-config: default.isolate = true
+    function testWardUpgrade(bool sameChain) public {
+        address NEW_WARD = makeAddr("NewWard");
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+
+        vm.warp(block.timestamp + deployA.DELAY() + 1000);
+
+        vm.startPrank(ANY);
+        s.root.executeScheduledRely(NEW_WARD);
+    }
+
+    /// forge-config: default.isolate = true
+    function testTokenRecover(bool sameChain) public {
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
+
+        assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
     function testConfigureAsset(bool sameChain) public {
         _setSpoke(sameChain);
         _configureAsset(s);
@@ -590,14 +630,43 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
+    }
+
+    /// forge-config: default.isolate = true
+    function testConfigurePoolExtra(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.updateShareClassMetadata{value: GAS}(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
+        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.updateShareHook{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
+
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
+    }
+
+    /// forge-config: default.isolate = true
+    function testUpdatePriceAge(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
+        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
+
+        (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
+        assertEq(validUntil, uint64(block.timestamp));
+
+        (,, validUntil) = s.spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(validUntil, uint64(block.timestamp));
     }
 
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(ERC20_DEPLOYER);
@@ -621,6 +690,26 @@ contract EndToEndUseCases is EndToEndFlows {
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testVaultManagement(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
+
+        address vault = address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId));
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), false);
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), true);
     }
 
     /// forge-config: default.isolate = true

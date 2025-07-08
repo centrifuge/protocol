@@ -239,6 +239,40 @@ contract TestUpdateValuation is TestCommon {
     }
 }
 
+contract TestUpdateIsLiability is TestCommon {
+    function testSuccess() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        vm.expectEmit();
+        emit IHoldings.UpdateIsLiability(POOL_A, SC_1, ASSET_A, true);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+
+        assertEq(holdings.isLiability(POOL_A, SC_1, ASSET_A), true);
+    }
+
+    function testErrNotAuthorized() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, false);
+    }
+
+    function testErrHoldingNotFound() public {
+        vm.expectRevert(IHoldings.HoldingNotFound.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, false);
+    }
+
+    function testErrHoldingNotZero() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+
+        vm.expectRevert(IHoldings.HoldingNotZero.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+    }
+}
+
 contract TestSetAccountId is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
