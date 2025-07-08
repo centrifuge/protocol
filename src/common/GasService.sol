@@ -71,8 +71,8 @@ contract GasService is IGasService {
         updateBalanceSheetManager = BASE_COST + 35241;
         updateHoldingAmount = BASE_COST + 220866;
         updateShares = BASE_COST + 49968;
-        maxAssetPriceAge = BASE_COST + SMALL_COST;
-        maxSharePriceAge = BASE_COST + SMALL_COST;
+        maxAssetPriceAge = BASE_COST + 27260;
+        maxSharePriceAge = BASE_COST + 26032;
     }
 
     /// @inheritdoc IGasService

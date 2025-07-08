@@ -608,6 +608,21 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
     }
 
+    function testUpdatePriceAge(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
+        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
+
+        (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
+        assertEq(validUntil, uint64(block.timestamp));
+
+        (,, validUntil) = s.spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(validUntil, uint64(block.timestamp));
+    }
+
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
         _configurePool(sameChain);
