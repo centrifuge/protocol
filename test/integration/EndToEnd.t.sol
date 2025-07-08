@@ -7,6 +7,7 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
 
 import {Gateway} from "src/common/Gateway.sol";
 import {Root, IRoot} from "src/common/Root.sol";
@@ -582,6 +583,44 @@ contract EndToEndUseCases is EndToEndFlows {
     using MathLib for *;
 
     /// forge-config: default.isolate = true
+    function testWardUpgrade(bool sameChain) public {
+        address NEW_WARD = makeAddr("NewWard");
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+
+        vm.warp(block.timestamp + deployA.DELAY() + 1000);
+
+        vm.startPrank(ANY);
+        s.root.executeScheduledRely(NEW_WARD);
+    }
+
+    /// forge-config: default.isolate = true
+    function testTokenRecover(bool sameChain) public {
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
+
+        assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
     function testConfigureAsset(bool sameChain) public {
         _setSpoke(sameChain);
         _configureAsset(s);
@@ -623,26 +662,6 @@ contract EndToEndUseCases is EndToEndFlows {
 
         (,, validUntil) = s.spoke.markersPricePoolPerShare(POOL_A, SC_1);
         assertEq(validUntil, uint64(block.timestamp));
-    }
-
-    /// forge-config: default.isolate = true
-    function testWardUpgrade(bool sameChain) public {
-        address NEW_WARD = makeAddr("NewWard");
-
-        _configurePool(sameChain);
-
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
-        vm.startPrank(address(SAFE_ADMIN_A));
-        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
-        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
-        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
-
-        vm.warp(block.timestamp + deployA.DELAY() + 1000);
-
-        vm.startPrank(ANY);
-        s.root.executeScheduledRely(NEW_WARD);
     }
 
     /// forge-config: default.isolate = true

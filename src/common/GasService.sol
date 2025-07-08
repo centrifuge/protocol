@@ -12,8 +12,6 @@ contract GasService is IGasService {
 
     /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
     uint128 public constant BASE_COST = 200_000;
-    /// @dev Assumess a relatively small computation for unknown/non-measured code paths
-    uint128 public constant SMALL_COST = 100_000;
 
     uint128 internal immutable _batchGasLimit;
 
@@ -50,7 +48,7 @@ contract GasService is IGasService {
 
         scheduleUpgrade = BASE_COST + 28514;
         cancelUpgrade = BASE_COST + 8861;
-        recoverTokens = BASE_COST + SMALL_COST;
+        recoverTokens = BASE_COST + 82906;
         registerAsset = BASE_COST + 34329;
         request = BASE_COST + 86084; // request deposit case
         notifyPool = BASE_COST + 38190;
