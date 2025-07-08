@@ -179,7 +179,6 @@ verify_contracts() {
 
     print_info "Verification check complete: $verified_count/$total_count contracts verified"
 
-    # Handle unverified contracts
     if [[ ${#unverified_contracts[@]} -gt 0 ]]; then
         print_error "Some contracts failed verification, run again with --resume"
         print_error "  $0 ${ORIGINAL_ARGS[*]} --resume"
@@ -314,20 +313,8 @@ run_forge_script() {
                 print_error "ERROR: Failed to run $script with Forge"
                 print_step "Try these steps:"
                 print_info "1. Run ./deploy.sh $NETWORK $STEP --resume to pick up where this run left off"
-                print_info "2. Run ./deploy.sh $NETWORK forge:clean for a new clean deployment (sometimes lingering old deploys conflict with new code)"
                 print_info "3. Try running the command manually:"
-
-                if [[ "$IS_TESTNET" == "true" ]] || [[ -n "$PRIVATE_KEY" ]]; then
-                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
-                    print_info "   OR"
-                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --private-key \"\$PRIVATE_KEY\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
-                    print_info "NOTE: Do not forget to source the secrets using load_vars.sh first"
-                else
-                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --ledger --hd-paths \"<derivation-path>\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow --resume"
-                    print_info "   OR"
-                    print_info "   ADMIN=\$ADMIN NETWORK=\$NETWORK forge script \"$ROOT_DIR/script/$script.s.sol\" --optimize --rpc-url \"\$RPC_URL\" --ledger --hd-paths \"<derivation-path>\" --verify --broadcast --chain-id \"\$CHAIN_ID\" --verbosity 4 --delay 10 --slow"
-                    print_info "NOTE: Replace <derivation-path> with your Ledger derivation path (e.g., m/44'/60'/0'/0)"
-                fi
+                print_info "  $debug_cmd "
                 exit 1
             fi
         fi
@@ -456,7 +443,8 @@ fi
 case "$STEP" in
 "deploy:protocol")
     print_section "Building Protocol"
-    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
+    forge clean
+    forge build --jobs 0
     print_section "Running Deployment"
     print_subtitle "Deploying core protocol contracts for $NETWORK"
     run_forge_script "FullDeployer"
@@ -466,7 +454,8 @@ case "$STEP" in
     ;;
 "deploy:adapters")
     print_section "Building Protocol"
-    forge clean; forge build --jobs "$(sysctl -n hw.ncpu)"
+    forge clean
+    forge build --jobs 0
     print_section "Running Deployment"
     print_step "Deploying adapters for $NETWORK"
     run_forge_script "Adapters"
