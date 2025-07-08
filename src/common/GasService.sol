@@ -10,7 +10,7 @@ import {MessageLib, MessageType, VaultUpdateKind} from "src/common/libraries/Mes
 contract GasService is IGasService {
     using MessageLib for *;
 
-    /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the reference
+    /// @dev Takes into account Adapter + Gateway processing + some mismatch happened regarding the input values
     uint128 public constant BASE_COST = 200_000;
     /// @dev Assumess a relatively small computation for unknown/non-measured code paths
     uint128 public constant SMALL_COST = 100_000;
@@ -48,8 +48,8 @@ contract GasService is IGasService {
 
         // NOTE: The hardcoded values are take from the EndToEnd tests. This should be automated in the future.
 
-        scheduleUpgrade = BASE_COST + SMALL_COST;
-        cancelUpgrade = BASE_COST + SMALL_COST;
+        scheduleUpgrade = BASE_COST + 28514;
+        cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + SMALL_COST;
         registerAsset = BASE_COST + 34329;
         request = BASE_COST + 86084; // request deposit case

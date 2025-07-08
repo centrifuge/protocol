@@ -114,8 +114,8 @@ contract EndToEndDeployment is Test {
         AssetId usdcId;
     }
 
-    ISafe immutable safeAdminA = ISafe(makeAddr("SafeAdminA"));
-    ISafe immutable safeAdminB = ISafe(makeAddr("SafeAdminB"));
+    ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
+    ISafe immutable SAFE_ADMIN_B = ISafe(makeAddr("SafeAdminB"));
 
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
@@ -167,8 +167,8 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
-        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
+        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
+        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
         // We connect both deploys through the adapters
         adapterAToB.setEndpoint(adapterBToA);
@@ -594,6 +594,7 @@ contract EndToEndUseCases is EndToEndFlows {
         _configurePool(sameChain);
     }
 
+    /// forge-config: default.isolate = true
     function testConfigurePoolExtra(bool sameChain) public {
         _configurePool(sameChain);
 
@@ -608,6 +609,7 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
     }
 
+    /// forge-config: default.isolate = true
     function testUpdatePriceAge(bool sameChain) public {
         _configurePool(sameChain);
 
@@ -621,6 +623,26 @@ contract EndToEndUseCases is EndToEndFlows {
 
         (,, validUntil) = s.spoke.markersPricePoolPerShare(POOL_A, SC_1);
         assertEq(validUntil, uint64(block.timestamp));
+    }
+
+    /// forge-config: default.isolate = true
+    function testWardUpgrade(bool sameChain) public {
+        address NEW_WARD = makeAddr("NewWard");
+
+        _configurePool(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+
+        vm.warp(block.timestamp + deployA.DELAY() + 1000);
+
+        vm.startPrank(ANY);
+        s.root.executeScheduledRely(NEW_WARD);
     }
 
     /// forge-config: default.isolate = true
@@ -651,6 +673,7 @@ contract EndToEndUseCases is EndToEndFlows {
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
     }
 
+    /// forge-config: default.isolate = true
     function testVaultManagement(bool sameChain) public {
         _configurePool(sameChain);
 

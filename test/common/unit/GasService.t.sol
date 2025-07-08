@@ -28,7 +28,7 @@ contract GasServiceTest is Test {
         vm.assume(message.messageCode() <= uint8(type(MessageType).max));
 
         if (message.messageCode() == uint8(MessageType.UpdateVault)) {
-            vm.assume(message.length >= 73);
+            vm.assume(message.length > 73);
             uint8 vaultKind = message.toUint8(73);
             vm.assume(vaultKind >= 0);
             vm.assume(vaultKind <= uint8(type(VaultUpdateKind).max));

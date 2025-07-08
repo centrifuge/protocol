@@ -95,7 +95,7 @@ contract CommonActionBatcher {
 }
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
-    uint256 constant DELAY = 48 hours;
+    uint256 public constant DELAY = 48 hours;
 
     bytes32 version;
     ISafe public adminSafe;
