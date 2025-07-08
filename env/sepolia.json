@@ -3,7 +3,6 @@
     "chainId": 11155111,
     "environment": "testnet",
     "centrifugeId": 1,
-    "network": "ethereum",
     "connectsTo": [
       "arbitrum-sepolia",
       "base-sepolia"
