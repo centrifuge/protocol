@@ -26,16 +26,14 @@ class DeploymentRunner:
         self.env_loader = env_loader
         self.args = args
 
-    def run_deploy(self, script_name: str, forge_args: List[str] = None) -> bool:
+    def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
-        if forge_args is None:
-            forge_args = []
-
         Formatter.print_step(f"Script: {script_name}")
         Formatter.print_info(f"Network: {self.env_loader.network_name}")
         Formatter.print_info(f"Chain ID: {self.env_loader.chain_id}")
 
         auth_args = self._setup_auth()
+        forge_args = self.args.forge_args or []  # Use args from initialization
         
         if self.args.catapulta:
             return self._run_catapulta(script_name, auth_args, forge_args)
@@ -59,6 +57,13 @@ class DeploymentRunner:
         """Run deployment with Forge"""
         script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
         
+        # Set up environment variables
+        env = os.environ.copy()
+        env["ADMIN"] = self.env_loader.admin_address
+        env["NETWORK"] = self.env_loader.network_name
+        env["VERSION"] = os.environ.get("VERSION", "")
+        env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
+
         cmd = [
             "forge", "script", str(script_path),
             "--tc", script_name,
@@ -73,13 +78,6 @@ class DeploymentRunner:
         # Remove --verify if the network is anvil
         if self.env_loader.network_name == "anvil":
                 cmd.remove("--verify")
-        
-        # Set up environment variables
-        env = os.environ.copy()
-        env["ADMIN"] = self.env_loader.admin_address
-        env["NETWORK"] = self.env_loader.network_name
-        env["VERSION"] = os.environ.get("VERSION", "")
-
 
         Formatter.print_step("Deployment Command")
         debug_cmd = " ".join(cmd)
@@ -103,13 +101,45 @@ class DeploymentRunner:
             Formatter.print_info(f"Running: forge script {script_name} ...")
     
             try:
+                # First run without --verify to get the contracts deployed
+                # Show full log output
+                # Fail if the script fails to deploy
+                cmd.remove("--verify")
+                Formatter.print_info(f"Deploying scripts (without verification)...")
                 result = subprocess.run(cmd, check=True, env=env)
-                Formatter.print_success("Script execution completed successfully")
-                return True
             except subprocess.CalledProcessError as e:
                 Formatter.print_error(f"Failed to run {script_name} with Forge")
-                self._handle_forge_failure(script_name, auth_args)
+                Formatter.print_error(f"Exit code: {e.returncode}")
+                if e.stderr:
+                    Formatter.print_error(f"Error output: {e.stderr}")
                 return False
+            try:
+                # Then run with --verify to verify the contracts without log output (too verbose)
+                cmd.append("--verify")
+                # Skip ActionBatcher verification since it's too large for Etherscan
+                cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
+                if "--resume" not in self.args.forge_args:
+                    cmd.append("--resume")
+                Formatter.print_step(f"Verifying contracts with forge...")
+                Formatter.print_info(f"This will take a while. Please wait...")
+                # Capture logs but do not show them in real time (too verbose)
+                result = subprocess.run(cmd, check=True, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            except subprocess.CalledProcessError as e:
+                # If verification fails
+                # Write forge verification output to deploy/logs/forge-validate-$network.log
+                log_dir = self.env_loader.root_dir / "script" / "deploy" / "logs"
+                log_dir.mkdir(parents=True, exist_ok=True)
+                log_file = log_dir / f"forge-validate-{self.env_loader.network_name}-error.log"
+                with open(log_file, "w") as f:
+                    if e.stdout:
+                        print(e.stdout)
+                    if e.stderr:
+                        f.write(e.stderr)
+                        f.write("\n")
+                Formatter.print_error(f"Forge verification failed. See {log_file} for details.")
+                return False
+            Formatter.print_success("Script execution completed successfully")
+            return True
         else:
             Formatter.print_info("Dry run mode, skipping forge execution")
             return True
@@ -163,31 +193,17 @@ class DeploymentRunner:
             Formatter.print_info("Dry run mode, skipping catapulta execution")
             return True
 
-    def _handle_forge_failure(self, script_name: str, auth_args: List[str]):
-        """Handle forge script failure with helpful error messages"""
-        latest_deployment = self.env_loader.root_dir / "env" / "latest" / f"{self.env_loader.chain_id}-latest.json"
-        
-        if latest_deployment.exists():
-            Formatter.print_warning("Forge script failed, but deployment succeeded")
-            Formatter.print_warning("This often happens when contracts deploy successfully but verification fails")
-            Formatter.print_info(f"To update the env file manually, run:")
-            Formatter.print_info(f"  python3 deploy.py {self.env_loader.network_name} verify:protocol")
-            Formatter.print_warning(f"IMPORTANT: Your env/{self.env_loader.network_name}.json file is NOT up to date until all contracts are verified")
-        else:
-            Formatter.print_error(f"ERROR: Failed to run {script_name} with Forge")
-            Formatter.print_step("Try these steps:")
-            Formatter.print_info(f"1. Run python3 deploy.py {self.env_loader.network_name} deploy:protocol --resume")
-
     def build_contracts(self):
         """Build contracts with forge"""
-        Formatter.print_subsection("Building contracts")
         
+        Formatter.print_info("Running forge clean")
         # Clean first
         subprocess.run(["forge", "clean"], check=True)
         
+        Formatter.print_subsection("Building contracts")
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
-        cmd = ["forge", "build", "--jobs", str(cpu_count), "--skip", "test", "--deny-warnings"]
+        cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny-warnings"]
         Formatter.print_info(f"Build command:")
         print(f"{' '.join(cmd)}")
         if not self.args.dry_run:
