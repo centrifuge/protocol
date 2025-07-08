@@ -36,7 +36,9 @@ interface IGasService {
     function updateRestriction() external view returns (uint128);
     function updateContract() external view returns (uint128);
     function requestCallback() external view returns (uint128);
-    function updateVault() external view returns (uint128);
+    function updateVaultDeployAndLink() external view returns (uint128);
+    function updateVaultLink() external view returns (uint128);
+    function updateVaultUnlink() external view returns (uint128);
     function setRequestManager() external view returns (uint128);
     function updateBalanceSheetManager() external view returns (uint128);
     function updateHoldingAmount() external view returns (uint128);

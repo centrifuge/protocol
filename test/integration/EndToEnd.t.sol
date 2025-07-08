@@ -30,6 +30,7 @@ import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {Spoke} from "src/spoke/Spoke.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 
 import {SyncManager} from "src/vaults/SyncManager.sol";
 import {VaultRouter} from "src/vaults/VaultRouter.sol";
@@ -590,14 +591,26 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
+    }
+
+    function testConfigurePoolExtra(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.updateShareClassMetadata{value: GAS}(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
+        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.updateShareHook{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
+
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
     }
 
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(ERC20_DEPLOYER);
@@ -621,6 +634,25 @@ contract EndToEndUseCases is EndToEndFlows {
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
+    }
+
+    function testVaultManagement(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
+
+        address vault = address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId));
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), false);
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), true);
     }
 
     /// forge-config: default.isolate = true

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {MessageLib, MessageType} from "src/common/libraries/MessageLib.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// @title  GasService
 /// @notice This is a utility contract used to determine the execution gas limit
@@ -33,7 +33,9 @@ contract GasService is IGasService {
     uint128 public immutable updateRestriction;
     uint128 public immutable updateContract;
     uint128 public immutable requestCallback;
-    uint128 public immutable updateVault;
+    uint128 public immutable updateVaultDeployAndLink;
+    uint128 public immutable updateVaultLink;
+    uint128 public immutable updateVaultUnlink;
     uint128 public immutable setRequestManager;
     uint128 public immutable updateBalanceSheetManager;
     uint128 public immutable updateHoldingAmount;
@@ -55,14 +57,16 @@ contract GasService is IGasService {
         notifyShareClass = BASE_COST + 1775916;
         notifyPricePoolPerShare = BASE_COST + 30496;
         notifyPricePoolPerAsset = BASE_COST + 35759;
-        notifyShareMetadata = BASE_COST + SMALL_COST;
-        updateShareHook = BASE_COST + SMALL_COST;
+        notifyShareMetadata = BASE_COST + 13343;
+        updateShareHook = BASE_COST + 6415;
         initiateTransferShares = BASE_COST + 52195;
         executeTransferShares = BASE_COST + 70267;
         updateRestriction = BASE_COST + 35992;
-        updateContract = BASE_COST + SMALL_COST;
+        updateContract = BASE_COST + 53345;
         requestCallback = BASE_COST + 186947; // approve deposit case
-        updateVault = BASE_COST + 2770342; // deploy vault case
+        updateVaultDeployAndLink = BASE_COST + 2770342;
+        updateVaultLink = BASE_COST + 100567;
+        updateVaultUnlink = BASE_COST + 20814;
         setRequestManager = BASE_COST + 30039;
         updateBalanceSheetManager = BASE_COST + 35241;
         updateHoldingAmount = BASE_COST + 220866;
@@ -113,7 +117,17 @@ contract GasService is IGasService {
         } else if (kind == MessageType.RequestCallback) {
             return requestCallback;
         } else if (kind == MessageType.UpdateVault) {
-            return updateVault;
+            VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
+
+            if (vaultKind == VaultUpdateKind.DeployAndLink) {
+                return updateVaultDeployAndLink;
+            } else if (vaultKind == VaultUpdateKind.Link) {
+                return updateVaultLink;
+            } else if (vaultKind == VaultUpdateKind.Unlink) {
+                return updateVaultUnlink;
+            } else {
+                return type(uint128).max; // Unreachable
+            }
         } else if (kind == MessageType.SetRequestManager) {
             return setRequestManager;
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
