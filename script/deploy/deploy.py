@@ -48,7 +48,7 @@ Examples:
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
-    parser.add_argument("forge_args", nargs="*", help="Additional arguments to pass to forge")
+
     parser.add_argument("--dry-run", action="store_true", help="Show what this script would do without running a deployment")
     
     return parser
@@ -117,7 +117,10 @@ def validate_arguments(args, root_dir: pathlib.Path):
 
 def main():
     parser = create_parser()
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
+    
+    # Add unknown arguments as forge_args
+    args.forge_args = unknown_args
     
     # Get root directory early for validation
     script_dir = pathlib.Path(__file__).parent
@@ -149,33 +152,34 @@ def main():
         verifier = ContractVerifier(env_loader, args)
         
         # Execute the requested step
+        verified = True
+        deployed = True
+
         if args.step == "deploy:protocol":
-            Formatter.print_section("Running Deployment")
+            Formatter.print_section("Running Protocol Deployment")
             runner.build_contracts()
             Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
-            
-            if runner.run_deploy("FullDeployer", args.catapulta, args.forge_args):
-                Formatter.print_section(f"Verifying deployment for {args.network}")
-                verifier.verify_contracts("FullDeployer")
+            deployed = runner.run_deploy("FullDeployer")
+            Formatter.print_section(f"Verifying deployment for {args.network}")
+            verified = verifier.verify_contracts("FullDeployer")
             
             
         elif args.step == "deploy:adapters":
-            Formatter.print_section("Running Deployment")
+            Formatter.print_section("Running Adapters Deployment")
             runner.build_contracts()
             Formatter.print_step(f"Deploying adapters for {args.network}")
-            
-            if runner.run_deploy("Adapters", args.catapulta, args.forge_args):
-                Formatter.print_section(f"Verifying deployment for {args.network}")
-                verifier.verify_contracts("Adapters")
+            deployed = runner.run_deploy("Adapters")
+            Formatter.print_section(f"Verifying deployment for {args.network}")
+            verified = verifier.verify_contracts("Adapters")
             
             
         elif args.step == "wire:adapters":
             Formatter.print_step(f"Wiring adapters for {args.network}")
-            runner.run_deploy("WireAdapters", args.catapulta, args.forge_args)
+            deployed = runner.run_deploy("WireAdapters")
             
         elif args.step == "deploy:test":
             Formatter.print_section(f"Deploying test data for {args.network}")
-            runner.run_deploy("TestData", args.catapulta, args.forge_args)
+            deployed = runner.run_deploy("TestData")
             
         elif args.step == "verify:protocol":
             Formatter.print_section(f"Verifying core protocol contracts for {args.network}")
@@ -184,7 +188,19 @@ def main():
         elif args.step == "verify:adapters":
             Formatter.print_section(f"Verifying Adapters contracts for {args.network}")
             verifier.verify_contracts("Adapters")
-    
+        
+        # Handle errors 
+        if not verified:
+            raise Exception("Some contracts are not deployed or not verified")
+            raise Exception("Some contracts are not deployeed")
+        
+        if not deployed and verified:
+            Formatter.print_error("Forge failed but all contracts seem deployed and verified")
+            log_file = env_loader.root_dir / "deploy" / "logs" / f"forge-validate-{args.network}.log"
+            if os.path.exists(log_file):
+                Formatter.print_error("This is most likely due to the batcher contracts not being verified")
+                Formatter.print_error(f"See {log_file} for details.")
+        
     except Exception as e:
         Formatter.print_error(f"Deployment failed: {str(e)}")
         Formatter.print_error("Full traceback:")
