@@ -6,16 +6,16 @@ Self-contained Anvil deployment that handles everything internally.
 Replaces the functionality of deploy-anvil.sh bash script.
 """
 
-import os
 import subprocess
 import time
 import json
 import urllib.request
-from datetime import datetime
+from os import environ
 from pathlib import Path
 from .formatter import Formatter
+from .runner import DeploymentRunner
 from .load_config import EnvironmentLoader
-
+from .verifier import ContractVerifier
 
 class AnvilManager:
     def __init__(self, root_dir: Path):
@@ -24,43 +24,117 @@ class AnvilManager:
         self.chain_id = "31337"
         self.admin_address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"  # 2nd Anvil account
         self.private_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"  # 1st account
+        self.anvil_config_file = self.root_dir / "env" / "anvil.json"
+    
+    def _create_anvil_env(self):
+        """Create a minimal environment mock that works with DeploymentRunner"""
+        class AnvilEnv:
+            def __init__(self, manager):
+                # Simple attributes - no need for properties since no logic required
+                self.network_name = "anvil"
+                self.chain_id = manager.chain_id
+                self.root_dir = manager.root_dir
+                self.rpc_url = manager.anvil_url
+                self.private_key = manager.private_key
+                self.etherscan_api_key = None  # Not needed for anvil
+                self.admin_address = manager.admin_address
+                self.is_testnet = True
+                self.config_file = manager.anvil_config_file
+            
+        return AnvilEnv(self)
+    
+    def _create_anvil_config(self) -> None:
+        """Create temporary anvil.json config file for Solidity scripts"""
+        if self.anvil_config_file.exists():
+            self.anvil_config_file.unlink()
+            Formatter.print_step("Cleaned up existing anvil.json config")        
+        anvil_config = {
+            "network": {
+                "chainId": int(self.chain_id),
+                "centrifugeId": 9,  # Anvil's centrifuge ID
+                "environment": "testnet",
+                "connectsTo": [],
+            },
+            "contracts": {},  # Will be populated after FullDeployer runs
+            "adapters": {
+                "wormhole": {
+                "wormholeId": "10002",
+                "relayer": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+                "deploy": "true"
+                },
+                "axelar": {
+                "axelarId": "ethereum-sepolia",
+                "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+                "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+                "deploy": "true"
+                }
+            }
+        }
+        
+        with open(self.anvil_config_file, 'w') as f:
+            json.dump(anvil_config, f, indent=2)
+        
+        Formatter.print_step("Created temporary anvil.json config")
+
         
     def deploy_full_protocol(self) -> bool:
         """Deploy full protocol to Anvil - handles everything"""
+        
+        # 1. Create temporary anvil.json config file
+        self._create_anvil_config()
+        
+        # 2. Setup Anvil with proper RPC (try to get real one, fallback to public)
+        temp_loader = EnvironmentLoader("sepolia", self.root_dir)
+        api_key = temp_loader._get_secret("alchemy_api")
+        fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
+        Formatter.print_success("Using Alchemy RPC with API key")
+        
         Formatter.print_section("Anvil Protocol Deployment")
+        self._setup_anvil(fork_url)
         
-        # 1. Get Sepolia RPC for forking
-        sepolia_rpc = self._get_sepolia_rpc()
+        # 3. Create simple environment for DeploymentRunner
+        env_mock = self._create_anvil_env()
         
-        # 2. Setup Anvil
-        Formatter.print_step("Loading Sepolia RPC for forking")
-        # Use EnvironmentLoader to get properly configured Sepolia RPC
-        sepolia_loader = EnvironmentLoader(
-            network_name="sepolia",
-            root_dir=self.root_dir,
-            use_ledger=False,
-            catapulta_mode=False 
-        )
-        rpc_url = sepolia_loader.env_vars["RPC_URL"]
-        self._setup_anvil(rpc_url)
+        # 4. Create mock args for DeploymentRunner
+        class Args:
+            def __init__(self):
+                self.catapulta = False
+                self.ledger = False
+                self.dry_run = False
+                
+        args = Args()
+        runner = DeploymentRunner(env_mock, args)
         
-        # 3. Deploy protocol
-        if not self._deploy_contracts("FullDeployer"):
+        
+        # 5. Deploy protocol using same logic as regular deployments
+        verifier = ContractVerifier(env_mock, args)        
+        if not runner.run_deploy("FullDeployer"):
             return False
+        else:
+            verifier.update_network_config()
             
-        # 4. Deploy adapters  
-        if not self._deploy_contracts("Adapters"):
+        # 6. Deploy adapters  
+        if not runner.run_deploy("Adapters"):
             return False
+        else:
+            verifier.update_network_config()
             
-        # 5. Verify deployments
-        return self._verify_deployments()
+        # 7. Verify deployments
+        success = self._verify_deployments()
+        
+        # 8. Print deployed contract addresses
+        Formatter.print_success("Protocol and adapters deployed successfully")
+        Formatter.print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
+
+        Formatter.print_warning("Anvil is still running for you to test the protocol")
+        Formatter.print_warning("Use 'pkill anvil' to stop it")
+        return success
+        
 
 
     def _setup_anvil(self, fork_url: str) -> None:
         """Setup and start Anvil"""
         Formatter.print_subsection("Setting up Anvil local network")
-        
-        # Stop existing Anvil
         subprocess.run(["pkill", "anvil"], capture_output=True)
         time.sleep(1)
         
@@ -73,8 +147,8 @@ class AnvilManager:
             "--code-size-limit", "50000",
             "--fork-url", fork_url
         ]
-        
-        with open("anvil.log", "w") as log_file:
+        print(f"{' '.join(cmd)}")
+        with open("anvil-service.log", "w") as log_file:
             subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         
         time.sleep(3)
@@ -85,41 +159,7 @@ class AnvilManager:
         else:
             raise RuntimeError("Anvil failed to start")
     
-    def _deploy_contracts(self, script_name: str) -> bool:
-        """Deploy contracts using forge script"""
-        Formatter.print_subsection(f"Deploying {script_name}")
-        
-        # Generate unique version
-        timestamp = int(datetime.now().timestamp())
-        version = f"anvil-{timestamp}"
-        
-        # Set environment variables
-        env = os.environ.copy()
-        env.update({
-            "NETWORK": "anvil",
-            "ADMIN": self.admin_address,
-            "VERSION": version
-        })
-        
-        # Build forge command
-        script_path = self.root_dir / "script" / f"{script_name}.s.sol"
-        cmd = [
-            "forge", "script", str(script_path),
-            "--tc", script_name,
-            "--rpc-url", self.anvil_url,
-            "--private-key", self.private_key,
-            "--broadcast", "--skip-simulation", "-vvvv"
-        ]
-        
-        Formatter.print_step(f"Running: forge script {script_name}")
-        
-        try:
-            result = subprocess.run(cmd, check=True, env=env)
-            Formatter.print_success(f"{script_name} deployed successfully")
-            return True
-        except subprocess.CalledProcessError:
-            Formatter.print_error(f"Failed to deploy {script_name}")
-            return False
+
     
     def _verify_deployments(self) -> bool:
         """Verify contracts are deployed by checking code"""
@@ -127,8 +167,7 @@ class AnvilManager:
         
         try:
             # Read deployment output
-            latest_file = self.root_dir / "env" / "latest" / f"{self.chain_id}-latest.json"
-            with open(latest_file, 'r') as f:
+            with open(self.anvil_config_file, 'r') as f:
                 deployment = json.load(f)
             
             contracts = deployment.get("contracts", {})
