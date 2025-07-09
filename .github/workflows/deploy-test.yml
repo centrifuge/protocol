@@ -9,6 +9,9 @@ on:
 jobs:
     anvil-deploy:
         runs-on: ubuntu-latest
+        permissions:
+          contents: 'read'
+          id-token: 'write'        
         steps:
         - uses: actions/checkout@v3
         - id: 'auth'
@@ -16,6 +19,8 @@ jobs:
           with:
             workload_identity_provider: ${{ secrets.GCP_WIP }}
             service_account: ${{ secrets.GCP_SA }}
+            create_credentials_file: true
+            cleanup_credentials: true
   
         - name: 'Set up Cloud SDK'
           uses: 'google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a' # v2.1.2
