@@ -80,21 +80,7 @@ class DeploymentRunner:
                 cmd.remove("--verify")
 
         Formatter.print_step("Deployment Command")
-        debug_cmd = " ".join(cmd)
-        # Mask secrets in debug output
-        if self.env_loader.private_key:
-            debug_cmd = debug_cmd.replace(self.env_loader.private_key, "$PRIVATE_KEY")
-        # Mask Alchemy API key in RPC URL
-        if self.env_loader.rpc_url and "alchemy" in self.env_loader.rpc_url:
-            alchemy_key = self.env_loader.rpc_url.split("/")[-1]
-            debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
-        
-        # Show relative path in debug output for readability, but use full path in actual command
-        relative_script_path = Formatter.format_path(script_path, self.env_loader.root_dir)
-        debug_cmd_display = debug_cmd.replace(str(script_path), relative_script_path)
-        
-        # Print command on its own line for easy copy/paste
-        print(f"{debug_cmd_display}")
+        Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
 
         if not self.args.dry_run:
             Formatter.print_info("Using Forge deployment")
@@ -160,23 +146,10 @@ class DeploymentRunner:
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
+        env["ADMIN"] = self.env_loader.admin_address
 
         Formatter.print_step("Deployment Command")
-        debug_cmd = " ".join(cmd)
-        # Mask secrets in debug output
-        if self.env_loader.private_key:
-            debug_cmd = debug_cmd.replace(self.env_loader.private_key, "$PRIVATE_KEY")
-        # Mask Alchemy API key in RPC URL
-        if self.env_loader.rpc_url and "alchemy" in self.env_loader.rpc_url:
-            alchemy_key = self.env_loader.rpc_url.split("/")[-1]
-            debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
-        
-        # Show relative path in debug output for readability, but use full path in actual command
-        relative_script_path = Formatter.format_path(script_path, self.env_loader.root_dir)
-        debug_cmd_display = debug_cmd.replace(str(script_path), relative_script_path)
-        
-        # Print command on its own line for easy copy/paste
-        print(f"{debug_cmd_display}")
+        Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
 
         if not self.args.dry_run:
             Formatter.print_info("Using Catapulta deployment")
@@ -195,17 +168,16 @@ class DeploymentRunner:
 
     def build_contracts(self):
         """Build contracts with forge"""
+        Formatter.print_subsection("Building contracts")
         
-        Formatter.print_info("Running forge clean")
         # Clean first
         subprocess.run(["forge", "clean"], check=True)
         
-        Formatter.print_subsection("Building contracts")
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
         cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny-warnings"]
-        Formatter.print_info(f"Build command:")
-        print(f"{' '.join(cmd)}")
+        Formatter.print_command(cmd)
+        
         if not self.args.dry_run:
             if subprocess.run(cmd, check=True):
                 Formatter.print_success("Contracts built successfully")

@@ -15,6 +15,7 @@ import pathlib
 import sys
 import os
 import traceback
+import time
 from lib.formatter import Formatter
 from lib.load_config import EnvironmentLoader
 from lib.runner import DeploymentRunner
@@ -111,7 +112,7 @@ def validate_arguments(args, root_dir: pathlib.Path):
             if any(arg.startswith(conflict) for conflict in conflicting_args):
                 Formatter.print_warning(f"Forge argument '{arg}' may conflict with script defaults")
                 raise SystemExit(1)
-    
+    Formatter.print_success("Arguments validated")
     return True
 
 
@@ -152,53 +153,56 @@ def main():
         verifier = ContractVerifier(env_loader, args)
         
         # Execute the requested step
-        verified = True
-        deployed = True
+        verify_success = True
+        deploy_success = True
 
         if args.step == "deploy:protocol":
             Formatter.print_section("Running Protocol Deployment")
             runner.build_contracts()
             Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
-            deployed = runner.run_deploy("FullDeployer")
+            deploy_success = runner.run_deploy("FullDeployer")
             Formatter.print_section(f"Verifying deployment for {args.network}")
-            verified = verifier.verify_contracts("FullDeployer")
-            
+            if args.catapulta:
+                Formatter.print_info("Waiting for catapulta verification to complete... (5 minutes)")
+                time.sleep(300)
+            verify_success = verifier.verify_contracts("FullDeployer")
             
         elif args.step == "deploy:adapters":
             Formatter.print_section("Running Adapters Deployment")
             runner.build_contracts()
             Formatter.print_step(f"Deploying adapters for {args.network}")
-            deployed = runner.run_deploy("Adapters")
+            deploy_success = runner.run_deploy("Adapters")
             Formatter.print_section(f"Verifying deployment for {args.network}")
-            verified = verifier.verify_contracts("Adapters")
-            
+            verify_success = verifier.verify_contracts("Adapters")
             
         elif args.step == "wire:adapters":
             Formatter.print_step(f"Wiring adapters for {args.network}")
-            deployed = runner.run_deploy("WireAdapters")
+            deploy_success = runner.run_deploy("WireAdapters")
             
         elif args.step == "deploy:test":
             Formatter.print_section(f"Deploying test data for {args.network}")
-            deployed = runner.run_deploy("TestData")
+            deploy_success = runner.run_deploy("TestData")
             
         elif args.step == "verify:protocol":
             Formatter.print_section(f"Verifying core protocol contracts for {args.network}")
-            verifier.verify_contracts("FullDeployer")
+            verify_success = verifier.verify_contracts("FullDeployer")
             
         elif args.step == "verify:adapters":
             Formatter.print_section(f"Verifying Adapters contracts for {args.network}")
-            verifier.verify_contracts("Adapters")
+            verify_success = verifier.verify_contracts("Adapters")
         
         # Handle errors 
-        if not verified:
-            raise Exception("Some contracts are not deployed or not verified")
-            raise Exception("Some contracts are not deployeed")
+        if not verify_success:
+            if args.catapulta:
+                Formatter.print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:[protocol,adapters] again")
+            Formatter.print_error("Some contracts are not deployed or not verified")
+            sys.exit(1)
         
-        if not deployed and verified:
+        if not deploy_success and verify_success:
             Formatter.print_error("Forge failed but all contracts seem deployed and verified")
             log_file = env_loader.root_dir / "deploy" / "logs" / f"forge-validate-{args.network}.log"
             if os.path.exists(log_file):
-                Formatter.print_error("This is most likely due to the batcher contracts not being verified")
+                Formatter.print_error("This is most likely due to the batcher contract not being verified")
                 Formatter.print_error(f"See {log_file} for details.")
         
     except Exception as e:

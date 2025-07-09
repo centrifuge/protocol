@@ -24,6 +24,8 @@ class ContractVerifier:
         self.latest_deployment = env_loader.root_dir / "env" / "latest" / f"{env_loader.chain_id}-latest.json"
         self.args = args
         self.root_dir = env_loader.root_dir
+        self.rpc_url = self.env_loader.rpc_url
+        self.etherscan_api_key = self.env_loader.etherscan_api_key
 
     def verify_contracts(self, deployment_script: str) -> bool:
         """Verify contracts on Etherscan"""
@@ -175,7 +177,6 @@ class ContractVerifier:
 
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
-        rpc_url = self.env_loader.rpc_url
         payload = {
             "jsonrpc": "2.0",
             "method": "eth_getCode",
@@ -185,7 +186,7 @@ class ContractVerifier:
         
         try:
             req = urllib.request.Request(
-                rpc_url,
+                self.rpc_url,
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"}
             )
@@ -198,7 +199,7 @@ class ContractVerifier:
 
     def _is_contract_verified(self, address: str) -> bool:
         """Check if contract is verified on Etherscan"""
-        api_key = self.env_loader.etherscan_api_key
+        api_key = self.etherscan_api_key
         chain_id = self.env_loader.chain_id
         
         url = f"https://api.etherscan.io/v2/api?chainid={chain_id}&module=contract&action=getsourcecode&address={address}&apikey={api_key}"
@@ -246,7 +247,7 @@ class ContractVerifier:
             Formatter.print_error("Failed to get git commit hash")
             backup_config.unlink()  # Remove backup
             return False
-
+        
         try:
             # Load both files
             with open(network_config, 'r') as f:
@@ -254,17 +255,24 @@ class ContractVerifier:
             with open(self.latest_deployment, 'r') as f:
                 latest_data = json.load(f)
 
-            # Merge the contracts section and add deployment info
+            # Merge the contracts section
             if 'contracts' not in config_data:
                 config_data['contracts'] = {}
             
             # Update contracts with new deployments
             config_data['contracts'].update(latest_data.get('contracts', {}))
             
-            # Add deployment info
-            config_data['deploymentInfo'] = {
+            
+            # Get deployment timestamp from latest deployment file
+            latest_stat = self.latest_deployment.stat()
+            deployment_timestamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(latest_stat.st_mtime))
+            # Set deployment info        
+            if 'deploymentInfo' not in config_data:
+                config_data['deploymentInfo'] = {}
+                
+            config_data['deploymentInfo'][self.args.step] = {
                 'gitCommit': git_commit,
-                'timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+                'timestamp': deployment_timestamp
             }
 
             # Write updated config

@@ -35,7 +35,7 @@ class EnvironmentLoader:
     @property
     def etherscan_api_key(self) -> str:
         if self._etherscan_api_key is None:
-            Formatter.print_step("Loading Etherscan API Key")
+            Formatter.print_info("Loading Etherscan API Key")
             self._etherscan_api_key = self._get_secret("etherscan_api")
             Formatter.print_success("Etherscan API key loaded")
         return self._etherscan_api_key
@@ -135,7 +135,7 @@ class EnvironmentLoader:
             elif network_name == "celo":
                  return f"https://{alchemy_network}-alfajores.g.alchemy.com/v2/{api_key}"
             else:
-                prefix = network_name.strip("-sepolia")
+                prefix = network_name.removesuffix("-sepolia")
             alchemy_network = network_mapping[prefix]
             return f"https://{alchemy_network}-sepolia.g.alchemy.com/v2/{api_key}"
         else:
@@ -173,7 +173,7 @@ class EnvironmentLoader:
         try:
             subprocess.run(["gcloud", "auth", "list"], 
                          capture_output=True, check=True)
-            Formatter.print_success(f"Loading {gcp_secret} from Google Secrets using gcloud CLI")
+            Formatter.print_info(f"Loading {gcp_secret} from Google Secrets using gcloud CLI")
         except (subprocess.CalledProcessError, FileNotFoundError):
             Formatter.print_error("GCP CLI not configured or not available")
             raise

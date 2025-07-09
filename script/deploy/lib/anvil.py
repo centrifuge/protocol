@@ -147,7 +147,7 @@ class AnvilManager:
             "--code-size-limit", "50000",
             "--fork-url", fork_url
         ]
-        print(f"{' '.join(cmd)}")
+        Formatter.print_command(cmd)
         with open("anvil-service.log", "w") as log_file:
             subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         
