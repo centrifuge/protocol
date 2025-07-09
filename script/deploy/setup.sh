@@ -91,7 +91,8 @@ install_package() {
         # Auto-install on Linux or when AUTO_FIX=true
         if [[ -n "$command" ]]; then
             echo -e "${CYAN}Auto-installing: $command${NC}"
-            eval "$command"
+            # Run the command and capture both stdout and stderr
+            eval "$command" 2>&1
             return $?
         fi
         return 0
@@ -451,6 +452,7 @@ check_forge() {
         print_info "Installing Foundry..."
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
+
             ls "$HOME/.config/.foundry/bin" 2>/dev/null || echo "No .config/.foundry/bin directory"
             cat "/home/runner/.bashrc" | grep "foundry" || echo "No foundry entries in bashrc"
 
@@ -473,8 +475,24 @@ check_forge() {
 
             # Now try to run foundryup
             print_info "Running foundryup to install Foundry tools..."
+            foundryup --help
             if install_package "foundryup --version $REQUIRED_FORGE_VERSION"; then
                 print_success "Foundry installed"
+
+                # After foundryup, check what was installed and where
+                print_info "Debug: Checking what foundryup installed..."
+                ls -la "$HOME/.config/.foundry/bin" 2>/dev/null || echo "No .config/.foundry/bin directory"
+
+                # Check if forge is now available
+                if command -v forge &>/dev/null; then
+                    print_info "Debug: forge found at: $(command -v forge)"
+                else
+                    print_info "Debug: forge not found in PATH"
+                    print_info "Debug: Current PATH: $PATH"
+
+                    # Try to find forge in common locations
+                    find "$HOME/.config/.foundry" "$HOME/.foundry" /usr/local/bin -name "forge" 2>/dev/null || true
+                fi
             else
                 print_error "foundryup failed. Please run 'foundryup' manually"
                 print_info "Debug: You may need to restart your terminal or run: source ~/.bashrc"
