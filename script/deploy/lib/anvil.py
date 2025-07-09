@@ -12,6 +12,8 @@ import json
 import urllib.request
 from os import environ
 from pathlib import Path
+import random
+import string
 from .formatter import Formatter
 from .runner import DeploymentRunner
 from .load_config import EnvironmentLoader
@@ -28,6 +30,12 @@ class AnvilManager:
     
     def _create_anvil_env(self):
         """Create a minimal environment mock that works with DeploymentRunner"""
+        # Set the random VERSION in environment variables
+        # Generate a random 8-character string for Anvil to avoid collisions
+        random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))                
+        environ["VERSION"] = random_version
+        Formatter.print_info(f"Using random VERSION for Anvil: {random_version}")
+        
         class AnvilEnv:
             def __init__(self, manager):
                 # Simple attributes - no need for properties since no logic required
@@ -36,7 +44,7 @@ class AnvilManager:
                 self.root_dir = manager.root_dir
                 self.rpc_url = manager.anvil_url
                 self.private_key = manager.private_key
-                self.etherscan_api_key = None  # Not needed for anvil
+                self.etherscan_api_key = ""  # Not needed for anvil
                 self.admin_address = manager.admin_address
                 self.is_testnet = True
                 self.config_file = manager.anvil_config_file
@@ -101,6 +109,7 @@ class AnvilManager:
                 self.catapulta = False
                 self.ledger = False
                 self.dry_run = False
+                self.forge_args = []
                 
         args = Args()
         runner = DeploymentRunner(env_mock, args)
@@ -111,18 +120,22 @@ class AnvilManager:
         if not runner.run_deploy("FullDeployer"):
             return False
         else:
+            args.step = "protocol"
             verifier.update_network_config()
             
         # 6. Deploy adapters  
         if not runner.run_deploy("Adapters"):
             return False
         else:
+            args.step = "adapters"
             verifier.update_network_config()
             
         # 7. Verify deployments
         success = self._verify_deployments()
         
-        # 8. Print deployed contract addresses
+        # 8. Depoy test data
+        runner.run_deploy("TestData")
+        
         Formatter.print_success("Protocol and adapters deployed successfully")
         Formatter.print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
 

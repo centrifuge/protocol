@@ -1,0 +1,19 @@
+name: "Anvil Deploy Tests"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+    anvil-deploy:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+        - name: Setup deployer tools
+          run: |
+            script/deploy/setup.sh
+        - name: Deploy Anvil
+          run: |
+            script/deploy/deploy.py --network anvil 
