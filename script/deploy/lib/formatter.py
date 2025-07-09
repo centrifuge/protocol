@@ -150,3 +150,49 @@ class Formatter:
     def format_account(account: str) -> str:
         """Format truncated account address as string"""
         return f"{Formatter.CYAN}{account[:6]}...{account[-4:]}{Formatter.RESET}"
+
+
+# Standalone functions for import * compatibility
+def print_section(title: str):
+    """Print a main section header (blue, bold)"""
+    Formatter.print_section(title)
+
+def print_subsection(title: str):
+    """Print a subsection header (cyan, bold)"""
+    Formatter.print_subsection(title)
+
+def print_step(message: str):
+    """Print a step message (bold)"""
+    Formatter.print_step(message)
+
+def print_info(message: str):
+    """Print an info message (normal)"""
+    Formatter.print_info(message)
+
+def print_success(message: str):
+    """Print a success message (green checkmark)"""
+    Formatter.print_success(message)
+
+def print_error(message: str):
+    """Print an error message (red X)"""
+    Formatter.print_error(message)
+
+def print_warning(message: str):
+    """Print a warning message (yellow warning)"""
+    Formatter.print_warning(message)
+
+def print_command(cmd: list, env_loader=None, script_path=None, root_dir=None):
+    """Print a formatted command with secrets masked"""
+    Formatter.print_command(cmd, env_loader, script_path, root_dir)
+
+def format_account(account: str) -> str:
+    """Format truncated account address as string"""
+    return Formatter.format_account(account)
+
+def format_command(cmd: list, env_loader=None, script_path=None, root_dir=None) -> str:
+    """Format a command list for display, masking secrets and showing relative paths"""
+    return Formatter.format_command(cmd, env_loader, script_path, root_dir)
+
+def format_path(path, root_dir=None):
+    """Format path to show relative to root directory when possible"""
+    return Formatter.format_path(path, root_dir)
