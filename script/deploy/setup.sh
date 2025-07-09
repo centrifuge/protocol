@@ -453,13 +453,7 @@ check_forge() {
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
 
-            ls "$HOME/.config/.foundry/bin" 2>/dev/null || echo "No .config/.foundry/bin directory"
-            cat "/home/runner/.bashrc" | grep "foundry" || echo "No foundry entries in bashrc"
-
-            # Source bashrc to apply the PATH changes made by the installer
-            source "/home/runner/.bashrc"
-
-            # Also manually add the foundry path to ensure it's available
+            # Manually add the foundry path to ensure it's available
             if [[ -d "$HOME/.config/.foundry/bin" ]]; then
                 export PATH="$PATH:$HOME/.config/.foundry/bin"
                 print_info "Added $HOME/.config/.foundry/bin to PATH"
@@ -471,53 +465,39 @@ check_forge() {
             # Check that PATH contains 'foundry'
             if [[ ":$PATH:" != *"foundry"* ]]; then
                 print_warning "PATH does not contain 'foundry'. Foundry tools may not be available in your shell."
+                exit 1
             fi
 
             # Now try to run foundryup
             print_info "Running foundryup to install Foundry tools..."
-            foundryup --help
-            if install_package "foundryup --version $REQUIRED_FORGE_VERSION"; then
+
+            if install_package "foundryup --install $REQUIRED_FORGE_VERSION"; then
                 print_success "Foundry installed"
-
-                # After foundryup, check what was installed and where
-                print_info "Debug: Checking what foundryup installed..."
-                ls -la "$HOME/.config/.foundry/bin" 2>/dev/null || echo "No .config/.foundry/bin directory"
-
-                # Check if forge is now available
-                if command -v forge &>/dev/null; then
-                    print_info "Debug: forge found at: $(command -v forge)"
-                else
-                    print_info "Debug: forge not found in PATH"
-                    print_info "Debug: Current PATH: $PATH"
-
-                    # Try to find forge in common locations
-                    find "$HOME/.config/.foundry" "$HOME/.foundry" /usr/local/bin -name "forge" 2>/dev/null || true
-                fi
             else
                 print_error "foundryup failed. Please run 'foundryup' manually"
-                print_info "Debug: You may need to restart your terminal or run: source ~/.bashrc"
                 return 1
+            fi
+
+            # Now check forge
+            FORGE_VERSION=$(forge --version | head -n1 | awk '{print $3}' | cut -d'-' -f1)
+
+            if [[ $(version_compare "$FORGE_VERSION" "$REQUIRED_FORGE_VERSION") == "$FORGE_VERSION" && "$FORGE_VERSION" != "$REQUIRED_FORGE_VERSION" ]]; then
+                print_warning "Forge version $FORGE_VERSION found, but $REQUIRED_FORGE_VERSION+ recommended"
+                print_info "Update with: foundryup"
+
+                print_info "Updating Foundry..."
+                if install_package "foundryup"; then
+                    print_success "Forge updated"
+                else
+                    return 1
+                fi
+            else
+                print_success "Forge $FORGE_VERSION found"
             fi
         else
             print_info "Install Foundry manually: curl -L https://foundry.paradigm.xyz | bash"
             return 1
         fi
-    fi
-
-    FORGE_VERSION=$(forge --version | head -n1 | awk '{print $3}' | cut -d'-' -f1)
-
-    if [[ $(version_compare "$FORGE_VERSION" "$REQUIRED_FORGE_VERSION") == "$FORGE_VERSION" && "$FORGE_VERSION" != "$REQUIRED_FORGE_VERSION" ]]; then
-        print_warning "Forge version $FORGE_VERSION found, but $REQUIRED_FORGE_VERSION+ recommended"
-        print_info "Update with: foundryup"
-
-        print_info "Updating Foundry..."
-        if install_package "foundryup"; then
-            print_success "Forge updated"
-        else
-            return 1
-        fi
-    else
-        print_success "Forge $FORGE_VERSION found"
     fi
 
     return 0
