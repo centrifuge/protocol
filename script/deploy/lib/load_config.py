@@ -11,7 +11,7 @@ import subprocess
 import pathlib
 import shutil
 from .formatter import *
-
+import os
 
 class EnvironmentLoader:
     def __init__(self, network_name: str, root_dir: pathlib.Path):
@@ -61,8 +61,7 @@ class EnvironmentLoader:
         print_success("Config written to .env")
 
     def _check_env_file(self, variable_name: str):
-        if shutil.exists(".env"):
-            print_warning("Using .env to load config vars")
+        if os.path.exists(".env"):
             with open(".env", "r") as f:
                 for line in f:
                     if line.startswith(f"{variable_name}="):
@@ -140,7 +139,7 @@ class EnvironmentLoader:
                 raise ValueError(f"Unknown mainnet network: {self.network_name}")
             admin_address = mainnet_admins[self.network_name]
 
-        print_success(f"Admin address loaded: {admin_address}")
+        print_success(f"Admin address loaded: {format_account(admin_address)}")
         return admin_address
 
     def _setup_rpc(self) -> str:

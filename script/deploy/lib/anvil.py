@@ -172,7 +172,12 @@ class AnvilManager:
             "--code-size-limit", "50000",
             "--fork-url", fork_url
         ]
-        print_command(cmd)
+        # Needed to mask the rpc_url in the command
+        class MockEnvLoader:
+            def __init__(self, rpc_url):
+                self.rpc_url = rpc_url
+
+        print_command(cmd, env_loader=MockEnvLoader(fork_url))
         with open("anvil-service.log", "w") as log_file:
             subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         

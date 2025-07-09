@@ -15,7 +15,7 @@ from .formatter import *
 class LedgerManager:
     def __init__(self, args: argparse.Namespace):
         self.args = args
-        self.max_accounts = 3
+        self.max_accounts = 4
         self.ledger_account, self.ledger_account_index = self._account_selection()
     
     @property
@@ -57,13 +57,9 @@ class LedgerManager:
         for idx, address in enumerate(addresses):
             print_info(f"{idx}: {address}")
         
-        # Prompt user selection (only auto-select in dry-run mode)
+        # Prompt user selection
         while True:
             try:
-                if hasattr(self.args, 'dry_run') and self.args.dry_run:
-                    print_info("Dry run mode: defaulting to account 0")
-                    return 0
-                
                 selection = int(input(f"Select account (0-{len(addresses)-1}): ").strip())
                 
                 if 0 <= selection < len(addresses):

@@ -95,7 +95,7 @@ class Formatter:
             return str(path) 
 
     @staticmethod
-    def format_command(cmd: list, env_loader=None, script_path=None, root_dir=None) -> str:
+    def print_command(cmd: list, env_loader=None, script_path=None, root_dir=None) -> str:
         """
         Format a command list for display, masking secrets and showing relative paths
         
@@ -130,22 +130,9 @@ class Formatter:
             relative_script_path = Formatter.format_path(script_path, root_dir)
             debug_cmd = debug_cmd.replace(str(script_path), relative_script_path)
         
-        return debug_cmd
-    
-    @staticmethod
-    def print_command(cmd: list, env_loader=None, script_path=None, root_dir=None):
-        """
-        Print a formatted command with secrets masked
-        
-        Args:
-            cmd: List of command arguments
-            env_loader: Optional environment loader for secret masking
-            script_path: Optional script path to make relative
-            root_dir: Optional root directory for relative paths
-        """
         Formatter.print_info("Command")
-        formatted_cmd = Formatter.format_command(cmd, env_loader, script_path, root_dir)
-        print(f"  {formatted_cmd}")
+        print(f"  {debug_cmd}")
+
     @staticmethod
     def format_account(account: str) -> str:
         """Format truncated account address as string"""
@@ -191,7 +178,7 @@ def format_account(account: str) -> str:
 
 def format_command(cmd: list, env_loader=None, script_path=None, root_dir=None) -> str:
     """Format a command list for display, masking secrets and showing relative paths"""
-    return Formatter.format_command(cmd, env_loader, script_path, root_dir)
+    return Formatter.print_command(cmd, env_loader, script_path, root_dir)
 
 def format_path(path, root_dir=None):
     """Format path to show relative to root directory when possible"""

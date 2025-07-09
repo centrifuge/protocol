@@ -92,7 +92,7 @@ class DeploymentRunner:
         if self.args.ledger:
             ledger = LedgerManager(self.args)
             print_info(f"Deployer address (Ledger): {format_account(ledger.get_ledger_account)}")
-            return ledger.get_ledger_args()
+            return ledger.get_ledger_args
         elif is_testnet and not self.args.ledger:
             # Get the public key from the private key using 'cast'
             private_key = self.env_loader.private_key
@@ -141,12 +141,12 @@ class DeploymentRunner:
         is_verify = "--verify" in cmd
 
         try:
-            result = subprocess.run(cmd, env=self.env, capture_output=True, text=True, check=True)
+            # Remove check=True so we can handle the result manually
+            result = subprocess.run(cmd, env=self.env, capture_output=True, text=True)
             
+            # Always print output first (whether success or failure)
             if not is_verify:
-            # Catapulta will always take this path
-            # Temporary: Capture output to debug GitHub Actions issue
-                # Print captured output
+                # For deployment, show output in real-time
                 if result.stdout:
                     print("=== FORGE STDOUT ===")
                     print(result.stdout)
@@ -154,7 +154,7 @@ class DeploymentRunner:
                     print("=== FORGE STDERR ===")
                     print(result.stderr)
             else:
-                # This is neccesary because forge --verify fails to verify the Batcher contract.
+                # For verification, write to log file
                 log_dir = self.env_loader.root_dir / "script" / "deploy" / "logs"
                 log_dir.mkdir(parents=True, exist_ok=True)
                 log_file = log_dir / f"forge-validate-{self.env_loader.network_name}.log"
@@ -170,17 +170,20 @@ class DeploymentRunner:
                         f.write("\n")
                 print_warning(f"Verification output written to {log_file}")
 
-            if result.returncode != 0:
-                raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+            # Now check if the command succeeded
+            if result.returncode == 0:
+                return True
             else:
-                return True            
+                # Command failed - raise the exception with the captured output
+                raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+                
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
             print(format_command(cmd))
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
                 print_error(f"stderr: {e.stderr}")
-            return False        
+            return False
 
     def build_contracts(self):
         """Build contracts with forge"""

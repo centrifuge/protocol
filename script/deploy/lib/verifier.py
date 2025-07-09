@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import pathlib
 import argparse
-
+import os
 from .formatter import Formatter
 from .load_config import EnvironmentLoader
 
@@ -269,11 +269,14 @@ class ContractVerifier:
             # Set deployment info        
             if 'deploymentInfo' not in config_data:
                 config_data['deploymentInfo'] = {}
-                
+            
+
             config_data['deploymentInfo'][self.args.step] = {
                 'gitCommit': git_commit,
-                'timestamp': deployment_timestamp
+                'timestamp': deployment_timestamp,
             }
+            if os.environ.get("VERSION"):
+                config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
 
             # Write updated config
             with open(network_config, 'w') as f:
