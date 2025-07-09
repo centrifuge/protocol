@@ -451,7 +451,7 @@ check_forge() {
         print_info "Installing Foundry..."
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
-
+            cat /home/runner/.bashrc
             # Debug: Show current PATH and check for foundry directories
             print_info "Debug: Current PATH: $PATH"
             print_info "Debug: Checking for foundry directories..."
@@ -486,7 +486,6 @@ check_forge() {
 
             for path in "${FOUNDRY_PATHS[@]}"; do
                 if [[ -d "$path" ]]; then
-                    print_info "Debug: Found directory: $path"
                     if [[ -f "$path/foundryup" ]]; then
                         print_info "Debug: Found foundryup at: $path/foundryup"
                         export PATH="$path:$PATH"
