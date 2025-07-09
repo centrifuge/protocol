@@ -36,7 +36,7 @@ import {FullDeployer} from "script/FullDeployer.s.sol";
 import "forge-std/Script.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
-contract LocalhostDeployer is FullDeployer {
+contract TestData is FullDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;
