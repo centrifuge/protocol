@@ -61,10 +61,7 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
             WormholeAdapter wormholeAdapter = WormholeAdapter(
                 create3(
                     generateSalt("wormholeAdapter", version),
-                    abi.encodePacked(
-                        type(WormholeAdapter).creationCode,
-                        abi.encode(multiAdapter, relayer, msg.sender)
-                    )
+                    abi.encodePacked(type(WormholeAdapter).creationCode, abi.encode(multiAdapter, relayer, msg.sender))
                 )
             );
 
@@ -86,8 +83,7 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
                 create3(
                     generateSalt("axelarAdapter", version),
                     abi.encodePacked(
-                        type(AxelarAdapter).creationCode,
-                        abi.encode(multiAdapter, gateway, gasService, msg.sender)
+                        type(AxelarAdapter).creationCode, abi.encode(multiAdapter, gateway, gasService, msg.sender)
                     )
                 )
             );
