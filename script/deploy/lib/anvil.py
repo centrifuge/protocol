@@ -117,33 +117,34 @@ class AnvilManager:
         
         # 5. Deploy protocol using same logic as regular deployments
         verifier = ContractVerifier(env_mock, args)
-        runner.build_contracts()    
+        runner.build_contracts()
+        
+        # Deploy protocol
         if not runner.run_deploy("FullDeployer"):
             return False
-        else:
-            args.step = "protocol"
-            verifier.update_network_config()
+        args.step = "protocol"
+        verifier.update_network_config()
             
-        # 6. Deploy adapters  
+        # Deploy adapters  
         if not runner.run_deploy("Adapters"):
             return False
-        else:
-            args.step = "adapters"
-            verifier.update_network_config()
+        args.step = "adapters"
+        verifier.update_network_config()
             
-        # 7. Verify deployments
-        success = self._verify_deployments()
+        # Verify deployments
+        if not self._verify_deployments():
+            return False
         
-        # 8. Depoy test data
-        runner.run_deploy("TestData")
+        # Deploy test data
+        if not runner.run_deploy("TestData"):
+            return False
         
+        # All steps succeeded
         Formatter.print_success("Protocol and adapters deployed successfully")
         Formatter.print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
-
         Formatter.print_warning("Anvil is still running for you to test the protocol")
         Formatter.print_warning("Use 'pkill anvil' to stop it")
-        return success
-        
+        return True
 
 
     def _setup_anvil(self, fork_url: str) -> None:
