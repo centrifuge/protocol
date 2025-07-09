@@ -77,9 +77,6 @@ class DeploymentRunner:
             *forge_args
         ]
 
-        Formatter.print_step("Deployment Command")
-        Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
-
         if not self.args.dry_run:
             Formatter.print_info("Using Forge deployment")
             Formatter.print_info(f"Running: forge script {script_name} ...")
@@ -89,13 +86,17 @@ class DeploymentRunner:
                 # Show full log output
                 # Fail if the script fails to deploy
                 cmd.remove("--verify")
+                Formatter.print_step("Deployment Command")
+                Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
                 Formatter.print_info(f"Deploying scripts (without verification)...")
                 result = subprocess.run(cmd, check=True, env=env)
             except subprocess.CalledProcessError as e:
                 Formatter.print_error(f"Failed to run {script_name} with Forge")
                 Formatter.print_error(f"Exit code: {e.returncode}")
                 if e.stderr:
-                    Formatter.print_error(f"Error output: {e.stderr}")
+                    Formatter.print_error(f"stderr: {e.stderr}")
+                # Also try to get more info about what went wrong
+                Formatter.print_error("Forge command failed. Check the output above for details.")
                 return False
             try:
                 # Then run with --verify to verify the contracts without log output (too verbose)
