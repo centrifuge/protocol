@@ -33,7 +33,7 @@ class DeploymentRunner:
         Formatter.print_info(f"Chain ID: {self.env_loader.chain_id}")
 
         auth_args = self._setup_auth()
-        forge_args = self.args.forge_args or []  # Use args from initialization
+        forge_args = self.args.forge_args
         
         if self.args.catapulta:
             return self._run_catapulta(script_name, auth_args, forge_args)
@@ -59,10 +59,11 @@ class DeploymentRunner:
         
         # Set up environment variables
         env = os.environ.copy()
-        env["ADMIN"] = self.env_loader.admin_address
+        
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
         env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
+        env["ADMIN"] = self.env_loader.admin_address
 
         cmd = [
             "forge", "script", str(script_path),
@@ -75,9 +76,6 @@ class DeploymentRunner:
             *auth_args,
             *forge_args
         ]
-        # Remove --verify if the network is anvil
-        if self.env_loader.network_name == "anvil":
-                cmd.remove("--verify")
 
         Formatter.print_step("Deployment Command")
         Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
@@ -109,7 +107,8 @@ class DeploymentRunner:
                 Formatter.print_step(f"Verifying contracts with forge...")
                 Formatter.print_info(f"This will take a while. Please wait...")
                 # Capture logs but do not show them in real time (too verbose)
-                result = subprocess.run(cmd, check=True, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if self.env_loader.network_name != "anvil":
+                    result = subprocess.run(cmd, check=True, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             except subprocess.CalledProcessError as e:
                 # If verification fails
                 # Write forge verification output to deploy/logs/forge-validate-$network.log
