@@ -58,6 +58,11 @@ print_error() {
     ISSUES_FOUND=$((ISSUES_FOUND + 1))
 }
 
+print_fixed() {
+    echo -e "  ${GREEN}✓${NC} $1 (fixed)"
+    ISSUES_FOUND=$((ISSUES_FOUND - 1))
+}
+
 print_warning() {
     echo -e "  ${YELLOW}⚠${NC} $1"
 }
@@ -108,7 +113,7 @@ version_compare() {
 # =============================================================================
 
 scan_python_mac() {
-    echo "🔍 Scanning Python installations on macOS..."
+    echo "🔍 Scanning Python installeds on macOS..."
 
     # Check for Homebrew Python
     if [[ -f "/opt/homebrew/bin/python3" ]]; then
@@ -143,7 +148,7 @@ scan_python_mac() {
         elif [[ "$PYTHON3_PATH" == "/Library/Developer/CommandLineTools/usr/bin/python3" ]]; then
             echo "  ⚠ PATH points to Command Line Tools Python (may be outdated)"
         else
-            echo "  ? PATH points to custom Python installation"
+            echo "  ? PATH points to custom Python installed"
         fi
     else
         echo "❌ No python3 found in PATH"
@@ -175,7 +180,7 @@ check_python() {
         if [[ "$PLATFORM" == "mac" ]]; then
             print_info "Installing Python $REQUIRED_PYTHON_VERSION via Homebrew..."
             if install_package "brew install python@$REQUIRED_PYTHON_VERSION"; then
-                print_success "Python installed"
+                print_fixed "Python installed"
             else
                 print_info "Install Python manually: brew install python@$REQUIRED_PYTHON_VERSION"
                 return 1
@@ -183,7 +188,7 @@ check_python() {
         else
             print_info "Installing Python3 via apt..."
             if install_package "sudo apt-get update && sudo apt-get install -y python3 python3-pip"; then
-                print_success "Python installed"
+                print_fixed "Python installed"
             else
                 print_info "Install Python manually: sudo apt-get install python3 python3-pip"
                 return 1
@@ -202,7 +207,7 @@ check_python() {
         if [[ "$PLATFORM" == "mac" ]]; then
             echo "🔧 Python PATH Fix Options:"
 
-            # Check if we have a better Python installation available
+            # Check if we have a better Python installed available
             if [[ -f "/opt/homebrew/bin/python3" ]]; then
                 HOMEBREW_VERSION=$(/opt/homebrew/bin/python3 --version 2>&1 | cut -d' ' -f2)
                 HOMEBREW_MAJOR_MINOR=$(echo "$HOMEBREW_VERSION" | cut -d'.' -f1,2)
@@ -220,7 +225,8 @@ check_python() {
                 echo "📦 Installation Options:"
                 echo "  1. Upgrade current Python via Homebrew..."
                 if install_package "brew upgrade python@$REQUIRED_PYTHON_VERSION"; then
-                    print_success "Python upgraded"
+
+                    print_fixed "Python version upgrade"
                 else
                     echo "  2. Install manually: brew install python@$REQUIRED_PYTHON_VERSION"
                     echo "  3. Fix PATH manually and re-run this script"
@@ -243,7 +249,7 @@ check_python() {
 
     if [[ -z "$PIP_CMD" ]]; then
         print_error "Neither 'pip' nor 'pip3' command found"
-        print_info "Install pip for your Python installation"
+        print_info "Install pip for your Python installed"
         return 1
     fi
 
@@ -269,7 +275,7 @@ check_gcp_library() {
                 if [[ "$PYTHON3_PATH" == "/opt/homebrew/bin/python3" ]]; then
                     print_info "Homebrew Python detected - installing Google Cloud SDK (includes Python libraries)..."
                     if install_package "brew install google-cloud-sdk"; then
-                        print_success "Google Cloud SDK installed (includes Python libraries)"
+                        print_fixed "Google Cloud Secret Manager library installed"
                         return 0
                     else
                         print_info "Install manually: brew install google-cloud-sdk"
@@ -280,7 +286,8 @@ check_gcp_library() {
                     print_info "System Python detected - trying pip with --user flag..."
                     PIP_INSTALL_CMD="pip3 install --user google-cloud-secret-manager"
                     if install_package "$PIP_INSTALL_CMD"; then
-                        print_success "Google Cloud Secret Manager library installed"
+
+                        print_fixed "Google Cloud Secret Manager library installed"
                         return 0
                     else
                         print_info "Install manually: $PIP_INSTALL_CMD"
@@ -292,7 +299,8 @@ check_gcp_library() {
                 PIP_INSTALL_CMD="pip3 install google-cloud-secret-manager"
                 print_info "Installing Google Cloud Secret Manager library..."
                 if install_package "$PIP_INSTALL_CMD"; then
-                    print_success "Google Cloud Secret Manager library installed"
+
+                    print_fixed "Google Cloud Secret Manager library installed"
                     return 0
                 else
                     print_info "Install manually: $PIP_INSTALL_CMD"
@@ -317,7 +325,7 @@ check_gcloud() {
             if command -v brew &>/dev/null; then
                 print_info "Installing gcloud CLI via Homebrew..."
                 if install_package "brew install google-cloud-sdk"; then
-                    print_success "gcloud CLI installed"
+                    print_fixed "gcloud CLI installed"
                 else
                     print_info "Install gcloud manually: brew install google-cloud-sdk"
                     return 1
@@ -329,7 +337,7 @@ check_gcloud() {
         else
             print_info "Installing gcloud CLI..."
             if install_package "curl https://sdk.cloud.google.com | bash"; then
-                print_success "gcloud CLI installed"
+                print_fixed "gcloud CLI installed"
             else
                 print_info "Install gcloud manually: curl https://sdk.cloud.google.com | bash"
                 return 1
@@ -345,7 +353,7 @@ check_gcloud() {
 
         print_info "Opening gcloud authentication..."
         if install_package "gcloud auth login"; then
-            print_success "gcloud authentication completed"
+            print_fixed "gcloud authentication"
         else
             print_info "Please run: gcloud auth login"
             return 1
@@ -369,7 +377,7 @@ check_node_npm() {
             if command -v brew &>/dev/null; then
                 print_info "Installing Node.js $REQUIRED_NODE_VERSION via Homebrew..."
                 if install_package "brew install node@$REQUIRED_NODE_VERSION"; then
-                    print_success "Node.js installed"
+                    print_fixed "Node.js installed"
                 else
                     print_info "Install manually: brew install node@$REQUIRED_NODE_VERSION"
                     return 1
@@ -381,7 +389,7 @@ check_node_npm() {
         else
             print_info "Installing Node.js $REQUIRED_NODE_VERSION..."
             if install_package "curl -fsSL https://deb.nodesource.com/setup_$REQUIRED_NODE_VERSION.x | sudo -E bash - && sudo apt-get install -y nodejs"; then
-                print_success "Node.js installed"
+                print_fixed "Node.js installed"
             else
                 print_info "Install manually: curl -fsSL https://deb.nodesource.com/setup_$REQUIRED_NODE_VERSION.x | sudo -E bash - && sudo apt-get install -y nodejs"
                 return 1
@@ -398,7 +406,7 @@ check_node_npm() {
         if [[ "$PLATFORM" == "mac" ]]; then
             print_info "Upgrading Node.js to version $REQUIRED_NODE_VERSION via Homebrew..."
             if install_package "brew upgrade node@$REQUIRED_NODE_VERSION"; then
-                print_success "Node.js upgraded"
+                print_fixed "Node.js version upgrade"
             else
                 print_info "Upgrade manually: brew upgrade node@$REQUIRED_NODE_VERSION"
                 return 1
@@ -428,7 +436,7 @@ check_catapulta() {
 
         print_info "Installing Catapulta globally..."
         if install_package "npm install -g catapulta"; then
-            print_success "Catapulta installed"
+            print_fixed "Catapulta installed"
             return 0
         else
             print_info "Install manually: npm install -g catapulta"
@@ -450,7 +458,7 @@ check_forge() {
 
             print_info "Installing Foundry..."
             if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
-                print_success "Foundry installer completed"
+                print_fixed "Foundry installed"
 
                 # Manually add the foundry path to ensure it's available
                 if [[ -d "$HOME/.config/.foundry/bin" ]]; then
@@ -471,7 +479,7 @@ check_forge() {
                 print_info "Running foundryup to install Foundry tools..."
 
                 if install_package "foundryup --install $REQUIRED_FORGE_VERSION"; then
-                    print_success "Foundry tools installed"
+                    print_fixed "Foundryup installed"
                 else
                     print_error "foundryup --install $REQUIRED_FORGE_VERSION failed"
                     return 1
@@ -486,13 +494,22 @@ check_forge() {
                 print_info "Updating Foundry..."
                 if install_package "foundryup update && foundryup --install $REQUIRED_FORGE_VERSION"; then
                     FORGE_VERSION=$(forge --version | head -n1 | awk '{print $3}' | cut -d'-' -f1)
-                    print_success "Forge updated to $FORGE_VERSION"
+                    print_fixed "Forge version upgrade to $FORGE_VERSION"
                 else
                     return 1
                 fi
             else
                 print_success "Forge $FORGE_VERSION found"
             fi
+
+            if ! command -v cast &>/dev/null; then
+                print_error "Cast not found (should come with Foundry)"
+                print_info "Install Foundry from: https://book.getfoundry.sh/getting-started/installation"
+                return 1
+            fi
+
+            print_success "Cast found"
+
         else
             print_info "Install Foundry manually:"
             print_info "  curl -L https://foundry.paradigm.xyz | bash && foundryup --install $REQUIRED_FORGE_VERSION"
@@ -503,31 +520,30 @@ check_forge() {
     return 0
 }
 
-check_cast() {
-    print_section "Checking Cast (Foundry tool)"
-
-    if ! command -v cast &>/dev/null; then
-        print_error "Cast not found (should come with Foundry)"
-        print_info "Install Foundry from: https://book.getfoundry.sh/getting-started/installation"
-        return 1
-    fi
-
-    print_success "Cast found"
-    return 0
-}
-
 check_git() {
     print_section "Checking Git"
 
     if ! command -v git &>/dev/null; then
         print_error "Git not found"
         print_info "Install Git from your package manager"
+
         if [[ "$PLATFORM" == "mac" ]]; then
-            print_info "  brew install git"
+            print_info "Installing Git via Homebrew..."
+            if install_package "brew install git"; then
+                print_fixed "Git installed"
+            else
+                print_info "Install manually: brew install git"
+                return 1
+            fi
         else
-            print_info "  sudo apt-get install git"
+            print_info "Installing Git via apt..."
+            if install_package "sudo apt-get update && sudo apt-get install -y git"; then
+                print_fixed "Git installed"
+            else
+                print_info "Install manually: sudo apt-get install git"
+                return 1
+            fi
         fi
-        return 1
     fi
 
     print_success "Git found"
@@ -543,7 +559,7 @@ check_package_managers() {
 
     if [[ "$PLATFORM" == "mac" ]]; then
         if ! command -v brew &>/dev/null; then
-            print_warning "Homebrew not found (recommended for macOS)"
+            print_error "Homebrew not found (recommended for macOS)"
             print_info "Install from: https://brew.sh"
             print_info "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
         else
@@ -552,6 +568,13 @@ check_package_managers() {
     fi
 }
 
+all_checks() {
+    print_section "Checking Everything"
+
+    check_package_managers
+    check_python
+    check_gcp_library
+}
 # =============================================================================
 # Main Execution
 # =============================================================================
@@ -586,7 +609,6 @@ main() {
     check_node_npm
     check_catapulta
     check_forge
-    check_cast
     check_git
 
     echo
@@ -600,6 +622,7 @@ main() {
         echo -e "  ${BLUE}•${NC} Run: python3 script/deploy/deploy.py --help"
         echo -e "  ${BLUE}•${NC} Example: python3 script/deploy/deploy.py sepolia deploy:protocol"
     else
+
         echo -e "${RED}❌ Found $ISSUES_FOUND issue(s) that need attention${NC}"
         echo -e "${YELLOW}Please resolve the issues above before proceeding.${NC}"
         exit 1
