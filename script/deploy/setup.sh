@@ -451,60 +451,19 @@ check_forge() {
         print_info "Installing Foundry..."
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
-            cat /home/runner/.bashrc
-            # Debug: Show current PATH and check for foundry directories
-            print_info "Debug: Current PATH: $PATH"
-            print_info "Debug: Checking for foundry directories..."
 
-            # Check common locations where foundry might be installed
-            FOUNDRY_PATHS=(
-                "$HOME/.foundry/bin"
-                "$HOME/.local/share/foundry/bin"
-                "/usr/local/bin"
-                "/opt/homebrew/bin"
-            )
-
-            # Debug: Check what the installer actually created
-            print_info "Debug: Checking what the installer created..."
-            if [[ -d "$HOME/.foundry" ]]; then
-                print_info "Debug: $HOME/.foundry directory exists"
-                ls -la "$HOME/.foundry" || true
-            else
-                print_info "Debug: $HOME/.foundry directory does not exist"
-            fi
-
-            if [[ -d "$HOME/.foundry/bin" ]]; then
-                print_info "Debug: $HOME/.foundry/bin directory exists"
-                ls -la "$HOME/.foundry/bin" || true
-            else
-                print_info "Debug: $HOME/.foundry/bin directory does not exist"
-            fi
-
-            # Check if foundryup was installed somewhere else
-            print_info "Debug: Searching for foundryup in common locations..."
-            find /usr/local/bin /usr/bin /opt/homebrew/bin "$HOME/.local/bin" -name "foundryup" 2>/dev/null || true
-
-            for path in "${FOUNDRY_PATHS[@]}"; do
-                if [[ -d "$path" ]]; then
-                    if [[ -f "$path/foundryup" ]]; then
-                        print_info "Debug: Found foundryup at: $path/foundryup"
-                        export PATH="$path:$PATH"
-                        break
-                    fi
-                fi
-            done
-
-            # Also try the standard foundry location
+            # Check if Foundry was installed in $HOME/.foundry or $HOME/.config/foundry and add to PATH if needed
             if [[ -d "$HOME/.foundry/bin" ]]; then
                 export PATH="$HOME/.foundry/bin:$PATH"
+                print_info "Added $HOME/.foundry/bin to PATH"
+            elif [[ -d "$HOME/.config/foundry/bin" ]]; then
+                export PATH="$HOME/.config/.foundry/bin:$PATH"
+                print_info "Added $HOME/.config/foundry/bin to PATH"
             fi
 
-            print_info "Debug: Updated PATH: $PATH"
-            print_info "Debug: Checking if foundryup is available..."
-            if command -v foundryup &>/dev/null; then
-                print_info "Debug: foundryup found at: $(command -v foundryup)"
-            else
-                print_info "Debug: foundryup not found in PATH"
+            # Check that PATH contains 'foundry'
+            if [[ ":$PATH:" != *"foundry"* ]]; then
+                print_warning "PATH does not contain 'foundry'. Foundry tools may not be available in your shell."
             fi
 
             # Now try to run foundryup
