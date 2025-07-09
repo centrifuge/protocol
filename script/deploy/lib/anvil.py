@@ -116,7 +116,8 @@ class AnvilManager:
         
         
         # 5. Deploy protocol using same logic as regular deployments
-        verifier = ContractVerifier(env_mock, args)        
+        verifier = ContractVerifier(env_mock, args)
+        runner.build_contracts()    
         if not runner.run_deploy("FullDeployer"):
             return False
         else:
