@@ -34,4 +34,4 @@ jobs:
             script/deploy/setup.sh
         - name: Deploy Anvil
           run: |
-            script/deploy/deploy.py --network anvil 
+            python3 script/deploy/deploy.py --network anvil 
