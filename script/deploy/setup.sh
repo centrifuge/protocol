@@ -81,7 +81,7 @@ install_package() {
             if [[ -n "$command" ]]; then
                 echo -e "${CYAN}Installing: $command${NC}"
                 eval "$command"
-                return 0
+                return $?
             fi
             return 0
             ;;
@@ -92,6 +92,7 @@ install_package() {
         if [[ -n "$command" ]]; then
             echo -e "${CYAN}Auto-installing: $command${NC}"
             eval "$command"
+            return $?
         fi
         return 0
     fi
@@ -134,7 +135,7 @@ scan_python_mac() {
         echo "📍 Current PATH python3: $PYTHON3_VERSION at $PYTHON3_PATH"
 
         # Determine the type of Python in PATH
-        if [[ "$PYTHON3_PATH" == "/opt/homebrew/bin/python3" ]]; then
+        if [[ "$PYTHON3_PATH" == *"homebrew"* ]]; then
             echo "  ✓ PATH points to Homebrew Python (good!)"
         elif [[ "$PYTHON3_PATH" == "/usr/bin/python3" ]]; then
             echo "  ⚠ PATH points to System Python (may be outdated)"
@@ -155,7 +156,6 @@ check_python() {
     # On macOS, provide detailed Python diagnostics
     if [[ "$PLATFORM" == "mac" ]]; then
         scan_python_mac
-        echo
     fi
 
     # Check for python or python3 command (use PATH version)
@@ -449,8 +449,18 @@ check_forge() {
         print_info "  foundryup"
 
         print_info "Installing Foundry..."
-        if install_package "curl -L https://foundry.paradigm.xyz | bash && export PATH=\"\$HOME/.foundry/bin:\$PATH\" && foundryup"; then
-            print_success "Foundry installed"
+        if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
+            print_success "Foundry installer completed"
+            export PATH="$HOME/.foundry/bin:$PATH"
+
+            # Now try to run foundryup
+            print_info "Running foundryup to install Foundry tools..."
+            if install_package "foundryup --version $REQUIRED_FORGE_VERSION"; then
+                print_success "Foundry installed"
+            else
+                print_error "foundryup failed. Please run 'foundryup' manually"
+                return 1
+            fi
         else
             print_info "Install Foundry manually: curl -L https://foundry.paradigm.xyz | bash"
             return 1
