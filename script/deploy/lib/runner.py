@@ -9,6 +9,12 @@ This module coordinates the deployment process by:
 - Managing authentication (private key vs Ledger hardware wallet)
 - Building and executing deployment commands
 - Handling deployment failures with helpful diagnostics
+
+If you want to modify the command arguments you need to search in this order:
+1. _build_command -> basic arguments for our CMD options
+2. _setup_auth_args -> wallet arguments (--ledger --private-key, etc)
+3. run_deploy -> additional arguments to deal with corner cases 
+   (search for .append and .extend)
 """
 
 import os
@@ -16,7 +22,7 @@ import subprocess
 import multiprocessing
 import argparse
 from typing import List
-from .formatter import Formatter
+from .formatter import *
 from .load_config import EnvironmentLoader
 from .ledger import LedgerManager
 
@@ -25,86 +31,121 @@ class DeploymentRunner:
     def __init__(self, env_loader: EnvironmentLoader, args: argparse.Namespace):
         self.env_loader = env_loader
         self.args = args
+        # Set up environment variables
+        env = os.environ.copy()
+        env["NETWORK"] = self.env_loader.network_name
+        env["VERSION"] = os.environ.get("VERSION", "")
+        env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
+        env["ADMIN"] = self.env_loader.admin_address
+        self.env = env
+        self.script_path = None # initialize
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
-        Formatter.print_subsection(f"Deploying {script_name}.s.sol")
-        Formatter.print_step(f"Deployment Info:")
-        Formatter.print_info(f"Script: {script_name}")
-        Formatter.print_info(f"Network: {self.env_loader.network_name}")
-        Formatter.print_info(f"Chain ID: {self.env_loader.chain_id}")
+        self.script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
+        print_subsection(f"Deploying {script_name}.s.sol")
+        print_step(f"Deployment Info:")
+        print_info(f"Script: {script_name}")
+        print_info(f"Network: {self.env_loader.network_name}")
+        print_info(f"Chain ID: {self.env_loader.chain_id}")
         if os.environ.get("VERSION"):
-            Formatter.print_info(f"Version (for salt): {os.environ.get("VERSION")}")
-        Formatter.print_info(f"Admin Account: {Formatter.format_account(self.env_loader.admin_address)}")
-
-        auth_args = self._setup_auth()
-        forge_args = self.args.forge_args
-        
+            print_info(f"Version (for salt): {os.environ.get("VERSION")}")
+        print_info(f"Admin Account: {format_account(self.env_loader.admin_address)}")
+        base_cmd = self._build_command(script_name)
         if self.args.catapulta:
-            return self._run_catapulta(script_name, auth_args, forge_args)
+            print_step(f"Running catapulta")
+            if not self._run_command(base_cmd):
+                return False
+            print_success("Catapulta finished successfully")
+            print_info("Check catapulta dashboard: https://catapulta.sh/project/68317077d1b8de690e3569e9")
         else:
-            return self._run_forge(script_name, auth_args, forge_args)
+            # Assume forge
+            print_step(f"Running forge script")
+            # 1. Deploy without verification
+
+            print_info(f"Deploying scripts (without verification)...")            
+            if not self._run_command(base_cmd):
+                return False
+            print_success("Forge contracts deployed successfully")
+            # 2. Verify
+            if self.env_loader.network_name != "anvil":
+                cmd = base_cmd.copy()
+                cmd.append("--verify")
+                if "--resume" not in cmd:
+                    cmd.append("--resume")            
+                # This doesn't really work:
+                # cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
+                print_step(f"Verifying contracts with forge")
+                print_info(f"Logs will be written to a log file")
+                print_info(f"This will take a while. Please wait...")
+                if not self._run_command(cmd):
+                    return False
+                print_success("Forge contracts verified successfully")
+            
+        return True
+
         
-    def _setup_auth(self) -> List[str]:
+    def _setup_auth_args(self) -> List[str]:
         """Setup authentication arguments for forge/catapulta"""
         is_testnet = self.env_loader.is_testnet
         
         if self.args.ledger:
             ledger = LedgerManager(self.args)
-            Formatter.print_info(f"Deployer address (Ledger): {Formatter.format_account(ledger.get_ledger_account)}")
+            print_info(f"Deployer address (Ledger): {format_account(ledger.get_ledger_account)}")
             return ledger.get_ledger_args()
         elif is_testnet and not self.args.ledger:
             # Get the public key from the private key using 'cast'
             private_key = self.env_loader.private_key
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
-            public_key = result.stdout.strip()
-            Formatter.print_info(f"Deploying address (Testnet shared account): {Formatter.format_account(public_key)}")
+            print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
             return ["--private-key", self.env_loader.private_key]
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
 
+    def _build_command(self, script_name: str) -> List[str]:
+        """Build a command for a given script and method"""
+        auth_args = self._setup_auth_args()
 
-    def _run_forge(self, script_name: str, auth_args: List[str], forge_args: List[str]) -> bool:
-        """Run deployment with Forge"""
-        Formatter.print_step(f"Running forge script")
-        script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
-        
-        # Set up environment variables
-        env = os.environ.copy()
-        
-        env["NETWORK"] = self.env_loader.network_name
-        env["VERSION"] = os.environ.get("VERSION", "")
-        env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
-        env["ADMIN"] = self.env_loader.admin_address
+        # Forge
+        if not self.args.catapulta:
+            base_cmd = [
+                "forge", "script", str(self.script_path),
+                "--tc", script_name,
+                "--optimize",
+                "--rpc-url", self.env_loader.rpc_url,
+                "--chain-id", self.env_loader.chain_id,
+                *auth_args,
+                *self.args.forge_args
+            ]
+            if not self.args.dry_run:
+                base_cmd.append("--broadcast")
+            if not self.env_loader.is_testnet:
+                base_cmd.append("--slow")
 
-        cmd = [
-            "forge", "script", str(script_path),
-            "--tc", script_name,
-            "--optimize",
-            "--rpc-url", self.env_loader.rpc_url,
-            "--verify",
-            "--broadcast", 
-            "--chain-id", self.env_loader.chain_id,
-            *auth_args,
-            *forge_args
-        ]
-
-        if not self.args.dry_run:
-            Formatter.print_info("Using Forge deployment")
-            Formatter.print_info(f"Running: forge script {script_name} ...")
+        # Catapulta
+        elif self.args.catapulta:
+            base_cmd = [
+                "catapulta", "script", str(self.script_path),
+                "--tc", script_name,
+                "--network", self.env_loader.chain_id,
+                *auth_args,
+                *self.args.forge_args
+            ]
+        return base_cmd
     
-            try:
-                # First run without --verify to get the contracts deployed
-                # Show full log output
-                # Fail if the script fails to deploy
-                cmd.remove("--verify")
-                Formatter.print_info("Deployment Command")
-                Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
-                Formatter.print_info(f"Deploying scripts (without verification)...")
-                # Temporary: Capture output to debug GitHub Actions issue
-                result = subprocess.run(cmd, env=env, capture_output=True, text=True)
-                
+    def _run_command(self, cmd: List[str]) -> bool:
+        """Run a command"""
+        print_step("Deployment Command")
+        print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
+        is_verify = "--verify" in cmd
+
+        try:
+            result = subprocess.run(cmd, env=self.env, capture_output=True, text=True, check=True)
+            
+            if not is_verify:
+            # Catapulta will always take this path
+            # Temporary: Capture output to debug GitHub Actions issue
                 # Print captured output
                 if result.stdout:
                     print("=== FORGE STDOUT ===")
@@ -112,89 +153,38 @@ class DeploymentRunner:
                 if result.stderr:
                     print("=== FORGE STDERR ===")
                     print(result.stderr)
-                
-                if result.returncode != 0:
-                    raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
-            except subprocess.CalledProcessError as e:
-                Formatter.print_error(f"Failed to run {script_name} with Forge")
-                Formatter.print_error(f"Exit code: {e.returncode}")
-                if e.stderr:
-                    Formatter.print_error(f"stderr: {e.stderr}")
-                # Also try to get more info about what went wrong
-                Formatter.print_error("Forge command failed. Check the output above for details.")
-                return False
-            try:
-                # Then run with --verify to verify the contracts without log output (too verbose)
-                cmd.append("--verify")
-                # Skip ActionBatcher verification since it's too large for Etherscan
-                cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
-                if "--resume" not in self.args.forge_args:
-                    cmd.append("--resume")
-                # Capture logs but do not show them in real time (too verbose)
-                if self.env_loader.network_name != "anvil":
-                    Formatter.print_step(f"Verifying contracts with forge...")
-                    Formatter.print_info(f"This will take a while. Please wait...")                    
-                    result = subprocess.run(cmd, check=True, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            except subprocess.CalledProcessError as e:
-                # If verification fails
-                # Write forge verification output to deploy/logs/forge-validate-$network.log
+            else:
+                # This is neccesary because forge --verify fails to verify the Batcher contract.
                 log_dir = self.env_loader.root_dir / "script" / "deploy" / "logs"
                 log_dir.mkdir(parents=True, exist_ok=True)
-                log_file = log_dir / f"forge-validate-{self.env_loader.network_name}-error.log"
+                log_file = log_dir / f"forge-validate-{self.env_loader.network_name}.log"
+                
                 with open(log_file, "w") as f:
-                    if e.stdout:
-                        print(e.stdout)
-                    if e.stderr:
-                        f.write(e.stderr)
+                    if result.stdout:
+                        f.write("=== FORGE STDOUT ===")
+                        f.write(result.stdout)
                         f.write("\n")
-                Formatter.print_error(f"Forge verification failed. See {log_file} for details.")
-                return False
-            Formatter.print_success("Script execution completed successfully")
-            return True
-        else:
-            Formatter.print_info("Dry run mode, skipping forge execution")
-            return True
+                    if result.stderr:
+                        f.write("=== FORGE STDERR ===")
+                        f.write(result.stderr)
+                        f.write("\n")
+                print_warning(f"Verification output written to {log_file}")
 
-    def _run_catapulta(self, script_name: str, auth_args: List[str], forge_args: List[str]) -> bool:
-        """Run deployment with Catapulta"""
-        Formatter.print_step(f"Running catapulta")
-        script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
-        
-        cmd = [
-            "catapulta", "script", str(script_path),
-            "--tc", script_name,
-            "--network", self.env_loader.chain_id,
-            *auth_args,
-            *forge_args
-        ]
-
-        # Set up environment variables
-        env = os.environ.copy()
-        env["NETWORK"] = self.env_loader.network_name
-        env["VERSION"] = os.environ.get("VERSION", "")
-        env["ADMIN"] = self.env_loader.admin_address
-
-        Formatter.print_step("Deployment Command")
-        Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
-
-        if not self.args.dry_run:
-            Formatter.print_info("Using Catapulta deployment")
-            Formatter.print_info(f"Running: catapulta script {script_name} ...")
-
-            try:
-                result = subprocess.run(cmd, check=True, env=env)
-                Formatter.print_success("Script execution completed successfully")
-                return True
-            except subprocess.CalledProcessError:
-                Formatter.print_error(f"Failed to run {script_name} with Catapulta")
-                return False
-        else:
-            Formatter.print_info("Dry run mode, skipping catapulta execution")
-            return True
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+            else:
+                return True            
+        except subprocess.CalledProcessError as e:
+            print_error(f"Command failed:")
+            print(format_command(cmd))
+            print_error(f"Exit code: {e.returncode}")
+            if e.stderr:
+                print_error(f"stderr: {e.stderr}")
+            return False        
 
     def build_contracts(self):
         """Build contracts with forge"""
-        Formatter.print_subsection("Building contracts")
+        print_subsection("Building contracts")
         
         # Clean first
         subprocess.run(["forge", "clean"], check=True)
@@ -202,12 +192,12 @@ class DeploymentRunner:
         # Build with parallel jobs
         cpu_count = multiprocessing.cpu_count()
         cmd = ["forge", "build", "--threads", str(cpu_count), "--skip", "test", "--deny-warnings"]
-        Formatter.print_command(cmd)
+        print_command(cmd)
         
         if not self.args.dry_run:
             if subprocess.run(cmd, check=True):
-                Formatter.print_success("Contracts built successfully")
+                print_success("Contracts built successfully")
             else:
-                Formatter.print_error("Failed to build contracts")
+                print_error("Failed to build contracts")
         else:
-            Formatter.print_info("Dry run mode, skipping build")
+            print_info("Dry run mode, skipping build")
