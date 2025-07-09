@@ -126,6 +126,10 @@ class Formatter:
             script_path: Optional script path to make relative
             root_dir: Optional root directory for relative paths
         """
-        Formatter.print_step("Command")
+        Formatter.print_info("Command")
         formatted_cmd = Formatter.format_command(cmd, env_loader, script_path, root_dir)
-        print(f"{formatted_cmd}") 
+        print(f"  {formatted_cmd}")
+    @staticmethod
+    def format_account(account: str) -> str:
+        """Format truncated account address as string"""
+        return f"{Formatter.CYAN}{account[:6]}...{account[-4:]}{Formatter.RESET}"

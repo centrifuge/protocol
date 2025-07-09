@@ -28,9 +28,14 @@ class DeploymentRunner:
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
-        Formatter.print_step(f"Script: {script_name}")
+        Formatter.print_subsection(f"Deploying {script_name}.s.sol")
+        Formatter.print_step(f"Deployment Info:")
+        Formatter.print_info(f"Script: {script_name}")
         Formatter.print_info(f"Network: {self.env_loader.network_name}")
         Formatter.print_info(f"Chain ID: {self.env_loader.chain_id}")
+        if os.environ.get("VERSION"):
+            Formatter.print_info(f"Version (for salt): {os.environ.get("VERSION")}")
+        Formatter.print_info(f"Admin Account: {Formatter.format_account(self.env_loader.admin_address)}")
 
         auth_args = self._setup_auth()
         forge_args = self.args.forge_args
@@ -45,9 +50,16 @@ class DeploymentRunner:
         is_testnet = self.env_loader.is_testnet
         
         if self.args.ledger:
-            return LedgerManager(self.args).get_ledger_args()
+            ledger = LedgerManager(self.args)
+            Formatter.print_info(f"Deployer address (Ledger): {Formatter.format_account(ledger.get_ledger_account)}")
+            return ledger.get_ledger_args()
         elif is_testnet and not self.args.ledger:
-            Formatter.print_info("Using private key authentication")
+            # Get the public key from the private key using 'cast'
+            private_key = self.env_loader.private_key
+            result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
+                capture_output=True, text=True, check=True)
+            public_key = result.stdout.strip()
+            Formatter.print_info(f"Deploying address (Testnet shared account): {Formatter.format_account(public_key)}")
             return ["--private-key", self.env_loader.private_key]
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
@@ -55,6 +67,7 @@ class DeploymentRunner:
 
     def _run_forge(self, script_name: str, auth_args: List[str], forge_args: List[str]) -> bool:
         """Run deployment with Forge"""
+        Formatter.print_step(f"Running forge script")
         script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
         
         # Set up environment variables
@@ -86,7 +99,7 @@ class DeploymentRunner:
                 # Show full log output
                 # Fail if the script fails to deploy
                 cmd.remove("--verify")
-                Formatter.print_step("Deployment Command")
+                Formatter.print_info("Deployment Command")
                 Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
                 Formatter.print_info(f"Deploying scripts (without verification)...")
                 # Temporary: Capture output to debug GitHub Actions issue
@@ -117,10 +130,10 @@ class DeploymentRunner:
                 cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
                 if "--resume" not in self.args.forge_args:
                     cmd.append("--resume")
-                Formatter.print_step(f"Verifying contracts with forge...")
-                Formatter.print_info(f"This will take a while. Please wait...")
                 # Capture logs but do not show them in real time (too verbose)
                 if self.env_loader.network_name != "anvil":
+                    Formatter.print_step(f"Verifying contracts with forge...")
+                    Formatter.print_info(f"This will take a while. Please wait...")                    
                     result = subprocess.run(cmd, check=True, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             except subprocess.CalledProcessError as e:
                 # If verification fails
@@ -144,6 +157,7 @@ class DeploymentRunner:
 
     def _run_catapulta(self, script_name: str, auth_args: List[str], forge_args: List[str]) -> bool:
         """Run deployment with Catapulta"""
+        Formatter.print_step(f"Running catapulta")
         script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
         
         cmd = [

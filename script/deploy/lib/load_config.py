@@ -23,7 +23,7 @@ class EnvironmentLoader:
         self._private_key = None
         self._etherscan_api_key = None
         self._admin_address = None
-        Formatter.print_section("Loading network configuration")
+        Formatter.print_subsection("Loading network configuration")
         self._load_config()
 
     def _load_config(self):

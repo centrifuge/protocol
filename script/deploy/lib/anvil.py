@@ -87,7 +87,7 @@ class AnvilManager:
         
     def deploy_full_protocol(self) -> bool:
         """Deploy full protocol to Anvil - handles everything"""
-        
+        Formatter.print_section("Anvil Setup")
         # 1. Create temporary anvil.json config file
         self._create_anvil_config()
         
@@ -97,7 +97,6 @@ class AnvilManager:
         fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
         Formatter.print_success("Using Alchemy RPC with API key")
         
-        Formatter.print_section("Anvil Protocol Deployment")
         self._setup_anvil(fork_url)
         
         # 3. Create simple environment for DeploymentRunner
@@ -116,21 +115,25 @@ class AnvilManager:
         
         
         # 5. Deploy protocol using same logic as regular deployments
+        Formatter.print_section("Contract deployments")
+
         verifier = ContractVerifier(env_mock, args)
         runner.build_contracts()
-        
+
         # Deploy protocol
+        Formatter.print_subsection("Deploying protocol")
         if not runner.run_deploy("FullDeployer"):
             return False
         args.step = "protocol"
         verifier.update_network_config()
             
         # Deploy adapters  
+        Formatter.print_subsection("Deploying adapters")
         if not runner.run_deploy("Adapters"):
             return False
         args.step = "adapters"
         verifier.update_network_config()
-            
+        Formatter.print_section("Contract verifications")
         # Verify deployments
         if not self._verify_deployments():
             return False
@@ -138,14 +141,16 @@ class AnvilManager:
         # Deploy test data - temporarily use admin account's private key
         # We need to sign TestData with the ADMIN key
         env_mock.private_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"  # 2nd account private key
-        Formatter.print_info("Using admin account private key for TestData script")
-        
+        Formatter.print_section("Test data deployment")
+        Formatter.print_info(f"Using Anvil account #2 private key for TestData script {Formatter.format_account(env_mock.private_key)}")
         if not runner.run_deploy("TestData"):
             return False
+            
 
         
         # All steps succeeded
         Formatter.print_success("Protocol and adapters deployed successfully")
+        Formatter.print_success("TestData deployed successfully")
         Formatter.print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
         Formatter.print_warning("Anvil is still running for you to test the protocol")
         Formatter.print_warning("Use 'pkill anvil' to stop it")
