@@ -89,7 +89,19 @@ class DeploymentRunner:
                 Formatter.print_step("Deployment Command")
                 Formatter.print_command(cmd, self.env_loader, script_path, self.env_loader.root_dir)
                 Formatter.print_info(f"Deploying scripts (without verification)...")
-                result = subprocess.run(cmd, check=True, env=env)
+                # Temporary: Capture output to debug GitHub Actions issue
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+                
+                # Print captured output
+                if result.stdout:
+                    print("=== FORGE STDOUT ===")
+                    print(result.stdout)
+                if result.stderr:
+                    print("=== FORGE STDERR ===")
+                    print(result.stderr)
+                
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
             except subprocess.CalledProcessError as e:
                 Formatter.print_error(f"Failed to run {script_name} with Forge")
                 Formatter.print_error(f"Exit code: {e.returncode}")
