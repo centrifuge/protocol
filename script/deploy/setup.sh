@@ -445,49 +445,48 @@ check_forge() {
 
     if ! command -v forge &>/dev/null; then
         print_error "Forge not found"
-        print_info "Install Foundry from: https://book.getfoundry.sh/getting-started/installation"
-        print_info "  curl -L https://foundry.paradigm.xyz | bash"
-        print_info "  foundryup"
+        if ! command -v foundryup &>/dev/null; then
+            print_error "Foundryup not found"
 
-        print_info "Installing Foundry..."
-        if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
-            print_success "Foundry installer completed"
+            print_info "Installing Foundry..."
+            if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
+                print_success "Foundry installer completed"
 
-            # Manually add the foundry path to ensure it's available
-            if [[ -d "$HOME/.config/.foundry/bin" ]]; then
-                export PATH="$PATH:$HOME/.config/.foundry/bin"
-                print_info "Added $HOME/.config/.foundry/bin to PATH"
-            elif [[ -d "$HOME/.foundry/bin" ]]; then
-                export PATH="$PATH:$HOME/.foundry/bin"
-                print_info "Added $HOME/.foundry/bin to PATH"
+                # Manually add the foundry path to ensure it's available
+                if [[ -d "$HOME/.config/.foundry/bin" ]]; then
+                    export PATH="$PATH:$HOME/.config/.foundry/bin"
+                    print_info "Added $HOME/.config/.foundry/bin to PATH"
+                elif [[ -d "$HOME/.foundry/bin" ]]; then
+                    export PATH="$PATH:$HOME/.foundry/bin"
+                    print_info "Added $HOME/.foundry/bin to PATH"
+                fi
+
+                # Check that PATH contains 'foundry'
+                if [[ ":$PATH:" != *"foundry"* ]]; then
+                    print_warning "PATH does not contain 'foundry'. Foundry tools may not be available in your shell."
+                    exit 1
+                fi
+
+                # Now try to run foundryup
+                print_info "Running foundryup to install Foundry tools..."
+
+                if install_package "foundryup --install $REQUIRED_FORGE_VERSION"; then
+                    print_success "Foundry tools installed"
+                else
+                    print_error "foundryup --install $REQUIRED_FORGE_VERSION failed"
+                    return 1
+                fi
             fi
-
-            # Check that PATH contains 'foundry'
-            if [[ ":$PATH:" != *"foundry"* ]]; then
-                print_warning "PATH does not contain 'foundry'. Foundry tools may not be available in your shell."
-                exit 1
-            fi
-
-            # Now try to run foundryup
-            print_info "Running foundryup to install Foundry tools..."
-
-            if install_package "foundryup --install $REQUIRED_FORGE_VERSION"; then
-                print_success "Foundry installed"
-            else
-                print_error "foundryup failed. Please run 'foundryup' manually"
-                return 1
-            fi
-
             # Now check forge
             FORGE_VERSION=$(forge --version | head -n1 | awk '{print $3}' | cut -d'-' -f1)
 
             if [[ $(version_compare "$FORGE_VERSION" "$REQUIRED_FORGE_VERSION") == "$FORGE_VERSION" && "$FORGE_VERSION" != "$REQUIRED_FORGE_VERSION" ]]; then
                 print_warning "Forge version $FORGE_VERSION found, but $REQUIRED_FORGE_VERSION+ recommended"
                 print_info "Update with: foundryup"
-
                 print_info "Updating Foundry..."
-                if install_package "foundryup"; then
-                    print_success "Forge updated"
+                if install_package "foundryup update && foundryup --install $REQUIRED_FORGE_VERSION"; then
+                    FORGE_VERSION=$(forge --version | head -n1 | awk '{print $3}' | cut -d'-' -f1)
+                    print_success "Forge updated to $FORGE_VERSION"
                 else
                     return 1
                 fi
@@ -495,7 +494,8 @@ check_forge() {
                 print_success "Forge $FORGE_VERSION found"
             fi
         else
-            print_info "Install Foundry manually: curl -L https://foundry.paradigm.xyz | bash"
+            print_info "Install Foundry manually:"
+            print_info "  curl -L https://foundry.paradigm.xyz | bash && foundryup --install $REQUIRED_FORGE_VERSION"
             return 1
         fi
     fi
