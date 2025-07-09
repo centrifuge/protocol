@@ -464,6 +464,26 @@ check_forge() {
                 "/opt/homebrew/bin"
             )
 
+            # Debug: Check what the installer actually created
+            print_info "Debug: Checking what the installer created..."
+            if [[ -d "$HOME/.foundry" ]]; then
+                print_info "Debug: $HOME/.foundry directory exists"
+                ls -la "$HOME/.foundry" || true
+            else
+                print_info "Debug: $HOME/.foundry directory does not exist"
+            fi
+
+            if [[ -d "$HOME/.foundry/bin" ]]; then
+                print_info "Debug: $HOME/.foundry/bin directory exists"
+                ls -la "$HOME/.foundry/bin" || true
+            else
+                print_info "Debug: $HOME/.foundry/bin directory does not exist"
+            fi
+
+            # Check if foundryup was installed somewhere else
+            print_info "Debug: Searching for foundryup in common locations..."
+            find /usr/local/bin /usr/bin /opt/homebrew/bin "$HOME/.local/bin" -name "foundryup" 2>/dev/null || true
+
             for path in "${FOUNDRY_PATHS[@]}"; do
                 if [[ -d "$path" ]]; then
                     print_info "Debug: Found directory: $path"
