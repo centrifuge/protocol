@@ -603,9 +603,7 @@ main() {
     if [[ "$PLATFORM" != "mac" ]]; then
         check_gcp_library
     fi
-    if [[ -z "$CI_MODE" ]]; then
-        check_gcloud
-    fi
+    check_gcloud
     check_node_npm
     check_catapulta
     check_forge
