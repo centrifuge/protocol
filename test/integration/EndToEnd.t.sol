@@ -13,6 +13,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {Root, IRoot} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {GasService} from "src/common/GasService.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -80,6 +81,7 @@ contract EndToEndDeployment is Test {
         Root root;
         Guardian guardian;
         Gateway gateway;
+        GasService gasService;
         // Hub
         HubRegistry hubRegistry;
         Accounting accounting;
@@ -186,6 +188,7 @@ contract EndToEndDeployment is Test {
             root: deployA.root(),
             guardian: deployA.guardian(),
             gateway: deployA.gateway(),
+            gasService: deployA.gasService(),
             hubRegistry: deployA.hubRegistry(),
             accounting: deployA.accounting(),
             holdings: deployA.holdings(),
@@ -360,7 +363,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.createAccount(POOL_A, LOSS_ACCOUNT, false);
         h.hub.createAccount(POOL_A, GAIN_ACCOUNT, false);
 
-        vm.stopPrank();
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _configurePool(CSpoke memory s_) internal {
@@ -387,24 +391,16 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
-        vm.startPrank(BSM);
-        s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-
-        vm.stopPrank();
+        // We also subsidize the hub
+        if (s.centrifugeId != h.centrifugeId) {
+            vm.startPrank(ANY);
+            s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        }
     }
 
     function _configurePool(bool sameChain) internal {
         _setSpoke(sameChain);
         _configurePool(s);
-
-        /// We subsidize the hub using the local spoke deployment
-        if (s.centrifugeId != h.centrifugeId) {
-            vm.startPrank(FM);
-            h.hub.notifyPool{value: GAS}(POOL_A, h.centrifugeId);
-
-            vm.startPrank(BSM);
-            h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-        }
     }
 
     function _configurePrices(D18 assetPrice, D18 sharePrice) internal {
@@ -646,6 +642,45 @@ contract EndToEndUseCases is EndToEndFlows {
         assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
         assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
         assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRefundSubsidizedCycle() public {
+        _setSpoke(false);
+        _createPool();
+
+        vm.startPrank(FM);
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(0).toBytes32());
+        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        h.hub.updateSharePrice(POOL_A, SC_1, ZERO_PRICE);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+
+        // Each message will return half of the gas wasted
+        adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
+
+        // We just subsidize for two message
+        vm.startPrank(ANY);
+        s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares());
+
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
+        assertEq(address(s.gateway).balance, 0);
+
+        // This message is fully paid with refunded amount
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, 0);
+
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
 
     /// forge-config: default.isolate = true
