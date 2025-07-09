@@ -36,6 +36,9 @@ jobs:
             CI_MODE: true
           run: |
             script/deploy/setup.sh
+        - name: Install dependencies (forge)
+          run: |
+            forge install -j 0 --shallow --color auto
         - name: Deploy Anvil
           run: |
             python3 script/deploy/deploy.py --network anvil 
