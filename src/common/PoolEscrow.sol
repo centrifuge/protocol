@@ -22,7 +22,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     receive() external payable {
-        emit ReceiveEth(msg.value);
+        emit ReceiveNativeTokens(msg.sender, msg.value);
     }
 
     /// @inheritdoc IPoolEscrow
