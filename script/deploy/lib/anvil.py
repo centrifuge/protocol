@@ -14,7 +14,7 @@ from os import environ
 from pathlib import Path
 import random
 import string
-from .formatter import Formatter
+from .formatter import *
 from .runner import DeploymentRunner
 from .load_config import EnvironmentLoader
 from .verifier import ContractVerifier
@@ -34,7 +34,7 @@ class AnvilManager:
         # Generate a random 8-character string for Anvil to avoid collisions
         random_version = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))                
         environ["VERSION"] = random_version
-        Formatter.print_info(f"Using random VERSION for Anvil: {random_version}")
+        print_info(f"Using random VERSION for Anvil: {random_version}")
         
         class AnvilEnv:
             def __init__(self, manager):
@@ -55,7 +55,7 @@ class AnvilManager:
         """Create temporary anvil.json config file for Solidity scripts"""
         if self.anvil_config_file.exists():
             self.anvil_config_file.unlink()
-            Formatter.print_step("Cleaned up existing anvil.json config")        
+            print_step("Cleaned up existing anvil.json config")        
         anvil_config = {
             "network": {
                 "chainId": int(self.chain_id),
@@ -82,12 +82,12 @@ class AnvilManager:
         with open(self.anvil_config_file, 'w') as f:
             json.dump(anvil_config, f, indent=2)
         
-        Formatter.print_step("Created temporary anvil.json config")
+        print_step("Created temporary anvil.json config")
 
         
     def deploy_full_protocol(self) -> bool:
         """Deploy full protocol to Anvil - handles everything"""
-        Formatter.print_section("Anvil Setup")
+        print_section("Anvil Setup")
         # 1. Create temporary anvil.json config file
         self._create_anvil_config()
         
@@ -95,7 +95,7 @@ class AnvilManager:
         temp_loader = EnvironmentLoader("sepolia", self.root_dir)
         api_key = temp_loader._get_secret("alchemy_api")
         fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
-        Formatter.print_success("Using Alchemy RPC with API key")
+        print_success("Using Alchemy RPC with API key")
         
         self._setup_anvil(fork_url)
         
@@ -115,25 +115,25 @@ class AnvilManager:
         
         
         # 5. Deploy protocol using same logic as regular deployments
-        Formatter.print_section("Contract deployments")
+        print_section("Contract deployments")
 
         verifier = ContractVerifier(env_mock, args)
         runner.build_contracts()
 
         # Deploy protocol
-        Formatter.print_subsection("Deploying protocol")
+        print_subsection("Deploying protocol")
         if not runner.run_deploy("FullDeployer"):
             return False
         args.step = "protocol"
         verifier.update_network_config()
             
         # Deploy adapters  
-        Formatter.print_subsection("Deploying adapters")
+        print_subsection("Deploying adapters")
         if not runner.run_deploy("Adapters"):
             return False
         args.step = "adapters"
         verifier.update_network_config()
-        Formatter.print_section("Contract verifications")
+        print_section("Contract verifications")
         # Verify deployments
         if not self._verify_deployments():
             return False
@@ -141,30 +141,30 @@ class AnvilManager:
         # Deploy test data - temporarily use admin account's private key
         # We need to sign TestData with the ADMIN key
         env_mock.private_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"  # 2nd account private key
-        Formatter.print_section("Test data deployment")
-        Formatter.print_info(f"Using Anvil account #2 private key for TestData script {Formatter.format_account(env_mock.private_key)}")
+        print_section("Test data deployment")
+        print_info(f"Using Anvil account #2 private key for TestData script {format_account(env_mock.private_key)}")
         if not runner.run_deploy("TestData"):
             return False
             
 
         
         # All steps succeeded
-        Formatter.print_success("Protocol and adapters deployed successfully")
-        Formatter.print_success("TestData deployed successfully")
-        Formatter.print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
-        Formatter.print_warning("Anvil is still running for you to test the protocol")
-        Formatter.print_warning("Use 'pkill anvil' to stop it")
+        print_success("Protocol and adapters deployed successfully")
+        print_success("TestData deployed successfully")
+        print_info(f"Deployed contract addresses can be found in {self.anvil_config_file}")
+        print_warning("Anvil is still running for you to test the protocol")
+        print_warning("Use 'pkill anvil' to stop it")
         return True
 
 
     def _setup_anvil(self, fork_url: str) -> None:
         """Setup and start Anvil"""
-        Formatter.print_subsection("Setting up Anvil local network")
+        print_subsection("Setting up Anvil local network")
         subprocess.run(["pkill", "anvil"], capture_output=True)
         time.sleep(1)
         
         # Start Anvil
-        Formatter.print_step("Starting Anvil")
+        print_step("Starting Anvil")
         cmd = [
             "anvil",
             "--chain-id", self.chain_id,
@@ -172,7 +172,7 @@ class AnvilManager:
             "--code-size-limit", "50000",
             "--fork-url", fork_url
         ]
-        Formatter.print_command(cmd)
+        print_command(cmd)
         with open("anvil-service.log", "w") as log_file:
             subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         
@@ -180,7 +180,7 @@ class AnvilManager:
         
         # Verify it's running
         if subprocess.run(["pgrep", "anvil"], capture_output=True).returncode == 0:
-            Formatter.print_success(f"Anvil started on {self.anvil_url}")
+            print_success(f"Anvil started on {self.anvil_url}")
         else:
             raise RuntimeError("Anvil failed to start")
     
@@ -188,7 +188,7 @@ class AnvilManager:
     
     def _verify_deployments(self) -> bool:
         """Verify contracts are deployed by checking code"""
-        Formatter.print_subsection("Verifying deployments on Anvil")
+        print_subsection("Verifying deployments on Anvil")
         
         try:
             # Read deployment output
@@ -197,22 +197,22 @@ class AnvilManager:
             
             contracts = deployment.get("contracts", {})
             if not contracts:
-                Formatter.print_error("No contracts found in deployment")
+                print_error("No contracts found in deployment")
                 return False
             
             verified_count = 0
             for name, address in contracts.items():
                 if self._has_contract_code(address):
-                    Formatter.print_success(f"{name}: {address} ✓")
+                    print_success(f"{name}: {address} ✓")
                     verified_count += 1
                 else:
-                    Formatter.print_error(f"{name}: {address} ✗ (no code)")
+                    print_error(f"{name}: {address} ✗ (no code)")
             
-            Formatter.print_info(f"Verified {verified_count}/{len(contracts)} contracts")
+            print_info(f"Verified {verified_count}/{len(contracts)} contracts")
             return verified_count == len(contracts)
             
         except Exception as e:
-            Formatter.print_error(f"Verification failed: {e}")
+            print_error(f"Verification failed: {e}")
             return False
     
     def _has_contract_code(self, address: str) -> bool:

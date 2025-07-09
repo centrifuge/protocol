@@ -9,7 +9,7 @@ setup for Forge deployments.
 import subprocess
 import argparse
 from typing import List, Optional
-from .formatter import Formatter
+from .formatter import *
 
 
 class LedgerManager:
@@ -30,7 +30,7 @@ class LedgerManager:
 
     def _account_selection(self) -> int:
         """List available Ledger accounts and prompt user to select one"""
-        Formatter.print_step("Loading available Ledger accounts")
+        print_step("Loading available Ledger accounts")
 
         self._check_ledger_available()
         try:
@@ -53,28 +53,28 @@ class LedgerManager:
             account = addresses[index]
             return account, index
         
-        Formatter.print_step("Available Ledger accounts:")
+        print_step("Available Ledger accounts:")
         for idx, address in enumerate(addresses):
-            Formatter.print_info(f"{idx}: {address}")
+            print_info(f"{idx}: {address}")
         
         # Prompt user selection (only auto-select in dry-run mode)
         while True:
             try:
                 if hasattr(self.args, 'dry_run') and self.args.dry_run:
-                    Formatter.print_info("Dry run mode: defaulting to account 0")
+                    print_info("Dry run mode: defaulting to account 0")
                     return 0
                 
                 selection = int(input(f"Select account (0-{len(addresses)-1}): ").strip())
                 
                 if 0 <= selection < len(addresses):
                     selected_address = addresses[selection]
-                    Formatter.print_success(f"Selected: {selected_address} (index {selection})")
+                    print_success(f"Selected: {selected_address} (index {selection})")
                     return selected_address, selection
                 else:
-                    Formatter.print_error(f"Invalid selection. Please choose 0-{len(addresses)-1}")
+                    print_error(f"Invalid selection. Please choose 0-{len(addresses)-1}")
                     
             except (ValueError, EOFError, KeyboardInterrupt):
-                Formatter.print_error("Invalid input or cancelled. Using account 0 as default")
+                print_error("Invalid input or cancelled. Using account 0 as default")
                 return 0 
 
     def _check_ledger_available(self) -> bool:
@@ -83,7 +83,7 @@ class LedgerManager:
         
         for attempt in range(max_attempts):
             try:
-                Formatter.print_step(f"Checking Ledger connection (attempt {attempt + 1}/{max_attempts})")
+                print_step(f"Checking Ledger connection (attempt {attempt + 1}/{max_attempts})")
                 
                 result = subprocess.run([
                     "cast", "wallet", "list", "--ledger"
@@ -94,17 +94,17 @@ class LedgerManager:
                 has_addresses = result.stdout.strip() and "0x" in result.stdout
                 
                 if result.returncode == 0 and not has_error and has_addresses:
-                    Formatter.print_success("Ledger connected successfully")
+                    print_success("Ledger connected successfully")
                     return True
                 else:
                     # Ledger not found or not ready
                     if attempt < max_attempts - 1:
-                        Formatter.print_warning("Ledger not detected")
-                        Formatter.print_info("Please ensure your Ledger device is:")
-                        Formatter.print_info("  - Connected via USB")
-                        Formatter.print_info("  - Unlocked with your PIN")
-                        Formatter.print_info("  - Ethereum app is open and ready")
-                        Formatter.print_info("  - Contract data and blind signing enabled (if needed)")
+                        print_warning("Ledger not detected")
+                        print_info("Please ensure your Ledger device is:")
+                        print_info("  - Connected via USB")
+                        print_info("  - Unlocked with your PIN")
+                        print_info("  - Ethereum app is open and ready")
+                        print_info("  - Contract data and blind signing enabled (if needed)")
                         
                         try:
                             input("Press Enter when ready to retry, or Ctrl+C to cancel...")
@@ -117,7 +117,7 @@ class LedgerManager:
                         
             except Exception as e:
                 if attempt < max_attempts - 1:
-                    Formatter.print_warning(f"Error checking Ledger: {e}")
+                    print_warning(f"Error checking Ledger: {e}")
                     self._prompt_ledger_setup()
                 else:
                     raise RuntimeError(f"Error checking Ledger: {e}")

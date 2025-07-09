@@ -16,7 +16,7 @@ import sys
 import os
 import traceback
 import time
-from lib.formatter import Formatter
+from lib.formatter import *
 from lib.load_config import EnvironmentLoader
 from lib.runner import DeploymentRunner
 from lib.verifier import ContractVerifier
@@ -57,62 +57,62 @@ Examples:
 
 def validate_arguments(args, root_dir: pathlib.Path):
     """Validate command line arguments and provide helpful error messages"""
-    Formatter.print_section("Validating arguments")
+    print_section("Validating arguments")
     
     # Print detected arguments for debugging
     if args.dry_run:
-        Formatter.print_step("Detected Arguments")
-        Formatter.print_info(f"Network: {args.network}")
-        Formatter.print_info(f"Step: {args.step}")
-        Formatter.print_info(f"Catapulta: {args.catapulta}")
-        Formatter.print_info(f"Ledger: {args.ledger}")
+        print_step("Detected Arguments")
+        print_info(f"Network: {args.network}")
+        print_info(f"Step: {args.step}")
+        print_info(f"Catapulta: {args.catapulta}")
+        print_info(f"Ledger: {args.ledger}")
         if args.forge_args:
-            Formatter.print_info(f"Forge args: {' '.join(args.forge_args)}")
-        Formatter.print_info(f"VERSION env: {os.environ.get('VERSION', 'Not set')}")
+            print_info(f"Forge args: {' '.join(args.forge_args)}")
+        print_info(f"VERSION env: {os.environ.get('VERSION', 'Not set')}")
     
     # Check for required arguments
     if not args.network:
-        Formatter.print_error("Network name is required")
-        Formatter.print_info("Available networks:")
+        print_error("Network name is required")
+        print_info("Available networks:")
         env_dir = root_dir / "env"
         if env_dir.exists():
             for config_file in env_dir.glob("*.json"):
                 if config_file.name != "latest":
-                    Formatter.print_info(f"  - {config_file.stem}")
+                    print_info(f"  - {config_file.stem}")
         raise SystemExit(1)
     
     if not args.step:
-        Formatter.print_error("Deployment step is required.")
-        Formatter.print_info("Run python3 deploy.py --help for available steps")
+        print_error("Deployment step is required.")
+        print_info("Run python3 deploy.py --help for available steps")
         raise SystemExit(1)        
     network_config = root_dir / "env" / f"{args.network}.json"
     if not network_config.exists():
-        Formatter.print_error(f"Network config file not found: {network_config}")
-        Formatter.print_info("Available networks:")
+        print_error(f"Network config file not found: {network_config}")
+        print_info("Available networks:")
         env_dir = root_dir / "env"
         if env_dir.exists():
             available_networks = [f.stem for f in env_dir.glob("*.json") if f.name != "latest"]
             available_networks.append("anvil")  # Add anvil as special case
             if available_networks:
                 for network in sorted(available_networks):
-                    Formatter.print_info(f"  - {network}")
+                    print_info(f"  - {network}")
             else:
-                Formatter.print_info("  - anvil (local)")
+                print_info("  - anvil (local)")
         raise SystemExit(1)
 
     # Check if VERSION environment variable is set for deployment steps
     if args.step.startswith("deploy:") and not os.environ.get("VERSION") and not args.dry_run:
-        Formatter.print_warning("VERSION environment variable not set. Create3 address collisions may occur.")
-        Formatter.print_info("Consider running: VERSION=XYZ python3 deploy.py ...")
+        print_warning("VERSION environment variable not set. Create3 address collisions may occur.")
+        print_info("Consider running: VERSION=XYZ python3 deploy.py ...")
 
     # Validate forge arguments don't conflict with script defaults
     if args.forge_args:
         conflicting_args = ["--verify", "--broadcast", "--chain-id", "--tc", "--optimize"]
         for arg in args.forge_args:
             if any(arg.startswith(conflict) for conflict in conflicting_args):
-                Formatter.print_warning(f"Forge argument '{arg}' may conflict with script defaults")
+                print_warning(f"Forge argument '{arg}' may conflict with script defaults")
                 raise SystemExit(1)
-    Formatter.print_success("Arguments validated")
+    print_success("Arguments validated")
     return True
 
 
@@ -144,9 +144,9 @@ def main():
             root_dir=root_dir
         )
         
-        Formatter.print_step(f"Network: {args.network}")
-        Formatter.print_info(f"Chain ID: {env_loader.chain_id}")
-        Formatter.print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
+        print_step(f"Network: {args.network}")
+        print_info(f"Chain ID: {env_loader.chain_id}")
+        print_info(f"Deployment mode: {'Catapulta' if args.catapulta else 'Forge'}")
         
         # Set up deployment runner and verifier
         runner = DeploymentRunner(env_loader, args)
@@ -157,9 +157,9 @@ def main():
         deploy_success = True
 
         if args.step == "deploy:full":
-            Formatter.print_section("Running Full Deployment")
+            print_section("Running Full Deployment")
             runner.build_contracts()
-            Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
+            print_subsection(f"Deploying core protocol contracts for {args.network}")
             retries = 3
             # Deploy protocol Core contracts
             while not runner.run_deploy("FullDeployer"):
@@ -168,10 +168,10 @@ def main():
                 if "--resume" not in args.forge_args:
                     args.forge_args.append("--resume")
                 if retries ==0:
-                    Formatter.print_error("Full deployment failed")
+                    print_error("Full deployment failed")
                     sys.exit(1)
                 else:
-                    Formatter.print_error("Full deployment failed, retrying {retries}/3")
+                    print_error("Full deployment failed, retrying {retries}/3")
                     time.sleep(10)
             # Deploy Adapter contracts
             while not runner.run_deploy("Adapters"):
@@ -180,78 +180,78 @@ def main():
                 if "--resume" not in args.forge_args:
                     args.forge_args.append("--resume")                
                 if retries ==0:
-                    Formatter.print_error("Full deployment failed")
+                    print_error("Full deployment failed")
                     sys.exit(1)
                 else:
-                    Formatter.print_error("Full deployment failed, retrying {retries}/3")
+                    print_error("Full deployment failed, retrying {retries}/3")
                     time.sleep(10)
-            Formatter.print_section(f"Verifying deployment for {args.network}")
+            print_section(f"Verifying deployment for {args.network}")
             if not verifier.verify_contracts("FullDeployer") or not verifier.verify_contracts("Adapters"):
-                Formatter.print_error("Full deployment verification failed. Check logs for details.")
+                print_error("Full deployment verification failed. Check logs for details.")
                 sys.exit(1)
-            Formatter.print_success("Full deployment completed successfully")
+            print_success("Full deployment completed successfully")
             
             # Deploy Test Data on testnets
             if env_loader.is_testnet:
-                Formatter.print_info("Running test data deployment")
+                print_info("Running test data deployment")
                 if not runner.run_deploy("TestData"):
-                    Formatter.print_error("Test data deployment failed")
+                    print_error("Test data deployment failed")
                     sys.exit(1)
-            Formatter.print_success("Test data deployment completed successfully")
+            print_success("Test data deployment completed successfully")
             sys.exit(0)
             
         elif args.step == "deploy:protocol":
-            Formatter.print_section("Running Protocol Deployment")
+            print_section("Running Protocol Deployment")
             runner.build_contracts()
-            Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
+            print_subsection(f"Deploying core protocol contracts for {args.network}")
             deploy_success = runner.run_deploy("FullDeployer")
-            Formatter.print_section(f"Verifying deployment for {args.network}")
+            print_section(f"Verifying deployment for {args.network}")
             if args.catapulta:
-                Formatter.print_info("Waiting for catapulta verification to complete... (5 minutes)")
+                print_info("Waiting for catapulta verification to complete... (5 minutes)")
                 time.sleep(300)
             verify_success = verifier.verify_contracts("FullDeployer")
             
         elif args.step == "deploy:adapters":
-            Formatter.print_section("Running Adapters Deployment")
+            print_section("Running Adapters Deployment")
             runner.build_contracts()
-            Formatter.print_step(f"Deploying adapters for {args.network}")
+            print_step(f"Deploying adapters for {args.network}")
             deploy_success = runner.run_deploy("Adapters")
-            Formatter.print_section(f"Verifying deployment for {args.network}")
+            print_section(f"Verifying deployment for {args.network}")
             verify_success = verifier.verify_contracts("Adapters")
             
         elif args.step == "wire:adapters":
-            Formatter.print_step(f"Wiring adapters for {args.network}")
+            print_step(f"Wiring adapters for {args.network}")
             deploy_success = runner.run_deploy("WireAdapters")
             
         elif args.step == "deploy:test":
-            Formatter.print_section(f"Deploying test data for {args.network}")
+            print_section(f"Deploying test data for {args.network}")
             deploy_success = runner.run_deploy("TestData")
             
         elif args.step == "verify:protocol":
-            Formatter.print_section(f"Verifying core protocol contracts for {args.network}")
+            print_section(f"Verifying core protocol contracts for {args.network}")
             verify_success = verifier.verify_contracts("FullDeployer")
             
         elif args.step == "verify:adapters":
-            Formatter.print_section(f"Verifying Adapters contracts for {args.network}")
+            print_section(f"Verifying Adapters contracts for {args.network}")
             verify_success = verifier.verify_contracts("Adapters")
         
         # Handle errors 
         if not verify_success:
             if args.catapulta:
-                Formatter.print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:[protocol,adapters] again")
-            Formatter.print_error("Some contracts are not deployed or not verified")
+                print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:[protocol,adapters] again")
+            print_error("Some contracts are not deployed or not verified")
             sys.exit(1)
         
         if not deploy_success and verify_success:
-            Formatter.print_error("Forge failed but all contracts seem deployed and verified")
+            print_error("Forge failed but all contracts seem deployed and verified")
             log_file = env_loader.root_dir / "deploy" / "logs" / f"forge-validate-{args.network}.log"
             if os.path.exists(log_file):
-                Formatter.print_error("This is most likely due to the batcher contract not being verified")
-                Formatter.print_error(f"See {log_file} for details.")
-        
+                print_error("This is most likely due to the batcher contract not being verified")
+                print_error(f"See {log_file} for details.")
+    
     except Exception as e:
-        Formatter.print_error(f"Deployment failed: {str(e)}")
-        Formatter.print_error("Full traceback:")
+        print_error(f"Deployment failed: {str(e)}")
+        print_error("Full traceback:")
         traceback.print_exc()
         sys.exit(1)
 

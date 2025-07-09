@@ -8,6 +8,21 @@ Designed to work well in both terminal and CI environments.
 
 import pathlib
 
+# Define what gets imported with "from .formatter import *"
+__all__ = [
+    'print_section',
+    'print_subsection', 
+    'print_step',
+    'print_info',
+    'print_success',
+    'print_error',
+    'print_warning',
+    'print_command',
+    'format_account',
+    'format_command',
+    'format_path'
+]
+
 class Formatter:
     # Color constants
     RESET = '\033[0m'
@@ -51,6 +66,8 @@ class Formatter:
     @staticmethod
     def print_warning(message: str):
         """Print a warning message (yellow warning)"""
+        import time
+        time.sleep(0.2)
         print(f"    {Formatter.YELLOW}⚠ {message} {Formatter.RESET}")
     
     @staticmethod
