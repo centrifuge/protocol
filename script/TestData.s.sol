@@ -32,7 +32,7 @@ import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
-
+import {Guardian} from "src/common/Guardian.sol";
 import "forge-std/Script.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
@@ -66,6 +66,7 @@ contract TestData is FullDeployer {
         hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager = AsyncRequestManager(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
+        guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -87,7 +88,7 @@ contract TestData is FullDeployer {
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
-        hub.createPool(poolId, msg.sender, USD_ID);
+        guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -100,6 +101,8 @@ contract TestData is FullDeployer {
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
+        // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(admin).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -213,7 +216,7 @@ contract TestData is FullDeployer {
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
-        hub.createPool(poolId, msg.sender, USD_ID);
+        guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
