@@ -29,7 +29,7 @@ jobs:
         - name: Install Foundry
           uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # 1.4.0
           with:
-            version: 1.2.3            
+            version: v1.2.3          
         #Make sure all tools are installed and with proper versions
         - name: Setup deployer tools
           env:
