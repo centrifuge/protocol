@@ -451,7 +451,42 @@ check_forge() {
         print_info "Installing Foundry..."
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
-            export PATH="$HOME/.foundry/bin:$PATH"
+
+            # Debug: Show current PATH and check for foundry directories
+            print_info "Debug: Current PATH: $PATH"
+            print_info "Debug: Checking for foundry directories..."
+
+            # Check common locations where foundry might be installed
+            FOUNDRY_PATHS=(
+                "$HOME/.foundry/bin"
+                "$HOME/.local/share/foundry/bin"
+                "/usr/local/bin"
+                "/opt/homebrew/bin"
+            )
+
+            for path in "${FOUNDRY_PATHS[@]}"; do
+                if [[ -d "$path" ]]; then
+                    print_info "Debug: Found directory: $path"
+                    if [[ -f "$path/foundryup" ]]; then
+                        print_info "Debug: Found foundryup at: $path/foundryup"
+                        export PATH="$path:$PATH"
+                        break
+                    fi
+                fi
+            done
+
+            # Also try the standard foundry location
+            if [[ -d "$HOME/.foundry/bin" ]]; then
+                export PATH="$HOME/.foundry/bin:$PATH"
+            fi
+
+            print_info "Debug: Updated PATH: $PATH"
+            print_info "Debug: Checking if foundryup is available..."
+            if command -v foundryup &>/dev/null; then
+                print_info "Debug: foundryup found at: $(command -v foundryup)"
+            else
+                print_info "Debug: foundryup not found in PATH"
+            fi
 
             # Now try to run foundryup
             print_info "Running foundryup to install Foundry tools..."
@@ -459,6 +494,7 @@ check_forge() {
                 print_success "Foundry installed"
             else
                 print_error "foundryup failed. Please run 'foundryup' manually"
+                print_info "Debug: You may need to restart your terminal or run: source ~/.bashrc"
                 return 1
             fi
         else
