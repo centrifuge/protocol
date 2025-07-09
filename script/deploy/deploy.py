@@ -156,7 +156,51 @@ def main():
         verify_success = True
         deploy_success = True
 
-        if args.step == "deploy:protocol":
+        if args.step == "deploy:full":
+            Formatter.print_section("Running Full Deployment")
+            runner.build_contracts()
+            Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
+            retries = 3
+            # Deploy protocol Core contracts
+            while not runner.run_deploy("FullDeployer"):
+                retries -= 1
+                # Add --resume to continue from where we left off after first try
+                if "--resume" not in args.forge_args:
+                    args.forge_args.append("--resume")
+                if retries ==0:
+                    Formatter.print_error("Full deployment failed")
+                    sys.exit(1)
+                else:
+                    Formatter.print_error("Full deployment failed, retrying {retries}/3")
+                    time.sleep(10)
+            # Deploy Adapter contracts
+            while not runner.run_deploy("Adapters"):
+                retries -= 1
+                # Add --resume to continue from where we left off after first try
+                if "--resume" not in args.forge_args:
+                    args.forge_args.append("--resume")                
+                if retries ==0:
+                    Formatter.print_error("Full deployment failed")
+                    sys.exit(1)
+                else:
+                    Formatter.print_error("Full deployment failed, retrying {retries}/3")
+                    time.sleep(10)
+            Formatter.print_section(f"Verifying deployment for {args.network}")
+            if not verifier.verify_contracts("FullDeployer") or not verifier.verify_contracts("Adapters"):
+                Formatter.print_error("Full deployment verification failed. Check logs for details.")
+                sys.exit(1)
+            Formatter.print_success("Full deployment completed successfully")
+            
+            # Deploy Test Data on testnets
+            if env_loader.is_testnet:
+                Formatter.print_info("Running test data deployment")
+                if not runner.run_deploy("TestData"):
+                    Formatter.print_error("Test data deployment failed")
+                    sys.exit(1)
+            Formatter.print_success("Test data deployment completed successfully")
+            sys.exit(0)
+            
+        elif args.step == "deploy:protocol":
             Formatter.print_section("Running Protocol Deployment")
             runner.build_contracts()
             Formatter.print_subsection(f"Deploying core protocol contracts for {args.network}")
