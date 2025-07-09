@@ -135,9 +135,14 @@ class AnvilManager:
         if not self._verify_deployments():
             return False
         
-        # Deploy test data
+        # Deploy test data - temporarily use admin account's private key
+        # We need to sign TestData with the ADMIN key
+        env_mock.private_key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"  # 2nd account private key
+        Formatter.print_info("Using admin account private key for TestData script")
+        
         if not runner.run_deploy("TestData"):
             return False
+
         
         # All steps succeeded
         Formatter.print_success("Protocol and adapters deployed successfully")
