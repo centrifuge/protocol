@@ -451,15 +451,19 @@ check_forge() {
         print_info "Installing Foundry..."
         if install_package "curl -L https://foundry.paradigm.xyz | bash"; then
             print_success "Foundry installer completed"
-            ls "$HOME/.config/foundry/bin" 2>/dev/null || echo "No .config/foundry/bin directory"
+            ls "$HOME/.config/.foundry/bin" 2>/dev/null || echo "No .config/.foundry/bin directory"
             cat "/home/runner/.bashrc" | grep "foundry" || echo "No foundry entries in bashrc"
-            # Check if Foundry was installed in $HOME/.foundry or $HOME/.config/foundry and add to PATH if needed
-            if [[ -d "$HOME/.foundry/bin" ]]; then
-                export PATH="$HOME/.foundry/bin:$PATH"
+
+            # Source bashrc to apply the PATH changes made by the installer
+            source "/home/runner/.bashrc"
+
+            # Also manually add the foundry path to ensure it's available
+            if [[ -d "$HOME/.config/.foundry/bin" ]]; then
+                export PATH="$PATH:$HOME/.config/.foundry/bin"
+                print_info "Added $HOME/.config/.foundry/bin to PATH"
+            elif [[ -d "$HOME/.foundry/bin" ]]; then
+                export PATH="$PATH:$HOME/.foundry/bin"
                 print_info "Added $HOME/.foundry/bin to PATH"
-            elif [[ -d "$HOME/.config/foundry/bin" ]]; then
-                export PATH="$HOME/.config/foundry/bin:$PATH"
-                print_info "Added $HOME/.config/foundry/bin to PATH"
             fi
 
             # Check that PATH contains 'foundry'
