@@ -663,17 +663,22 @@ contract EndToEndUseCases is EndToEndFlows {
         // We just subsidize for two message
         vm.startPrank(ANY);
         s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares());
 
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
+        assertEq(address(s.gateway).balance, 0);
 
         // This message is fully paid with refunded amount
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, 0);
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
