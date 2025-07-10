@@ -19,7 +19,6 @@ __all__ = [
     'print_warning',
     'print_command',
     'format_account',
-    'format_command',
     'format_path'
 ]
 
@@ -113,16 +112,16 @@ class Formatter:
         # Mask secrets if env_loader provided
         if env_loader:
             # Mask private key
-            if hasattr(env_loader, 'private_key') and env_loader.private_key:
+            if env_loader.private_key:
                 debug_cmd = debug_cmd.replace(env_loader.private_key, "$PRIVATE_KEY")
             
             # Mask Alchemy API key in RPC URL
-            if hasattr(env_loader, 'rpc_url') and env_loader.rpc_url and "alchemy" in env_loader.rpc_url:
+            if env_loader.rpc_url:
                 alchemy_key = env_loader.rpc_url.split("/")[-1]
                 debug_cmd = debug_cmd.replace(alchemy_key, "$ALCHEMY_API_KEY")
             
             # Mask Etherscan API key
-            if hasattr(env_loader, 'etherscan_api_key') and env_loader.etherscan_api_key:
+            if env_loader.etherscan_api_key:
                 debug_cmd = debug_cmd.replace(env_loader.etherscan_api_key, "$ETHERSCAN_API_KEY")
         
         # Show relative path if script_path and root_dir provided
@@ -174,10 +173,6 @@ def print_command(cmd: list, env_loader=None, script_path=None, root_dir=None):
 def format_account(account: str) -> str:
     """Format truncated account address as string"""
     return Formatter.format_account(account)
-
-def format_command(cmd: list, env_loader=None, script_path=None, root_dir=None) -> str:
-    """Format a command list for display, masking secrets and showing relative paths"""
-    return Formatter.print_command(cmd, env_loader, script_path, root_dir)
 
 def format_path(path, root_dir=None):
     """Format path to show relative to root directory when possible"""

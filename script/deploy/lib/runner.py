@@ -94,16 +94,16 @@ class DeploymentRunner:
             args.extend(["--sender", ledger.get_ledger_account])
             return args
         elif is_testnet and not self.args.ledger:
-            # Get the public key from the private key using 'cast'
+            # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
             print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
             if self.args.catapulta:
                 #--sender Optional, specify the sender address (required when using --private-key)
-                return ["--private-key", self.env_loader.private_key, "--sender", result.stdout.strip()]
+                return ["--private-key", private_key, "--sender", result.stdout.strip()]
             else:
-                return ["--private-key", self.env_loader.private_key]
+                return ["--private-key", private_key]
             
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
