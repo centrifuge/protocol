@@ -5,8 +5,9 @@ import {IGasService} from "src/common/interfaces/IGasService.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
 /// @title  GasService
-/// @notice This is a utility contract used to determine the execution gas limit
-///         for a payload being sent across all supported adapters.
+/// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
+///         These values are used by adapters to determine how much gas to allocate for
+///         message execution on destination chains.
 contract GasService is IGasService {
     using MessageLib for *;
 

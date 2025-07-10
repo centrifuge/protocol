@@ -14,6 +14,7 @@ lcov.info
 /crytic-export
 /echidna
 **/*.log
+/env/anvil.json
 
 ## Recon Separate Configs
 /medusa-core

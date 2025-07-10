@@ -10,9 +10,16 @@ import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/Extended
 
 import "forge-std/Script.sol";
 
+/**
+ * @title FullDeployer
+ * @notice Deploys the complete Centrifuge protocol stack (Hub + Spoke)
+ */
 contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher {}
 
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
+    // Config variables
+    uint256 public batchGasLimit;
+
     function deployFull(CommonInput memory input, FullActionBatcher batcher) public {
         _preDeployFull(input, batcher);
         _postDeployFull(batcher);
@@ -38,6 +45,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
         uint16 centrifugeId;
         string memory environment;
         string memory network;
+        address rootAddress;
 
         try vm.envString("NETWORK") returns (string memory _network) {
             network = _network;
@@ -45,6 +53,19 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             string memory config = vm.readFile(configFile);
             centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
             environment = vm.parseJsonString(config, "$.network.environment");
+
+            try vm.parseJsonAddress(config, "$.network.root") returns (address _root) {
+                rootAddress = _root;
+            } catch {
+                rootAddress = address(0);
+            }
+
+            // Parse batchGasLimit with defaults
+            try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
+                batchGasLimit = _batchGasLimit;
+            } catch {
+                batchGasLimit = 25_000_000; // 25M gas
+            }
         } catch {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
             revert("NETWORK environment variable is required");
@@ -52,19 +73,25 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
 
         console.log("Network:", network);
         console.log("Environment:", environment);
+        console.log("Version:", vm.envOr("VERSION", string("")));
         console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
         startDeploymentOutput();
 
         CommonInput memory input = CommonInput({
             centrifugeId: centrifugeId,
-            root: IRoot(vm.envAddress("ROOT")),
+            root: IRoot(rootAddress),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
-            batchGasLimit: uint128(vm.envUint("BATCH_GAS_LIMIT")),
-            version: vm.envOr("VERSION", bytes32(0))
+            batchGasLimit: uint128(batchGasLimit),
+            version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 
-        FullActionBatcher batcher = new FullActionBatcher();
+        FullActionBatcher batcher = FullActionBatcher(
+            create3(
+                keccak256(abi.encodePacked("fullActionBatcher", input.version)),
+                abi.encodePacked(type(FullActionBatcher).creationCode)
+            )
+        );
         deployFull(input, batcher);
 
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
