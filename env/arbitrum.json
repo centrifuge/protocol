@@ -22,5 +22,38 @@
             "deploy": false
         }
     },
-    "contracts": {}
+    "contracts": {
+        "guardian": "0xEb26347A8eBE76e713f3E9cE6E5bB09Ffbc55344",
+        "gasService": "0x705A3C521d37D137c8e9bBD0B3bECDc257ae131D",
+        "gateway": "0x92fa15aceE9EF630076186736D0B701D4D3884B7",
+        "multiAdapter": "0xB4B9Cfa1E3839c8FF945B25e13CA0Ccd8332BFfA",
+        "messageProcessor": "0x1983188F318f6302e6Fb95BE8Efe92c8a656Bf63",
+        "messageDispatcher": "0x62C7b66e7ccFBB2b58677aea506128F4fD9CE7D7",
+        "poolEscrowFactory": "0x92AcDe73Bc383105B6E25A6c83eB54112dC3A378",
+        "hubRegistry": "0xCcaB221716c3F070Bbd87b89FF589b762AaD0495",
+        "accounting": "0xFE087b192BBF5ce22a1c1a47C7e58BF83850309d",
+        "holdings": "0xBF7B1A2E8dc38Ed90Dc4314bE32D8B1E5541466D",
+        "shareClassManager": "0x610a2D0692c01c0c5ea806be1cDC6b1e019eA7c6",
+        "hubHelpers": "0xe2cEf3e819752886f111a04767c9d75f4ba81Ea1",
+        "hub": "0x42798250f10a26482CfA220bE9F2EeFbe66c66D5",
+        "identityValuation": "0x896e85AED469B70845d4a58965330aAef71ae8b0",
+        "tokenFactory": "0xcC17F489CD86E1F9B6A9275Bc78E10772075E5fB",
+        "spoke": "0x78bDe8FE8522Af5990Ba586dD1864ABbcec8BD61",
+        "balanceSheet": "0xF920cBf8d4f5Bb62795660935715Ff526FECccec",
+        "contractUpdater": "0xd3e0D3Be1041e471c964D668960C915cfC5038E9",
+        "routerEscrow": "0x754338D136A5732844692af40C4898D2f6CE6c9A",
+        "globalEscrow": "0xFABa8D79d744F64309DAeC871f0b04e3939ABBd0",
+        "asyncRequestManager": "0xf10be979027dC2c1446AE623308875eC4aB1AE6e",
+        "syncManager": "0x8d36B2Eaac4434C3a17B440A3E91F058669B22e6",
+        "asyncVaultFactory": "0x9898f3e065799A8AEc96060098eC0d9d47bEfCAb",
+        "syncDepositVaultFactory": "0xA166397982faA59895e2db885B4adD2504063Bf5",
+        "vaultRouter": "0x6C0cc22d20521Dd8F94291Ff8560498138B48905",
+        "freezeOnlyHook": "0x130A955A1041ab34Be494Cb85D25038da75b2C0F",
+        "redemptionRestrictionsHook": "0x8EC030C8D7617E0BB322bD3Dbb2d86Af0012Fdde",
+        "fullRestrictionsHook": "0x20135cA0D151f7E3a75c540c81beD5C0479E78e3",
+        "onOfframpManagerFactory": "0xBd3C083cEe92e3af3Fd1a23bf57684c60fc0d8B8",
+        "merkleProofManagerFactory": "0x4f2B1903afe4430A800076e216a57e6BD8fA3e9c",
+        "vaultDecoder": "0x90CB0eDc5ab1fed145318769662f726047F41101",
+        "circleDecoder": "0x35f25475879A61267a6f34D0F56A8D6DD80EcF1D"
+    }
 }
