@@ -177,10 +177,10 @@ class AnvilManager:
         # Needed to mask the rpc_url in the command
         class MockEnvLoader:
             def __init__(self, manager, rpc_url):
-                self.rpc_url = rpc_url  # Remove the comma that was making it a tuple
-                self.private_key = manager.private_key
+                self.rpc_url = rpc_url 
                 # Add other attributes that formatter might expect
-                self.etherscan_api_key = ""  # Not needed for anvil
+                self.private_key = manager.private_key
+                self.etherscan_api_key = "" 
 
         print_command(cmd, env_loader=MockEnvLoader(self,rpc_url=fork_url))
         with open("anvil-service.log", "w") as log_file:

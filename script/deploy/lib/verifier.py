@@ -105,23 +105,6 @@ class ContractVerifier:
         else:
             return contracts
 
-    def _verify_single_contract(self, contract_name: str, contract_address: str) -> bool:
-        """Verify a single contract"""
-        # Check if contract is deployed
-        if not self._is_contract_deployed(contract_address):
-            print_error(f"{contract_name} ({contract_address}) is NOT deployed (no code at address)")
-            return False
-        
-        print_success(f"{contract_name} ({contract_address}) is deployed")
-
-        # Check if verified on Etherscan
-        if self._is_contract_verified(contract_address):
-            print_success(f"{contract_name} ({contract_address}) is verified on Etherscan")
-            return True
-        else:
-            print_error(f"{contract_name} ({contract_address}) is deployed but NOT verified on Etherscan")
-            return False
-
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
         payload = {
