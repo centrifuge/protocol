@@ -50,8 +50,8 @@
     "spoke": "0xe564Ad088f78614F50011B367988de33E7835C4a",
     "vaultRouter": "0x9DB81EF77A765595Ac4A7945CEA34e96f2eaB56b",
     "balanceSheet": "0x3590B2dd2EeEf326F37949e042e503226BCE04a4",
-    "wormholeAdapter": "0x20476c2Ce241cB411A126E5cb0AA4f5881E1880a",
-    "axelarAdapter": "0x7D1418c9074E2C55284Bc98525a4E8A5375DA5df",
+    "wormholeAdapter": "0x1Bc8b6DD81187fe33F7368788D5e893c7BE9EA61",
+    "axelarAdapter": "0xc13F9C4120A1800A0A2cf220F2219Ff82dE0c5c0",
     "hubHelpers": "0x1a1570daFb05b0A796faB21A718B09FF2bd62DEe",
     "onOfframpManagerFactory": "0xB3Da210bDCEdfC3D54d2f8C2538a0170b2493EC6",
     "merkleProofManagerFactory": "0x76eDC8c9C3766cF82d16Ec02b871bF887879F3C1",
@@ -60,11 +60,14 @@
     "contractUpdater": "0x6e764a839DC855530D588E939ac7604663F45a62"
   },
   "deploymentInfo": {
-    "gitCommit": "cedbb13c",
-    "timestamp": "2025-07-03T12:13:57Z",
     "deploy:protocol": {
       "gitCommit": "2b14b3a3",
       "timestamp": "2025-07-09T21:59:48Z",
+      "version": "v3-main"
+    },
+    "deploy:adapters": {
+      "gitCommit": "0fbfddce",
+      "timestamp": "2025-07-10T00:13:28Z",
       "version": "v3-main"
     }
   }
