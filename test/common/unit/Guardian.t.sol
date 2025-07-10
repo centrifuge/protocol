@@ -20,8 +20,6 @@ import "forge-std/Test.sol";
 contract IsContract {}
 
 contract GuardianTest is Test {
-    Guardian guardian;
-
     IRoot immutable root = IRoot(address(new IsContract()));
     IHubGuardianActions immutable hub = IHubGuardianActions(address(new IsContract()));
     IRootMessageSender sender = IRootMessageSender(address(new IsContract()));
@@ -38,9 +36,7 @@ contract GuardianTest is Test {
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
     bytes32 immutable HASH = bytes32("hash");
 
-    function setUp() public virtual {
-        guardian = new Guardian(SAFE, multiAdapter, root, sender);
-    }
+    Guardian guardian = new Guardian(SAFE, multiAdapter, root, sender);
 
     function testGuardian() public view {
         assertEq(address(guardian.safe()), address(SAFE));
@@ -69,7 +65,7 @@ contract GuardianTestFile is GuardianTest {
 
     function testFileOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.file("safe", makeAddr("newSafe"));
     }
 }
@@ -91,7 +87,7 @@ contract GuardianTestCreatePool is GuardianTest {
 
     function testCreatePoolOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.createPool(POOL_A, POOL_ADMIN, ASSET_ID_A);
     }
 }
@@ -116,7 +112,7 @@ contract GuardianTestPause is GuardianTest {
         vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, UNAUTHORIZED), abi.encode(false));
 
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
         guardian.pause();
     }
 }
@@ -131,7 +127,7 @@ contract GuardianTestUnpause is GuardianTest {
 
     function testUnpauseOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.unpause();
     }
 }
@@ -146,7 +142,7 @@ contract GuardianTestScheduleRely is GuardianTest {
 
     function testScheduleRelyOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.scheduleRely(TARGET);
     }
 }
@@ -161,7 +157,7 @@ contract GuardianTestCancelRely is GuardianTest {
 
     function testCancelRelyOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.cancelRely(TARGET);
     }
 }
@@ -182,7 +178,7 @@ contract GuardianTestScheduleUpgrade is GuardianTest {
 
     function testScheduleUpgradeOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.scheduleUpgrade(CENTRIFUGE_ID, TARGET);
     }
 }
@@ -203,7 +199,7 @@ contract GuardianTestCancelUpgrade is GuardianTest {
 
     function testCancelUpgradeOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.cancelUpgrade(CENTRIFUGE_ID, TARGET);
     }
 }
@@ -237,7 +233,7 @@ contract GuardianTestRecoverTokens is GuardianTest {
 
     function testRecoverTokensOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT);
     }
 }
@@ -256,7 +252,7 @@ contract GuardianTestInitiateRecovery is GuardianTest {
 
     function testInitiateRecoveryOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.initiateRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
     }
 }
@@ -275,7 +271,7 @@ contract GuardianTestDisputeRecovery is GuardianTest {
 
     function testDisputeRecoveryOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.disputeRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
     }
 }
@@ -300,22 +296,17 @@ contract GuardianTestWireAdapter is GuardianTest {
         adapters[0] = ADAPTER;
 
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.wireAdapters(CENTRIFUGE_ID, adapters);
     }
 }
 
 contract GuardianTestWireWormholeAdapter is GuardianTest {
-    IWormholeAdapter localAdapter;
-
     uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 3;
     uint16 constant REMOTE_WORMHOLE_CHAIN_ID = 4;
     address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
 
-    function setUp() public override {
-        super.setUp();
-        localAdapter = IWormholeAdapter(makeAddr("localAdapter"));
-    }
+    IWormholeAdapter localAdapter = IWormholeAdapter(makeAddr("localAdapter"));
 
     function _mockWormholeFileCalls(uint16 centrifugeId, uint16 wormholeId, address adapter) internal {
         vm.mockCall(
@@ -341,7 +332,7 @@ contract GuardianTestWireWormholeAdapter is GuardianTest {
 
     function testWireWormholeAdapterOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.wireWormholeAdapter(
             localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
         );
@@ -379,19 +370,14 @@ contract GuardianTestWireWormholeAdapter is GuardianTest {
 contract GuardianTestWireAxelarAdapter is GuardianTest {
     using AxelarAddressToString for address;
 
-    IAxelarAdapter localAdapter;
-
     uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 2;
     string constant REMOTE_AXELAR_CHAIN_ID = "base";
     address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
 
+    IAxelarAdapter localAdapter = IAxelarAdapter(makeAddr("localAdapter"));
+
     function _remoteAdapter() internal pure returns (string memory) {
         return REMOTE_ADAPTER_ADDRESS.toAxelarString();
-    }
-
-    function setUp() public override {
-        super.setUp();
-        localAdapter = IAxelarAdapter(makeAddr("localAdapter"));
     }
 
     function _mockAxelarFileCalls(uint16 centrifugeId, string memory axelarId, string memory adapter) internal {
@@ -418,7 +404,7 @@ contract GuardianTestWireAxelarAdapter is GuardianTest {
 
     function testWireAxelarAdapterOnlySafe() public {
         vm.prank(UNAUTHORIZED);
-        vm.expectRevert(abi.encodeWithSelector(IGuardian.NotTheAuthorizedSafe.selector));
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.wireAxelarAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
     }
 
