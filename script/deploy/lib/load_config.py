@@ -94,9 +94,9 @@ class EnvironmentLoader:
     @property
     def private_key(self) -> str:
         if private_key := self._check_env_file("PRIVATE_KEY"):
+            if not self.is_testnet:
+                raise ValueError("Private key is not needed for non-testnet networks")
             return private_key
-        if not self.is_testnet:
-            raise ValueError("Private key is not needed for non-testnet networks")
         if self._private_key is None:
             print_step("Loading Testnet Private Key")
             self._private_key = self._get_secret("testnet-private-key")
