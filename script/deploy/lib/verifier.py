@@ -270,11 +270,12 @@ class ContractVerifier:
             if 'deploymentInfo' not in config_data:
                 config_data['deploymentInfo'] = {}
             
-
-            config_data['deploymentInfo'][self.args.step] = {
-                'gitCommit': git_commit,
-                'timestamp': deployment_timestamp,
-            }
+            if "deploy" in self.args.step:
+                config_data['deploymentInfo'][self.args.step] = {
+                    'gitCommit': git_commit,
+                    'timestamp': deployment_timestamp,
+                }
+                
             if os.environ.get("VERSION"):
                 config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
 
