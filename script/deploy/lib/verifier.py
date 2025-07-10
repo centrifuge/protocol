@@ -51,14 +51,14 @@ class ContractVerifier:
             deployed_count = 0
             for contract_name, contract_address in contract_addresses.items():
                 # First check if it is deployed
-                if not self._is_contract_deployed(contract_address):
+                if self._is_contract_deployed(contract_address):
                     print_success(f"{contract_name} ({contract_address}) is deployed")
                     deployed_count += 1
                 else:
                     print_error(f"{contract_name} ({contract_address}) is NOT deployed (no code at address)")
                     undeployed_contracts.append(f"{contract_name}:{contract_address}")
                 # Then check if it's verified on Etherscan
-                if self._is_contract_verified(contract_name):
+                if self._is_contract_verified(contract_address):
                     print_success(f"{contract_name} ({contract_address}) is verified on Etherscan")
                     verified_count += 1
                 else:
