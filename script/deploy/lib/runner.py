@@ -208,7 +208,7 @@ class DeploymentRunner:
                 
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
-            print(format_command(cmd))
+            print(print_command(cmd))
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
                 print_error(f"stderr: {e.stderr}")

@@ -30,7 +30,12 @@ class ContractVerifier:
 
     def verify_contracts(self, deployment_script: str) -> bool:
         """Verify contracts on Etherscan"""
-        contracts_file = self._determine_contracts_file()
+        # Always use -latest.json for verification
+        if not self.latest_deployment.exists():
+            Formatter.print_error(f"Deployment file not found: {self.latest_deployment}")
+            return False
+            
+        contracts_file = self.latest_deployment
         relative_path = Formatter.format_path(contracts_file, self.root_dir)
         Formatter.print_step(f"Checking contracts from {relative_path}")
         
@@ -58,87 +63,16 @@ class ContractVerifier:
                 return False
             else:
                 Formatter.print_success("All contracts are verified!")
-                self.update_network_config()
+                # Check if -latest.json is old before updating main config
+                if self._is_deployment_old():
+                        Formatter.print_info("Skipping update of main config file")
+                        return True
+                else:
+                    self.update_network_config()
         else:
             Formatter.print_info("Dry run mode, skipping contracts checks (exists and verified)")
             
         return True
-
-    def _determine_contracts_file(self) -> pathlib.Path:
-        """Determine which contracts file to use for verification - matches bash logic"""
-        network_config = self.env_loader.config_file
-
-        if not self.latest_deployment.exists():
-            return network_config
-
-        Formatter.print_step("Checking if latest deployment differs from network env file...")
-
-        # Compare addresses between files
-        try:
-            with open(network_config, 'r') as f:
-                config_contracts = json.load(f).get("contracts", {})
-            with open(self.latest_deployment, 'r') as f:
-                latest_contracts = json.load(f).get("contracts", {})
-
-            # Convert to sorted lists of "key:value" strings for comparison
-            config_entries = sorted([f"{k}:{v}" for k, v in config_contracts.items()])
-            latest_entries = sorted([f"{k}:{v}" for k, v in latest_contracts.items()])
-
-            addresses_differ = config_entries != latest_entries
-
-        except (json.JSONDecodeError, KeyError, IOError):
-            # If we can't read files, default to network config
-            return network_config
-
-        if addresses_differ:
-            latest_deploy_file = Formatter.format_path(self.latest_deployment, self.root_dir)
-            deploy_config = Formatter.format_path(network_config, self.root_dir)
-            
-            Formatter.print_warning(f"{latest_deploy_file} has different contract addresses than {deploy_config}")
-            Formatter.print_warning(f"This probably means etherscan contract verification failed")
-            Formatter.print_warning(f"If you are sure the contracts are verified, you can manually update {deploy_config}")
-            Formatter.print_warning(f"If you are not sure, you can run python3 deploy.py {self.env_loader.network_name} deploy:{self.args.step} --resume")
-
-            # Check file ages
-            latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
-            deploy_file_age = int(time.time() - network_config.stat().st_mtime)
-            one_day_in_seconds = 86400
-
-            if latest_file_age > one_day_in_seconds:
-                Formatter.print_warning(f"{latest_deploy_file} is old (age: {latest_file_age // 3600} hours)")
-                Formatter.print_warning("Decide which contracts to verify:")
-                Formatter.print_info(f"1. Verify {latest_deploy_file} - it will override {deploy_config} when finished")
-                Formatter.print_info(f"2. Verify {deploy_config} - age: {deploy_file_age // 3600} hours")
-
-                # Interactive choice
-                choice = self._prompt_user_choice()
-                if choice == "1":
-                    Formatter.print_info(f"Use {latest_deploy_file} - and it will update {self.env_loader.config_file.name} when successful")
-                    contracts_file = self.latest_deployment
-                else:
-                    Formatter.print_info(f"{deploy_config} contract list selected for verification checks")
-                    contracts_file = network_config
-            else:
-                Formatter.print_info(f"{latest_deploy_file} contract list selected for verification checks")
-                contracts_file = self.latest_deployment
-
-            return contracts_file
-        
-        return network_config
-
-    def _prompt_user_choice(self) -> str:
-        """Prompt user for choice between files"""
-        while True:
-            try:
-                choice = input("Choose option (1/2): ").strip()
-                if choice in ["1", "2"]:
-                    return choice
-                else:
-                    Formatter.print_info("Invalid choice, please try again")
-            except (EOFError, KeyboardInterrupt):
-                # Handle Ctrl+C or EOF gracefully
-                Formatter.print_info("No choice made, defaulting to network config")
-                return "2"
 
     def _get_contract_addresses(self, contracts_file: pathlib.Path, deployment_script: str) -> dict[str, str]:
         """Get contract addresses based on deployment type"""
@@ -298,3 +232,42 @@ class ContractVerifier:
             # Restore backup
             shutil.move(backup_config, network_config)
             return False 
+
+    def _check_deployment_age(self) -> bool:
+        """Check if -latest.json is old and should warn user"""
+        if not self.latest_deployment.exists():
+            return False
+            
+        latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
+        one_day_in_seconds = 86400
+        
+        return latest_file_age > one_day_in_seconds
+
+    def _is_deployment_old(self) -> bool:
+        """Check if -latest.json is old and should warn user
+           Returns True deployment is old, False if not (or if user wants to proceed)"""
+
+        latest_deploy_file = Formatter.format_path(self.latest_deployment, self.root_dir)
+        deploy_config = Formatter.format_path(self.env_loader.config_file, self.root_dir)
+        latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
+        one_day_in_seconds = 86400
+        
+        if latest_file_age < one_day_in_seconds:
+            return False
+        # else
+
+        Formatter.print_warning(f"{latest_deploy_file} is old (age: {latest_file_age // 3600} hours)")
+        Formatter.print_warning(f"This will replace contracts in {deploy_config} with addresses from {latest_deploy_file}")
+        
+        while True:
+            try:
+                choice = input("Do you want to proceed? (y/N): ").strip().lower()
+                if choice in ["y", "yes"]:
+                    return False
+                elif choice in ["n", "no", ""]:
+                    return True
+                else:
+                    Formatter.print_info("Please enter 'y' or 'n'")
+            except (EOFError, KeyboardInterrupt):
+                Formatter.print_info("No choice made, skipping update")
+                return True
