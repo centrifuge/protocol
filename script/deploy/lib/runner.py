@@ -90,7 +90,9 @@ class DeploymentRunner:
         if self.args.ledger:
             ledger = LedgerManager(self.args)
             print_info(f"Deployer address (Ledger): {format_account(ledger.get_ledger_account)}")
-            return ledger.get_ledger_args
+            args = ledger.get_ledger_args
+            args.extend(["--sender", ledger.get_ledger_account])
+            return args
         elif is_testnet and not self.args.ledger:
             # Get the public key from the private key using 'cast'
             private_key = self.env_loader.private_key
