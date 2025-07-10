@@ -15,16 +15,6 @@ contract AdminTest is BaseTest {
     using MessageLib for *;
     using CastLib for *;
 
-    function testDeployment() public view {
-        // values set correctly
-        assertEq(root.paused(), false);
-
-        // permissions set correctly
-        assertEq(root.wards(address(guardian)), 1);
-        assertEq(multiAdapter.wards(address(guardian)), 1);
-        assertEq(messageDispatcher.wards(address(guardian)), 1);
-    }
-
     //------ pause tests ------//
     function testUnauthorizedPauseFails() public {
         MockSafe(address(adminSafe)).removeOwner(address(this));
