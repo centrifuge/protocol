@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {Root, IRoot} from "src/common/Root.sol";
 

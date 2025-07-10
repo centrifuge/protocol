@@ -7,9 +7,9 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
+import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
 
 import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
