@@ -67,7 +67,7 @@ class Formatter:
     def print_warning(message: str):
         """Print a warning message (yellow warning)"""
         import time
-        time.sleep(0.2)
+        time.sleep(1)
         print(f"    {Formatter.YELLOW}⚠ {message} {Formatter.RESET}")
     
     @staticmethod
@@ -130,13 +130,12 @@ class Formatter:
             relative_script_path = Formatter.format_path(script_path, root_dir)
             debug_cmd = debug_cmd.replace(str(script_path), relative_script_path)
         
-        Formatter.print_info("Command")
         print(f"  {debug_cmd}")
 
     @staticmethod
     def format_account(account: str) -> str:
         """Format truncated account address as string"""
-        return f"{Formatter.CYAN}{account[:6]}...{account[-4:]}{Formatter.RESET}"
+        return f"{Formatter.CYAN}{account[:7]}...{account[-7:]}{Formatter.RESET}"
 
 
 # Standalone functions for import * compatibility
