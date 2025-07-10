@@ -6,6 +6,7 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
+import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -31,9 +32,8 @@ import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFact
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
-import {Guardian} from "src/common/Guardian.sol";
 import "forge-std/Script.sol";
+import {FullDeployer} from "script/FullDeployer.s.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is FullDeployer {
