@@ -207,9 +207,21 @@ def main():
             deploy_success = runner.run_deploy("FullDeployer")
             print_section(f"Verifying deployment for {args.network}")
             if args.catapulta:
-                print_info("Waiting for catapulta verification to complete... (5 minutes)")
-                time.sleep(300)
-            verify_success = verifier.verify_contracts("FullDeployer")
+                print_info("Waiting for catapulta verification to complete...")
+                # Retry verification up to 3 times for catapulta since verification happens on their servers
+                retries = 3
+                verify_success = False
+                while not verify_success and retries > 0:
+                    print_info(f"Verification attempt {4-retries}/3 for catapulta...")
+                    time.sleep(120)  # Wait 2 minutes between attempts
+                    verify_success = verifier.verify_contracts("FullDeployer")
+                    if not verify_success and retries > 1:
+                        print_warning("Verification failed, retrying...")
+                    retries -= 1
+                    print_error("Verification failed after 3 attempts")
+            else:
+                # Forge would only get there if the --verify has completed
+                verify_success = verifier.verify_contracts("FullDeployer")
             
         elif args.step == "deploy:adapters":
             print_section("Running Adapters Deployment")
@@ -217,7 +229,12 @@ def main():
             print_step(f"Deploying adapters for {args.network}")
             deploy_success = runner.run_deploy("Adapters")
             print_section(f"Verifying deployment for {args.network}")
-            verify_success = verifier.verify_contracts("Adapters")
+            if args.catapulta:
+                print_info("Waiting for catapulta verification to complete...")
+                time.sleep(60) # 1 minute
+                verify_success = verifier.verify_contracts("Adapters")
+            else:
+                verify_success = verifier.verify_contracts("Adapters")
             
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")
