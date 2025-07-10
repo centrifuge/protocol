@@ -76,8 +76,6 @@ class DeploymentRunner:
                 # This doesn't really work:
                 # cmd.extend(["--skip", "FullActionBatcher", "--skip", "HubActionBatcher", "--skip", "ExtendedSpokeActionBatcher"])
                 print_step(f"Verifying contracts with forge")
-                print_info(f"Logs will be written to a log file")
-                print_info(f"This will take a while. Please wait...")
                 if not self._run_command(cmd):
                     return False
                 print_success("Forge contracts verified successfully")
@@ -99,7 +97,12 @@ class DeploymentRunner:
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
             print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
-            return ["--private-key", self.env_loader.private_key]
+            if self.args.catapulta:
+                #--sender Optional, specify the sender address (required when using --private-key)
+                return ["--private-key", self.env_loader.private_key, "--sender", result.stdout.strip()]
+            else:
+                return ["--private-key", self.env_loader.private_key]
+            
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
 
@@ -122,6 +125,10 @@ class DeploymentRunner:
                 base_cmd.append("--broadcast")
             if not self.env_loader.is_testnet:
                 base_cmd.append("--slow")
+            if self.env_loader.network_name == "base-sepolia":
+                # Issue with base-sepolia where Tx receipts will get stuck forever
+                base_cmd.extend(["--gas-price", "100000000000"])
+                base_cmd.append("--slow")
 
         # Catapulta
         elif self.args.catapulta:
@@ -129,6 +136,7 @@ class DeploymentRunner:
                 "catapulta", "script", str(self.script_path),
                 "--tc", script_name,
                 "--network", self.env_loader.chain_id,
+                "--gas-hawk",
                 *auth_args,
                 *self.args.forge_args
             ]
@@ -136,7 +144,7 @@ class DeploymentRunner:
     
     def _run_command(self, cmd: List[str]) -> bool:
         """Run a command"""
-        print_step("Deployment Command")
+        print_info("Deployment Command")
         print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
         is_verify = "--verify" in cmd
 
@@ -144,8 +152,9 @@ class DeploymentRunner:
             if not is_verify:
                 # For deployment, show output in real-time
                 print_info("Running deployment (output will be shown in real-time)...")
+                print("==== FORGE LOGS ====\n")
                 result = subprocess.run(cmd, env=self.env, text=True)
-                
+                print("\n==== END OF LOGS ====\n")
                 # Show any captured output if there was an error
                 if result.returncode != 0:
                     print_error(f"Command failed with exit code: {result.returncode}")
@@ -154,7 +163,7 @@ class DeploymentRunner:
             else:
                 # For verification, always capture output and write to log file
                 print_info("Running verification (output will be written to log file)...")
-                
+                print_info(f"This will take a while. Please wait...")
                 # Use Popen with explicit stdout/stderr redirection to force capture
                 process = subprocess.Popen(
                     cmd, 
