@@ -32,8 +32,8 @@ import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFact
 import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import "forge-std/Script.sol";
 import {FullDeployer} from "script/FullDeployer.s.sol";
+import "forge-std/Script.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
 contract TestData is FullDeployer {
