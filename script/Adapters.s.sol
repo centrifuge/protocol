@@ -19,7 +19,6 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
     Root public root;
     Guardian public guardian;
     MultiAdapter public multiAdapter;
-    IAdapter[] public adapters;
 
     /**
      * @dev Generates a salt for contract deployment with version
@@ -87,7 +86,6 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
                     )
                 )
             );
-            adapters.push(axelarAdapter);
 
             IAuth(address(axelarAdapter)).rely(address(root));
             IAuth(address(axelarAdapter)).rely(address(guardian));
