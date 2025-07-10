@@ -136,7 +136,6 @@ class DeploymentRunner:
                 "catapulta", "script", str(self.script_path),
                 "--tc", script_name,
                 "--network", self.env_loader.chain_id,
-                "--gas-hawk",
                 *auth_args,
                 *self.args.forge_args
             ]
