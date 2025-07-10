@@ -6,7 +6,8 @@
         "connectsTo": [
             "ethereum",
             "base"
-        ]
+        ],
+        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC"
     },
     "adapters": {
         "wormhole": {
