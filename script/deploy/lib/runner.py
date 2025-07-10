@@ -53,6 +53,10 @@ class DeploymentRunner:
         print_info(f"Admin Account: {format_account(self.env_loader.admin_address)}")
         base_cmd = self._build_command(script_name)
         if self.args.catapulta:
+            if self.args.dry_run:
+                print_warning("Catapulta cannot run without --broadcast")
+                print_info("Skipping running catapulta")
+                return True
             print_step(f"Running catapulta")
             if not self._run_command(base_cmd):
                 return False
