@@ -14,6 +14,7 @@ import subprocess
 import pathlib
 import argparse
 import os
+import traceback
 from .formatter import Formatter
 from .load_config import EnvironmentLoader
 
@@ -275,7 +276,7 @@ class ContractVerifier:
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
                 }
-                
+
             if os.environ.get("VERSION"):
                 config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
 
@@ -292,6 +293,8 @@ class ContractVerifier:
 
         except (json.JSONDecodeError, KeyError, IOError) as e:
             Formatter.print_error(f"Failed to update network config: {e}")
+            Formatter.print_error("Full error details:")
+            Formatter.print_error(traceback.format_exc())
             # Restore backup
             shutil.move(backup_config, network_config)
             return False 

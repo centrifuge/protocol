@@ -124,14 +124,14 @@ class AnvilManager:
         print_subsection("Deploying protocol")
         if not runner.run_deploy("FullDeployer"):
             return False
-        args.step = "protocol"
+        args.step = "deploy:protocol"
         verifier.update_network_config()
             
         # Deploy adapters  
         print_subsection("Deploying adapters")
         if not runner.run_deploy("Adapters"):
             return False
-        args.step = "adapters"
+        args.step = "deploy:adapters"
         verifier.update_network_config()
         print_section("Contract verifications")
         # Verify deployments
