@@ -10,14 +10,14 @@
     },
     "adapters": {
         "wormhole": {
-            "wormholeId": "10001",
-            "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+            "wormholeId": "55",
+            "relayer": null,
             "deploy": false
         },
         "axelar": {
             "axelarId": "plume",
-            "gateway": "0x0000000000000000000000000000000000000000",
-            "gasService": "0x0000000000000000000000000000000000000000",
+            "gateway": null,
+            "gasService": null,
             "deploy": false
         }
     },
