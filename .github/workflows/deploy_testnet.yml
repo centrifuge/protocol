@@ -72,9 +72,9 @@ jobs:
           env:
             VERSION: ${{ steps.set-vars.outputs.version }}
           run: |
-            python3 script/deploy/deploy.py --network ${{ steps.set-vars.outputs.network }} --step deploy:full 
+            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:full 
         - name: Deploy Test data for ${{ steps.set-vars.outputs.network }}
           env:
             VERSION: ${{ steps.set-vars.outputs.version }}
           run: |
-            python3 script/deploy/deploy.py --network ${{ steps.set-vars.outputs.network }} --step deploy:test             
+            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:test             
