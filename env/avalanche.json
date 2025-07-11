@@ -1,0 +1,25 @@
+{
+    "network": {
+        "chainId": 43114,
+        "environment": "mainnet",
+        "centrifugeId": 2,
+        "root": null,
+        "safeAdmin": null,
+        "batchGasLimit": "25000000",
+        "connectsTo": []
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": "6",
+            "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+            "deploy": true
+        },
+        "axelar": {
+            "axelarId": "Avalanche",
+            "gateway": "0x5029C0EFf6C34351a0CEc334542cDb22c7928f78",
+            "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+            "deploy": true
+        }
+    },
+    "contracts": {}
+}
