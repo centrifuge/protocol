@@ -100,14 +100,30 @@ class DeploymentRunner:
         elif is_testnet and not self.args.ledger:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
-            result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
-                capture_output=True, text=True, check=True)
-            print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
-            if self.args.catapulta:
-                #--sender Optional, specify the sender address (required when using --private-key)
-                return ["--private-key", private_key, "--sender", result.stdout.strip()]
-            else:
-                return ["--private-key", private_key]
+            try:
+                result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
+                    capture_output=True, text=True, check=True)
+                deployer_address = result.stdout.strip()
+                print_info(f"Deploying address (Testnet shared account): {format_account(deployer_address)}")
+                if self.args.catapulta:
+                    #--sender Optional, specify the sender address (required when using --private-key)
+                    return ["--private-key", private_key, "--sender", deployer_address]
+                else:
+                    return ["--private-key", private_key]
+            except subprocess.CalledProcessError as e:
+                # Mask private key in error output
+                masked_stderr = e.stderr.replace(private_key, "$PRIVATE_KEY") if e.stderr else ""
+                masked_stdout = e.stdout.replace(private_key, "$PRIVATE_KEY") if e.stdout else ""
+                print_error(f"Failed to get deployer address from private key:")
+                print_error(f"Exit code: {e.returncode}")
+                if masked_stderr:
+                    print_error(f"stderr: {masked_stderr}")
+                if masked_stdout:
+                    print_error(f"stdout: {masked_stdout}")
+                raise
+            except Exception as e:
+                print_error(f"Unexpected error getting deployer address: {str(e)}")
+                raise
             
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
@@ -212,10 +228,29 @@ class DeploymentRunner:
                 
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
-            print(print_command(cmd))
+            # Use print_command to ensure secrets are masked
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
-                print_error(f"stderr: {e.stderr}")
+                # Mask private key in stderr if present
+                masked_stderr = e.stderr
+                if self.env_loader.private_key:
+                    masked_stderr = masked_stderr.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stderr: {masked_stderr}")
+            if e.stdout:
+                # Mask private key in stdout if present
+                masked_stdout = e.stdout
+                if self.env_loader.private_key:
+                    masked_stdout = masked_stdout.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stdout: {masked_stdout}")
+            return False
+        except Exception as e:
+            print_error(f"Unexpected error running command:")
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
+            print_error(f"Error: {str(e)}")
+            import traceback
+            print_error(f"Stack trace:")
+            traceback.print_exc()
             return False
 
     def build_contracts(self):
