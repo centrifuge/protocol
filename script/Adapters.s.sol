@@ -5,7 +5,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
