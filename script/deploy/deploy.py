@@ -45,7 +45,7 @@ Examples:
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
         "deploy:protocol", "deploy:adapters", "wire:adapters", 
-        "deploy:test", "verify:protocol", "verify:adapters", "forge:clean"
+        "deploy:test", "verify:protocol", "verify:adapters", "dump:config"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
@@ -253,10 +253,14 @@ def main():
             print_section(f"Verifying Adapters contracts for {args.network}")
             verify_success = verifier.verify_contracts("Adapters")
         
+        elif args.step == "dump:config":
+            print_section(f"Dumping config for {args.network}")
+            env_loader.dump_config()
+        
         # Handle errors 
         if not verify_success:
             if args.catapulta:
-                print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:[protocol,adapters] again")
+                print_info(f"Wait for catapulta verification and run python3 deploy.py --catapulta --network {args.network} {args.step} again")
             print_error("Some contracts are not deployed or not verified")
             sys.exit(1)
         

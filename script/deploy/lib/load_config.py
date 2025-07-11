@@ -78,7 +78,7 @@ class EnvironmentLoader:
                 self.config = json.load(f)
     @property
     def etherscan_api_key(self) -> str:
-        if self.args.catapulta:
+        if self.args.catapulta or "--verifier-url" in self.args.forge_args:
             return None
         if self._etherscan_api_key is None:
             print_info("Loading Etherscan API Key")
@@ -99,27 +99,28 @@ class EnvironmentLoader:
     
     @property
     def private_key(self) -> str:
-        # If it's ledger property.private_key==null
-        if self.args.ledger:
-            return None
-        # Otherwise try to load from .env
-        elif private_key := self._check_env_file("PRIVATE_KEY"):
-            if not self.is_testnet:
-                print_warning("Are you sure you want to deploy to mainnet with the PRIVATE_KEY from .env?")
-                response = input("Do you want to continue? [y/N]: ").strip().lower()
-                if response not in ("y", "yes"):
-                    print_info("Please remove the PRIVATE_KEY from .env and try again.")
-                    print_error("Aborted by user.")
-                    raise SystemExit(1)
-            return private_key
-        # Finally load from GCP secrets
-        elif self._private_key is None:
-            if not self.is_testnet:
-                print_error("Aborting deployment. Testnet private key cannot be used for mainnet")
-                raise ValueError(f"Tried to access testnet private key. This should not happen when deploying to {self.network_name}")
-            print_step("Loading Testnet Private Key")
-            self._private_key = self._get_secret("testnet-private-key")
-            print_success("Private key loaded")
+        if  self._private_key is None:
+            # If it's ledger property.private_key==null
+            if self.args.ledger:
+                self._private_key = None
+            # Otherwise try to load from .env
+            elif private_key := self._check_env_file("PRIVATE_KEY"):
+                if not self.is_testnet and not "tenderly" in self.rpc_url:
+                    print_warning("Are you sure you want to deploy to mainnet with the PRIVATE_KEY from .env?")
+                    response = input("Do you want to continue? [y/N]: ").strip().lower()
+                    if response not in ("y", "yes"):
+                        print_info("Please remove the PRIVATE_KEY from .env and try again.")
+                        print_error("Aborted by user.")
+                        raise SystemExit(1)
+                self._private_key = private_key
+            # Finally load from GCP secrets
+            else:
+                if not self.is_testnet:
+                    print_error("Aborting deployment. Testnet private key cannot be used for mainnet")
+                    raise ValueError(f"Tried to access testnet private key. This should not happen when deploying to {self.network_name}")
+                print_step("Loading Testnet Private Key")
+                self._private_key = self._get_secret("testnet-private-key")
+                print_success("Private key loaded")
         return self._private_key
     
     @property
@@ -144,19 +145,9 @@ class EnvironmentLoader:
             return admin_address
         
         if self.is_testnet:
-            admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"  # Testnet Safe
+            admin_address = "0x423420Ae467df6e90291fd0252c0A8a637C1e03f"
         else:
-            # Mainnet addresses
-            mainnet_admins = {
-                "ethereum": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD",
-                "base": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b",
-                "celo": "0x2464f95F6901233bF4a0130A3611d5B4CBd83195",
-                "arbitrum": "0xa36caE0ACd40C6BbA61014282f6AE51c7807A433"
-            }
-            
-            if self.network_name not in mainnet_admins:
-                raise ValueError(f"Unknown mainnet network: {self.network_name}")
-            admin_address = mainnet_admins[self.network_name]
+            admin_address = self.config["network"]["safeAdmin"]
 
         print_success(f"Admin address loaded: {format_account(admin_address)}")
         return admin_address
@@ -195,25 +186,27 @@ class EnvironmentLoader:
         """Get Alchemy RPC URL for the network"""
         api_key = self._get_secret("alchemy_api")
 
-        # Map network names to Alchemy identifiers
-        network_mapping = {
-            "ethereum": "eth",
-            "arbitrum": "arb",
-            "base": "base",
-            "celo": "celo"
-        }        
+        # Load network mapping from config file
+        network_mapping_file = self.root_dir / "script" / "deploy" / "config" / "alchemy_networks.json"
+        
+        if not network_mapping_file.exists():
+            raise FileNotFoundError(f"Network mapping file not found: {network_mapping_file}")
+        
+        with open(network_mapping_file, 'r') as f:
+            config = json.load(f)
+        
+        # Determine which mapping to use
         if self.is_testnet:
-            if network_name == "sepolia":
-                prefix = "ethereum"
-            elif network_name == "celo":
-                 return f"https://{alchemy_network}-alfajores.g.alchemy.com/v2/{api_key}"
-            else:
-                prefix = network_name.removesuffix("-sepolia")
-            alchemy_network = network_mapping[prefix]
-            return f"https://{alchemy_network}-sepolia.g.alchemy.com/v2/{api_key}"
+            network_mapping = config.get("testnet", {})
         else:
-            alchemy_network = network_mapping[network_name]
-            return f"https://{alchemy_network}-mainnet.g.alchemy.com/v2/{api_key}"
+            network_mapping = config.get("mainnet", {})
+        
+        # Get the Alchemy network identifier
+        if network_name not in network_mapping:
+            raise ValueError(f"Unknown network: {network_name} (testnet: {self.is_testnet})")
+        
+        alchemy_network = network_mapping[network_name]
+        return f"https://{alchemy_network}.g.alchemy.com/v2/{api_key}"
 
     def _get_secret(self, secret_name: str) -> str:
         """Get secret from GCP Secret Manager"""
