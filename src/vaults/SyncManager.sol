@@ -204,13 +204,14 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
-        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
-        balanceSheet.issue(poolId, scId, receiver, shares);
-        balanceSheet.resetPricePoolPerShare(poolId, scId);
-
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
         balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
+
+        // Mint shares to the receiver.
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
+        balanceSheet.issue(poolId, scId, receiver, shares);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IBaseVault vault_)
