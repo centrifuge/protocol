@@ -256,6 +256,10 @@ class EnvironmentLoader:
                 "--project", "centrifuge-production-x",
                 "--secret", gcp_secret
             ], capture_output=True, check=True, text=True)
-            return result.stdout.strip()
+            # More robust cleaning of the output
+            secret_value = result.stdout.strip()
+            # Remove any remaining newlines, carriage returns, and extra whitespace
+            secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
+            return secret_value
         except subprocess.CalledProcessError:
             raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager") 
