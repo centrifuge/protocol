@@ -1,9 +1,9 @@
-name: "Deploy Testnet"
+name: "Deployment"
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/deploy_testnet.yml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       network:
@@ -22,7 +22,7 @@ on:
         default: 'TEST'
 
 jobs:
-    deploy:
+    testnet:
         runs-on: ubuntu-latest
         permissions:
           contents: 'read'
