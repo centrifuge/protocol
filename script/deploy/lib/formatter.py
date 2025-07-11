@@ -7,6 +7,8 @@ Designed to work well in both terminal and CI environments.
 """
 
 import pathlib
+import sys
+import os
 
 # Define what gets imported with "from .formatter import *"
 __all__ = [
@@ -22,6 +24,12 @@ __all__ = [
     'format_path'
 ]
 
+def _force_flush():
+    """Force flush output in CI environments"""
+    if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+        sys.stdout.flush()
+        sys.stderr.flush()
+
 class Formatter:
     # Color constants
     RESET = '\033[0m'
@@ -36,31 +44,37 @@ class Formatter:
     def print_section(title: str):
         """Print a main section header (blue, bold)"""
         print(f"{Formatter.BOLD}{Formatter.BLUE}==> {title}{Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def print_subsection(title: str):
         """Print a subsection header (cyan, bold)"""
         print(f"{Formatter.BOLD}{Formatter.CYAN} ==> {title}{Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def print_step(message: str):
         """Print a step message (bold)"""
         print(f"{Formatter.BOLD}  → {message}{Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def print_info(message: str):
         """Print an info message (normal)"""
         print(f"    • {message}")
+        _force_flush()
     
     @staticmethod
     def print_success(message: str):
         """Print a success message (green checkmark)"""
         print(f"    {Formatter.GREEN}✓ {message} {Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def print_error(message: str):
         """Print an error message (red X)"""
         print(f"    {Formatter.RED}✗ {message} {Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def print_warning(message: str):
@@ -68,6 +82,7 @@ class Formatter:
         import time
         time.sleep(1)
         print(f"    {Formatter.YELLOW}⚠ {message} {Formatter.RESET}")
+        _force_flush()
     
     @staticmethod
     def format_path(path, root_dir=None):

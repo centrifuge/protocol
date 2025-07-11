@@ -84,8 +84,8 @@ class DeploymentRunner:
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify
-            if self.env_loader.network_name != "anvil":
+            # 2. Verify (only for protocol and adapter scripts)
+            if self.env_loader.network_name != "anvil" and script_name not in ["TestData"]:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -143,7 +143,7 @@ class DeploymentRunner:
             ]
             if not self.args.dry_run:
                 base_cmd.append("--broadcast")
-            if not self.env_loader.is_testnet:
+            if not self.env_loader.is_testnet or os.environ.get('GITHUB_ACTIONS'):
                 base_cmd.append("--slow")
             if self.env_loader.network_name == "base-sepolia":
                 # Issue with base-sepolia where Tx receipts will get stuck forever
@@ -226,10 +226,29 @@ class DeploymentRunner:
                 
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
-            print(print_command(cmd))
+            # Use print_command to ensure secrets are masked
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
-                print_error(f"stderr: {e.stderr}")
+                # Mask private key in stderr if present
+                masked_stderr = e.stderr
+                if self.env_loader.private_key:
+                    masked_stderr = masked_stderr.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stderr: {masked_stderr}")
+            if e.stdout:
+                # Mask private key in stdout if present
+                masked_stdout = e.stdout
+                if self.env_loader.private_key:
+                    masked_stdout = masked_stdout.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stdout: {masked_stdout}")
+            return False
+        except Exception as e:
+            print_error(f"Unexpected error running command:")
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
+            print_error(f"Error: {str(e)}")
+            import traceback
+            print_error(f"Stack trace:")
+            traceback.print_exc()
             return False
 
     def build_contracts(self):
