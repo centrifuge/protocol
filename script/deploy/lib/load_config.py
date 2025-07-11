@@ -230,7 +230,10 @@ class EnvironmentLoader:
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/centrifuge-production-x/secrets/{gcp_secret}/versions/latest"
             response = client.access_secret_version(request={"name": name})
-            return response.payload.data.decode("UTF-8")
+            secret_value = response.payload.data.decode("UTF-8")
+            # Clean the secret value to remove any newlines or extra whitespace
+            secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
+            return secret_value
         except Exception as e:
             raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager: {e}")
 
@@ -249,6 +252,10 @@ class EnvironmentLoader:
                 "--project", "centrifuge-production-x",
                 "--secret", gcp_secret
             ], capture_output=True, check=True, text=True)
-            return result.stdout.strip()
+            # More robust cleaning of the output
+            secret_value = result.stdout.strip()
+            # Remove any remaining newlines, carriage returns, and extra whitespace
+            secret_value = secret_value.replace('\n', '').replace('\r', '').strip()
+            return secret_value
         except subprocess.CalledProcessError:
             raise RuntimeError(f"Could not fetch {gcp_secret} from Secret Manager") 
