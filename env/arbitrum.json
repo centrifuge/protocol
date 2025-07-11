@@ -7,19 +7,20 @@
             "ethereum",
             "base"
         ],
-        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC"
+        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC",
+        "safeAdmin": "0xa36caE0ACd40C6BbA61014282f6AE51c7807A433"
     },
     "adapters": {
         "wormhole": {
             "wormholeId": "23",
             "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
-            "deploy": false
+            "deploy": true
         },
         "axelar": {
             "axelarId": "arbitrum",
             "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
             "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
-            "deploy": false
+            "deploy": true
         }
     },
     "contracts": {}

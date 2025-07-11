@@ -31,14 +31,27 @@ class DeploymentRunner:
     def __init__(self, env_loader: EnvironmentLoader, args: argparse.Namespace):
         self.env_loader = env_loader
         self.args = args
-        # Set up environment variables
+        self.env = self._setup_env()
+        self.script_path = None # initialize
+    
+    def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
-        env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
+        if self.env_loader.etherscan_api_key is not None:
+            env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
         env["ADMIN"] = self.env_loader.admin_address
-        self.env = env
-        self.script_path = None # initialize
+        # Also add the vars in .env (if .env is there)
+        env_file = ".env"
+        if os.path.exists(env_file):
+            with open(env_file, "r") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        k, v = line.strip().split("=", 1)
+                        # Only set if not already set in env (env file has lower priority)
+                        if k not in env:
+                            env[k] = v
+        return env
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
@@ -97,9 +110,10 @@ class DeploymentRunner:
             args = ledger.get_ledger_args
             args.extend(["--sender", ledger.get_ledger_account])
             return args
-        elif is_testnet and not self.args.ledger:
+        elif (is_testnet and not self.args.ledger) or "tenderly" in self.env_loader.rpc_url:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
+            # Get the public key from the private key using 'cast'
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
             print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
