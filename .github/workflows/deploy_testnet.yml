@@ -68,11 +68,21 @@ jobs:
                 echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
               fi
             fi
-        - name: Deploy to ${{ steps.set-vars.outputs.network }}
+        - name: Deploy protocol to ${{ steps.set-vars.outputs.network }}
           env:
             VERSION: ${{ steps.set-vars.outputs.version }}
           run: |
-            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:full 
+            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:protocol 
+        - name: Deploy adapters to ${{ steps.set-vars.outputs.network }}
+          env:
+            VERSION: ${{ steps.set-vars.outputs.version }}
+          run: |
+            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} deploy:adapters 
+        - name: Deploy adapters to ${{ steps.set-vars.outputs.network }}
+          env:
+            VERSION: ${{ steps.set-vars.outputs.version }}
+          run: |
+            python3 script/deploy/deploy.py ${{ steps.set-vars.outputs.network }} wire:adapters             
         - name: Deploy Test data for ${{ steps.set-vars.outputs.network }}
           env:
             VERSION: ${{ steps.set-vars.outputs.version }}
