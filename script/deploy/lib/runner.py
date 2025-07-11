@@ -145,7 +145,7 @@ class DeploymentRunner:
             ]
             if not self.args.dry_run:
                 base_cmd.append("--broadcast")
-            if not self.env_loader.is_testnet:
+            if not self.env_loader.is_testnet or os.environ.get('GITHUB_ACTIONS'):
                 base_cmd.append("--slow")
             if self.env_loader.network_name == "base-sepolia":
                 # Issue with base-sepolia where Tx receipts will get stuck forever
