@@ -91,8 +91,18 @@ class AnvilManager:
         # 1. Create temporary anvil.json config file
         self._create_anvil_config()
         
-        # 2. Setup Anvil with proper RPC (try to get real one, fallback to public)
-        temp_loader = EnvironmentLoader("sepolia", self.root_dir)
+        # 2. Setup Anvil
+
+        class Args:
+            def __init__(self):
+                self.catapulta = False
+                self.ledger = False
+                self.dry_run = False
+                self.forge_args = []
+                
+        args = Args()
+
+        temp_loader = EnvironmentLoader("sepolia", self.root_dir, args)
         api_key = temp_loader._get_secret("alchemy_api")
         fork_url = f"https://eth-sepolia.g.alchemy.com/v2/{api_key}"
         print_success("Using Alchemy RPC with API key")
@@ -103,14 +113,6 @@ class AnvilManager:
         env_mock = self._create_anvil_env()
         
         # 4. Create mock args for DeploymentRunner
-        class Args:
-            def __init__(self):
-                self.catapulta = False
-                self.ledger = False
-                self.dry_run = False
-                self.forge_args = []
-                
-        args = Args()
         runner = DeploymentRunner(env_mock, args)
         
         
@@ -174,10 +176,13 @@ class AnvilManager:
         ]
         # Needed to mask the rpc_url in the command
         class MockEnvLoader:
-            def __init__(self, rpc_url):
-                self.rpc_url = rpc_url
+            def __init__(self, manager, rpc_url):
+                self.rpc_url = rpc_url 
+                # Add other attributes that formatter might expect
+                self.private_key = manager.private_key
+                self.etherscan_api_key = "" 
 
-        print_command(cmd, env_loader=MockEnvLoader(fork_url))
+        print_command(cmd, env_loader=MockEnvLoader(self,rpc_url=fork_url))
         with open("anvil-service.log", "w") as log_file:
             subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         

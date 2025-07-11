@@ -122,10 +122,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         );
         deployFull(commonInput, adaptersInput, batcher);
 
-        bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
-        if (isMainnet) {
-            removeFullDeployerAccess(batcher);
-        }
+        removeFullDeployerAccess(batcher);
 
         batcher.lock();
 
