@@ -128,17 +128,6 @@ class AnvilManager:
             return False
         args.step = "deploy:protocol"
         verifier.update_network_config()
-            
-        # Deploy adapters  
-        print_subsection("Deploying adapters")
-        if not runner.run_deploy("Adapters"):
-            return False
-        args.step = "deploy:adapters"
-        verifier.update_network_config()
-        print_section("Contract verifications")
-        # Verify deployments
-        if not self._verify_deployments():
-            return False
         
         # Deploy test data - temporarily use admin account's private key
         # We need to sign TestData with the ADMIN key

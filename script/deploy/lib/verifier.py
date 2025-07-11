@@ -40,9 +40,13 @@ class ContractVerifier:
         print_step(f"Checking contracts from {relative_path}")
         
         if not self.args.dry_run:
-            contract_addresses = self._get_contract_addresses(contracts_file, deployment_script)
+            with open(contracts_file, 'r') as f:
+                data = json.load(f)
+                contracts = data.get("contracts", {})
+                contract_addresses = { k: v for k, v in contracts.items() }
+
             if not contract_addresses:
-                print_error(f"No contracts found to verify for deployment script: {deployment_script}")
+                print_error(f"No contracts found in {relative_path}")
                 return False
 
             unverified_contracts = []
@@ -80,30 +84,11 @@ class ContractVerifier:
                         print_info("Skipping update of main config file")
                         return True
                 else:
-                    self.update_network_config()
+                    self.update_network_config(deployment_script)
         else:
             print_info("Dry run mode, skipping contracts checks")
             
         return True
-
-    def _get_contract_addresses(self, contracts_file: pathlib.Path, deployment_script: str) -> dict[str, str]:
-        """Get contract addresses based on deployment type"""
-        with open(contracts_file, 'r') as f:
-            data = json.load(f)
-        
-        contracts = data.get("contracts", {})
-        
-        # Filter based on deployment script
-        if deployment_script == "Adapters":
-            # Only adapter contracts
-            return {k: v for k, v in contracts.items() 
-                   if k in ["wormholeAdapter", "axelarAdapter"]}
-        elif deployment_script == "FullDeployer":
-            # All contracts except adapters
-            return {k: v for k, v in contracts.items() 
-                   if k not in ["wormholeAdapter", "axelarAdapter"]}
-        else:
-            return contracts
 
     def _is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
@@ -151,7 +136,7 @@ class ContractVerifier:
         except Exception:
             return False
         
-    def update_network_config(self):
+    def update_network_config(self, deployment_script: str):
         """Update network config with deployment output"""
         relative_path = format_path(self.env_loader.config_file, self.root_dir)
         print_step(f"Merging contract addresses to {relative_path}")
@@ -197,13 +182,13 @@ class ContractVerifier:
                 config_data['deploymentInfo'] = {}
             
             if "deploy" in self.args.step:
-                config_data['deploymentInfo'][self.args.step] = {
+                config_data['deploymentInfo'][deployment_script] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
                 }
 
             if os.environ.get("VERSION"):
-                config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
+                config_data['deploymentInfo'][deployment_script]['version'] = os.environ.get("VERSION")
 
             # Write updated config
             with open(network_config, 'w') as f:

@@ -35,17 +35,17 @@ IMPORTANT:
 
 Examples:
   VERSION=XYZ python3 deploy.py sepolia deploy:protocol
-  python3 deploy.py base-sepolia deploy:adapters --catapulta --priority-gas-price 2
+  python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:test --resume
   python3 deploy.py sepolia verify:protocol
-  python3 deploy.py arbitrum-sepolia verify:adapters
+  python3 deploy.py arbitrum-sepolia verify:protocol
         """
     )
     
     parser.add_argument("network", nargs="?", help="Network name (must match env/<network>.json)")
     parser.add_argument("step", nargs="?", help="Deployment step", choices=[
-        "deploy:protocol", "deploy:adapters", "wire:adapters", 
-        "deploy:test", "verify:protocol", "verify:adapters", "forge:clean"
+        "deploy:protocol", "deploy:full", "wire:adapters", 
+        "deploy:test", "verify:protocol", "dump:config"
     ])
     parser.add_argument("--catapulta", action="store_true", help="Use Catapulta for deployment")
     parser.add_argument("--ledger", action="store_true", help="Force use of Ledger hardware wallet")
@@ -174,20 +174,8 @@ def main():
                 else:
                     print_error("Full deployment failed, retrying {retries}/3")
                     time.sleep(10)
-            # Deploy Adapter contracts
-            while not runner.run_deploy("Adapters"):
-                retries -= 1
-                # Add --resume to continue from where we left off after first try
-                if "--resume" not in args.forge_args:
-                    args.forge_args.append("--resume")                
-                if retries ==0:
-                    print_error("Full deployment failed")
-                    sys.exit(1)
-                else:
-                    print_error("Full deployment failed, retrying {retries}/3")
-                    time.sleep(10)
             print_section(f"Verifying deployment for {args.network}")
-            if not verifier.verify_contracts("FullDeployer") or not verifier.verify_contracts("Adapters"):
+            if not verifier.verify_contracts("FullDeployer"):
                 print_error("Full deployment verification failed. Check logs for details.")
                 sys.exit(1)
             print_success("Full deployment completed successfully")
@@ -224,19 +212,6 @@ def main():
                 # Forge would only get there if the --verify has completed
                 verify_success = verifier.verify_contracts("FullDeployer")
             
-        elif args.step == "deploy:adapters":
-            print_section("Running Adapters Deployment")
-            runner.build_contracts()
-            print_step(f"Deploying adapters for {args.network}")
-            deploy_success = runner.run_deploy("Adapters")
-            print_section(f"Verifying deployment for {args.network}")
-            if args.catapulta:
-                print_info("Waiting for catapulta verification to complete...")
-                time.sleep(60) # 1 minute
-                verify_success = verifier.verify_contracts("Adapters")
-            else:
-                verify_success = verifier.verify_contracts("Adapters")
-            
         elif args.step == "wire:adapters":
             print_step(f"Wiring adapters for {args.network}")
             deploy_success = runner.run_deploy("WireAdapters")
@@ -248,15 +223,11 @@ def main():
         elif args.step == "verify:protocol":
             print_section(f"Verifying core protocol contracts for {args.network}")
             verify_success = verifier.verify_contracts("FullDeployer")
-            
-        elif args.step == "verify:adapters":
-            print_section(f"Verifying Adapters contracts for {args.network}")
-            verify_success = verifier.verify_contracts("Adapters")
         
         # Handle errors 
         if not verify_success:
             if args.catapulta:
-                print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:[protocol,adapters] again")
+                print_info("Wait for catapulta verification and run python3 deploy.py --catapulta --network <network> verify:protocol again")
             print_error("Some contracts are not deployed or not verified")
             sys.exit(1)
         
