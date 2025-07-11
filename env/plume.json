@@ -1,0 +1,25 @@
+{
+    "network": {
+        "chainId": 98866,
+        "environment": "mainnet",
+        "centrifugeId": 7,
+        "root": null,
+        "safeAdmin": null,
+        "batchGasLimit": "25000000",
+        "connectsTo": []
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": "10001",
+            "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
+            "deploy": false
+        },
+        "axelar": {
+            "axelarId": "plume",
+            "gateway": "0x0000000000000000000000000000000000000000",
+            "gasService": "0x0000000000000000000000000000000000000000",
+            "deploy": false
+        }
+    },
+    "contracts": {}
+}
