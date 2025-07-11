@@ -7,37 +7,53 @@ import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/ExtendedSpokeDeployer.s.sol";
+import {
+    WormholeInput,
+    AxelarInput,
+    AdaptersInput,
+    AdaptersDeployer,
+    AdaptersActionBatcher
+} from "script/AdaptersDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
+contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
+
 /**
  * @title FullDeployer
- * @notice Deploys the complete Centrifuge protocol stack (Hub + Spoke)
+ * @notice Deploys the complete Centrifuge protocol stack (Hub + Spoke + Adapters)
  */
-contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher {}
-
-contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
+contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     // Config variables
     uint256 public batchGasLimit;
 
-    function deployFull(CommonInput memory input, FullActionBatcher batcher) public {
-        _preDeployFull(input, batcher);
+    function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
+        public
+    {
+        _preDeployFull(commonInput, adaptersInput, batcher);
         _postDeployFull(batcher);
     }
 
-    function _preDeployFull(CommonInput memory input, FullActionBatcher batcher) internal {
-        _preDeployHub(input, batcher);
-        _preDeployExtendedSpoke(input, batcher);
+    function _preDeployFull(
+        CommonInput memory commonInput,
+        AdaptersInput memory adaptersInput,
+        FullActionBatcher batcher
+    ) internal {
+        _preDeployHub(commonInput, batcher);
+        _preDeployExtendedSpoke(commonInput, batcher);
+        _preDeployAdapters(commonInput, adaptersInput, batcher);
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
         _postDeployHub(batcher);
         _postDeployExtendedSpoke(batcher);
+        _postDeployAdapters(batcher);
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
         removeHubDeployerAccess(batcher);
         removeExtendedSpokeDeployerAccess(batcher);
+        removeAdaptersDeployerAccess(batcher);
     }
 
     function run() public virtual {
@@ -78,7 +94,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
 
         startDeploymentOutput();
 
-        CommonInput memory input = CommonInput({
+        CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
             root: IRoot(rootAddress),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
@@ -86,13 +102,25 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer {
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 
+        AdaptersInput memory adaptersInput = AdaptersInput({
+            wormhole: WormholeInput({
+                shouldDeploy: true, // TODO
+                relayer: address(0) // TODO
+            }),
+            axelar: AxelarInput({
+                shouldDeploy: true, // TODO
+                gateway: address(0), // TODO
+                gasService: address(0) // TODO
+            })
+        });
+
         FullActionBatcher batcher = FullActionBatcher(
             create3(
-                keccak256(abi.encodePacked("fullActionBatcher", input.version)),
+                keccak256(abi.encodePacked("fullActionBatcher", commonInput.version)),
                 abi.encodePacked(type(FullActionBatcher).creationCode)
             )
         );
-        deployFull(input, batcher);
+        deployFull(commonInput, adaptersInput, batcher);
 
         bool isMainnet = keccak256(abi.encodePacked(environment)) == keccak256(abi.encodePacked("mainnet"));
         if (isMainnet) {
