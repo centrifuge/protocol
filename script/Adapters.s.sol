@@ -5,7 +5,6 @@ import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
 import {Root} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
 import {AxelarAdapter} from "src/common/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "src/common/adapters/WormholeAdapter.sol";
@@ -19,7 +18,6 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
     Root public root;
     Guardian public guardian;
     MultiAdapter public multiAdapter;
-    IAdapter[] public adapters;
 
     /**
      * @dev Generates a salt for contract deployment with version
@@ -87,7 +85,6 @@ contract Adapters is Script, JsonRegistry, CreateXScript {
                     )
                 )
             );
-            adapters.push(axelarAdapter);
 
             IAuth(address(axelarAdapter)).rely(address(root));
             IAuth(address(axelarAdapter)).rely(address(guardian));

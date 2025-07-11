@@ -53,6 +53,10 @@ class DeploymentRunner:
         print_info(f"Admin Account: {format_account(self.env_loader.admin_address)}")
         base_cmd = self._build_command(script_name)
         if self.args.catapulta:
+            if self.args.dry_run:
+                print_warning("Catapulta cannot run without --broadcast")
+                print_info("Skipping running catapulta")
+                return True
             print_step(f"Running catapulta")
             if not self._run_command(base_cmd):
                 return False
@@ -94,16 +98,16 @@ class DeploymentRunner:
             args.extend(["--sender", ledger.get_ledger_account])
             return args
         elif is_testnet and not self.args.ledger:
-            # Get the public key from the private key using 'cast'
+            # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
             print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
             if self.args.catapulta:
                 #--sender Optional, specify the sender address (required when using --private-key)
-                return ["--private-key", self.env_loader.private_key, "--sender", result.stdout.strip()]
+                return ["--private-key", private_key, "--sender", result.stdout.strip()]
             else:
-                return ["--private-key", self.env_loader.private_key]
+                return ["--private-key", private_key]
             
         elif not is_testnet and not self.args.ledger:
             raise ValueError("No authentication method specified. Use --ledger for mainnet.")
@@ -208,7 +212,7 @@ class DeploymentRunner:
                 
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
-            print(format_command(cmd))
+            print(print_command(cmd))
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
                 print_error(f"stderr: {e.stderr}")

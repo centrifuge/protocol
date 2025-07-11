@@ -12,9 +12,10 @@ import pathlib
 import shutil
 from .formatter import *
 import os
+import argparse
 
 class EnvironmentLoader:
-    def __init__(self, network_name: str, root_dir: pathlib.Path):
+    def __init__(self, network_name: str, root_dir: pathlib.Path, args: argparse.Namespace):
         self.network_name = network_name
         self.root_dir = root_dir
         self.config_file = root_dir / "env" / f"{network_name}.json"
@@ -25,6 +26,7 @@ class EnvironmentLoader:
         self._admin_address = None
         print_subsection("Loading network configuration")
         self._load_config()
+        self.args = args
 
     def dump_config(self):
         print_info("Dumping config to .env")
@@ -76,6 +78,8 @@ class EnvironmentLoader:
                 self.config = json.load(f)
     @property
     def etherscan_api_key(self) -> str:
+        if self.args.catapulta:
+            return None
         if self._etherscan_api_key is None:
             print_info("Loading Etherscan API Key")
             self._etherscan_api_key = self._get_secret("etherscan_api")
@@ -84,6 +88,8 @@ class EnvironmentLoader:
     
     @property
     def rpc_url(self) -> str:
+        if self.args.catapulta:
+            return None
         if self._rpc_url is None:
             if not self._check_env_file("RPC_URL"):
                 self._rpc_url = self._setup_rpc()
@@ -93,11 +99,24 @@ class EnvironmentLoader:
     
     @property
     def private_key(self) -> str:
-        if private_key := self._check_env_file("PRIVATE_KEY"):
+        # If it's ledger property.private_key==null
+        if self.args.ledger:
+            return None
+        # Otherwise try to load from .env
+        elif private_key := self._check_env_file("PRIVATE_KEY"):
+            if not self.is_testnet:
+                print_warning("Are you sure you want to deploy to mainnet with the PRIVATE_KEY from .env?")
+                response = input("Do you want to continue? [y/N]: ").strip().lower()
+                if response not in ("y", "yes"):
+                    print_info("Please remove the PRIVATE_KEY from .env and try again.")
+                    print_error("Aborted by user.")
+                    raise SystemExit(1)
             return private_key
-        if not self.is_testnet:
-            raise ValueError("Private key is not needed for non-testnet networks")
-        if self._private_key is None:
+        # Finally load from GCP secrets
+        elif self._private_key is None:
+            if not self.is_testnet:
+                print_error("Aborting deployment. Testnet private key cannot be used for mainnet")
+                raise ValueError(f"Tried to access testnet private key. This should not happen when deploying to {self.network_name}")
             print_step("Loading Testnet Private Key")
             self._private_key = self._get_secret("testnet-private-key")
             print_success("Private key loaded")

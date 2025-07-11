@@ -141,7 +141,8 @@ def main():
         # Create environment loader
         env_loader = EnvironmentLoader(
             network_name=args.network,
-            root_dir=root_dir
+            root_dir=root_dir,
+            args=args
         )
         
         print_step(f"Network: {args.network}")
