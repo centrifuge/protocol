@@ -227,7 +227,7 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        CommonInput memory input = CommonInput({
+        CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             root: IRoot(address(0)),
             adminSafe: adminSafe,
@@ -237,7 +237,7 @@ contract EndToEndDeployment is Test {
 
         FullActionBatcher batcher = new FullActionBatcher();
 
-        deploy.deployFull(input, batcher);
+        deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
