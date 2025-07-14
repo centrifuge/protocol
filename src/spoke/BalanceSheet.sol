@@ -244,7 +244,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         });
 
         shareQueue.delta = 0;
-        shareQueue.isPositive = true;
+        shareQueue.isPositive = false;
         shareQueue.nonce++;
 
         emit SubmitQueuedShares(poolId, scId, data);

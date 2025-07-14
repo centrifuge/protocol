@@ -798,7 +798,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
-        assertEq(isPositive, true);
+        assertEq(isPositive, false);
         assertEq(nonce, 1);
     }
 
@@ -829,7 +829,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         vm.startPrank(AUTH);
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-        _mockSendUpdateShares(0, IS_ISSUANCE, IS_SNAPSHOT, 1);
+        _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 1);
         balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
