@@ -71,7 +71,7 @@ contract AdaptersDeployer is CommonDeployer {
                     generateSalt("wormholeAdapter"),
                     abi.encodePacked(
                         type(WormholeAdapter).creationCode,
-                        abi.encode(multiAdapter, adaptersInput.wormhole.relayer, msg.sender)
+                        abi.encode(multiAdapter, adaptersInput.wormhole.relayer, batcher)
                     )
                 )
             );
@@ -83,9 +83,7 @@ contract AdaptersDeployer is CommonDeployer {
                     generateSalt("axelarAdapter"),
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
-                        abi.encode(
-                            multiAdapter, adaptersInput.axelar.gateway, adaptersInput.axelar.gasService, msg.sender
-                        )
+                        abi.encode(multiAdapter, adaptersInput.axelar.gateway, adaptersInput.axelar.gasService, batcher)
                     )
                 )
             );
