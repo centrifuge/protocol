@@ -73,13 +73,6 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
 
-        address rootAddress;
-        try vm.parseJsonAddress(config, "$.network.root") returns (address _root) {
-            rootAddress = _root;
-        } catch {
-            rootAddress = address(0);
-        }
-
         // Parse batchGasLimit with defaults
         try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
             batchGasLimit = _batchGasLimit;
@@ -96,7 +89,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
-            root: IRoot(rootAddress),
+            root: IRoot(_parseJsonAddressOrDefault(config, "$.network.root")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             batchGasLimit: uint128(batchGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
@@ -105,12 +98,12 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         AdaptersInput memory adaptersInput = AdaptersInput({
             wormhole: WormholeInput({
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
-                relayer: vm.parseJsonAddress(config, "$.adapters.wormhole.relayer")
+                relayer: _parseJsonAddressOrDefault(config, "$.adapters.wormhole.relayer")
             }),
             axelar: AxelarInput({
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy"),
-                gateway: vm.parseJsonAddress(config, "$.adapters.axelar.gateway"),
-                gasService: vm.parseJsonAddress(config, "$.adapters.axelar.gasService")
+                gateway: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gateway"),
+                gasService: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gasService")
             })
         });
 
@@ -136,6 +129,14 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
             return value;
         } catch {
             return false;
+        }
+    }
+
+    function _parseJsonAddressOrDefault(string memory config, string memory path) private pure returns (address) {
+        try vm.parseJsonAddress(config, path) returns (address value) {
+            return value;
+        } catch {
+            return address(0);
         }
     }
 }
