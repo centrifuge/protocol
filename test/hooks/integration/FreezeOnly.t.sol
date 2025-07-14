@@ -5,8 +5,6 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-
 import "test/spoke/BaseTest.sol";
 
 contract FreezeOnlyTest is BaseTest {
@@ -18,7 +16,6 @@ contract FreezeOnlyTest is BaseTest {
         (, address vault_, uint128 assetId) =
             deployVault(VaultKind.Async, 6, address(freezeOnlyHook), bytes16(bytes("1")), address(erc20), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        FreezeOnly hook = FreezeOnly(freezeOnlyHook);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         centrifugeChain.updatePricePoolPerShare(
