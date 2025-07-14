@@ -58,33 +58,33 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
     function run() public virtual {
         vm.startBroadcast();
-        uint16 centrifugeId;
-        string memory environment;
-        string memory network;
-        address rootAddress;
 
+        string memory network;
+        string memory config;
         try vm.envString("NETWORK") returns (string memory _network) {
             network = _network;
             string memory configFile = string.concat("env/", network, ".json");
-            string memory config = vm.readFile(configFile);
-            centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
-            environment = vm.parseJsonString(config, "$.network.environment");
-
-            try vm.parseJsonAddress(config, "$.network.root") returns (address _root) {
-                rootAddress = _root;
-            } catch {
-                rootAddress = address(0);
-            }
-
-            // Parse batchGasLimit with defaults
-            try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
-                batchGasLimit = _batchGasLimit;
-            } catch {
-                batchGasLimit = 25_000_000; // 25M gas
-            }
+            config = vm.readFile(configFile);
         } catch {
             console.log("NETWORK environment variable is not set, this must be a mocked test");
             revert("NETWORK environment variable is required");
+        }
+
+        uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
+        string memory environment = vm.parseJsonString(config, "$.network.environment");
+
+        address rootAddress;
+        try vm.parseJsonAddress(config, "$.network.root") returns (address _root) {
+            rootAddress = _root;
+        } catch {
+            rootAddress = address(0);
+        }
+
+        // Parse batchGasLimit with defaults
+        try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
+            batchGasLimit = _batchGasLimit;
+        } catch {
+            batchGasLimit = 25_000_000; // 25M gas
         }
 
         console.log("Network:", network);
@@ -104,13 +104,13 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
         AdaptersInput memory adaptersInput = AdaptersInput({
             wormhole: WormholeInput({
-                shouldDeploy: true, // TODO
-                relayer: address(0) // TODO
+                shouldDeploy: vm.parseJsonBool(config, "$.adapters.wormhole.deploy"),
+                relayer: vm.parseJsonAddress(config, "$.adapters.wormhole.relayer")
             }),
             axelar: AxelarInput({
-                shouldDeploy: true, // TODO
-                gateway: address(0), // TODO
-                gasService: address(0) // TODO
+                shouldDeploy: vm.parseJsonBool(config, "$.adapters.axelar.deploy"),
+                gateway: vm.parseJsonAddress(config, "$.adapters.axelar.gateway"),
+                gasService: vm.parseJsonAddress(config, "$.adapters.axelar.gasService")
             })
         });
 
