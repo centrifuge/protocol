@@ -34,11 +34,11 @@ class ContractVerifier:
         if not self.latest_deployment.exists():
             print_error(f"Deployment file not found: {self.latest_deployment}")
             return False
-            
+
         contracts_file = self.latest_deployment
         relative_path = format_path(contracts_file, self.root_dir)
         print_step(f"Checking contracts from {relative_path}")
-        
+
         if not self.args.dry_run:
             with open(contracts_file, 'r') as f:
                 data = json.load(f)
@@ -69,7 +69,7 @@ class ContractVerifier:
                     print_error(f"{contract_name} ({contract_address}) NOT verified on Etherscan")
                     unverified_contracts.append(f"{contract_name}:{contract_address}")
                 time.sleep(0.2)  # Rate limiting
-            
+
             print_info(f"Deployment check complete: {deployed_count}/{len(contract_addresses)} contracts deployed")
             print_info(f"Verification check complete: {verified_count}/{len(contract_addresses)} contracts verified")
 
@@ -87,7 +87,7 @@ class ContractVerifier:
                     self.update_network_config(deployment_script)
         else:
             print_info("Dry run mode, skipping contracts checks")
-            
+
         return True
 
     def _is_contract_deployed(self, address: str) -> bool:
@@ -98,7 +98,7 @@ class ContractVerifier:
             "params": [address, "latest"],
             "id": 1
         }
-        
+
         try:
             req = urllib.request.Request(
                 self.rpc_url,
@@ -116,27 +116,27 @@ class ContractVerifier:
         """Check if contract is verified on Etherscan"""
         api_key = self.etherscan_api_key
         chain_id = self.env_loader.chain_id
-        
+
         url = f"https://api.etherscan.io/v2/api?chainid={chain_id}&module=contract&action=getsourcecode&address={address}&apikey={api_key}"
-        
+
         try:
             with urllib.request.urlopen(url) as response:
                 result = json.loads(response.read().decode())
-                
+
                 if result.get("status") != "1":
                     return False
-                
+
                 contract_data = result.get("result", [{}])[0]
                 source_code = contract_data.get("SourceCode", "")
                 contract_name = contract_data.get("ContractName", "")
-                
-                return (source_code and 
+
+                return (source_code and
                        source_code != "Contract source code not verified" and
                        contract_name)
         except Exception:
             return False
-        
-    def update_network_config(self, deployment_script: str):
+
+    def update_network_config(self):
         """Update network config with deployment output"""
         relative_path = format_path(self.env_loader.config_file, self.root_dir)
         print_step(f"Merging contract addresses to {relative_path}")
@@ -149,7 +149,7 @@ class ContractVerifier:
         try:
             # Get the current git commit hash
             git_result = subprocess.run(
-                ["git", "rev-parse", "--short", "HEAD"], 
+                ["git", "rev-parse", "--short", "HEAD"],
                 capture_output=True, check=True, text=True,
                 cwd=self.env_loader.root_dir
             )
@@ -158,7 +158,7 @@ class ContractVerifier:
             print_error("Failed to get git commit hash")
             backup_config.unlink()  # Remove backup
             return False
-        
+
         try:
             # Load both files
             with open(network_config, 'r') as f:
@@ -169,26 +169,26 @@ class ContractVerifier:
             # Merge the contracts section
             if 'contracts' not in config_data:
                 config_data['contracts'] = {}
-            
+
             # Update contracts with new deployments
             config_data['contracts'].update(latest_data.get('contracts', {}))
-            
-            
+
+
             # Get deployment timestamp from latest deployment file
             latest_stat = self.latest_deployment.stat()
             deployment_timestamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(latest_stat.st_mtime))
-            # Set deployment info        
+            # Set deployment info
             if 'deploymentInfo' not in config_data:
                 config_data['deploymentInfo'] = {}
-            
+
             if "deploy" in self.args.step:
-                config_data['deploymentInfo'][deployment_script] = {
+                config_data['deploymentInfo'][self.args.step] = {
                     'gitCommit': git_commit,
                     'timestamp': deployment_timestamp,
                 }
 
             if os.environ.get("VERSION"):
-                config_data['deploymentInfo'][deployment_script]['version'] = os.environ.get("VERSION")
+                config_data['deploymentInfo'][self.args.step]['version'] = os.environ.get("VERSION")
 
             # Write updated config
             with open(network_config, 'w') as f:
@@ -196,7 +196,7 @@ class ContractVerifier:
 
             # Remove backup since update was successful
             backup_config.unlink()
-            
+
             relative_path = format_path(network_config, self.root_dir)
             print_success(f"Deployed contracts added to {relative_path} (.contracts section)")
             return True
@@ -207,16 +207,16 @@ class ContractVerifier:
             print_error(traceback.format_exc())
             # Restore backup
             shutil.move(backup_config, network_config)
-            return False 
+            return False
 
     def _check_deployment_age(self) -> bool:
         """Check if -latest.json is old and should warn user"""
         if not self.latest_deployment.exists():
             return False
-            
+
         latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
         one_day_in_seconds = 86400
-        
+
         return latest_file_age > one_day_in_seconds
 
     def _is_deployment_old(self) -> bool:
@@ -227,14 +227,14 @@ class ContractVerifier:
         deploy_config = format_path(self.env_loader.config_file, self.root_dir)
         latest_file_age = int(time.time() - self.latest_deployment.stat().st_mtime)
         one_day_in_seconds = 86400
-        
+
         if latest_file_age < one_day_in_seconds:
             return False
         # else
 
         print_warning(f"{latest_deploy_file} is old (age: {latest_file_age // 3600} hours)")
         print_warning(f"This will replace contracts in {deploy_config} with addresses from {latest_deploy_file}")
-        
+
         while True:
             try:
                 choice = input("Do you want to proceed? (y/N): ").strip().lower()
