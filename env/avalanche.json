@@ -2,11 +2,12 @@
     "network": {
         "chainId": 43114,
         "environment": "mainnet",
-        "centrifugeId": 2,
+        "centrifugeId": 5,
+        "connectsTo": [
+            "ethereum"
+        ],
         "root": null,
-        "safeAdmin": null,
-        "batchGasLimit": "25000000",
-        "connectsTo": []
+        "safeAdmin": null
     },
     "adapters": {
         "wormhole": {
