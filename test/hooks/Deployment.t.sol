@@ -42,6 +42,19 @@ contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
         assertEq(address(redemptionRestrictionsHook.root()), address(root));
     }
 
+    function testFreelyTransferable(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(spoke));
+
+        assertEq(IAuth(freelyTransferableHook).wards(address(root)), 1);
+        assertEq(IAuth(freelyTransferableHook).wards(address(spoke)), 1);
+        assertEq(IAuth(freelyTransferableHook).wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(freelyTransferableHook.root()), address(root));
+    }
+
     function testFullRestriction(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
