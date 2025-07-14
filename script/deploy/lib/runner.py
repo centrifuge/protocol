@@ -31,14 +31,27 @@ class DeploymentRunner:
     def __init__(self, env_loader: EnvironmentLoader, args: argparse.Namespace):
         self.env_loader = env_loader
         self.args = args
-        # Set up environment variables
+        self.env = self._setup_env()
+        self.script_path = None # initialize
+    
+    def _setup_env(self):
         env = os.environ.copy()
         env["NETWORK"] = self.env_loader.network_name
         env["VERSION"] = os.environ.get("VERSION", "")
-        env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
+        if self.env_loader.etherscan_api_key is not None:
+            env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
         env["ADMIN"] = self.env_loader.admin_address
-        self.env = env
-        self.script_path = None # initialize
+        # Also add the vars in .env (if .env is there)
+        env_file = ".env"
+        if os.path.exists(env_file):
+            with open(env_file, "r") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        k, v = line.strip().split("=", 1)
+                        # Only set if not already set in env (env file has lower priority)
+                        if k not in env:
+                            env[k] = v
+        return env
 
     def run_deploy(self, script_name: str) -> bool:
         """Run a forge script deployment"""
@@ -71,8 +84,8 @@ class DeploymentRunner:
             if not self._run_command(base_cmd):
                 return False
             print_success("Forge contracts deployed successfully")
-            # 2. Verify
-            if self.env_loader.network_name != "anvil":
+            # 2. Verify (only for protocol and adapter scripts)
+            if self.env_loader.network_name != "anvil" and script_name not in ["TestData"]:
                 cmd = base_cmd.copy()
                 cmd.append("--verify")
                 if "--resume" not in cmd:
@@ -97,9 +110,10 @@ class DeploymentRunner:
             args = ledger.get_ledger_args
             args.extend(["--sender", ledger.get_ledger_account])
             return args
-        elif is_testnet and not self.args.ledger:
+        elif (is_testnet and not self.args.ledger) or "tenderly" in self.env_loader.rpc_url:
             # Only access private_key when actually needed (not using ledger)
             private_key = self.env_loader.private_key
+            # Get the public key from the private key using 'cast'
             result = subprocess.run(["cast", "wallet", "address", "--private-key", private_key],
                 capture_output=True, text=True, check=True)
             print_info(f"Deploying address (Testnet shared account): {format_account(result.stdout.strip())}")
@@ -129,7 +143,7 @@ class DeploymentRunner:
             ]
             if not self.args.dry_run:
                 base_cmd.append("--broadcast")
-            if not self.env_loader.is_testnet:
+            if not self.env_loader.is_testnet or os.environ.get('GITHUB_ACTIONS'):
                 base_cmd.append("--slow")
             if self.env_loader.network_name == "base-sepolia":
                 # Issue with base-sepolia where Tx receipts will get stuck forever
@@ -212,10 +226,29 @@ class DeploymentRunner:
                 
         except subprocess.CalledProcessError as e:
             print_error(f"Command failed:")
-            print(print_command(cmd))
+            # Use print_command to ensure secrets are masked
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
             print_error(f"Exit code: {e.returncode}")
             if e.stderr:
-                print_error(f"stderr: {e.stderr}")
+                # Mask private key in stderr if present
+                masked_stderr = e.stderr
+                if self.env_loader.private_key:
+                    masked_stderr = masked_stderr.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stderr: {masked_stderr}")
+            if e.stdout:
+                # Mask private key in stdout if present
+                masked_stdout = e.stdout
+                if self.env_loader.private_key:
+                    masked_stdout = masked_stdout.replace(self.env_loader.private_key, "$PRIVATE_KEY")
+                print_error(f"stdout: {masked_stdout}")
+            return False
+        except Exception as e:
+            print_error(f"Unexpected error running command:")
+            print_command(cmd, self.env_loader, self.script_path, self.env_loader.root_dir)
+            print_error(f"Error: {str(e)}")
+            import traceback
+            print_error(f"Stack trace:")
+            traceback.print_exc()
             return False
 
     def build_contracts(self):
