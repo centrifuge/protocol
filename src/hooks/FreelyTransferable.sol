@@ -82,6 +82,11 @@ contract FreelyTransferable is Auth, IMemberlist, IFreezable, ITransferHook {
             return false;
         }
 
+        if (from == address(0) && root.endorsed(to)) {
+            // Deposit request fulfillment
+            return true;
+        }
+
         if (from == address(0) && toHookData >> 64 < block.timestamp) {
             // Sync deposit or deposit request, and the user is not a member
             return false;
