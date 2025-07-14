@@ -2,13 +2,12 @@
     "network": {
         "chainId": 8453,
         "environment": "mainnet",
-        "centrifugeId": 6,
+        "centrifugeId": 2,
         "connectsTo": [
-            "ethereum",
-            "arbitrum"
+            "ethereum"
         ],
-        "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b",
-        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC"
+        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC",
+        "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b"
     },
     "adapters": {
         "wormhole": {

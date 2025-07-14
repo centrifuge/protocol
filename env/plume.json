@@ -2,17 +2,17 @@
     "network": {
         "chainId": 98866,
         "environment": "mainnet",
-        "centrifugeId": 7,
-        "root": null,
-        "safeAdmin": null,
-        "batchGasLimit": "25000000",
-        "connectsTo": []
+        "centrifugeId": 4,
+        "connectsTo": [
+            "ethereum"
+        ],
+        "safeAdmin": "0x2d442069f78561F817d92c94924D5EaddA9C5767"
     },
     "adapters": {
         "wormhole": {
             "wormholeId": "55",
-            "relayer": null,
-            "deploy": false
+            "relayer": "0xaBf89de706B583424328B54dD05a8fC986750Da8",
+            "deploy": true
         },
         "axelar": {
             "axelarId": "plume",

@@ -5,7 +5,9 @@
         "centrifugeId": 1,
         "connectsTo": [
             "arbitrum",
-            "base"
+            "base",
+            "plume",
+            "avalanche"
         ],
         "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC",
         "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
@@ -19,7 +21,7 @@
         "axelar": {
             "axelarId": "Ethereum",
             "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
-            "gasService": "0x2d5d7d31F671F86C782533cc367F14136aCD5838",
+            "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
             "deploy": true
         }
     },
