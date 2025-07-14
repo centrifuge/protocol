@@ -6,7 +6,6 @@
         "connectsTo": [
             "ethereum"
         ],
-        "root": null,
         "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185"
     },
     "adapters": {
