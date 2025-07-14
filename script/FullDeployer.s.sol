@@ -104,11 +104,11 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
         AdaptersInput memory adaptersInput = AdaptersInput({
             wormhole: WormholeInput({
-                shouldDeploy: vm.parseJsonBool(config, "$.adapters.wormhole.deploy"),
+                shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
                 relayer: vm.parseJsonAddress(config, "$.adapters.wormhole.relayer")
             }),
             axelar: AxelarInput({
-                shouldDeploy: vm.parseJsonBool(config, "$.adapters.axelar.deploy"),
+                shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy"),
                 gateway: vm.parseJsonAddress(config, "$.adapters.axelar.gateway"),
                 gasService: vm.parseJsonAddress(config, "$.adapters.axelar.gasService")
             })
@@ -129,5 +129,13 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         saveDeploymentOutput();
 
         vm.stopBroadcast();
+    }
+
+    function _parseJsonBoolOrDefault(string memory config, string memory path) private pure returns (bool) {
+        try vm.parseJsonBool(config, path) returns (bool value) {
+            return value;
+        } catch {
+            return false;
+        }
     }
 }
