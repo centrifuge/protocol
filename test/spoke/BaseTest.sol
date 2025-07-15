@@ -95,7 +95,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         // deploy core contracts
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
-            root: IRoot(address(0)),
             adminSafe: adminSafe,
             batchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)

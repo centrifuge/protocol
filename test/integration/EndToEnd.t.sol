@@ -229,7 +229,6 @@ contract EndToEndDeployment is Test {
     {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
-            root: IRoot(address(0)),
             adminSafe: adminSafe,
             batchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))

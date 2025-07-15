@@ -89,7 +89,6 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
-            root: IRoot(_parseJsonAddressOrDefault(config, "$.network.root")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             batchGasLimit: uint128(batchGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))

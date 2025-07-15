@@ -81,7 +81,6 @@ contract BaseTest is HubDeployer, Test {
         // Deployment
         CommonInput memory input = CommonInput({
             centrifugeId: CHAIN_CP,
-            root: IRoot(address(0)),
             adminSafe: adminSafe,
             batchGasLimit: uint128(GAS) * 100,
             version: bytes32(0)
