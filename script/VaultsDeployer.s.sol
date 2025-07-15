@@ -29,7 +29,7 @@ struct VaultsReport {
 }
 
 contract VaultsActionBatcher is SpokeActionBatcher {
-    function engageVaults(VaultsReport memory report) public unlocked {
+    function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
         report.asyncVaultFactory.rely(address(report.spoke.spoke));
         report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
@@ -70,7 +70,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.spoke.common.root.endorse(address(report.vaultRouter));
     }
 
-    function revokeVaults(VaultsReport memory report) public unlocked {
+    function revokeVaults(VaultsReport memory report) public onlyDeployer {
         report.asyncVaultFactory.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));

@@ -34,7 +34,7 @@ struct HubReport {
 }
 
 contract HubActionBatcher is CommonActionBatcher, HubConstants {
-    function engageHub(HubReport memory report) public unlocked {
+    function engageHub(HubReport memory report) public onlyDeployer {
         // Rely hub
         report.hubRegistry.rely(address(report.hub));
         report.holdings.rely(address(report.hub));
@@ -80,7 +80,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
 
-    function revokeHub(HubReport memory report) public unlocked {
+    function revokeHub(HubReport memory report) public onlyDeployer {
         report.hubRegistry.deny(address(this));
         report.accounting.deny(address(this));
         report.holdings.deny(address(this));

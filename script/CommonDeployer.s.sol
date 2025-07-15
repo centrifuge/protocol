@@ -37,18 +37,28 @@ struct CommonReport {
 }
 
 contract CommonActionBatcher {
-    // @dev lock to ensure we forbid calling engage/revoke methods after deployment
-    bool isLock;
+    error NotDeployer();
 
-    modifier unlocked() {
-        if (!isLock) _;
+    address deployer;
+
+    constructor() {
+        deployer = msg.sender;
     }
 
-    function lock() public unlocked {
-        isLock = true;
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, NotDeployer());
+        _;
     }
 
-    function engageCommon(CommonReport memory report) public unlocked {
+    function setDeployer(address newDeployer) public onlyDeployer {
+        deployer = newDeployer;
+    }
+
+    function lock() public onlyDeployer {
+        deployer = address(0);
+    }
+
+    function engageCommon(CommonReport memory report) public onlyDeployer {
         report.root.rely(address(report.guardian));
         report.root.rely(address(report.tokenRecoverer));
         report.root.rely(address(report.messageProcessor));
@@ -73,12 +83,12 @@ contract CommonActionBatcher {
         report.poolEscrowFactory.file("gateway", address(report.gateway));
     }
 
-    function postEngageCommon(CommonReport memory report) public unlocked {
+    function postEngageCommon(CommonReport memory report) public onlyDeployer {
         // We override the deployer with the correct admin once everything is deployed
         report.guardian.file("safe", address(report.adminSafe));
     }
 
-    function revokeCommon(CommonReport memory report) public unlocked {
+    function revokeCommon(CommonReport memory report) public onlyDeployer {
         report.root.deny(address(this));
         report.gateway.deny(address(this));
         report.multiAdapter.deny(address(this));

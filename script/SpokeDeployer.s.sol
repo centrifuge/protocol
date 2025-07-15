@@ -19,7 +19,7 @@ struct SpokeReport {
 }
 
 contract SpokeActionBatcher is CommonActionBatcher {
-    function engageSpoke(SpokeReport memory report) public unlocked {
+    function engageSpoke(SpokeReport memory report) public onlyDeployer {
         // Rely Spoke
         report.tokenFactory.rely(address(report.spoke));
         report.common.messageDispatcher.rely(address(report.spoke));
@@ -76,7 +76,7 @@ contract SpokeActionBatcher is CommonActionBatcher {
         report.common.root.endorse(address(report.balanceSheet));
     }
 
-    function revokeSpoke(SpokeReport memory report) public unlocked {
+    function revokeSpoke(SpokeReport memory report) public onlyDeployer {
         report.tokenFactory.deny(address(this));
         report.spoke.deny(address(this));
         report.balanceSheet.deny(address(this));

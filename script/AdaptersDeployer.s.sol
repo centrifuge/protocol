@@ -31,7 +31,7 @@ struct AdaptersReport {
 }
 
 contract AdaptersActionBatcher is CommonActionBatcher {
-    function engageAdapters(AdaptersReport memory report) public unlocked {
+    function engageAdapters(AdaptersReport memory report) public onlyDeployer {
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.common.root));
             report.wormholeAdapter.rely(address(report.common.guardian));
@@ -42,7 +42,7 @@ contract AdaptersActionBatcher is CommonActionBatcher {
         }
     }
 
-    function revokeAdapters(AdaptersReport memory report) public unlocked {
+    function revokeAdapters(AdaptersReport memory report) public onlyDeployer {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
     }
