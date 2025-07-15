@@ -5,6 +5,8 @@ pragma solidity >=0.5.0;
 uint128 constant MAX_MESSAGE_COST = 3_000_000;
 
 interface IGasService {
+    error InvalidMessageType();
+
     /// @notice Gas limit for the execution cost of an individual message in a remote chain.
     /// @dev    NOTE: In the future we could want to dispatch:
     ///         - by destination chain (for non-EVM chains)
