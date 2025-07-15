@@ -1,16 +1,16 @@
-# Centrifuge Protocol V3 [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry] [![Docs][docs-badge]][docs] 
+# Centrifuge Protocol V3 [![Github Actions][gha-badge]][gha] [![Foundry][foundry-badge]][foundry]
 [gha]: https://github.com/centrifuge/protocol-v3/actions
 [gha-badge]: https://github.com/centrifuge/protocol-v3/actions/workflows/ci.yml/badge.svg
 [foundry]: https://getfoundry.sh
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
-[foundry]: https://docs.centrifuge.io/developer/protocol/overview
-[foundry-badge]: https://img.shields.io/badge/developer-docs-blue.svg
 
 Centrifuge V3 is an open, decentralized protocol for onchain asset management. Built on immutable smart contracts, it enables permissionless deployment of customizable tokenization products.
 
 Build a wide range of use cases—from permissioned funds to onchain loans—while enabling fast, secure deployment. ERC-4626 and ERC-7540 vaults allow seamless integration into DeFi.
 
 Using protocol-level chain abstraction, tokenization issuers access liquidity across any network, all managed from one Hub chain of their choice.
+
+Read more in the [developer docs](https://docs.centrifuge.io/developer/protocol/overview/).
 
 ## Protocol
 
