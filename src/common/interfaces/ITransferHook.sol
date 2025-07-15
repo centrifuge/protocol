@@ -16,7 +16,8 @@ string constant ERROR_MESSAGE = "transfer-blocked";
 
 /// @dev Magic address denoting a transfer to the escrow
 /// @dev Solely used for gas saving since escrow is per pool
-address constant ESCROW_HOOK_ID = address(uint160(uint8(0xce)));
+/// @dev Equals 118_624 such that there is no collision with any uint16 Centrifuge ID
+address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
