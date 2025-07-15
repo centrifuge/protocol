@@ -9,7 +9,6 @@
             "plume",
             "avalanche"
         ],
-        "root": "0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC",
         "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
     },
     "adapters": {
