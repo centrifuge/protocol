@@ -106,12 +106,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
             })
         });
 
-        FullActionBatcher batcher = FullActionBatcher(
-            create3(
-                keccak256(abi.encodePacked("fullActionBatcher", commonInput.version)),
-                abi.encodePacked(type(FullActionBatcher).creationCode)
-            )
-        );
+        FullActionBatcher batcher = new FullActionBatcher();
         deployFull(commonInput, adaptersInput, batcher);
 
         removeFullDeployerAccess(batcher);
