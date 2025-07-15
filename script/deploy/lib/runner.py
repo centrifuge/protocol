@@ -181,40 +181,10 @@ class DeploymentRunner:
                 return True
             else:
                 # For verification, always capture output and write to log file
-                print_info("Running verification (output will be written to log file)...")
-                print_info(f"This will take a while. Please wait...")
-                # Use Popen with explicit stdout/stderr redirection to force capture
-                process = subprocess.Popen(
-                    cmd, 
-                    env=self.env, 
-                    stdout=subprocess.PIPE, 
-                    stderr=subprocess.PIPE, 
-                    text=True,
-                    bufsize=1
-                )
-                stdout, stderr = process.communicate()
-                result = subprocess.CompletedProcess(cmd, process.returncode, stdout, stderr)
-                
-                # Write output to log file (even in verbose mode for debugging)
-                log_dir = self.env_loader.root_dir / "script" / "deploy" / "logs"
-                log_dir.mkdir(parents=True, exist_ok=True)
-                log_file = log_dir / f"forge-{self.args.step}-{self.env_loader.network_name}.log"
-                
-                with open(log_file, "w") as f:
-                    f.write(f"Command: {' '.join(cmd)}\n")
-                    f.write(f"Exit code: {result.returncode}\n")
-                    f.write(f"Timestamp: {subprocess.run(['date'], capture_output=True, text=True).stdout.strip()}\n")
-                    f.write("\n" + "="*50 + "\n")
-                    if result.stdout:
-                        f.write("=== FORGE STDOUT ===\n")
-                        f.write(result.stdout)
-                        f.write("\n")
-                    if result.stderr:
-                        f.write("=== FORGE STDERR ===\n")
-                        f.write(result.stderr)
-                        f.write("\n")
-                
-                print_info(f"Verification output written to: {log_file}")
+                print_info("Running verification...")
+                print("==== FORGE LOGS ====\n")
+                result = subprocess.run(cmd, env=self.env, text=True)
+                print("\n==== END OF LOGS ====\n")
                 
                 if result.returncode == 0:
                     print_success("Verification completed successfully")
