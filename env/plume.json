@@ -12,7 +12,7 @@
         "wormhole": {
             "wormholeId": "55",
             "relayer": "0xaBf89de706B583424328B54dD05a8fC986750Da8",
-            "deploy": true
+            "deploy": false
         },
         "axelar": {
             "axelarId": "plume",
