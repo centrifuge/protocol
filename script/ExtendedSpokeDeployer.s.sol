@@ -5,7 +5,6 @@ import {CommonInput} from "script/CommonDeployer.s.sol";
 import {HooksDeployer, HooksActionBatcher} from "script/HooksDeployer.s.sol";
 import {VaultsDeployer, VaultsActionBatcher} from "script/VaultsDeployer.s.sol";
 import {ManagersDeployer, ManagersActionBatcher} from "script/ManagersDeployer.s.sol";
-import {SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

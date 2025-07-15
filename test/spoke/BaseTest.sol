@@ -4,7 +4,6 @@ pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
 import {Root} from "src/common/Root.sol";
