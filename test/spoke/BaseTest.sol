@@ -4,7 +4,6 @@ pragma abicoder v2;
 
 import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
 import {Root} from "src/common/Root.sol";
@@ -76,16 +75,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
-    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).rely(address(guardian));
-        IAuth(address(adapter)).deny(address(this));
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-        multiAdapter.file("adapters", centrifugeId, adapters);
-    }
-
     function setUp() public virtual {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -100,7 +89,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             version: bytes32(0)
         });
 
+        setDeployer(address(this));
         deployExtendedSpoke(input, this);
+        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
@@ -114,10 +105,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         testAdapters.push(adapter1);
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
-
-        // wire contracts
-        _wire(OTHER_CHAIN_ID, adapter1);
-        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);

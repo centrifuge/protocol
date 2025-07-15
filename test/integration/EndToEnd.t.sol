@@ -235,6 +235,7 @@ contract EndToEndDeployment is Test {
         });
 
         FullActionBatcher batcher = new FullActionBatcher();
+        batcher.setDeployer(address(deploy));
 
         deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
