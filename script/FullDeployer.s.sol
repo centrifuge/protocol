@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/ExtendedSpokeDeployer.s.sol";
+
+import "forge-std/Script.sol";
+
 import {
     WormholeInput,
     AxelarInput,
@@ -14,8 +16,6 @@ import {
     AdaptersDeployer,
     AdaptersActionBatcher
 } from "script/AdaptersDeployer.s.sol";
-
-import "forge-std/Script.sol";
 
 contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
 
@@ -89,7 +89,6 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
 
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
-            root: IRoot(_parseJsonAddressOrDefault(config, "$.network.root")),
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             batchGasLimit: uint128(batchGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))

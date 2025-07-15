@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
@@ -18,7 +18,6 @@ import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
     uint16 centrifugeId;
-    IRoot root;
     ISafe adminSafe;
     uint128 batchGasLimit;
     bytes32 version;
@@ -49,13 +48,11 @@ contract CommonActionBatcher {
         isLock = true;
     }
 
-    function engageCommon(CommonReport memory report, bool newRoot) public unlocked {
-        if (newRoot) {
-            report.root.rely(address(report.guardian));
-            report.root.rely(address(report.tokenRecoverer));
-            report.root.rely(address(report.messageProcessor));
-            report.root.rely(address(report.messageDispatcher));
-        }
+    function engageCommon(CommonReport memory report) public unlocked {
+        report.root.rely(address(report.guardian));
+        report.root.rely(address(report.tokenRecoverer));
+        report.root.rely(address(report.messageProcessor));
+        report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
         report.gateway.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.multiAdapter));
@@ -81,10 +78,8 @@ contract CommonActionBatcher {
         report.guardian.file("safe", address(report.adminSafe));
     }
 
-    function revokeCommon(CommonReport memory report, bool newRoot) public unlocked {
-        if (newRoot) {
-            report.root.deny(address(this));
-        }
+    function revokeCommon(CommonReport memory report) public unlocked {
+        report.root.deny(address(this));
         report.gateway.deny(address(this));
         report.multiAdapter.deny(address(this));
         report.tokenRecoverer.deny(address(this));
@@ -109,8 +104,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
-
-    bool newRoot;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -139,14 +132,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         adminSafe = input.adminSafe;
         version = input.version;
 
-        if (address(input.root) == address(0)) {
-            newRoot = true;
-            root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
-            );
-        } else {
-            root = Root(address(input.root));
-        }
+        root =
+            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -212,12 +199,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
-        batcher.engageCommon(_commonReport(), newRoot);
+        batcher.engageCommon(_commonReport());
 
-        if (newRoot) {
-            register("root", address(root));
-            // Otherwise already present in load_vars.sh and not needed to be registered
-        }
+        register("root", address(root));
         // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
@@ -241,7 +225,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already removed. Make this method idempotent.
         }
 
-        batcher.revokeCommon(_commonReport(), newRoot);
+        batcher.revokeCommon(_commonReport());
     }
 
     function _commonReport() internal view returns (CommonReport memory) {
