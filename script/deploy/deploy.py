@@ -191,7 +191,10 @@ def main():
 
         elif args.step == "deploy:protocol":
             print_section("Running Protocol Deployment")
-            runner.build_contracts()
+
+            if "--resume" not in args.forge_args:
+                runner.build_contracts()
+
             print_subsection(f"Deploying core protocol contracts for {args.network}")
             deploy_success = runner.run_deploy("FullDeployer")
             print_section(f"Verifying deployment for {args.network}")
