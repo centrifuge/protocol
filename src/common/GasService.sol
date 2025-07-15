@@ -46,7 +46,6 @@ contract GasService is IGasService {
         _batchGasLimit = batchGasLimit_;
 
         // NOTE: The hardcoded values are take from the EndToEnd tests. This should be automated in the future.
-
         scheduleUpgrade = BASE_COST + 28514;
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
@@ -125,7 +124,7 @@ contract GasService is IGasService {
             } else if (vaultKind == VaultUpdateKind.Unlink) {
                 return updateVaultUnlink;
             } else {
-                return type(uint128).max; // Unreachable
+                revert InvalidMessageType(); // Unreachable
             }
         } else if (kind == MessageType.SetRequestManager) {
             return setRequestManager;
@@ -140,7 +139,7 @@ contract GasService is IGasService {
         } else if (kind == MessageType.MaxSharePriceAge) {
             return maxSharePriceAge;
         } else {
-            return type(uint128).max; // Unreachable
+            revert InvalidMessageType(); // Unreachable
         }
     }
 }
