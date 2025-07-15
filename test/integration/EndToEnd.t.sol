@@ -9,8 +9,8 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {GasService} from "src/common/GasService.sol";

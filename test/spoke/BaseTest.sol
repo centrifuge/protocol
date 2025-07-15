@@ -7,8 +7,8 @@ import {ERC20} from "src/misc/ERC20.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
