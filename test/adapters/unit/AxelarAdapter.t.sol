@@ -131,7 +131,7 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
 
         (string memory axelarId, string memory remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
         assertEq(axelarId, AXELAR_CHAIN_ID);
-        assertEq(remoteAddress, "remoteAddress");
+        assertEq(remoteAddress, REMOTE_AXELAR_ADDR);
     }
 }
 

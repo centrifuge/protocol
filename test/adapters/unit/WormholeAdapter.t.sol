@@ -100,6 +100,26 @@ contract WormholeAdapterTestFile is WormholeAdapterTestBase {
     }
 }
 
+contract WormholeAdapterTestWire is WormholeAdapterTestBase {
+    function testWireNotAuthorized() public {
+        vm.prank(makeAddr("NotAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.wire(abi.encode(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
+    }
+
+    function testWire() public {
+        adapter.wire(abi.encode(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR));
+
+        (uint16 centrifugeId, address remoteAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
+        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 wormholeId, address remoteAddress2) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        assertEq(wormholeId, WORMHOLE_CHAIN_ID);
+        assertEq(remoteAddress2, REMOTE_WORMHOLE_ADDR);
+    }
+}
+
 contract WormholeAdapterTest is WormholeAdapterTestBase {
     using CastLib for *;
 
