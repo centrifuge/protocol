@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth, IAuth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
-import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {Auth, IAuth} from "centrifuge-v3/src/misc/Auth.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
+import {Recoverable, IRecoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
+import {TransientArrayLib} from "centrifuge-v3/src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "centrifuge-v3/src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "centrifuge-v3/src/misc/libraries/TransientStorageLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {Gateway, IRoot, IGasService, IGateway} from "centrifuge-v3/src/common/Gateway.sol";
+import {IMessageProperties} from "centrifuge-v3/src/common/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
 

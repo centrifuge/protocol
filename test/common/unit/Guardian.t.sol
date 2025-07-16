@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGuardian} from "src/common/interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
-import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {IGuardian} from "centrifuge-v3/src/common/interfaces/IGuardian.sol";
+import {IHubGuardianActions} from "centrifuge-v3/src/common/interfaces/IGuardianActions.sol";
+import {IAxelarAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "centrifuge-v3/src/common/Guardian.sol";
 
 import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
 

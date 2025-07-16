@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {PoolEscrow} from "centrifuge-v3/src/common/PoolEscrow.sol";
+import {IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
+import {IPoolEscrowProvider, IPoolEscrowFactory} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;

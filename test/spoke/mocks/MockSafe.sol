@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/Guardian.sol";
+import {ISafe} from "centrifuge-v3/src/common/Guardian.sol";
 
 import {Mock} from "test/common/mocks/Mock.sol";
 

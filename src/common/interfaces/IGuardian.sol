@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {IAxelarAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);

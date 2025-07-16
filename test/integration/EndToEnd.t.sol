@@ -1,50 +1,50 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
+import {D18, d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {ETH_ADDRESS} from "centrifuge-v3/src/misc/interfaces/IRecoverable.sol";
+import {IdentityValuation} from "centrifuge-v3/src/misc/IdentityValuation.sol";
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {Guardian} from "src/common/Guardian.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {GasService} from "src/common/GasService.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {Root} from "centrifuge-v3/src/common/Root.sol";
+import {Gateway} from "centrifuge-v3/src/common/Gateway.sol";
+import {Guardian} from "centrifuge-v3/src/common/Guardian.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {GasService} from "centrifuge-v3/src/common/GasService.sol";
+import {AccountId} from "centrifuge-v3/src/common/types/AccountId.sol";
+import {ISafe} from "centrifuge-v3/src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {PricingLib} from "centrifuge-v3/src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {VaultUpdateKind} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
+import {MAX_MESSAGE_COST} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Hub} from "centrifuge-v3/src/hub/Hub.sol";
+import {Holdings} from "centrifuge-v3/src/hub/Holdings.sol";
+import {Accounting} from "centrifuge-v3/src/hub/Accounting.sol";
+import {HubRegistry} from "centrifuge-v3/src/hub/HubRegistry.sol";
+import {ShareClassManager} from "centrifuge-v3/src/hub/ShareClassManager.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Spoke} from "centrifuge-v3/src/spoke/Spoke.sol";
+import {IVault} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "centrifuge-v3/src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {SyncManager} from "centrifuge-v3/src/vaults/SyncManager.sol";
+import {VaultRouter} from "centrifuge-v3/src/vaults/VaultRouter.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "centrifuge-v3/src/vaults/AsyncRequestManager.sol";
+import {IAsyncRedeemVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {FreezeOnly} from "centrifuge-v3/src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
+import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
 

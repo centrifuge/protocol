@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {PoolEscrow} from "src/common/PoolEscrow.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
-import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {PoolEscrow} from "centrifuge-v3/src/common/PoolEscrow.sol";
+import {PoolEscrowFactory} from "centrifuge-v3/src/common/factories/PoolEscrowFactory.sol";
+import {IPoolEscrowFactory} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 

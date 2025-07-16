@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {TransientStorageLib} from "centrifuge-v3/src/misc/libraries/TransientStorageLib.sol";
 
 /// @title  TransientArrayLib
 library TransientArrayLib {

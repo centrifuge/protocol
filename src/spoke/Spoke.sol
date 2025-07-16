@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
+import {IERC165} from "centrifuge-v3/src/misc/interfaces/IERC7575.sol";
+import {IERC20Metadata} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "centrifuge-v3/src/misc/interfaces/IERC6909.sol";
+import {ReentrancyProtection} from "centrifuge-v3/src/misc/ReentrancyProtection.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {IGateway} from "centrifuge-v3/src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {newAssetId, AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
+import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
+import {ISpokeMessageSender} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
+import {ISpokeGatewayHandler} from "centrifuge-v3/src/common/interfaces/IGatewayHandlers.sol";
+import {VaultUpdateKind, MessageLib} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
+import {IPoolEscrowFactory} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {Price} from "src/spoke/types/Price.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
-import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {Price} from "centrifuge-v3/src/spoke/types/Price.sol";
+import {IVault} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
+import {IVaultManager} from "centrifuge-v3/src/spoke/interfaces/IVaultManager.sol";
+import {IRequestManager} from "centrifuge-v3/src/spoke/interfaces/IRequestManager.sol";
+import {ITokenFactory} from "centrifuge-v3/src/spoke/factories/interfaces/ITokenFactory.sol";
+import {IVaultFactory} from "centrifuge-v3/src/spoke/factories/interfaces/IVaultFactory.sol";
+import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,

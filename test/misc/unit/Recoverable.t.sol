@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {Auth, IAuth} from "src/misc/Auth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
+import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
+import {Auth, IAuth} from "centrifuge-v3/src/misc/Auth.sol";
+import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
 
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 

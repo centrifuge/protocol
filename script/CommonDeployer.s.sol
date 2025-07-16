@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {GasService} from "src/common/GasService.sol";
-import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
-import {MessageProcessor} from "src/common/MessageProcessor.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
-import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
+import {Root} from "centrifuge-v3/src/common/Root.sol";
+import {Gateway} from "centrifuge-v3/src/common/Gateway.sol";
+import {GasService} from "centrifuge-v3/src/common/GasService.sol";
+import {Guardian, ISafe} from "centrifuge-v3/src/common/Guardian.sol";
+import {TokenRecoverer} from "centrifuge-v3/src/common/TokenRecoverer.sol";
+import {MessageProcessor} from "centrifuge-v3/src/common/MessageProcessor.sol";
+import {MultiAdapter} from "centrifuge-v3/src/common/adapters/MultiAdapter.sol";
+import {MessageDispatcher} from "centrifuge-v3/src/common/MessageDispatcher.sol";
+import {PoolEscrowFactory} from "centrifuge-v3/src/common/factories/PoolEscrowFactory.sol";
 
 import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
 

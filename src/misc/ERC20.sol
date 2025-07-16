@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
-import {IERC20, IERC20Metadata, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {EIP712Lib} from "centrifuge-v3/src/misc/libraries/EIP712Lib.sol";
+import {SignatureLib} from "centrifuge-v3/src/misc/libraries/SignatureLib.sol";
+import {IERC20, IERC20Metadata, IERC20Permit} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
 
 /// @title  ERC20
 /// @notice Standard ERC-20 implementation, with mint/burn functionality and permit logic.
-/// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/src/Dai.sol
+/// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/centrifuge-v3/src/Dai.sol
 contract ERC20 is Auth, IERC20Metadata, IERC20Permit {
     event File(bytes32 indexed what, string data);
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId, newShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
 import "forge-std/Test.sol";
 

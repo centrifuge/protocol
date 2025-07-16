@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/misc/Escrow.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
+import {Escrow} from "centrifuge-v3/src/misc/Escrow.sol";
+import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {Holding, IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {Holding, IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
 
 /// @title  Escrow
 /// @notice Escrow contract that holds assets for a specific pool separated by share classes.

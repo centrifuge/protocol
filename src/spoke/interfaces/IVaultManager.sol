@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IVault} from "src/spoke/interfaces/IVault.sol";
+import {IVault} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
 
 interface IVaultManager {
     error VaultAlreadyExists();

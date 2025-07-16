@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
 
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
+import {ShareToken} from "centrifuge-v3/src/spoke/ShareToken.sol";
+import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
+import {ITokenFactory} from "centrifuge-v3/src/spoke/factories/interfaces/ITokenFactory.sol";
 
 /// @title  Share Token Factory
 /// @dev    Utility for deploying new share class token contracts

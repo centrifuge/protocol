@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
-import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
+import {TransientArrayLib} from "centrifuge-v3/src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "centrifuge-v3/src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "centrifuge-v3/src/misc/libraries/TransientStorageLib.sol";
+import {Recoverable, IRecoverable, ETH_ADDRESS} from "centrifuge-v3/src/misc/Recoverable.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {IRoot} from "centrifuge-v3/src/common/interfaces/IRoot.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {IGateway} from "centrifuge-v3/src/common/interfaces/IGateway.sol";
+import {IGasService} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
+import {IMessageSender} from "centrifuge-v3/src/common/interfaces/IMessageSender.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "centrifuge-v3/src/common/interfaces/IMessageProcessor.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {IVault} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "centrifuge-v3/src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {SyncDepositVault} from "centrifuge-v3/src/vaults/SyncDepositVault.sol";
+import {IAsyncRedeemManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts

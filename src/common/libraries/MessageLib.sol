@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 
 // NOTE: Should never exceed 254 messages because id == 255 corresponds to message proofs
 enum MessageType {

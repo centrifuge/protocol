@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
+import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "src/common/interfaces/IGasService.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST as GAS} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
 

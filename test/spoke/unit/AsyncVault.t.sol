@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import "centrifuge-v3/src/misc/interfaces/IERC7540.sol";
+import "centrifuge-v3/src/misc/interfaces/IERC7575.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 

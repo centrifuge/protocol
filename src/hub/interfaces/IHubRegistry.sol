@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {IERC6909Decimals} from "centrifuge-v3/src/misc/interfaces/IERC6909.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 
 interface IHubRegistry is IERC6909Decimals {
     event NewAsset(AssetId indexed assetId, uint8 decimals);

@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Escrow} from "src/misc/Escrow.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {Escrow} from "centrifuge-v3/src/misc/Escrow.sol";
+import {IEscrow} from "centrifuge-v3/src/misc/interfaces/IEscrow.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
+import {Spoke} from "centrifuge-v3/src/spoke/Spoke.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SyncManager} from "centrifuge-v3/src/vaults/SyncManager.sol";
+import {VaultRouter} from "centrifuge-v3/src/vaults/VaultRouter.sol";
+import {AsyncRequestManager} from "centrifuge-v3/src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "centrifuge-v3/src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "centrifuge-v3/src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";

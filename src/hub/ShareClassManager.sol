@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {D18, d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId, newShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {PricingLib} from "centrifuge-v3/src/common/libraries/PricingLib.sol";
+import {ShareClassId, newShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHubRegistry} from "centrifuge-v3/src/hub/interfaces/IHubRegistry.sol";
 
 import {
     IShareClassManager,
@@ -24,7 +24,7 @@ import {
     QueuedOrder,
     RequestType,
     EpochId
-} from "src/hub/interfaces/IShareClassManager.sol";
+} from "centrifuge-v3/src/hub/interfaces/IShareClassManager.sol";
 
 /// @title  Share Class Manager
 /// @notice Manager for the share classes of a pool, and the core logic for tracking, approving, and fulfilling

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
+import {IEscrow} from "centrifuge-v3/src/misc/interfaces/IEscrow.sol";
+import {IERC6909} from "centrifuge-v3/src/misc/interfaces/IERC6909.sol";
+import {SafeTransferLib} from "centrifuge-v3/src/misc/libraries/SafeTransferLib.sol";
 
 contract Escrow is Auth, IEscrow {
     constructor(address deployer) Auth(deployer) {}

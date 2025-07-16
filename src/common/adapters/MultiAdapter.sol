@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {ArrayLib} from "centrifuge-v3/src/misc/libraries/ArrayLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {MessageProofLib} from "centrifuge-v3/src/common/libraries/MessageProofLib.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "centrifuge-v3/src/common/interfaces/adapters/IMultiAdapter.sol";
 
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;

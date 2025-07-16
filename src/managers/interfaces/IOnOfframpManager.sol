@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
 
-import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+import {IDepositManager, IWithdrawManager} from "centrifuge-v3/src/managers/interfaces/IBalanceSheetManager.sol";
 
 interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContract {
     event UpdateOnramp(address indexed asset, bool isEnabled);

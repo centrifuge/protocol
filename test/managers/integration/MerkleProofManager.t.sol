@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "centrifuge-v3/src/misc/Auth.sol";
+import {D18, d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {BalanceSheet} from "centrifuge-v3/src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
-import {MerkleProofManager, PolicyLeaf, Call} from "src/managers/MerkleProofManager.sol";
-import {IMerkleProofManager, IERC7751} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {VaultDecoder} from "centrifuge-v3/src/managers/decoders/VaultDecoder.sol";
+import {MerkleProofManager, PolicyLeaf, Call} from "centrifuge-v3/src/managers/MerkleProofManager.sol";
+import {IMerkleProofManager, IERC7751} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManager.sol";
 
 import "test/spoke/BaseTest.sol";
 import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";

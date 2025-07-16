@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
+import {IRecoverable} from "centrifuge-v3/src/misc/interfaces/IRecoverable.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
-import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IRoot} from "centrifuge-v3/src/common/interfaces/IRoot.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
+import {ITokenRecoverer} from "centrifuge-v3/src/common/interfaces/ITokenRecoverer.sol";
+import {IMessageProcessor} from "centrifuge-v3/src/common/interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "centrifuge-v3/src/common/interfaces/IMessageProperties.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
 
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IUpdateContractGatewayHandler
-} from "src/common/interfaces/IGatewayHandlers.sol";
+} from "centrifuge-v3/src/common/interfaces/IGatewayHandlers.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;

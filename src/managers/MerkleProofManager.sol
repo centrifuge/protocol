@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MerkleProofLib} from "centrifuge-v3/src/misc/libraries/MerkleProofLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {IMerkleProofManagerFactory} from "src/managers/interfaces/IMerkleProofManagerFactory.sol";
-import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {IMerkleProofManagerFactory} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManagerFactory.sol";
+import {IMerkleProofManager, Call, PolicyLeaf} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManager.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas

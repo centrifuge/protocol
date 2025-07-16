@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
+import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
 
 import "test/spoke/BaseTest.sol";
 

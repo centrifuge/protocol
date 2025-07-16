@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
 
 import "test/common/mocks/Mock.sol";
 

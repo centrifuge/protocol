@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 
 import "test/spoke/BaseTest.sol";
 

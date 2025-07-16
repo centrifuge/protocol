@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ISafe} from "centrifuge-v3/src/common/interfaces/IGuardian.sol";
+import {IGateway} from "centrifuge-v3/src/common/interfaces/IGateway.sol";
+import {MessageLib} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {IMultiAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IMultiAdapter.sol";
 
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {IHub} from "centrifuge-v3/src/hub/interfaces/IHub.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {ISpoke} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 
 import {FullDeployer} from "script/FullDeployer.s.sol";
 

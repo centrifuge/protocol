@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {AccountId} from "centrifuge-v3/src/common/types/AccountId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {IValuation} from "centrifuge-v3/src/common/interfaces/IValuation.sol";
 
-import {Holdings} from "src/hub/Holdings.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
+import {Holdings} from "centrifuge-v3/src/hub/Holdings.sol";
+import {IHubRegistry} from "centrifuge-v3/src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings, HoldingAccount} from "centrifuge-v3/src/hub/interfaces/IHoldings.sol";
 
 import "forge-std/Test.sol";
 

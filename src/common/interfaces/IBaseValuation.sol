@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {IValuation} from "centrifuge-v3/src/common/interfaces/IValuation.sol";
 
 /// Provides a base implementation for all ERC7726 valuation in the system
 interface IBaseValuation is IValuation {

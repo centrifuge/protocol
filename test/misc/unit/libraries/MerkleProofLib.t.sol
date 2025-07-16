@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
+import {MerkleProofLib} from "centrifuge-v3/src/misc/libraries/MerkleProofLib.sol";
 
 import "forge-std/Test.sol";
 
-/// @author Modified from https://github.com/transmissions11/solmate/blob/main/src/test/MerkleProofLib.t.sol
+/// @author Modified from https://github.com/transmissions11/solmate/blob/main/centrifuge-v3/src/test/MerkleProofLib.t.sol
 contract MerkleProofLibTest is Test {
     function testVerifyEmptyMerkleProofSuppliedLeafAndRootSame() public view {
         bytes32[] memory proof;

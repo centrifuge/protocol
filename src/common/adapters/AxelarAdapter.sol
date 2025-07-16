@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
 
 import {
     IAxelarAdapter,
@@ -14,7 +14,7 @@ import {
     AxelarSource,
     AxelarDestination,
     IAxelarExecutable
-} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
+} from "centrifuge-v3/src/common/interfaces/adapters/IAxelarAdapter.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway

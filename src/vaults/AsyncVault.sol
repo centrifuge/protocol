@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import "centrifuge-v3/src/misc/interfaces/IERC7540.sol";
+import "centrifuge-v3/src/misc/interfaces/IERC7575.sol";
+import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
+import {SafeTransferLib} from "centrifuge-v3/src/misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {VaultKind} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 
-import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {BaseAsyncRedeemVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {BaseVault} from "centrifuge-v3/src/vaults/BaseVaults.sol";
+import {BaseAsyncRedeemVault} from "centrifuge-v3/src/vaults/BaseVaults.sol";
+import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools

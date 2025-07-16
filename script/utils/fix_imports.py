@@ -9,13 +9,13 @@ import sys
 
 # Priority order for imports
 IMPORT_PRIORITY = [
-    "src/misc",
-    "src/common",
-    "src/hub",
-    "src/spoke",
-    "src/vaults",
-    "src/hooks",
-    "src/managers",
+    "centrifuge-v3/src/misc",
+    "centrifuge-v3/src/common",
+    "centrifuge-v3/src/hub",
+    "centrifuge-v3/src/spoke",
+    "centrifuge-v3/src/vaults",
+    "centrifuge-v3/src/hooks",
+    "centrifuge-v3/src/managers",
     "script",
     "test"
 ]
@@ -495,7 +495,7 @@ def organize_all_imports():
                         path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
                     if path_match:
                         path = path_match.group(1)
-                        if path.startswith('src/') and not any(path.startswith(p) for p in IMPORT_PRIORITY):
+                        if path.startswith('centrifuge-v3/src/') and not any(path.startswith(p) for p in IMPORT_PRIORITY):
                             other_import_paths.add(path.split('/')[1] if '/' in path else path)
             except:
                 pass
@@ -508,7 +508,7 @@ def organize_all_imports():
     if other_import_paths:
         print(f"\nOther import paths found beyond the specified ones:")
         for path in sorted(other_import_paths):
-            print(f"  - src/{path}")
+            print(f"  - centrifuge-v3/src/{path}")
 
 def main():
     """Main function"""

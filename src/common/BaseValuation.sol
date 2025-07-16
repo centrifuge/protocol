@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {IERC6909Decimals} from "centrifuge-v3/src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IBaseValuation} from "src/common/interfaces/IBaseValuation.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IBaseValuation} from "centrifuge-v3/src/common/interfaces/IBaseValuation.sol";
 
 abstract contract BaseValuation is Auth, IBaseValuation {
     /// @notice ERC6909 dependency.

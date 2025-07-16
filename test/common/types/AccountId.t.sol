@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AccountId} from "src/common/types/AccountId.sol";
+import {AccountId} from "centrifuge-v3/src/common/types/AccountId.sol";
 
 import "forge-std/Test.sol";
 

@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC165.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
+import {D18, d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {IERC165} from "centrifuge-v3/src/misc/interfaces/IERC165.sol";
+import {IEscrow} from "centrifuge-v3/src/misc/interfaces/IEscrow.sol";
+import {IERC7751} from "centrifuge-v3/src/misc/interfaces/IERC7751.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
-import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
-import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+import {OnOfframpManagerFactory} from "centrifuge-v3/src/managers/OnOfframpManager.sol";
+import {IOnOfframpManager} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManager.sol";
+import {IDepositManager, IWithdrawManager} from "centrifuge-v3/src/managers/interfaces/IBalanceSheetManager.sol";
 
 import "test/spoke/BaseTest.sol";
 

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IAuth} from "centrifuge-v3/src/misc/Auth.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
-import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
+import {MultiAdapter} from "centrifuge-v3/src/common/adapters/MultiAdapter.sol";
+import {MessageProofLib} from "centrifuge-v3/src/common/libraries/MessageProofLib.sol";
+import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "centrifuge-v3/src/common/interfaces/adapters/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 // Small library to handle fixed point number operations with 18 decimals with static typing support.
 
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
 
 type D18 is uint128;
 

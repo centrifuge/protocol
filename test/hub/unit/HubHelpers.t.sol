@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {d18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {IHubMessageSender} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
 
-import {HubHelpers} from "src/hub/HubHelpers.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {HubHelpers} from "centrifuge-v3/src/hub/HubHelpers.sol";
+import {IHoldings} from "centrifuge-v3/src/hub/interfaces/IHoldings.sol";
+import {IAccounting} from "centrifuge-v3/src/hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "centrifuge-v3/src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "centrifuge-v3/src/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 

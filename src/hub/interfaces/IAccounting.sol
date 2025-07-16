@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AccountId} from "centrifuge-v3/src/common/types/AccountId.sol";
 
 struct JournalEntry {
     uint128 value;

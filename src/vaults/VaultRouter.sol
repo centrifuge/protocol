@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
-import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
-import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {IEscrow} from "centrifuge-v3/src/misc/interfaces/IEscrow.sol";
+import {Multicall, IMulticall} from "centrifuge-v3/src/misc/Multicall.sol";
+import {IERC7540Deposit} from "centrifuge-v3/src/misc/interfaces/IERC7540.sol";
+import {IERC20, IERC20Permit} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
+import {SafeTransferLib} from "centrifuge-v3/src/misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {IGateway} from "centrifuge-v3/src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {ISpoke, VaultDetails} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 
-import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
+import {BaseSyncDepositVault} from "centrifuge-v3/src/vaults/BaseVaults.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
+import {IVaultRouter} from "centrifuge-v3/src/vaults/interfaces/IVaultRouter.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.

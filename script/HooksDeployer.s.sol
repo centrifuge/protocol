@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Spoke} from "src/spoke/Spoke.sol";
+import {Spoke} from "centrifuge-v3/src/spoke/Spoke.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "centrifuge-v3/src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "centrifuge-v3/src/hooks/FreelyTransferable.sol";
+import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
 
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";

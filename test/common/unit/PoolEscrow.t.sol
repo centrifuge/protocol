@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {Escrow, IEscrow} from "src/misc/Escrow.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
+import {Escrow, IEscrow} from "centrifuge-v3/src/misc/Escrow.sol";
+import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolEscrow, IPoolEscrow} from "src/common/PoolEscrow.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {PoolEscrow, IPoolEscrow} from "centrifuge-v3/src/common/PoolEscrow.sol";
 
 import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
 

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {IERC7751} from "centrifuge-v3/src/misc/interfaces/IERC7751.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {RequestMessageLib} from "src/common/libraries/RequestMessageLib.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {RequestMessageLib} from "centrifuge-v3/src/common/libraries/RequestMessageLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
+import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
 import "test/spoke/BaseTest.sol";
 

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {IRoot} from "centrifuge-v3/src/common/interfaces/IRoot.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
+import {ISpokeMessageSender} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 
 struct ShareQueueAmount {
     // Net queued shares

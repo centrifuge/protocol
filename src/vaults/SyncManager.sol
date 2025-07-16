@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
+import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
+import {BytesLib} from "centrifuge-v3/src/misc/libraries/BytesLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {PricingLib} from "centrifuge-v3/src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
+import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IDepositManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
+import {ISyncManager, ISyncDepositValuation} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.

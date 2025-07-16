@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "centrifuge-v3/src/misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
+import {VaultUpdateKind} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
     function localCentrifugeId() external view returns (uint16);

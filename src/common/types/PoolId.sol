@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
 
 using MathLib for uint256;
 

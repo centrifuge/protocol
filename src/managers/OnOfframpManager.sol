@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC165.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
+import {IERC165} from "centrifuge-v3/src/misc/interfaces/IERC165.sol";
+import {SafeTransferLib} from "centrifuge-v3/src/misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
+import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
-import {IOnOfframpManagerFactory} from "src/managers/interfaces/IOnOfframpManagerFactory.sol";
-import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+import {IOnOfframpManager} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManager.sol";
+import {IOnOfframpManagerFactory} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManagerFactory.sol";
+import {IDepositManager, IWithdrawManager} from "centrifuge-v3/src/managers/interfaces/IBalanceSheetManager.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.

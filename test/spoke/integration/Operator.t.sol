@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
+import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
 
 import "test/spoke/BaseTest.sol";
 

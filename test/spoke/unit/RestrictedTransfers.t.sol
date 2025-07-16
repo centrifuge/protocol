@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {IERC165} from "centrifuge-v3/src/misc/interfaces/IERC7575.sol";
 
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 
-import {ShareToken} from "src/spoke/ShareToken.sol";
+import {ShareToken} from "centrifuge-v3/src/spoke/ShareToken.sol";
 
-import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
+import {IFreezable} from "centrifuge-v3/src/hooks/interfaces/IFreezable.sol";
+import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
+import {IMemberlist} from "centrifuge-v3/src/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "test/common/mocks/MockRoot.sol";
 

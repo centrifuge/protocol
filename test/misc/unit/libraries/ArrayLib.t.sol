@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ArrayLib} from "src/misc/libraries/ArrayLib.sol";
+import {ArrayLib} from "centrifuge-v3/src/misc/libraries/ArrayLib.sol";
 
 import "forge-std/Test.sol";
 

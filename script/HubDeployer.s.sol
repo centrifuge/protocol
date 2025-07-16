@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {IdentityValuation} from "centrifuge-v3/src/misc/IdentityValuation.sol";
 
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {AssetId, newAssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubHelpers} from "src/hub/HubHelpers.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Hub} from "centrifuge-v3/src/hub/Hub.sol";
+import {Holdings} from "centrifuge-v3/src/hub/Holdings.sol";
+import {Accounting} from "centrifuge-v3/src/hub/Accounting.sol";
+import {HubHelpers} from "centrifuge-v3/src/hub/HubHelpers.sol";
+import {HubRegistry} from "centrifuge-v3/src/hub/HubRegistry.sol";
+import {ShareClassManager} from "centrifuge-v3/src/hub/ShareClassManager.sol";
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
 
