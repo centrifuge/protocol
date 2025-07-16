@@ -31,7 +31,7 @@ def create_parser() -> argparse.ArgumentParser:
 IMPORTANT:
   - This script is designed to be run from the root directory of the project.
   - The network name must match the name of the network in the env/<network>.json file.
-  - Run with VERSION=XYZ preceeding the python3 command to avoid create3 collisions.
+  - Run with VERSION=XYZ preceding the python3 command to avoid create3 collisions.
 
 Examples:
   VERSION=XYZ python3 deploy.py sepolia deploy:protocol

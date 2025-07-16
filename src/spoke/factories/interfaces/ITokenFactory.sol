@@ -14,7 +14,7 @@ interface ITokenFactory {
 
     /// @notice Used to deploy new share class tokens.
     /// @dev    In order to have the same address on different EVMs `salt` should be used
-    ///         during creationg process.
+    ///         during creation process.
     /// @param name Name of the new token.
     /// @param symbol Symbol of the new token.
     /// @param decimals Decimals of the new token.
