@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {IAdapter, IConfigurableAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter, IConfigurableAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 

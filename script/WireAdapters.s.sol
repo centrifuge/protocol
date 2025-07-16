@@ -4,9 +4,6 @@ pragma solidity 0.8.28;
 import {Guardian} from "src/common/Guardian.sol";
 import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 
-import {IAxelarAdapter} from "src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/adapters/interfaces/IWormholeAdapter.sol";
-
 import "forge-std/Script.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.

@@ -5,9 +5,9 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
+import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
 
 import "forge-std/Test.sol";
