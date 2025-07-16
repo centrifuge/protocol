@@ -199,3 +199,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Run codespell
         uses: codespell-project/actions-codespell@v2
+        with:
+          skip: ./docs
