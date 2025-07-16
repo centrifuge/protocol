@@ -15,8 +15,6 @@ Build a wide range of use cases—from permissioned funds to onchain loans—whi
 
 Using protocol-level chain abstraction, tokenization issuers access liquidity across any network, all managed from one Hub chain of their choice.
 
-Read more in the [developer docs][docs].
-
 ## Protocol
 
 Centrifuge V3 operates on a hub-and-spoke model. Each pool chooses a single hub chain, and can tokenize and manage liquidity on many spoke chains.
