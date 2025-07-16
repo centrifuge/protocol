@@ -54,7 +54,7 @@ Centrifuge V3 operates on a hub-and-spoke model. Each pool chooses a single hub 
   - `spoke` code related to Centrifuge Spoke
   - `vaults` extension of Centrifuge Spoke, for ERC-4626 and ERC-7540 vaults
   - `hooks` extension of Centrifuge Spoke, for implementing transfer hooks
-- `test` cotains all tests: unitary test, integration test per module, and end-to-end integration tests
+- `test` contains all tests: unitary test, integration test per module, and end-to-end integration tests
 
 
 ## Contributing
