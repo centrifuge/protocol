@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "centrifuge-v3/src/common/interfaces/adapters/IWormholeAdapter.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "centrifuge-v3/test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 
@@ -13,7 +13,7 @@ import {
     AdaptersInput,
     WormholeInput,
     AxelarInput
-} from "script/AdaptersDeployer.s.sol";
+} from "centrifuge-v3/script/AdaptersDeployer.s.sol";
 
 contract AdaptersDeploymentInputTest is Test {
     address immutable WORMHOLE_RELAYER = makeAddr("WormholeRelayer");

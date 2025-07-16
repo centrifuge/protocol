@@ -11,7 +11,7 @@ import {IFreezable} from "centrifuge-v3/src/hooks/interfaces/IFreezable.sol";
 import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
 import {IMemberlist} from "centrifuge-v3/src/hooks/interfaces/IMemberlist.sol";
 
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
+import {MockRoot} from "centrifuge-v3/test/common/mocks/MockRoot.sol";
 
 import "forge-std/Test.sol";
 

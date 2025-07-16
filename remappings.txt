@@ -2,3 +2,5 @@ forge-std/=lib/forge-std/src/
 @chimera/=lib/chimera/src/
 createx-forge/=lib/createx-forge/
 centrifuge-v3/src/=src/
+centrifuge-v3/test/=test/
+centrifuge-v3/script/=script/

@@ -14,7 +14,7 @@ import {RequestMessageLib} from "centrifuge-v3/src/common/libraries/RequestMessa
 import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

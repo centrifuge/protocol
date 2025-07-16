@@ -15,10 +15,10 @@ import {IHub} from "centrifuge-v3/src/hub/interfaces/IHub.sol";
 import {ISpoke} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer} from "centrifuge-v3/script/FullDeployer.s.sol";
 
-import "test/integration/EndToEnd.t.sol";
-import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+import "centrifuge-v3/test/integration/EndToEnd.t.sol";
+import {LocalAdapter} from "centrifuge-v3/test/integration/adapters/LocalAdapter.sol";
 
 import "forge-std/Test.sol";
 

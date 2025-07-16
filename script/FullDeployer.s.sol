@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "centrifuge-v3/src/common/interfaces/IGuardian.sol";
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/ExtendedSpokeDeployer.s.sol";
+import {CommonInput} from "centrifuge-v3/script/CommonDeployer.s.sol";
+import {HubDeployer, HubActionBatcher} from "centrifuge-v3/script/HubDeployer.s.sol";
+import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "centrifuge-v3/script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 
@@ -15,7 +15,7 @@ import {
     AdaptersInput,
     AdaptersDeployer,
     AdaptersActionBatcher
-} from "script/AdaptersDeployer.s.sol";
+} from "centrifuge-v3/script/AdaptersDeployer.s.sol";
 
 contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
 

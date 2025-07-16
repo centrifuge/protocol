@@ -17,8 +17,8 @@ import {VaultDecoder} from "centrifuge-v3/src/managers/decoders/VaultDecoder.sol
 import {MerkleProofManager, PolicyLeaf, Call} from "centrifuge-v3/src/managers/MerkleProofManager.sol";
 import {IMerkleProofManager, IERC7751} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManager.sol";
 
-import "test/spoke/BaseTest.sol";
-import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
+import {MerkleTreeLib} from "centrifuge-v3/test/managers/libraries/MerkleTreeLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;

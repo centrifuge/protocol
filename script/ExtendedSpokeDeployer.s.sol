@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {HooksDeployer, HooksActionBatcher} from "script/HooksDeployer.s.sol";
-import {VaultsDeployer, VaultsActionBatcher} from "script/VaultsDeployer.s.sol";
-import {ManagersDeployer, ManagersActionBatcher} from "script/ManagersDeployer.s.sol";
+import {CommonInput} from "centrifuge-v3/script/CommonDeployer.s.sol";
+import {HooksDeployer, HooksActionBatcher} from "centrifuge-v3/script/HooksDeployer.s.sol";
+import {VaultsDeployer, VaultsActionBatcher} from "centrifuge-v3/script/VaultsDeployer.s.sol";
+import {ManagersDeployer, ManagersActionBatcher} from "centrifuge-v3/script/ManagersDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

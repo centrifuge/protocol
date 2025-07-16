@@ -9,7 +9,7 @@ import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
 import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {PoolEscrow, IPoolEscrow} from "centrifuge-v3/src/common/PoolEscrow.sol";
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";
 
 import "forge-std/Test.sol";
 

@@ -17,7 +17,7 @@ import {AsyncRequestManager} from "centrifuge-v3/src/vaults/AsyncRequestManager.
 import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "centrifuge-v3/src/vaults/interfaces/IBaseRequestManager.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);

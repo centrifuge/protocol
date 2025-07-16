@@ -6,7 +6,7 @@ import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
 import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
 
-import "test/common/mocks/Mock.sol";
+import "centrifuge-v3/test/common/mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 

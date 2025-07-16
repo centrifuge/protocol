@@ -7,9 +7,9 @@ import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
 import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
+import {FullDeployer, FullActionBatcher, CommonInput} from "centrifuge-v3/script/FullDeployer.s.sol";
 
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockValuation} from "centrifuge-v3/test/common/mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
 

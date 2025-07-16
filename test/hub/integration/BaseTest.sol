@@ -10,10 +10,10 @@ import {IAdapter} from "centrifuge-v3/src/common/interfaces/IAdapter.sol";
 import {AssetId, newAssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 import {MAX_MESSAGE_COST} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
 
-import {HubDeployer, HubActionBatcher, CommonInput} from "script/HubDeployer.s.sol";
+import {HubDeployer, HubActionBatcher, CommonInput} from "centrifuge-v3/script/HubDeployer.s.sol";
 
-import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockVaults} from "centrifuge-v3/test/hub/mocks/MockVaults.sol";
+import {MockValuation} from "centrifuge-v3/test/common/mocks/MockValuation.sol";
 
 import "forge-std/Test.sol";
 

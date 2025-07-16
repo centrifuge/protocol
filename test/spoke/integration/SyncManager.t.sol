@@ -13,7 +13,7 @@ import {ISyncManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.s
 import {IBaseRequestManager} from "centrifuge-v3/src/vaults/interfaces/IBaseRequestManager.sol";
 import {ISyncManager, ISyncDepositValuation} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract SyncManagerBaseTest is BaseTest {
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ManagersDeployer, ManagersActionBatcher} from "script/ManagersDeployer.s.sol";
+import {ManagersDeployer, ManagersActionBatcher} from "centrifuge-v3/script/ManagersDeployer.s.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "centrifuge-v3/test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 

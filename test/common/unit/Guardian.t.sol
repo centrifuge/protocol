@@ -12,7 +12,7 @@ import {IAxelarAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IAxel
 import {IWormholeAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IWormholeAdapter.sol";
 import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "centrifuge-v3/src/common/Guardian.sol";
 
-import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
+import {AxelarAddressToString} from "centrifuge-v3/test/common/unit/AxelarAdapter.t.sol";
 
 import "forge-std/Test.sol";
 

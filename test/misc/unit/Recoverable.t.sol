@@ -5,7 +5,7 @@ import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
 import {Auth, IAuth} from "centrifuge-v3/src/misc/Auth.sol";
 import {Recoverable} from "centrifuge-v3/src/misc/Recoverable.sol";
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";
 
 import "forge-std/Test.sol";
 

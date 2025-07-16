@@ -19,7 +19,7 @@ import {OnOfframpManagerFactory} from "centrifuge-v3/src/managers/OnOfframpManag
 import {IOnOfframpManager} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManager.sol";
 import {IDepositManager, IWithdrawManager} from "centrifuge-v3/src/managers/interfaces/IBalanceSheetManager.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;

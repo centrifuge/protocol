@@ -11,8 +11,8 @@ import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.s
 
 import {ShareToken} from "centrifuge-v3/src/spoke/ShareToken.sol";
 
-import {MockRoot} from "test/common/mocks/MockRoot.sol";
-import {MockFullRestrictions} from "test/spoke/mocks/MockFullRestrictions.sol";
+import {MockRoot} from "centrifuge-v3/test/common/mocks/MockRoot.sol";
+import {MockFullRestrictions} from "centrifuge-v3/test/spoke/mocks/MockFullRestrictions.sol";
 
 import "forge-std/Test.sol";
 

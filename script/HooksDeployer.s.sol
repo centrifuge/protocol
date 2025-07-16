@@ -8,8 +8,8 @@ import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "centrifuge-v3/src/hooks/FreelyTransferable.sol";
 import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
+import {CommonInput} from "centrifuge-v3/script/CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "centrifuge-v3/script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

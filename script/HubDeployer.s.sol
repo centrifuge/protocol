@@ -12,7 +12,7 @@ import {HubHelpers} from "centrifuge-v3/src/hub/HubHelpers.sol";
 import {HubRegistry} from "centrifuge-v3/src/hub/HubRegistry.sol";
 import {ShareClassManager} from "centrifuge-v3/src/hub/ShareClassManager.sol";
 
-import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "centrifuge-v3/script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

@@ -9,7 +9,7 @@ import {MathLib} from "centrifuge-v3/src/misc/libraries/MathLib.sol";
 import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment

@@ -12,8 +12,8 @@ import {AsyncRequestManager} from "centrifuge-v3/src/vaults/AsyncRequestManager.
 import {AsyncVaultFactory} from "centrifuge-v3/src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "centrifuge-v3/src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
+import {CommonInput} from "centrifuge-v3/script/CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "centrifuge-v3/script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

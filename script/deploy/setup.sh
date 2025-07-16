@@ -217,7 +217,7 @@ check_python() {
                     echo "  💡 To use Homebrew Python, add to your shell config (~/.zshrc or ~/.bash_profile):"
                     echo "     export PATH=\"/opt/homebrew/bin:\$PATH\""
                     echo "     alias python3=\"/opt/homebrew/bin/python3\""
-                    echo "  🔄 Or run: source ~/.zshrc && ./script/deploy/setup.sh"
+                    echo "  🔄 Or run: source ~/.zshrc && ./centrifuge-v3/script/deploy/setup.sh"
                 else
                     echo "  ⚠ Homebrew Python $HOMEBREW_VERSION also needs upgrading"
                 fi
@@ -229,7 +229,7 @@ check_python() {
                     print_fixed "Python version upgrade"
                 else
                     echo "  2. Install manually: brew install python@$REQUIRED_PYTHON_VERSION"
-                    echo "  3. Fix PATH manually and re-run this script"
+                    echo "  3. Fix PATH manually and re-run this centrifuge-v3/script"
                     return 1
                 fi
             fi
@@ -631,8 +631,8 @@ main() {
         echo -e "${GREEN}You're ready to use the Centrifuge deployment tool.${NC}"
         echo
         echo -e "${BLUE}Next steps:${NC}"
-        echo -e "  ${BLUE}•${NC} Run: python3 script/deploy/deploy.py --help"
-        echo -e "  ${BLUE}•${NC} Example: python3 script/deploy/deploy.py sepolia deploy:protocol"
+        echo -e "  ${BLUE}•${NC} Run: python3 centrifuge-v3/script/deploy/deploy.py --help"
+        echo -e "  ${BLUE}•${NC} Example: python3 centrifuge-v3/script/deploy/deploy.py sepolia deploy:protocol"
     else
 
         echo -e "${RED}❌ Found $ISSUES_FOUND issue(s) that need attention${NC}"

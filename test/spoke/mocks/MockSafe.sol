@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ISafe} from "centrifuge-v3/src/common/Guardian.sol";
 
-import {Mock} from "test/common/mocks/Mock.sol";
+import {Mock} from "centrifuge-v3/test/common/mocks/Mock.sol";
 
 contract MockSafe is Mock, ISafe {
     constructor(address[] memory owners, uint256 threshold) {

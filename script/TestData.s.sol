@@ -32,7 +32,7 @@ import {SyncDepositVaultFactory} from "centrifuge-v3/src/vaults/factories/SyncDe
 import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer} from "centrifuge-v3/script/FullDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

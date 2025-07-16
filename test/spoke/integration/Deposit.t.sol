@@ -15,7 +15,7 @@ import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

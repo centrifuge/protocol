@@ -9,7 +9,7 @@ import {WormholeAdapter} from "centrifuge-v3/src/common/adapters/WormholeAdapter
 import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
 import {IWormholeAdapter} from "centrifuge-v3/src/common/interfaces/adapters/IWormholeAdapter.sol";
 
-import {Mock} from "test/common/mocks/Mock.sol";
+import {Mock} from "centrifuge-v3/test/common/mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 

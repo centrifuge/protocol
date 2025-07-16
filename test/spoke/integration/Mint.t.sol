@@ -5,7 +5,7 @@ import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
 import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract MintTest is BaseTest {
     function testMint(uint256 amount) public {

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract BurnTest is BaseTest {
     function testBurn(uint256 amount) public {

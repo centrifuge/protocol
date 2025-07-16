@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "centrifuge-v3/src/hooks/FullRestrictions.sol";
 
-import "test/common/mocks/Mock.sol";
+import "centrifuge-v3/test/common/mocks/Mock.sol";
 
 contract MockFullRestrictions is FullRestrictions, Mock {
     constructor(address root_, address deployer) FullRestrictions(root_, deployer) {}

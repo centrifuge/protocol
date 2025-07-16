@@ -23,9 +23,9 @@ import {AsyncVaultFactory} from "centrifuge-v3/src/vaults/factories/AsyncVaultFa
 import {IMemberlist} from "centrifuge-v3/src/hooks/interfaces/IMemberlist.sol";
 import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import "test/spoke/BaseTest.sol";
-import {MockHook} from "test/spoke/mocks/MockHook.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
+import {MockHook} from "centrifuge-v3/test/spoke/mocks/MockHook.sol";
+import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;

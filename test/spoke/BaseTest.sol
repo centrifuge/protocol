@@ -21,12 +21,12 @@ import {IVaultFactory} from "centrifuge-v3/src/spoke/factories/interfaces/IVault
 
 import {AsyncVault} from "centrifuge-v3/src/vaults/AsyncVault.sol";
 
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
+import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "centrifuge-v3/script/ExtendedSpokeDeployer.s.sol";
 
-import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
-import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
+import {MockSafe} from "centrifuge-v3/test/spoke/mocks/MockSafe.sol";
+import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";
+import {MockAdapter} from "centrifuge-v3/test/common/mocks/MockAdapter.sol";
+import {MockCentrifugeChain} from "centrifuge-v3/test/spoke/mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 

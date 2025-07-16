@@ -6,7 +6,7 @@ import {IERC20} from "centrifuge-v3/src/misc/interfaces/IERC20.sol";
 import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {

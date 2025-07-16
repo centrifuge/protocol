@@ -7,7 +7,7 @@ import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultMa
 
 import {FreelyTransferable} from "centrifuge-v3/src/hooks/FreelyTransferable.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract FreelyTransferableTest is BaseTest {
     using CastLib for *;

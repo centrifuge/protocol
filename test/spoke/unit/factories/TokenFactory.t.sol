@@ -10,7 +10,7 @@ import {VaultKind} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 import {TokenFactory} from "centrifuge-v3/src/spoke/factories/TokenFactory.sol";
 
-import {BaseTest} from "test/spoke/BaseTest.sol";
+import {BaseTest} from "centrifuge-v3/test/spoke/BaseTest.sol";
 
 import "forge-std/Test.sol";
 

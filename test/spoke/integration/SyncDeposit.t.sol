@@ -22,7 +22,7 @@ import {SyncDepositVault} from "centrifuge-v3/src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "centrifuge-v3/src/vaults/interfaces/IAsyncVault.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;

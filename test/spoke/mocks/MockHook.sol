@@ -5,7 +5,7 @@ import {IERC165} from "centrifuge-v3/src/misc/interfaces/IERC7575.sol";
 
 import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 
-import "test/common/mocks/Mock.sol";
+import "centrifuge-v3/test/common/mocks/Mock.sol";
 
 contract MockHook is Mock {
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {

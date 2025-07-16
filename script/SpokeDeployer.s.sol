@@ -6,7 +6,7 @@ import {BalanceSheet} from "centrifuge-v3/src/spoke/BalanceSheet.sol";
 import {ContractUpdater} from "centrifuge-v3/src/spoke/ContractUpdater.sol";
 import {TokenFactory} from "centrifuge-v3/src/spoke/factories/TokenFactory.sol";
 
-import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "centrifuge-v3/script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

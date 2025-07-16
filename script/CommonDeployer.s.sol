@@ -11,7 +11,7 @@ import {MultiAdapter} from "centrifuge-v3/src/common/adapters/MultiAdapter.sol";
 import {MessageDispatcher} from "centrifuge-v3/src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "centrifuge-v3/src/common/factories/PoolEscrowFactory.sol";
 
-import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
+import {JsonRegistry} from "centrifuge-v3/script/utils/JsonRegistry.s.sol";
 
 import "forge-std/Script.sol";
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";

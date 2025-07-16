@@ -6,7 +6,7 @@ import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 import {IMessageHandler} from "centrifuge-v3/src/common/interfaces/IMessageHandler.sol";
 import {AxelarAdapter, IAdapter, IAxelarExecutable} from "centrifuge-v3/src/common/adapters/AxelarAdapter.sol";
 
-import {Mock} from "test/common/mocks/Mock.sol";
+import {Mock} from "centrifuge-v3/test/common/mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 

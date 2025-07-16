@@ -6,8 +6,8 @@ import {CircleDecoder} from "centrifuge-v3/src/managers/decoders/CircleDecoder.s
 import {OnOfframpManagerFactory} from "centrifuge-v3/src/managers/OnOfframpManager.sol";
 import {MerkleProofManagerFactory} from "centrifuge-v3/src/managers/MerkleProofManager.sol";
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
+import {CommonInput} from "centrifuge-v3/script/CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "centrifuge-v3/script/SpokeDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

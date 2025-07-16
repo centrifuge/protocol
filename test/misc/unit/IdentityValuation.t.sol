@@ -5,7 +5,7 @@ import {IdentityValuation} from "centrifuge-v3/src/misc/IdentityValuation.sol";
 
 import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
+import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";
 
 import "forge-std/Test.sol";
 

@@ -13,7 +13,7 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {VaultUpdateKind} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
 import {RequestCallbackMessageLib} from "centrifuge-v3/src/common/libraries/RequestCallbackMessageLib.sol";
 
-import "test/hub/integration/BaseTest.sol";
+import "centrifuge-v3/test/hub/integration/BaseTest.sol";
 
 contract TestCases is BaseTest {
     using MathLib for *;

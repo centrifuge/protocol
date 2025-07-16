@@ -60,7 +60,7 @@ contract ERC20WithBooleanAlwaysFalse {
 }
 
 /// @author Modified from
-/// https://github.com/morpho-org/morpho-blue/blob/main/test/forge/libraries/SafeTransferLibTest.sol
+/// https://github.com/morpho-org/morpho-blue/blob/main/centrifuge-v3/test/forge/libraries/SafeTransferLibTest.sol
 contract SafeTransferLibTest is Test {
     ERC20WithoutBoolean public tokenWithoutBoolean;
     ERC20WithBooleanAlwaysFalse public tokenWithBooleanAlwaysFalse;

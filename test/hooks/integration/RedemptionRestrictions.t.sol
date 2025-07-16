@@ -7,7 +7,7 @@ import {IAsyncRequestManager} from "centrifuge-v3/src/vaults/interfaces/IVaultMa
 
 import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;

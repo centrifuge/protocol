@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "centrifuge-v3/src/misc/interfaces/IAuth.sol";
 
-import {HooksDeployer, HooksActionBatcher} from "script/HooksDeployer.s.sol";
+import {HooksDeployer, HooksActionBatcher} from "centrifuge-v3/script/HooksDeployer.s.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "centrifuge-v3/test/common/Deployment.t.sol";
 
 import "forge-std/Test.sol";
 

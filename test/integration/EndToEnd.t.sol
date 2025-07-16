@@ -46,11 +46,11 @@ import {FullRestrictions} from "centrifuge-v3/src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "centrifuge-v3/src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
+import {FullDeployer, FullActionBatcher, CommonInput} from "centrifuge-v3/script/FullDeployer.s.sol";
 
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
-import {MockSnapshotHook} from "test/hooks/mocks/MockSnapshotHook.sol";
-import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+import {MockValuation} from "centrifuge-v3/test/common/mocks/MockValuation.sol";
+import {MockSnapshotHook} from "centrifuge-v3/test/hooks/mocks/MockSnapshotHook.sol";
+import {LocalAdapter} from "centrifuge-v3/test/integration/adapters/LocalAdapter.sol";
 
 import "forge-std/Test.sol";
 

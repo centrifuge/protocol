@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {AxelarAdapter} from "centrifuge-v3/src/common/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "centrifuge-v3/src/common/adapters/WormholeAdapter.sol";
 
-import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "centrifuge-v3/script/CommonDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

@@ -5,7 +5,7 @@ import {CastLib} from "centrifuge-v3/src/misc/libraries/CastLib.sol";
 
 import {ITransferHook} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 
-import "test/spoke/BaseTest.sol";
+import "centrifuge-v3/test/spoke/BaseTest.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;
