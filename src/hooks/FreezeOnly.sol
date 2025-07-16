@@ -13,7 +13,10 @@ import {ITransferHook, HookData} from "centrifuge-v3/src/common/interfaces/ITran
 import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 
 import {IFreezable} from "centrifuge-v3/src/hooks/interfaces/IFreezable.sol";
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {
+    UpdateRestrictionType,
+    UpdateRestrictionMessageLib
+} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 /// @title  Freeze Only
 /// @notice Hook implementation that:

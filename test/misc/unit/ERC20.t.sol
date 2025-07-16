@@ -42,7 +42,8 @@ contract MockMultisig is IERC1271 {
     function test() public {}
 }
 
-/// @author Modified from https://github.com/makerdao/xdomain-dss/blob/master/centrifuge-v3/src/centrifuge-v3/test/Dai.t.sol
+/// @author Modified from
+/// https://github.com/makerdao/xdomain-dss/blob/master/centrifuge-v3/src/centrifuge-v3/test/Dai.t.sol
 contract ERC20Test is Test {
     ERC20 token;
 

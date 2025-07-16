@@ -9,7 +9,10 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
 import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
+import {
+    UpdateContractMessageLib,
+    UpdateContractType
+} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IMerkleProofManagerFactory} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManagerFactory.sol";
 import {IMerkleProofManager, Call, PolicyLeaf} from "centrifuge-v3/src/managers/interfaces/IMerkleProofManager.sol";

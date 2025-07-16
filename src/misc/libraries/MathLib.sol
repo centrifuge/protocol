@@ -20,7 +20,8 @@ library MathLib {
 
     /// @notice Returns x^n with rounding precision of base
     ///
-    /// @dev Source: https://github.com/makerdao/dss/blob/fa4f6630afb0624d04a003e920b0d71a00331d98/centrifuge-v3/src/jug.sol#L62
+    /// @dev Source:
+    /// https://github.com/makerdao/dss/blob/fa4f6630afb0624d04a003e920b0d71a00331d98/centrifuge-v3/src/jug.sol#L62
     ///
     /// @param x The base value which should be exponentiated
     /// @param n The exponent

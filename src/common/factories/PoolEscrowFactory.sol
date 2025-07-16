@@ -6,7 +6,10 @@ import {Auth} from "centrifuge-v3/src/misc/Auth.sol";
 import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
 import {PoolEscrow} from "centrifuge-v3/src/common/PoolEscrow.sol";
 import {IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {
+    IPoolEscrowProvider,
+    IPoolEscrowFactory
+} from "centrifuge-v3/src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
 contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
     address public immutable root;

@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
+import {
+    ISpokeMessageSender,
+    IHubMessageSender,
+    IRootMessageSender
+} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
 
 interface IMessageDispatcher is IRootMessageSender, ISpokeMessageSender, IHubMessageSender {
     /// @notice Emitted when a call to `file()` was performed.

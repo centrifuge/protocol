@@ -21,7 +21,11 @@ import {IVaultFactory} from "centrifuge-v3/src/spoke/factories/interfaces/IVault
 
 import {AsyncVault} from "centrifuge-v3/src/vaults/AsyncVault.sol";
 
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "centrifuge-v3/script/ExtendedSpokeDeployer.s.sol";
+import {
+    ExtendedSpokeDeployer,
+    ExtendedSpokeActionBatcher,
+    CommonInput
+} from "centrifuge-v3/script/ExtendedSpokeDeployer.s.sol";
 
 import {MockSafe} from "centrifuge-v3/test/spoke/mocks/MockSafe.sol";
 import {MockERC6909} from "centrifuge-v3/test/misc/mocks/MockERC6909.sol";

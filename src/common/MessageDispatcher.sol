@@ -16,7 +16,11 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {ITokenRecoverer} from "centrifuge-v3/src/common/interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "centrifuge-v3/src/common/interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "centrifuge-v3/src/common/libraries/MessageLib.sol";
-import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
+import {
+    ISpokeMessageSender,
+    IHubMessageSender,
+    IRootMessageSender
+} from "centrifuge-v3/src/common/interfaces/IGatewaySenders.sol";
 
 import {
     ISpokeGatewayHandler,

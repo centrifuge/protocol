@@ -5,7 +5,8 @@ import {MerkleProofLib} from "centrifuge-v3/src/misc/libraries/MerkleProofLib.so
 
 import "forge-std/Test.sol";
 
-/// @author Modified from https://github.com/transmissions11/solmate/blob/main/centrifuge-v3/src/centrifuge-v3/test/MerkleProofLib.t.sol
+/// @author Modified from
+/// https://github.com/transmissions11/solmate/blob/main/centrifuge-v3/src/centrifuge-v3/test/MerkleProofLib.t.sol
 contract MerkleProofLibTest is Test {
     function testVerifyEmptyMerkleProofSuppliedLeafAndRootSame() public view {
         bytes32[] memory proof;

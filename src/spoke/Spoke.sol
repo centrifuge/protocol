@@ -30,7 +30,9 @@ import {IVaultManager} from "centrifuge-v3/src/spoke/interfaces/IVaultManager.so
 import {IRequestManager} from "centrifuge-v3/src/spoke/interfaces/IRequestManager.sol";
 import {ITokenFactory} from "centrifuge-v3/src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "centrifuge-v3/src/spoke/factories/interfaces/IVaultFactory.sol";
-import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
+import {
+    AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke
+} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,

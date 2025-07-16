@@ -11,7 +11,10 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 
 import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
+import {
+    UpdateContractType,
+    UpdateContractMessageLib
+} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IOnOfframpManager} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManager.sol";
 import {IOnOfframpManagerFactory} from "centrifuge-v3/src/managers/interfaces/IOnOfframpManagerFactory.sol";

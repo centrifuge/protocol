@@ -16,7 +16,10 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {IBalanceSheet} from "centrifuge-v3/src/spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "centrifuge-v3/src/spoke/interfaces/ISpoke.sol";
 import {IUpdateContract} from "centrifuge-v3/src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
+import {
+    UpdateContractMessageLib,
+    UpdateContractType
+} from "centrifuge-v3/src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IBaseVault} from "centrifuge-v3/src/vaults/interfaces/IBaseVault.sol";
 import {IDepositManager} from "centrifuge-v3/src/vaults/interfaces/IVaultManagers.sol";

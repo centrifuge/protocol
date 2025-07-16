@@ -14,7 +14,10 @@ import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
 
 import {IFreezable} from "centrifuge-v3/src/hooks/interfaces/IFreezable.sol";
 import {IMemberlist} from "centrifuge-v3/src/hooks/interfaces/IMemberlist.sol";
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {
+    UpdateRestrictionType,
+    UpdateRestrictionMessageLib
+} from "centrifuge-v3/src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 /// @title  Freely Transferable
 /// @notice Hook implementation that:

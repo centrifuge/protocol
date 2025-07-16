@@ -16,7 +16,10 @@ import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {IPoolEscrow} from "centrifuge-v3/src/common/interfaces/IPoolEscrow.sol";
 import {ESCROW_HOOK_ID} from "centrifuge-v3/src/common/interfaces/ITransferHook.sol";
 import {RequestMessageLib} from "centrifuge-v3/src/common/libraries/RequestMessageLib.sol";
-import {RequestCallbackType, RequestCallbackMessageLib} from "centrifuge-v3/src/common/libraries/RequestCallbackMessageLib.sol";
+import {
+    RequestCallbackType,
+    RequestCallbackMessageLib
+} from "centrifuge-v3/src/common/libraries/RequestCallbackMessageLib.sol";
 
 import {IVault} from "centrifuge-v3/src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "centrifuge-v3/src/spoke/interfaces/IShareToken.sol";
