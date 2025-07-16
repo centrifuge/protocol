@@ -16,8 +16,8 @@ IMPORT_PRIORITY = [
     "centrifuge-v3/src/vaults",
     "centrifuge-v3/src/hooks",
     "centrifuge-v3/src/managers",
-    "script",
-    "test"
+    "centrifuge-v3/script",
+    "centrifuge-v3/test"
 ]
 
 def get_all_solidity_files() -> List[str]:
