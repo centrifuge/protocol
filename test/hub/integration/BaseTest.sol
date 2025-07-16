@@ -86,24 +86,13 @@ contract BaseTest is HubDeployer, Test {
         });
 
         HubActionBatcher batcher = new HubActionBatcher();
+        labelAddresses("");
         deployHub(input, batcher);
         _mockStuff(batcher);
         removeHubDeployerAccess(batcher);
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
-
-        // Label contracts & actors (for debugging)
-        vm.label(address(identityValuation), "IdentityValuation");
-        vm.label(address(hubRegistry), "HubRegistry");
-        vm.label(address(accounting), "Accounting");
-        vm.label(address(holdings), "Holdings");
-        vm.label(address(shareClassManager), "ShareClassManager");
-        vm.label(address(hub), "Hub");
-        vm.label(address(gateway), "Gateway");
-        vm.label(address(messageProcessor), "MessageProcessor");
-        vm.label(address(messageDispatcher), "MessageDispatcher");
-        vm.label(address(cv), "CV");
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);

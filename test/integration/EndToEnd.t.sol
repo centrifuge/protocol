@@ -206,7 +206,6 @@ contract EndToEndDeployment is Test {
 
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
-        vm.label(address(h.hub), "Hub");
     }
 
     function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
@@ -237,6 +236,7 @@ contract EndToEndDeployment is Test {
         FullActionBatcher batcher = new FullActionBatcher();
         batcher.setDeployer(address(deploy));
 
+        deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
         deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));

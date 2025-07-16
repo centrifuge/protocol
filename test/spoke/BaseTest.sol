@@ -90,6 +90,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         });
 
         setDeployer(address(this));
+        labelAddresses("");
         deployExtendedSpoke(input, this);
         // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
@@ -111,51 +112,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         erc6909 = new MockERC6909();
 
         multiAdapter.file("adapters", OTHER_CHAIN_ID, testAdapters);
-
-        // Label contracts
-        vm.label(address(root), "Root");
-        vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncManager), "SyncManager");
-        vm.label(address(spoke), "Spoke");
-        vm.label(address(balanceSheet), "BalanceSheet");
-        vm.label(address(gateway), "Gateway");
-        vm.label(address(messageProcessor), "MessageProcessor");
-        vm.label(address(messageDispatcher), "MessageDispatcher");
-        vm.label(address(adapter1), "MockAdapter1");
-        vm.label(address(adapter2), "MockAdapter2");
-        vm.label(address(adapter3), "MockAdapter3");
-        vm.label(address(erc20), "ERC20");
-        vm.label(address(erc6909), "ERC6909");
-        vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(vaultRouter), "VaultRouter");
-        vm.label(address(gasService), "GasService");
-        vm.label(address(routerEscrow), "RouterEscrow");
-        vm.label(address(guardian), "Guardian");
-        vm.label(address(spoke.tokenFactory()), "TokenFactory");
-        vm.label(address(asyncVaultFactory), "AsyncVaultFactory");
-        vm.label(address(syncDepositVaultFactory), "SyncDepositVaultFactory");
-        vm.label(address(poolEscrowFactory), "PoolEscrowFactory");
-
-        // Exclude predeployed contracts from invariant tests by default
-        excludeContract(address(root));
-        excludeContract(address(asyncRequestManager));
-        excludeContract(address(syncManager));
-        excludeContract(address(balanceSheet));
-        excludeContract(address(spoke));
-        excludeContract(address(gateway));
-        excludeContract(address(erc20));
-        excludeContract(address(erc6909));
-        excludeContract(address(centrifugeChain));
-        excludeContract(address(vaultRouter));
-        excludeContract(address(adapter1));
-        excludeContract(address(adapter2));
-        excludeContract(address(adapter3));
-        excludeContract(address(routerEscrow));
-        excludeContract(address(guardian));
-        excludeContract(address(spoke.tokenFactory()));
-        excludeContract(address(asyncVaultFactory));
-        excludeContract(address(syncDepositVaultFactory));
-        excludeContract(address(poolEscrowFactory));
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
