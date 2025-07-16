@@ -6,8 +6,6 @@ import "src/misc/interfaces/IERC20.sol";
 import {ERC20} from "src/misc/ERC20.sol";
 import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {newAssetId} from "src/common/types/AssetId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
@@ -17,15 +15,11 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
 import {VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
 

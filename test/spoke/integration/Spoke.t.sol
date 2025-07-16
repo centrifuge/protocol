@@ -18,6 +18,7 @@ import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
 
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";

@@ -13,6 +13,7 @@ import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
 
