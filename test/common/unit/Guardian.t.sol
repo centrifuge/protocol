@@ -66,6 +66,12 @@ contract GuardianTestFile is GuardianTest {
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.file("safe", makeAddr("newSafe"));
     }
+
+    function testFileErrFileUnrecognizedParam() public {
+        vm.startPrank(address(SAFE));
+        vm.expectRevert(IGuardian.FileUnrecognizedParam.selector);
+        guardian.file("any", makeAddr("newSafe"));
+    }
 }
 
 contract GuardianTestCreatePool is GuardianTest {
