@@ -16,6 +16,7 @@ IMPORT_PRIORITY = [
     "src/vaults",
     "src/hooks",
     "src/managers",
+    "src/adapters",
     "script",
     "test"
 ]
