@@ -10,8 +10,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {LinkShareTokenCommon} from "./LinkShareTokenCommon.sol";
 
-/// @title  LinkShareTokenEth
-/// @notice Ethereum-specific spell that links both JTRSY and JAAA tokens
+/// @notice Ethereum-specific spell that links both JTRSY_USDC and JAAA_USDC
 contract LinkShareTokenEth is LinkShareTokenCommon {
     PoolId public constant JAAA_POOL_ID = PoolId.wrap(158696445);
     ShareClassId public constant JAAA_SHARE_CLASS_ID = ShareClassId.wrap(0x57e1b211a9ce6306b69a414f274f9998);
@@ -23,7 +22,6 @@ contract LinkShareTokenEth is LinkShareTokenCommon {
 
         // Link JAAA and grant permissions
         SPOKE.linkToken(JAAA_POOL_ID, JAAA_SHARE_CLASS_ID, JAAA_SHARE_TOKEN);
-
         IAuth(address(JAAA_SHARE_TOKEN)).rely(ROOT_ADDRESS);
         IAuth(address(JAAA_SHARE_TOKEN)).rely(BALANCE_SHEET_ADDRESS);
         IAuth(address(JAAA_SHARE_TOKEN)).rely(address(SPOKE));

@@ -15,8 +15,7 @@ struct LinkShareTokenParams {
     IShareToken shareToken;
 }
 
-/// @title  LinkShareTokenCommon
-/// @notice Base contract with common JTRSY configuration for all networks
+/// @notice Base contract with common JTRSY_USDC configuration for all networks
 contract LinkShareTokenCommon {
     bool public done;
     string public constant description = "Link V2 share tokens to V3 system";
