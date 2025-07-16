@@ -8,11 +8,11 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IGuardian} from "src/common/interfaces/IGuardian.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {IAxelarAdapter} from "src/adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "src/adapters/interfaces/IWormholeAdapter.sol";
 import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
 
-import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
+import {AxelarAddressToString} from "test/adapters/unit/AxelarAdapter.t.sol";
 
 import "forge-std/Test.sol";
 

@@ -11,8 +11,8 @@ import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
 import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {IAxelarAdapter} from "src/adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "src/adapters/interfaces/IWormholeAdapter.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;

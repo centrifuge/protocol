@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {AxelarAdapter, IAdapter, IAxelarExecutable} from "src/common/adapters/AxelarAdapter.sol";
+import {AxelarAdapter, IAdapter, IAxelarExecutable} from "src/adapters/AxelarAdapter.sol";
 
 import {Mock} from "test/common/mocks/Mock.sol";
 

@@ -14,7 +14,7 @@ import {
     AxelarSource,
     AxelarDestination,
     IAxelarExecutable
-} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
+} from "src/adapters/interfaces/IAxelarAdapter.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
