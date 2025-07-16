@@ -520,5 +520,8 @@ interface IShareClassManager {
     /// @return name The registered name of the share class token
     /// @return symbol The registered symbol of the share class token
     /// @return salt The registered salt of the share class token, used for deterministic deployments
-    function metadata(ShareClassId scId) external view returns (string memory name, string memory symbol, bytes32 salt);
+    function metadata(ShareClassId scId)
+        external
+        view
+        returns (string memory name, string memory symbol, bytes32 salt);
 }
