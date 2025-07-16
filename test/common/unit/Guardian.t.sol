@@ -21,7 +21,7 @@ contract GuardianTest is Test {
     IRootMessageSender sender = IRootMessageSender(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("multiAdapter"));
 
-    ISafe immutable SAFE = ISafe(makeAddr("adminSafe"));
+    ISafe immutable SAFE = ISafe(address(new IsContract()));
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
 
@@ -113,6 +113,12 @@ contract GuardianTestPause is GuardianTest {
     }
 
     function testPauseOnlySafe() public {
+        // With wrong address
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafeOrItsOwner.selector);
+        guardian.pause();
+
+        // With correct address but without permissions
         vm.mockCall(address(SAFE), abi.encodeWithSelector(ISafe.isOwner.selector, UNAUTHORIZED), abi.encode(false));
 
         vm.prank(UNAUTHORIZED);
