@@ -174,8 +174,8 @@ contract EndToEndDeployment is Test {
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
         // We connect both deploys through the adapters
-        adapterAToB.setEndpoint(adapterBToA);
-        adapterBToA.setEndpoint(adapterAToB);
+        adapterAToB.wire(abi.encode(adapterBToA));
+        adapterBToA.wire(abi.encode(adapterAToB));
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
@@ -219,7 +219,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
         vm.stopPrank();
     }
 

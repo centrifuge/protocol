@@ -60,8 +60,8 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
         _wire(deployA, CENTRIFUGE_ID_C, adapterAToC);
 
-        adapterCToA.setEndpoint(adapterAToC);
-        adapterAToC.setEndpoint(adapterCToA);
+        adapterCToA.wire(abi.encode(adapterAToC));
+        adapterAToC.wire(abi.encode(adapterCToA));
 
         vm.label(address(adapterAToC), "AdapterAToC");
         vm.label(address(adapterCToA), "AdapterCToA");

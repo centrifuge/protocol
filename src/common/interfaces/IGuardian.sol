@@ -3,10 +3,7 @@ pragma solidity >=0.5.0;
 
 import {PoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-
-import {IAxelarAdapter} from "src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/adapters/interfaces/IWormholeAdapter.sol";
+import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);
@@ -77,32 +74,15 @@ interface IGuardian {
     /// @dev    Only supports EVM targets today
     function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external;
 
-    /// @notice Wire adapters into MultiAdapter.
+    /// @notice Sets adapters into MultiAdapter.
     /// @dev Only registers adapters with MultiAdapter and does not configure individual adapters.
     /// @dev For bidirectional communication, perform this setup on the remote MultiAdapter.
     /// @param centrifugeId The destination chain ID to wire adapters for
     /// @param adapters Array of adapter addresses to register with MultiAdapter
-    function wireAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external;
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external;
 
-    /// @notice Wire the local Wormhole adapter to a remote one.
-    /// @dev For bidirectional communication, perform this setup on the remote adapter.
-    /// @param localAdapter The local Wormhole adapter to configure
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param wormholeId The remote chain's Wormhole ID
-    /// @param adapter The remote chain's Wormhole adapter address
-    function wireWormholeAdapter(IWormholeAdapter localAdapter, uint16 centrifugeId, uint16 wormholeId, address adapter)
-        external;
-
-    /// @notice Wire the local Axelar adapter to a remote one.
-    /// @dev For bidirectional communication, perform this setup on the remote adapter.
-    /// @param localAdapter The local Axelar adapter to configure
-    /// @param centrifugeId The remote chain's chain ID
-    /// @param axelarId The remote chain's Axelar ID
-    /// @param adapter The remote chain's Axelar adapter address
-    function wireAxelarAdapter(
-        IAxelarAdapter localAdapter,
-        uint16 centrifugeId,
-        string calldata axelarId,
-        string calldata adapter
-    ) external;
+    /// @notice Wire an adapter bidirectionally.
+    /// @param adapter The adapter to wire
+    /// @param encodedParams the wiring configuration of the adapter. Check the adapter to now about it
+    function wireAdapter(IConfigurableAdapter adapter, bytes memory encodedParams) external;
 }

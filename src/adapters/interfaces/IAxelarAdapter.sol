@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IConfigurableAdapter} from "src/common/interfaces/IAdapter.sol";
 
 // From https://github.com/axelarnetwork/axelar-cgp-solidity/blob/main/contracts/interfaces/IAxelarGateway.sol
 interface IAxelarGateway {
@@ -78,7 +78,7 @@ struct AxelarDestination {
     string addr;
 }
 
-interface IAxelarAdapter is IAdapter, IAxelarExecutable {
+interface IAxelarAdapter is IConfigurableAdapter, IAxelarExecutable {
     event File(bytes32 indexed what, string axelarId, uint16 centrifugeId, string source);
     event File(bytes32 indexed what, uint16 centrifugeId, string axelarId, string destination);
 

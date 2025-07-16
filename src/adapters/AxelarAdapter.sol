@@ -5,10 +5,10 @@ import {Auth} from "src/misc/Auth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {
     IAxelarAdapter,
-    IAdapter,
     IAxelarGateway,
     IAxelarGasService,
     AxelarSource,
@@ -41,20 +41,25 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external auth {
+    function file(bytes32 what, string memory axelarId, uint16 centrifugeId, string memory source) public auth {
         if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(source)));
         else revert FileUnrecognizedParam();
         emit File(what, axelarId, centrifugeId, source);
     }
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination)
-        external
-        auth
-    {
+    function file(bytes32 what, uint16 centrifugeId, string memory axelarId, string memory destination) public auth {
         if (what == "destinations") destinations[centrifugeId] = AxelarDestination(axelarId, destination);
         else revert FileUnrecognizedParam();
         emit File(what, centrifugeId, axelarId, destination);
+    }
+
+    /// @inheritdoc IConfigurableAdapter
+    function wire(bytes memory encodedParams) external auth {
+        (uint16 centrifugeId, string memory axelarId, string memory adapter) =
+            abi.decode(encodedParams, (uint16, string, string));
+        file("sources", axelarId, centrifugeId, adapter);
+        file("destinations", centrifugeId, axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

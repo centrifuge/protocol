@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {Auth} from "src/misc/Auth.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IAdapter, IConfigurableAdapter} from "src/common/interfaces/IAdapter.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
 /// An adapter that sends the message to another MessageHandler and acts as MessageHandler too.
-contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
+contract LocalAdapter is Test, Auth, IConfigurableAdapter, IMessageHandler {
     uint16 localCentrifugeId;
     IMessageHandler public entrypoint;
     IMessageHandler public endpoint;
@@ -20,12 +20,13 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         localCentrifugeId = localCentrifugeId_;
     }
 
-    function setEndpoint(IMessageHandler endpoint_) public {
-        endpoint = endpoint_;
-    }
-
     function setRefundedValue(uint128 refundedValue_) public {
         refundedValue = refundedValue_;
+    }
+
+    /// @inheritdoc IConfigurableAdapter
+    function wire(bytes memory encodedParams) external {
+        endpoint = abi.decode(encodedParams, (IMessageHandler));
     }
 
     /// @inheritdoc IMessageHandler

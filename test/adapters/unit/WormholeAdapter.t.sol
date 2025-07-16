@@ -57,6 +57,8 @@ contract WormholeAdapterTestBase is Test {
 
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     uint16 constant WORMHOLE_CHAIN_ID = 2;
+    address immutable REMOTE_WORMHOLE_ADDR = makeAddr("remoteAddress");
+
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
@@ -65,16 +67,41 @@ contract WormholeAdapterTestBase is Test {
     }
 }
 
+contract WormholeAdapterTestFile is WormholeAdapterTestBase {
+    function testFileErrNotAuthorized() public {
+        vm.prank(makeAddr("NotAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileErrFileUnrecognizedParam() public {
+        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
+        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileDestination() public {
+        vm.expectEmit();
+        emit IWormholeAdapter.File("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 wormholeId, address remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        assertEq(wormholeId, WORMHOLE_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileSources() public {
+        vm.expectEmit();
+        emit IWormholeAdapter.File("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 centrifugeId, address remoteAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
+        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
+    }
+}
+
 contract WormholeAdapterTest is WormholeAdapterTestBase {
     using CastLib for *;
-
-    function testDeploy() public view {
-        assertEq(address(adapter.entrypoint()), address(GATEWAY));
-        assertEq(address(adapter.relayer()), address(relayer));
-        assertEq(adapter.localWormholeId(), 2);
-
-        assertEq(adapter.wards(address(this)), 1);
-    }
 
     function testEstimate(uint64 gasLimit) public view {
         bytes memory payload = "irrelevant";

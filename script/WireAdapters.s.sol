@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Guardian} from "src/common/Guardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IConfigurableAdapter, IAdapter} from "src/common/interfaces/IAdapter.sol";
 
 import {IAxelarAdapter} from "src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "src/adapters/interfaces/IWormholeAdapter.sol";
@@ -67,17 +67,19 @@ contract WireAdapters is Script {
 
             // Register ALL adapters for this destination chain
             Guardian guardian = Guardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
-            guardian.wireAdapters(remoteCentrifugeId, adapters);
+            guardian.setAdapters(remoteCentrifugeId, adapters);
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
                 try vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter") {
-                    guardian.wireWormholeAdapter(
-                        IWormholeAdapter(localWormholeAddr),
-                        remoteCentrifugeId,
-                        uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                        vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                    guardian.wireAdapter(
+                        IConfigurableAdapter(localWormholeAddr),
+                        abi.encode(
+                            remoteCentrifugeId,
+                            uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                            vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                        )
                     );
 
                     console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
@@ -93,11 +95,13 @@ contract WireAdapters is Script {
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
                 try vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter") {
-                    guardian.wireAxelarAdapter(
-                        IAxelarAdapter(localAxelarAddr),
-                        remoteCentrifugeId,
-                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                        vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                    guardian.wireAdapter(
+                        IConfigurableAdapter(localAxelarAddr),
+                        abi.encode(
+                            remoteCentrifugeId,
+                            vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
+                            vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                        )
                     );
 
                     console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
