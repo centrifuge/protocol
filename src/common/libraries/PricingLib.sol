@@ -6,8 +6,6 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-
 library PricingLib {
     using MathLib for *;
 
