@@ -193,7 +193,6 @@ jobs:
           minimum-coverage: 0 # Set coverage threshold.
 
   spelling:
-    name: Spelling
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
