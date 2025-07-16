@@ -14,6 +14,41 @@ contract TestMessageProofCompatibility is Test {
     }
 }
 
+contract TestMessageLibDeserializeMessageIds is Test {
+    function _prepareFor(MessageType kind) private returns (bytes memory buffer) {
+        buffer = new bytes(1);
+        buffer[0] = bytes1(uint8(kind) + 1); // We add 1 to force it to fail
+        vm.expectRevert(MessageLib.UnknownMessageType.selector);
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeMessageIds() public {
+        MessageLib.deserializeScheduleUpgrade(_prepareFor(MessageType.ScheduleUpgrade));
+        MessageLib.deserializeCancelUpgrade(_prepareFor(MessageType.CancelUpgrade));
+        MessageLib.deserializeRecoverTokens(_prepareFor(MessageType.RecoverTokens));
+        MessageLib.deserializeRegisterAsset(_prepareFor(MessageType.RegisterAsset));
+        MessageLib.deserializeNotifyPool(_prepareFor(MessageType.NotifyPool));
+        MessageLib.deserializeNotifyShareClass(_prepareFor(MessageType.NotifyShareClass));
+        MessageLib.deserializeNotifyPricePoolPerShare(_prepareFor(MessageType.NotifyPricePoolPerShare));
+        MessageLib.deserializeNotifyPricePoolPerAsset(_prepareFor(MessageType.NotifyPricePoolPerAsset));
+        MessageLib.deserializeNotifyShareMetadata(_prepareFor(MessageType.NotifyShareMetadata));
+        MessageLib.deserializeUpdateShareHook(_prepareFor(MessageType.UpdateShareHook));
+        MessageLib.deserializeInitiateTransferShares(_prepareFor(MessageType.InitiateTransferShares));
+        MessageLib.deserializeExecuteTransferShares(_prepareFor(MessageType.ExecuteTransferShares));
+        MessageLib.deserializeUpdateRestriction(_prepareFor(MessageType.UpdateRestriction));
+        MessageLib.deserializeUpdateContract(_prepareFor(MessageType.UpdateContract));
+        MessageLib.deserializeUpdateVault(_prepareFor(MessageType.UpdateVault));
+        MessageLib.deserializeUpdateBalanceSheetManager(_prepareFor(MessageType.UpdateBalanceSheetManager));
+        MessageLib.deserializeUpdateHoldingAmount(_prepareFor(MessageType.UpdateHoldingAmount));
+        MessageLib.deserializeUpdateShares(_prepareFor(MessageType.UpdateShares));
+        MessageLib.deserializeMaxAssetPriceAge(_prepareFor(MessageType.MaxAssetPriceAge));
+        MessageLib.deserializeMaxSharePriceAge(_prepareFor(MessageType.MaxSharePriceAge));
+        MessageLib.deserializeRequest(_prepareFor(MessageType.Request));
+        MessageLib.deserializeRequestCallback(_prepareFor(MessageType.RequestCallback));
+        MessageLib.deserializeSetRequestManager(_prepareFor(MessageType.SetRequestManager));
+    }
+}
+
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
 //       I = deserialize º serialize
 // NOTE. To fully ensure a good testing, use different values for each field.
