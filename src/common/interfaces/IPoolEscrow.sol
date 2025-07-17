@@ -67,8 +67,8 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         address indexed asset, uint256 indexed tokenId, PoolId indexed poolId, ShareClassId scId, uint128 value
     );
 
-    /// @notice Emmitted when ETH is transfered to the escrow
-    /// @param amount transfered
+    /// @notice Emitted when ETH is transferred to the escrow
+    /// @param amount transferred
     event ReceiveNativeTokens(address who, uint256 amount);
 
     // --- Errors ---
