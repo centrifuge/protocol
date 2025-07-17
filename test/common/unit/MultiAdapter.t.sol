@@ -8,7 +8,7 @@ import {MultiAdapter} from "src/common/MultiAdapter.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
 import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "src/common/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 
