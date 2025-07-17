@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 import {DisableV2Common} from "./DisableV2Common.sol";
