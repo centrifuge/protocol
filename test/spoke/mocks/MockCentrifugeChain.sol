@@ -310,7 +310,7 @@ contract MockCentrifugeChain is Test {
         );
     }
 
-    /// @dev Impicitly called by isFulfilledDepositRequest
+    /// @dev Implicitly called by isFulfilledDepositRequest
     function isIssuedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 shares, D18 pricePoolPerShare)
         public
     {

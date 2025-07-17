@@ -115,7 +115,7 @@ interface ISpokeGatewayHandler {
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  hook The new hook addres
+    /// @param  hook The new hook address
     function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external;
 
     /// @notice Updates the restrictions on a share class token for a specific user

@@ -132,7 +132,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
-    ///         the result of two or more independ request from the user of the same type.
+    ///         the result of two or more independent request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  payloadHash The hash value of the incoming message.

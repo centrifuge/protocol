@@ -664,7 +664,7 @@ library MessageLib {
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
-        require(messageType(data) == MessageType.UpdateHoldingAmount, "UnknownMessageType");
+        require(messageType(data) == MessageType.UpdateHoldingAmount, UnknownMessageType());
 
         return UpdateHoldingAmount({
             poolId: data.toUint64(1),

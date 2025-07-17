@@ -84,7 +84,7 @@ class ContractVerifier:
                         print_info("Skipping update of main config file")
                         return True
                 else:
-                    self.update_network_config(deployment_script)
+                    self.update_network_config()
         else:
             print_info("Dry run mode, skipping contracts checks")
 
