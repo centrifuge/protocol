@@ -25,7 +25,8 @@ contract LinkShareTokenCommon {
     address public constant ROOT_ADDRESS = 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f;
     address public constant BALANCE_SHEET_ADDRESS = 0xBcC8D02d409e439D98453C0b1ffa398dFFb31fda;
 
-    PoolId public constant JTRSY_POOL_ID = PoolId.wrap(4139607887);
+    // See https://www.notion.so/Centrifuge-V3-Initi-Pool-Setup-2322eac24e1780fa84acceaa1ff01dbf
+    PoolId public constant JTRSY_POOL_ID = PoolId.wrap(281474976710662);
     ShareClassId public constant JTRSY_SHARE_CLASS_ID = ShareClassId.wrap(0x97aa65f23e7be09fcd62d0554d2e9273);
     IShareToken public constant JTRSY_SHARE_TOKEN = IShareToken(0x8c213ee79581Ff4984583C6a801e5263418C4b86);
 
