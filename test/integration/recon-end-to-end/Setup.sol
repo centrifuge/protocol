@@ -164,13 +164,15 @@ abstract contract Setup is
     int256 maxDepositLess;
     
     modifier asAdmin {
-        vm.prank(address(this));
+        vm.startPrank(address(this));
         _;
+        vm.stopPrank();
     }
 
     modifier asActor {
-        vm.prank(address(_getActor()));
+        vm.startPrank(address(_getActor()));
         _;
+        vm.stopPrank();
     }
 
     modifier tokenIsSet() {
