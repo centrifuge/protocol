@@ -1,0 +1,25 @@
+{
+    "network": {
+        "chainId": 56,
+        "environment": "mainnet",
+        "centrifugeId": 6,
+        "connectsTo": [
+            "ethereum"
+        ],
+        "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445"
+    },
+    "adapters": {
+        "wormhole": {
+            "wormholeId": "4",
+            "relayer": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B",
+            "deploy": true
+        },
+        "axelar": {
+            "axelarId": "binance",
+            "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
+            "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+            "deploy": true
+        }
+    },
+    "contracts": {}
+}
