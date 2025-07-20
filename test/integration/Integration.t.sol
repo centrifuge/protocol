@@ -83,6 +83,11 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
     }
 
+    function _mintUSDC(address receiver, uint256 amount) internal {
+        vm.prank(ADMIN);
+        usdc.mint(receiver, amount);
+    }
+
     function _createPool() internal {
         vm.prank(ADMIN);
         guardian.createPool(POOL_A, FM, USD_ID);
