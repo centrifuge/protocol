@@ -6,8 +6,11 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {MockValuation} from "../common/mocks/MockValuation.sol";
 
 import {PoolId} from "../../src/common/types/PoolId.sol";
+import {AssetId} from "../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/common/interfaces/IGasService.sol";
+
+import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
@@ -50,12 +53,15 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
 /// @notice Similar to CentrifugeIntegrationTest but with some customized general utilities
 contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
+    using UpdateContractMessageLib for *;
+
     address immutable FM = makeAddr("fundManager");
     PoolId POOL_A;
     ShareClassId SC_1;
 
     // Extra deployment
     ERC20 usdc;
+    AssetId usdcId;
 
     function setUp() public override {
         super.setUp();
@@ -71,12 +77,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         vm.label(address(usdc), "usdc");
     }
 
-    function registerUSDC() public {
+    function _registerUSDC() internal {
         vm.startPrank(FUNDED);
-        spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
+        usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
     }
 
-    function createPool() public {
+    function _createPool() internal {
         vm.startPrank(ADMIN);
         guardian.createPool(POOL_A, FM, USD_ID);
 
@@ -86,14 +92,25 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         vm.startPrank(FUNDED);
         gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
+
+    function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return UpdateContractMessageLib.UpdateContractSyncDepositMaxReserve({
+            assetId: assetId.raw(),
+            maxReserve: maxReserve
+        }).serialize();
+    }
 }
 
 contract _CentrifugeIntegrationTestWithUtilsTest is CentrifugeIntegrationTestWithUtils {
     function testCreatePool() public {
-        createPool();
+        _createPool();
     }
 
     function testRegisterUSDC() public {
-        registerUSDC();
+        _registerUSDC();
     }
 }
