@@ -75,21 +75,22 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         usdc.file("name", "USD Coin");
         usdc.file("symbol", "USDC");
         vm.label(address(usdc), "usdc");
+        vm.stopPrank();
     }
 
     function _registerUSDC() internal {
-        vm.startPrank(FUNDED);
+        vm.prank(FUNDED);
         usdcId = spoke.registerAsset{value: GAS}(LOCAL_CENTRIFUGE_ID, address(usdc), 0);
     }
 
     function _createPool() internal {
-        vm.startPrank(ADMIN);
+        vm.prank(ADMIN);
         guardian.createPool(POOL_A, FM, USD_ID);
 
-        vm.startPrank(FM);
+        vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
 
-        vm.startPrank(FUNDED);
+        vm.prank(FUNDED);
         gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
