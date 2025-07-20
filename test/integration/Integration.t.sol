@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "centrifuge-v3/src/misc/ERC20.sol";
 
-import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 import {PoolId} from "centrifuge-v3/src/common/types/PoolId.sol";
+import {AssetId} from "centrifuge-v3/src/common/types/AssetId.sol";
 import {ShareClassId} from "centrifuge-v3/src/common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "centrifuge-v3/src/common/interfaces/IGasService.sol";
 
@@ -109,7 +109,6 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
             maxReserve: maxReserve
         }).serialize();
     }
-
 }
 
 contract _CentrifugeIntegrationTestWithUtilsTest is CentrifugeIntegrationTestWithUtils {
