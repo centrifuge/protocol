@@ -63,7 +63,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
     ERC20 usdc;
     AssetId usdcId;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
 
         POOL_A = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
