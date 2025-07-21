@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 interface VaultLike {
@@ -10,7 +12,7 @@ interface VaultLike {
     function manager() external view returns (address);
 }
 
-interface InvestmentManagerLike is IAuth {
+interface InvestmentManagerLike {
     function poolManager() external view returns (address);
 }
 
@@ -18,6 +20,9 @@ interface InvestmentManagerLike is IAuth {
 abstract contract DisableV2Common {
     bool public done;
     string public constant description = "Disable V2 permissions and set V3 hook";
+
+    // V3 Root (same across all networks)
+    IRoot public constant V3_ROOT = IRoot(0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
 
     // FullRestrictionsHook
     address public constant V3_HOOK_ADDRESS = 0xa2C98F0F76Da0C97039688CA6280d082942d0b48;
@@ -34,27 +39,37 @@ abstract contract DisableV2Common {
     function execute() internal virtual {
         _disableV2Permissions(JTRSY_SHARE_TOKEN, getJTRSYVaultAddress());
         _setV3Hook(JTRSY_SHARE_TOKEN);
+
+        // Final cleanup - deny spell's root permissions
+        _cleanupRootPermissions();
+    }
+
+    function _cleanupRootPermissions() internal virtual {
+        IAuth(address(V3_ROOT)).deny(address(this));
     }
 
     function _disableV2Permissions(IShareToken shareToken, address vaultAddress) internal {
         VaultLike vault = VaultLike(vaultAddress);
 
         // Query V2 system addresses from vault
-        address v2Root = vault.root();
+        IRoot v2Root = IRoot(vault.root());
         address v2InvestmentManager = vault.manager();
         address v2PoolManager = InvestmentManagerLike(v2InvestmentManager).poolManager();
+        address shareTokenAddress = address(shareToken);
 
         // Remove V2 permissions from share token
-        IAuth(address(shareToken)).deny(v2Root);
-        IAuth(address(shareToken)).deny(v2PoolManager);
-        IAuth(address(shareToken)).deny(v2InvestmentManager);
+        v2Root.denyContract(shareTokenAddress, v2PoolManager);
+        v2Root.denyContract(shareTokenAddress, v2InvestmentManager);
+        v2Root.denyContract(shareTokenAddress, address(v2Root));
 
         // Remove vault permissions from investment manager to disable operations
-        InvestmentManagerLike(v2InvestmentManager).deny(vaultAddress);
+        v2Root.denyContract(v2InvestmentManager, vaultAddress);
     }
 
     function _setV3Hook(IShareToken shareToken) internal {
+        V3_ROOT.relyContract(address(shareToken), address(this));
         shareToken.file("hook", V3_HOOK_ADDRESS);
+        V3_ROOT.denyContract(address(shareToken), address(this));
     }
 
     // JTRSY vault addresses per network (to be overridden by child contracts)

@@ -19,10 +19,14 @@ contract DisableV2Eth is DisableV2Common {
 
     function execute() internal override {
         // Disable V2 permissions and set V3 hook for JTRSY
-        super.execute();
+        _disableV2Permissions(JTRSY_SHARE_TOKEN, getJTRSYVaultAddress());
+        _setV3Hook(JTRSY_SHARE_TOKEN);
 
         // Disable V2 permissions and set V3 hook for JAAA (Ethereum only)
         _disableV2Permissions(JAAA_SHARE_TOKEN, JAAA_VAULT_ADDRESS);
         _setV3Hook(JAAA_SHARE_TOKEN);
+
+        // Final cleanup - deny spell's root permissions
+        _cleanupRootPermissions();
     }
 }
