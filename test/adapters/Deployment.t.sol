@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IWormholeRelayer, IWormholeDeliveryProvider} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
+import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/common/interfaces/adapters/IWormholeAdapter.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import { AdaptersDeployer, AdaptersActionBatcher, AdaptersInput, WormholeInput, AxelarInput } from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {
-    AdaptersDeployer,
-    AdaptersActionBatcher,
-    AdaptersInput,
-    WormholeInput,
-    AxelarInput
-} from "script/AdaptersDeployer.s.sol";
 
 contract AdaptersDeploymentInputTest is Test {
     address immutable WORMHOLE_RELAYER = makeAddr("WormholeRelayer");

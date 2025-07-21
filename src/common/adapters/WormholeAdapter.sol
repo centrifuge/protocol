@@ -1,20 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-
-import {
-    IWormholeAdapter,
-    IAdapter,
-    IWormholeRelayer,
-    IWormholeDeliveryProvider,
-    IWormholeReceiver,
-    WormholeSource,
-    WormholeDestination
-} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {IMessageHandler} from "../interfaces/IMessageHandler.sol";
+import { IWormholeAdapter, IAdapter, IWormholeRelayer, IWormholeDeliveryProvider, IWormholeReceiver, WormholeSource, WormholeDestination } from "../interfaces/adapters/IWormholeAdapter.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service

@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/misc/interfaces/IERC20.sol";
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
+import "../../../src/misc/interfaces/IERC20.sol";
+import "../../../src/misc/interfaces/IERC7540.sol";
+import "../../../src/misc/interfaces/IERC7575.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
+import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
 
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
-import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
+import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "test/spoke/BaseTest.sol";
+import "../BaseTest.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AccountId} from "../../../src/common/types/AccountId.sol";
+import {MockValuation} from "../../common/mocks/MockValuation.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
-import {HubDeployer, HubActionBatcher, CommonInput} from "script/HubDeployer.s.sol";
+import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
 
-import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockVaults} from "../mocks/MockVaults.sol";
 
 import "forge-std/Test.sol";
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "../../../src/misc/types/D18.sol";
 
-import "test/spoke/BaseTest.sol";
+import "../BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
     function testPartialDepositAndRedeemExecutions(bytes16 scId) public {

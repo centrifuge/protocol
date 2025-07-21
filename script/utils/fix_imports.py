@@ -605,6 +605,9 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
     elif import_path.startswith('src/'):
         # Already starts with src/, use as is
         actual_path = import_path
+    elif import_path.startswith('script/') or import_path.startswith('test/'):
+        # Handle script/ and test/ absolute paths
+        actual_path = import_path
     else:
         # Not an absolute path we recognize, return as is
         return import_path
@@ -617,22 +620,57 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
     target_dir = os.path.dirname(actual_path)
     target_filename = os.path.basename(actual_path)
     
-    # Determine if we should include src/ in the paths
+    # Determine the base directories for current file and target
     current_in_src = current_file_clean.startswith('src/')
-    target_in_src = actual_path.startswith('src/')
+    current_in_script = current_file_clean.startswith('script/')
+    current_in_test = current_file_clean.startswith('test/')
     
-    # If both are in src/, we can work with paths relative to src/
-    if current_in_src and target_in_src:
-        # Remove src/ from both paths for cleaner calculation
-        current_dir_rel = current_dir[4:] if current_dir.startswith('src/') else current_dir
-        target_dir_rel = target_dir[4:] if target_dir.startswith('src/') else target_dir
+    target_in_src = actual_path.startswith('src/')
+    target_in_script = actual_path.startswith('script/')
+    target_in_test = actual_path.startswith('test/')
+    
+    # If both are in the same base directory (src/, script/, or test/), we can work with relative paths
+    if (current_in_src and target_in_src) or (current_in_script and target_in_script) or (current_in_test and target_in_test):
+        # Remove base directory prefix from both paths for cleaner calculation
+        if current_dir == 'src':
+            current_dir_rel = ''
+        elif current_dir.startswith('src/'):
+            current_dir_rel = current_dir[4:]  # Remove 'src/'
+        elif current_dir == 'script':
+            current_dir_rel = ''
+        elif current_dir.startswith('script/'):
+            current_dir_rel = current_dir[7:]  # Remove 'script/'
+        elif current_dir == 'test':
+            current_dir_rel = ''
+        elif current_dir.startswith('test/'):
+            current_dir_rel = current_dir[5:]  # Remove 'test/'
+        else:
+            current_dir_rel = current_dir
+            
+        if target_dir == 'src':
+            target_dir_rel = ''
+        elif target_dir.startswith('src/'):
+            target_dir_rel = target_dir[4:]  # Remove 'src/'
+        elif target_dir == 'script':
+            target_dir_rel = ''
+        elif target_dir.startswith('script/'):
+            target_dir_rel = target_dir[7:]  # Remove 'script/'
+        elif target_dir == 'test':
+            target_dir_rel = ''
+        elif target_dir.startswith('test/'):
+            target_dir_rel = target_dir[5:]  # Remove 'test/'
+        else:
+            target_dir_rel = target_dir
         
         # Check if they're in the same directory
         if current_dir_rel == target_dir_rel:
             return f"./{target_filename}"
         
         # Check if target is in a subdirectory of current
-        if target_dir_rel.startswith(current_dir_rel + '/'):
+        if current_dir_rel == "" and target_dir_rel != "":
+            # Current file is at base directory root, target is in subdirectory
+            return f"./{target_dir_rel}/{target_filename}"
+        elif target_dir_rel.startswith(current_dir_rel + '/'):
             subdir = target_dir_rel[len(current_dir_rel) + 1:]
             return f"./{subdir}/{target_filename}"
         
@@ -653,8 +691,8 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
             # Fallback
             return f"./{target_filename}"
     
-    # If current file is outside src/ but target is in src/, keep src/ prefix
-    elif not current_in_src and target_in_src:
+    # If current file is in different base directory than target, keep full prefix
+    elif (not current_in_src and target_in_src) or (not current_in_script and target_in_script) or (not current_in_test and target_in_test):
         try:
             current_path = Path(current_dir)
             target_path = Path(target_dir)
@@ -695,42 +733,101 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
         new_import = import_stmt.replace(f'"{current_path}"', f'"{relative_path}"')
         return new_import
     
-    # Handle relative paths that contain redundant /src/ components (only if both files are in src/)
+    # Handle relative paths that contain redundant /src/ components  
     if (current_path.startswith('./') or current_path.startswith('../')) and '/src/' in current_path:
         current_file_clean = current_file.replace('\\', '/').lstrip('./')
+        
+        # If both current file and target are in src/, we can remove /src/
         if current_file_clean.startswith('src/'):
             optimized_path = current_path.replace('/src/', '/')
             new_import = import_stmt.replace(f'"{current_path}"', f'"{optimized_path}"')
             return new_import
+        
+        # If current file is in test/ or script/, check if removing /src/ gives us a valid path
+        elif current_file_clean.startswith(('test/', 'script/')):
+            # Try removing /src/ and see if the target file exists
+            current_dir = os.path.dirname(current_file_clean)
+            test_path_without_src = current_path.replace('/src/', '/')
+            
+            try:
+                target_path = os.path.normpath(os.path.join(current_dir, test_path_without_src))
+                if os.path.exists(target_path):
+                    # File exists without /src/, so remove it
+                    new_import = import_stmt.replace(f'"{current_path}"', f'"{test_path_without_src}"')
+                    return new_import
+            except:
+                pass
     
-    # Handle potentially incorrect relative imports (missing src/ when needed)
+    # Handle potentially incorrect relative imports - but be much more careful
     if current_path.startswith('../'):
         current_file_clean = current_file.replace('\\', '/').lstrip('./')
         current_file_in_src = current_file_clean.startswith('src/')
         
-        # If current file is outside src/, check if the relative path should include src/
+        # Only add src/ if current file is outside src/ and the path doesn't already have src/
         if not current_file_in_src and '/src/' not in current_path:
-            # Check if the path references common source directories
-            path_parts = current_path.split('/')
-            for i, part in enumerate(path_parts):
-                if part in ['misc', 'common', 'hub', 'spoke', 'vaults', 'hooks', 'managers']:
-                    # This looks like it should reference a src/ path
-                    corrected_parts = path_parts[:i] + ['src'] + path_parts[i:]
-                    corrected_path = '/'.join(corrected_parts)
-                    new_import = import_stmt.replace(f'"{current_path}"', f'"{corrected_path}"')
-                    return new_import
+            # Try to resolve what the import is actually trying to import
+            # by checking if the file exists with or without src/
+            current_dir = os.path.dirname(current_file_clean)
+            
+            try:
+                # Try to resolve the relative path
+                target_path_without_src = os.path.normpath(os.path.join(current_dir, current_path))
+                target_path_with_src = current_path
+                
+                # Check if target file exists without src/ (i.e., as a test/script file)
+                if os.path.exists(target_path_without_src):
+                    # File exists without src/, so this is correct as-is
+                    return import_stmt
+                
+                # If we're in test/ or script/ and importing what looks like src/ structure,
+                # only add src/ if we're going up to project root level (3+ levels)
+                path_parts = current_path.split('/')
+                up_levels = current_path.count('../')
+                
+                for i, part in enumerate(path_parts):
+                    if part in ['misc', 'common', 'hub', 'spoke', 'vaults', 'hooks', 'managers']:
+                        # Only add src/ if we're going up 3+ levels (suggesting we're going to project root)
+                        if up_levels >= 3:
+                            # This might be a cross-directory import to src/
+                            corrected_parts = path_parts[:i] + ['src'] + path_parts[i:]
+                            corrected_path = '/'.join(corrected_parts)
+                            new_import = import_stmt.replace(f'"{current_path}"', f'"{corrected_path}"')
+                            return new_import
+                        break
+            except:
+                # If path resolution fails, leave as-is
+                pass
     
-    # Handle local imports that need ./ prefix
+    # Handle project-absolute paths that should be converted to relative (script/, test/)
+    if (current_path.startswith('script/') or current_path.startswith('test/')):
+        relative_path = convert_to_relative_path(current_file, current_path)
+        new_import = import_stmt.replace(f'"{current_path}"', f'"{relative_path}"')
+        return new_import
+    
+    # Handle local imports that need ./ prefix (only for same-directory or immediate subdirectories)
     if (not current_path.startswith('./') and 
         not current_path.startswith('../') and 
         not current_path.startswith('/') and
         not 'forge-std' in current_path and
         not current_path.startswith('centrifuge-v3/') and
-        not current_path.startswith('src/')):
-        # This is a local import that needs ./ prefix
-        prefixed_path = f"./{current_path}"
-        new_import = import_stmt.replace(f'"{current_path}"', f'"{prefixed_path}"')
-        return new_import
+        not current_path.startswith('src/') and
+        not current_path.startswith('script/') and
+        not current_path.startswith('test/')):
+        
+        # Check if this is a true local import (within current directory structure)
+        # by examining if the import path starts with known subdirectory names that would be local
+        current_file_clean = current_file.replace('\\', '/').lstrip('./')
+        current_dir = os.path.dirname(current_file_clean)
+        
+        path_parts = current_path.split('/')
+        first_part = path_parts[0]
+        
+        # Only add ./ if the first part looks like a local subdirectory
+        # Common local subdirectories: interfaces, types, libraries, factories, mocks
+        if first_part in ['interfaces', 'types', 'libraries', 'factories', 'mocks']:
+            prefixed_path = f"./{current_path}"
+            new_import = import_stmt.replace(f'"{current_path}"', f'"{prefixed_path}"')
+            return new_import
     
     # Skip if already properly formatted relative or is a library import
     return import_stmt
