@@ -30,6 +30,8 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
     {
+        if (commonInput.version == keccak256(abi.encodePacked(("3")))) _verifyAdmin(commonInput);
+
         _preDeployFull(commonInput, adaptersInput, batcher);
         _postDeployFull(batcher);
 
@@ -44,6 +46,10 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         _preDeployHub(commonInput, batcher);
         _preDeployExtendedSpoke(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
+    }
+
+    function _verifyAdmin(CommonInput memory commonInput) internal {
+        require(_isSafeOwner(commonInput.adminSafe, 0x9eDec77dd2651Ce062ab17e941347018AD4eAEA9));
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
@@ -170,6 +176,14 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
             return value;
         } catch {
             return address(0);
+        }
+    }
+
+    function _isSafeOwner(ISafe safe, address addr) internal view returns (bool) {
+        try safe.isOwner(addr) returns (bool isOwner) {
+            return isOwner;
+        } catch {
+            return false;
         }
     }
 }
