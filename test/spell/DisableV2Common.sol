@@ -21,7 +21,8 @@ abstract contract DisableV2Common {
     bool public done;
     string public constant description = "Disable V2 permissions and set V3 hook";
 
-    // V3 Root (same across all networks)
+    // Roots (same across all networks)
+    IRoot public constant V2_ROOT = IRoot(0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC);
     IRoot public constant V3_ROOT = IRoot(0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
 
     // FullRestrictionsHook
@@ -45,6 +46,7 @@ abstract contract DisableV2Common {
     }
 
     function _cleanupRootPermissions() internal virtual {
+        IAuth(address(V2_ROOT)).deny(address(this));
         IAuth(address(V3_ROOT)).deny(address(this));
     }
 
@@ -52,18 +54,17 @@ abstract contract DisableV2Common {
         VaultLike vault = VaultLike(vaultAddress);
 
         // Query V2 system addresses from vault
-        IRoot v2Root = IRoot(vault.root());
         address v2InvestmentManager = vault.manager();
         address v2PoolManager = InvestmentManagerLike(v2InvestmentManager).poolManager();
         address shareTokenAddress = address(shareToken);
 
         // Remove V2 permissions from share token
-        v2Root.denyContract(shareTokenAddress, v2PoolManager);
-        v2Root.denyContract(shareTokenAddress, v2InvestmentManager);
-        v2Root.denyContract(shareTokenAddress, address(v2Root));
+        V2_ROOT.denyContract(shareTokenAddress, v2PoolManager);
+        V2_ROOT.denyContract(shareTokenAddress, v2InvestmentManager);
+        V2_ROOT.denyContract(shareTokenAddress, address(V2_ROOT));
 
         // Remove vault permissions from investment manager to disable operations
-        v2Root.denyContract(v2InvestmentManager, vaultAddress);
+        V2_ROOT.denyContract(v2InvestmentManager, vaultAddress);
     }
 
     function _setV3Hook(IShareToken shareToken) internal {
