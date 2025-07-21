@@ -48,7 +48,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         _preDeployAdapters(commonInput, adaptersInput, batcher);
     }
 
-    function _verifyAdmin(CommonInput memory commonInput) internal {
+    function _verifyAdmin(CommonInput memory commonInput) internal view {
         require(_isSafeOwner(commonInput.adminSafe, 0x4d47a7a89478745200Bd51c26bA87664538Df541));
         require(_isSafeOwner(commonInput.adminSafe, 0xc599bb54E3BFb6393c7feAf0EC97a947753aC0c8));
         require(_isSafeOwner(commonInput.adminSafe, 0xE9441B34f71659cCA2bfE90d98ee0e57D9CAD28F));
@@ -71,7 +71,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         removeAdaptersDeployerAccess(batcher);
     }
 
-    function _verifyMainnetAddresses() internal {
+    function _verifyMainnetAddresses() internal view {
         require(address(root) == 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
         require(address(guardian) == 0xFEE13c017693a4706391D516ACAbF6789D5c3157);
         require(address(gasService) == 0x295262f96186505Ce67c67B9d29e36ad1f9EAe88);
