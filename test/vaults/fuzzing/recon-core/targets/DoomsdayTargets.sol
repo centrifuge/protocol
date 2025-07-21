@@ -17,13 +17,12 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to deposit less than maxMint
-    function doomsday_deposit(uint256 assets) public updateGhosts {
+    function doomsday_deposit(uint256 assets) public updateGhosts asActor {
         uint256 ppfsBefore = vault.pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
         uint256 maxMintAsAssets = vault.convertToAssets(maxMint);
 
         uint256 sharesReceived;
-        vm.prank(_getActor());
         try vault.deposit(assets, _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
@@ -45,11 +44,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to mint less than maxMint
-    function doomsday_mint(uint256 shares) public updateGhosts {
+    function doomsday_mint(uint256 shares) public updateGhosts asActor {
         uint256 ppfsBefore = vault.pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
 
-        vm.prank(_getActor());
         uint256 assetsSpent;
         try vault.mint(shares, _getActor()) returns (uint256 assets) {
             assetsSpent = assets;
@@ -71,12 +69,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to redeem less than maxWithdraw
-    function doomsday_redeem(uint256 shares) public updateGhosts {
+    function doomsday_redeem(uint256 shares) public updateGhosts asActor {
         uint256 ppfsBefore = vault.pricePerShare();
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
         uint256 maxWithdrawAsShares = vault.convertToShares(maxWithdraw);
 
-        vm.prank(_getActor());
         uint256 assetsReceived;
         try vault.redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
             assetsReceived = assets;
@@ -98,12 +95,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to withdraw less than maxWithdraw
-    function doomsday_withdraw(uint256 assets) public updateGhosts {
+    function doomsday_withdraw(uint256 assets) public updateGhosts asActor {
         uint256 ppfsBefore = vault.pricePerShare();
         uint256 assetsAsSharesBefore = vault.convertToShares(assets);
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(vault, _getActor());
 
-        vm.prank(_getActor());
         uint256 sharesReceived;
         try vault.withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
             sharesReceived = shares;

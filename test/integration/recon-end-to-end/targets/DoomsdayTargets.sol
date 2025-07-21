@@ -24,13 +24,12 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
     
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to deposit less than maxMint
-    function doomsday_deposit(uint256 assets) public statelessTest {
+    function doomsday_deposit(uint256 assets) public statelessTest asActor {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         uint256 maxMintAsAssets = IBaseVault(_getVault()).convertToAssets(maxMint);
 
         uint256 sharesReceived;
-        vm.prank(_getActor());
         try IBaseVault(_getVault()).deposit(assets, _getActor()) returns (uint256 shares) {
             sharesReceived = shares;
         } catch {
@@ -52,11 +51,10 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to mint less than maxMint
-    function doomsday_mint(uint256 shares) public statelessTest {
+    function doomsday_mint(uint256 shares) public statelessTest asActor {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
-        vm.prank(_getActor());
         uint256 assetsSpent;
         try IBaseVault(_getVault()).mint(shares, _getActor()) returns (uint256 assets) {
             assetsSpent = assets;
@@ -78,12 +76,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to redeem less than maxWithdraw
-    function doomsday_redeem(uint256 shares) public statelessTest {
+    function doomsday_redeem(uint256 shares) public statelessTest asActor {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         uint256 maxWithdrawAsShares = IBaseVault(_getVault()).convertToShares(maxWithdraw);
 
-        vm.prank(_getActor());
         uint256 assetsReceived;
         try IBaseVault(_getVault()).redeem(shares, _getActor(), _getActor()) returns (uint256 assets) {
             assetsReceived = assets;
@@ -105,12 +102,11 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
     /// @dev Property: user should always be able to withdraw less than maxWithdraw
-    function doomsday_withdraw(uint256 assets) public statelessTest {
+    function doomsday_withdraw(uint256 assets) public statelessTest asActor {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
         uint256 assetsAsSharesBefore = IBaseVault(_getVault()).convertToShares(assets);
         (, uint128 maxWithdraw,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
-        vm.prank(_getActor());
         uint256 sharesReceived;
         try IBaseVault(_getVault()).withdraw(assets, _getActor(), _getActor()) returns (uint256 shares) {
             sharesReceived = shares;

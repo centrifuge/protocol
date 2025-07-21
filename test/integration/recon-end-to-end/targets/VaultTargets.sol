@@ -45,11 +45,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     // === REQUEST === //
     /// @dev Property: after successfully calling requestDeposit for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: _updateDepositRequest should never revert due to underflow
-    function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
+    function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts asActor {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
         address to = _getRandomActor(toEntropy);
         
-        vm.prank(_getActor());
         MockERC20(IBaseVault(_getVault()).asset()).approve(_getVault(), assets);
 
         // B4 Balances
@@ -59,7 +58,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool hasReverted;
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestDeposit(assets, to, _getActor()) {
             // ghost tracking
             requestDeposited[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][to] += assets;
@@ -123,7 +121,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     /// @dev Property: After successfully calling requestRedeem for an investor, their redeemRequest[..].lastUpdate equals nowRedeemEpoch
-    function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+    function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
         IBaseVault vault = IBaseVault(_getVault());
 
@@ -131,12 +129,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 balanceB4 = IShareToken(vault.share()).balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = IShareToken(vault.share()).balanceOf(address(globalEscrow));
 
-        vm.prank(_getActor());
         IShareToken(vault.share()).approve(_getVault(), shares);
 
         bool hasReverted;
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestRedeem(shares, to, _getActor()) {
             // ghost tracking
             sumOfRedeemRequests[vault.share()] += shares; // E-2
@@ -197,7 +193,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].lastUpdate equals the current nowDepositEpoch
     /// @dev Property: after successfully calling cancelDepositRequest for an investor, their depositRequest[..].pending is zero
     /// @dev Property: cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow revert)
-    function vault_cancelDepositRequest() public updateGhostsWithType(OpType.NOTIFY) {
+    function vault_cancelDepositRequest() public updateGhostsWithType(OpType.NOTIFY) asActor {
         address controller = _getActor();
         IBaseVault vault = IBaseVault(_getVault());
         
@@ -205,7 +201,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         (uint32 depositEpochId,,, ) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
         uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelDepositRequest(REQUEST_ID, controller);
 
-        vm.prank(_getActor());
         // REQUEST_ID is always passed as 0 (unused in the function)
         try IAsyncVault(_getVault()).cancelDepositRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
@@ -240,14 +235,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].lastUpdate equals the current nowRedeemEpoch
     /// @dev Property: After successfully calling cancelRedeemRequest for an investor, their redeemRequest[..].pending is zero
     /// @dev Property: cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow revert)
-    function vault_cancelRedeemRequest() public updateGhostsWithType(OpType.NOTIFY) {
+    function vault_cancelRedeemRequest() public updateGhostsWithType(OpType.NOTIFY) asActor {
         address controller = _getActor();
         IBaseVault vault = IBaseVault(_getVault());
         
         (uint128 pendingBefore, uint32 lastUpdateBefore) = shareClassManager.redeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
         uint256 pendingCancelBefore = IAsyncVault(_getVault()).claimableCancelRedeemRequest(REQUEST_ID, controller);
 
-        vm.prank(controller);
         try IAsyncVault(_getVault()).cancelRedeemRequest(REQUEST_ID, controller) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) = shareClassManager.redeemRequest(vault.scId(), hubRegistry.currency(vault.poolId()), controller.toBytes32());
             (, uint32 redeemEpochId,, ) = shareClassManager.epochId(vault.scId(), hubRegistry.currency(vault.poolId()));
@@ -298,7 +292,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += shares;
     }
 
-    function vault_deposit(uint256 assets) public updateGhostsWithType(OpType.ADD) {
+    function vault_deposit(uint256 assets) public updateGhostsWithType(OpType.ADD) asActor {
         // check if vault is sync or async
         bool isAsyncVault = Helpers.isAsyncVault(_getVault());
         // Get vault
@@ -309,7 +303,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         (uint128 pendingBefore,) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), _getActor().toBytes32());
         
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, _getActor());
 
         (uint128 pendingAfter,) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), _getActor().toBytes32());
@@ -360,7 +353,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     // TODO: See how these go
     // TODO: Receiver -> Not this
-    function vault_mint(uint256 shares) public updateGhostsWithType(OpType.ADD) {
+    function vault_mint(uint256 shares) public updateGhostsWithType(OpType.ADD) asActor {
         address to = _getActor();
         // Get vault
         IBaseVault vault = IBaseVault(_getVault());
@@ -374,7 +367,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         (uint128 pendingBefore,) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), to.toBytes32());
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         uint256 assets = IBaseVault(_getVault()).mint(shares, to);
 
         (uint128 pendingAfter,) = shareClassManager.depositRequest(vault.scId(), hubRegistry.currency(vault.poolId()), to.toBytes32());
@@ -420,7 +412,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
+    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) asActor {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
@@ -429,7 +421,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 tokenEscrowB4 = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         uint256 assets = IBaseVault(_getVault()).redeem(shares, to, _getActor());
 
         // Bal after
@@ -460,7 +451,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
+    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) asActor {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
         
@@ -469,7 +460,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 tokenEscrowB4 = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         IBaseVault(_getVault()).withdraw(assets, to, _getActor());
 
         // Bal after

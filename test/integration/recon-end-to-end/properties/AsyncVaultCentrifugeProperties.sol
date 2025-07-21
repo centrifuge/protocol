@@ -109,7 +109,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
     // function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public statelessTest {
     // NOTE: temporarily remove the statelessTest modifier to optimize the difference
-    function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public {
+    function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public asActor {
         uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(_getActor());
         require(maxDepositBefore > 0, "must be able to deposit");
 
@@ -121,7 +121,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
     
-        vm.prank(_getActor());
         try IBaseVault(_getVault()).deposit(depositAmount, _getActor()) returns (uint256 shares) {
             console2.log(" === After Max Deposit === ");
             uint256 maxDepositAfter = IBaseVault(_getVault()).maxDeposit(_getActor());
@@ -160,7 +159,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always mint an amount between 1 and maxMint have > 0 assets and are approved
     /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
     /// @dev Property: minting maxMint should not mint more than maxDeposit shares
-    function asyncVault_maxMint(uint64 poolEntropy, uint32 scEntropy, uint256 mintAmount) public statelessTest {
+    function asyncVault_maxMint(uint64 poolEntropy, uint32 scEntropy, uint256 mintAmount) public asActor {
         uint256 maxMintBefore = IBaseVault(_getVault()).maxMint(_getActor());
         uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(_getActor());
         require(maxMintBefore > 0, "must be able to mint");
@@ -172,7 +171,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         AssetId assetId = hubRegistry.currency(poolId);
         (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
     
-        vm.prank(_getActor());
         try IBaseVault(_getVault()).mint(mintAmount, _getActor()) returns (uint256 assets) {
             uint256 maxMintAfter = IBaseVault(_getVault()).maxMint(_getActor());
             uint256 difference = maxMintBefore - mintAmount;
@@ -196,7 +194,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: user can always maxWithdraw if they have > 0 shares and are approved
     /// @dev Property: user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
     /// @dev Property: maxWithdraw should decrease by the amount withdrawn
-    function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public statelessTest {
+    function asyncVault_maxWithdraw(uint64 poolEntropy, uint32 scEntropy, uint256 withdrawAmount) public asActor {
         uint256 maxWithdrawBefore = IBaseVault(_getVault()).maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
 
@@ -207,7 +205,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         AssetId assetId = hubRegistry.currency(poolId);
         (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
     
-        vm.prank(_getActor());
         try IBaseVault(_getVault()).withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
             uint256 maxWithdrawAfter = IBaseVault(_getVault()).maxWithdraw(_getActor());
             uint256 difference = maxWithdrawBefore - withdrawAmount;
@@ -238,7 +235,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: redeeming maxRedeem leaves user with 0 pending redeem requests
     // function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public statelessTest {
     // NOTE: temporarily remove the statelessTest modifier to optimize the difference
-    function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public {
+    function asyncVault_maxRedeem(uint64 poolEntropy, uint32 scEntropy, uint256 redeemAmount) public asActor {
         uint256 maxRedeemBefore = IBaseVault(_getVault()).maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
@@ -249,7 +246,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         AssetId assetId = hubRegistry.currency(poolId);
         (,uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
     
-        vm.prank(_getActor());
         try IBaseVault(_getVault()).redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
             console2.log(" === After maxRedeem === ");
             uint256 maxRedeemAfter = IBaseVault(_getVault()).maxRedeem(_getActor());

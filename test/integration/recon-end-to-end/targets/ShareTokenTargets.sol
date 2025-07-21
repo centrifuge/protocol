@@ -25,7 +25,7 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     
     /// @dev Property: must revert if sending to or from a frozen user
     /// @dev Property: must revert if sending to a non-member who is not endorsed
-    function token_transfer(address to, uint256 value) public updateGhosts {
+    function token_transfer(address to, uint256 value) public updateGhosts asActor {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
@@ -33,7 +33,6 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         bool hasReverted;
 
-        vm.prank(_getActor());
         try IShareToken(_getShareToken()).transfer(to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
@@ -64,13 +63,12 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
     /// @dev Property: must revert if sending to or from a frozen user
     /// @dev Property: must revert if sending to a non-member who is not endorsed
-    function token_transferFrom(address to, uint256 value) public updateGhosts {
+    function token_transferFrom(address to, uint256 value) public updateGhosts asActor {
         require(_canDonate(to), "never donate to escrow");
 
         value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
 
         bool hasReverted;
-        vm.prank(_getActor());
         try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
             // NOTE: We're not checking for specifics!
         } catch {

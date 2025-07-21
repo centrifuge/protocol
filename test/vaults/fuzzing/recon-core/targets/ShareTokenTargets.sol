@@ -14,7 +14,7 @@ import {Properties} from "../properties/Properties.sol";
 // Only for Share
 abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     
-    function token_transfer(address to, uint256 value) public {
+    function token_transfer(address to, uint256 value) public asActor {
         require(_canDonate(to), "never donate to escrow");
 
         // Clamp
@@ -22,7 +22,6 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
 
         bool hasReverted;
 
-        vm.prank(_getActor());
         try token.transfer(to, value) {
             // NOTE: We're not checking for specifics!
         } catch {
@@ -51,14 +50,13 @@ abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
     }
 
     // Check
-    function token_transferFrom(address to, uint256 value) public {
+    function token_transferFrom(address to, uint256 value) public asActor {
         address from = _getActor();
         require(_canDonate(to), "never donate to escrow");
 
         value = between(value, 0, token.balanceOf(from));
 
         bool hasReverted;
-        vm.prank(from);
         try token.transferFrom(from, to, value) {
             // NOTE: We're not checking for specifics!
         } catch {

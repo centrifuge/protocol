@@ -100,7 +100,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev Property: depositing maxDeposit leaves a user with 0 orders
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
-    function asyncVault_maxDeposit(uint256 depositAmount) public  {
+    function asyncVault_maxDeposit(uint256 depositAmount) public asActor {
         uint256 maxDepositBefore = vault.maxDeposit(_getActor());
         require(maxDepositBefore > 0, "must be able to deposit");
 
@@ -108,7 +108,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         (uint128 maxMint,,,,,,,,,) = asyncRequestManager.investments(IBaseVault(address(vault)), _getActor());
     
-        vm.prank(_getActor());
         try vault.deposit(depositAmount, _getActor()) returns (uint256 shares) {
             uint256 maxDepositAfter = vault.maxDeposit(_getActor());
             uint256 difference = maxDepositBefore - depositAmount;
@@ -128,14 +127,13 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev Property: maxMint should be 0 after using maxMint as mintAmount
     /// @dev Property: minting maxMint should not mint more than maxDeposit shares
-    function asyncVault_maxMint(uint256 mintAmount) public  {
+    function asyncVault_maxMint(uint256 mintAmount) public asActor {
         uint256 maxMintBefore = vault.maxMint(_getActor());
         uint256 maxDepositBefore = vault.maxDeposit(_getActor());
         require(maxMintBefore > 0, "must be able to mint");
 
         mintAmount = between(mintAmount, 1, maxMintBefore);
     
-        vm.prank(_getActor());
         try vault.mint(mintAmount, _getActor()) returns (uint256 assets) {
             uint256 maxMintAfter = vault.maxMint(_getActor());
             uint256 difference = maxMintBefore - mintAmount;
@@ -157,13 +155,12 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev user can always maxWithdraw if they have > 0 shares and are approved
     /// @dev user can always withdraw an amount between 1 and maxWithdraw have > 0 shares and are approved
-    function asyncVault_maxWithdraw(uint256 withdrawAmount) public  {
+    function asyncVault_maxWithdraw(uint256 withdrawAmount) public asActor {
         uint256 maxWithdrawBefore = vault.maxWithdraw(_getActor());
         require(maxWithdrawBefore > 0, "must be able to withdraw");
 
         withdrawAmount = between(withdrawAmount, 1, maxWithdrawBefore);
     
-        vm.prank(_getActor());
         try vault.withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
             uint256 maxWithdrawAfter = vault.maxWithdraw(_getActor());
             uint256 difference = maxWithdrawBefore - withdrawAmount;
@@ -185,13 +182,12 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev user can always maxRedeem if they have > 0 shares and are approved
     /// @dev user can always redeem an amount between 1 and maxRedeem have > 0 shares and are approved
     /// @dev Property: redeeming maxRedeem leaves user with 0 pending redeem requests
-    function asyncVault_maxRedeem(uint256 redeemAmount) public  {
+    function asyncVault_maxRedeem(uint256 redeemAmount) public asActor {
         uint256 maxRedeemBefore = vault.maxRedeem(_getActor());
         require(maxRedeemBefore > 0, "must be able to redeem");
 
         redeemAmount = between(redeemAmount, 1, maxRedeemBefore);
     
-        vm.prank(_getActor());
         try vault.redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
             uint256 maxRedeemAfter = vault.maxRedeem(_getActor());
             uint256 difference = maxRedeemBefore - redeemAmount;

@@ -30,10 +30,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     // === REQUEST === //
-    function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts {
+    function vault_requestDeposit(uint256 assets, uint256 toEntropy) public updateGhosts asActor {
         assets = between(assets, 0, _getTokenAndBalanceForVault());
 
-        vm.prank(_getActor());
         MockERC20(_getAsset()).approve(address(vault), assets);
         address to = _getRandomActor(toEntropy);
 
@@ -44,7 +43,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool hasReverted;
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         try vault.requestDeposit(assets, to, _getActor()) {
             // TF-1
             sumOfDepositRequests[address(_getAsset())] += assets;
@@ -86,19 +84,17 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+    function vault_requestRedeem(uint256 shares, uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy); // TODO: donation / changes
 
         // B4 Balances
         uint256 balanceB4 = token.balanceOf(_getActor());
         uint256 balanceOfEscrowB4 = token.balanceOf(address(escrow));
 
-        vm.prank(_getActor());
         token.approve(address(vault), shares);
 
         bool hasReverted;
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         try vault.requestRedeem(shares, to, _getActor()) {
             sumOfRedeemRequests[address(token)] += shares; // E-2
             requestRedeemShares[_getActor()][address(token)] += shares;
@@ -160,13 +156,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         sumOfClaimedRedeemCancelations[address(token)] += shares;
     }
 
-    function vault_deposit(uint256 assets) public updateGhosts {
+    function vault_deposit(uint256 assets) public updateGhosts asActor {
         // Bal b4
         uint256 shareUserB4 = token.balanceOf(_getActor());
         uint256 shareEscrowB4 = token.balanceOf(address(escrow));
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         uint256 shares = vault.deposit(assets, _getActor());
 
         // Processed Deposit | E-2 | Global-1
@@ -201,7 +196,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     // TODO: See how these go
     // TODO: Receiver -> Not this
-    function vault_mint(uint256 shares, uint256 toEntropy) public updateGhosts {
+    function vault_mint(uint256 shares, uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
         // Bal b4
@@ -209,7 +204,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shareEscrowB4 = token.balanceOf(address(escrow));
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         vault.mint(shares, to);
 
         // Processed Deposit | E-2
@@ -236,7 +230,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts {
+    function vault_redeem(uint256 shares, uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
         // Bal b4
@@ -244,7 +238,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         uint256 assets = vault.redeem(shares, to, _getActor());
 
         // E-1
@@ -275,7 +268,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
-    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts {
+    function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhosts asActor {
         address to = _getRandomActor(toEntropy);
 
         // Bal b4
@@ -283,7 +276,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 tokenEscrowB4 = MockERC20(_getAsset()).balanceOf(address(escrow));
 
         // NOTE: external calls above so need to prank directly here
-        vm.prank(_getActor());
         vault.withdraw(assets, to, _getActor());
 
         // E-1
