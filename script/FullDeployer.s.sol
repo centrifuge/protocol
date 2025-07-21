@@ -49,7 +49,14 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     }
 
     function _verifyAdmin(CommonInput memory commonInput) internal {
+        require(_isSafeOwner(commonInput.adminSafe, 0x4d47a7a89478745200Bd51c26bA87664538Df541));
+        require(_isSafeOwner(commonInput.adminSafe, 0xc599bb54E3BFb6393c7feAf0EC97a947753aC0c8));
+        require(_isSafeOwner(commonInput.adminSafe, 0xE9441B34f71659cCA2bfE90d98ee0e57D9CAD28F));
+        require(_isSafeOwner(commonInput.adminSafe, 0x5e7A86178252Aeae9cBDa30f9C342c71799A3EE1));
         require(_isSafeOwner(commonInput.adminSafe, 0x9eDec77dd2651Ce062ab17e941347018AD4eAEA9));
+        require(_isSafeOwner(commonInput.adminSafe, 0xd55114BfE98a2ca16202Aa741BeE571765292616));
+        require(_isSafeOwner(commonInput.adminSafe, 0x790c2c860DDC993f3da92B19cB440cF8338C59a6));
+        require(_isSafeOwner(commonInput.adminSafe, 0xc4576CE4603552c5BeAa056c449b0795D48fcf92));
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
