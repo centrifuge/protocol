@@ -26,7 +26,7 @@ contract FullRestrictions is BaseHook {
         if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
         if (isRedeemFulfillment(from, to)) return true;
-        if (isRedeemClaim(from, to)) return true;
+        if (isRedeemClaim(from, to)) return isSourceMember(from, hookData);
         if (isCrosschainTransfer(from, to)) return true;
 
         // Else, it's a transfer
