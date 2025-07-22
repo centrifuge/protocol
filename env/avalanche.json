@@ -4,7 +4,10 @@
     "environment": "mainnet",
     "centrifugeId": 5,
     "connectsTo": [
-      "ethereum"
+      "ethereum",
+      "base",
+      "arbitrum",
+      "bnb-smart-chain"
     ],
     "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185"
   },

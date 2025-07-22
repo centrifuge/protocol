@@ -4,7 +4,10 @@
     "environment": "mainnet",
     "centrifugeId": 6,
     "connectsTo": [
-      "ethereum"
+      "ethereum",
+      "base",
+      "arbitrum",
+      "avalanche"
     ],
     "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445"
   },
