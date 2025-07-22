@@ -20,6 +20,8 @@ import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {Spoke, ISpoke} from "src/spoke/Spoke.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -31,6 +33,14 @@ contract SpokeExt is Spoke {
 
     function assetCounter() public view returns (uint64) {
         return _assetCounter;
+    }
+
+    function requestManager(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IRequestManager) {
+        return pools[poolId].shareClasses[scId].asset[assetId].manager;
+    }
+
+    function numVaults(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (uint32) {
+        return pools[poolId].shareClasses[scId].asset[assetId].numVaults;
     }
 }
 
@@ -48,7 +58,10 @@ contract SpokeTest is Test {
     IGateway gateway = IGateway(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
     IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
+    IVault vault = IVault(address(new IsContract()));
     address HOOK = makeAddr("hook");
+    address HOOK2 = makeAddr("hook2");
+    address REQUEST_MANAGER = makeAddr("requestManager");
     address NO_HOOK = address(0);
 
     AssetId immutable ASSET_ID_20 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
@@ -63,6 +76,7 @@ contract SpokeTest is Test {
     string constant NAME = "name";
     string constant SYMBOL = "symbol";
     bytes32 constant SALT = "salt";
+    bytes constant PAYLOAD = "payload";
 
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
@@ -111,6 +125,10 @@ contract SpokeTest is Test {
             abi.encodeWithSelector(tokenFactory.newToken.selector, NAME, SYMBOL, DECIMALS, SALT),
             abi.encode(share)
         );
+
+        vm.mockCall(address(share), abi.encodeWithSelector(share.name.selector), abi.encode(NAME));
+        vm.mockCall(address(share), abi.encodeWithSelector(share.symbol.selector), abi.encode(SYMBOL));
+        vm.mockCall(address(share), abi.encodeWithSelector(share.hook.selector), abi.encode(HOOK));
     }
 
     function _mockPayment(address who) internal {
@@ -119,6 +137,22 @@ contract SpokeTest is Test {
         );
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endTransactionPayment.selector), abi.encode());
+    }
+
+    function _mockValidShareHook(address hook) internal {
+        vm.mockCall(
+            hook,
+            abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(share), abi.encodeWithSignature("file(bytes32,address)", bytes32("hook"), hook), abi.encode()
+        );
+        vm.mockCall(
+            address(hook),
+            abi.encodeWithSelector(ITransferHook(hook).updateRestriction.selector, share, PAYLOAD),
+            abi.encode()
+        );
     }
 
     function testConstructor() public view {
@@ -369,6 +403,40 @@ contract SpokeTestRegisterAsset is SpokeTest {
     }
 }
 
+contract SpokeTestRequest is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
+    }
+
+    function testRequest() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD),
+            abi.encode()
+        );
+
+        vm.prank(REQUEST_MANAGER);
+        spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
+    }
+}
+
 contract SpokeTestAddPool is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -463,16 +531,192 @@ contract SpokeTestAddShareClass is SpokeTest {
         vm.prank(AUTH);
         spoke.addPool(POOL_A);
 
-        vm.mockCall(
-            HOOK,
-            abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId),
-            abi.encode(true)
-        );
-        vm.mockCall(
-            address(share), abi.encodeWithSignature("file(bytes32,address)", bytes32("hook"), HOOK), abi.encode()
-        );
+        _mockValidShareHook(HOOK);
 
         vm.prank(AUTH);
         spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
+    }
+}
+
+contract SpokeTestLinkToken is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.linkToken(POOL_A, SC_1, share);
+    }
+
+    function testLinkToken() public {
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.AddShareClass(POOL_A, SC_1, share);
+        spoke.linkToken(POOL_A, SC_1, share);
+
+        assertEq(address(spoke.shareToken(POOL_A, SC_1)), address(share));
+    }
+}
+
+contract SpokeTestSetRequestManager is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+    }
+
+    function testErrMoreThanZeroLinkedVaults() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.MoreThanZeroLinkedVaults.selector);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+    }
+
+    function testSetRequestManager() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.SetRequestManager(POOL_A, SC_1, ASSET_ID_20, IRequestManager(REQUEST_MANAGER));
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+
+        assertEq(address(spoke.requestManager(POOL_A, SC_1, ASSET_ID_20)), REQUEST_MANAGER);
+    }
+}
+
+contract SpokeTestUpdateShareMetadata is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updateShareMetadata(POOL_A, SC_1, NAME, SYMBOL);
+    }
+
+    function testErrOldMetadata() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.OldMetadata.selector);
+        spoke.updateShareMetadata(POOL_A, SC_1, NAME, SYMBOL);
+    }
+
+    function testUpdateShareMetadata() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        string memory file = "file(bytes32,string)";
+        vm.mockCall(address(share), abi.encodeWithSignature(file, bytes32("name"), "name2"), abi.encode());
+        vm.mockCall(address(share), abi.encodeWithSignature(file, bytes32("symbol"), "symbol2"), abi.encode());
+
+        vm.prank(AUTH);
+        spoke.updateShareMetadata(POOL_A, SC_1, "name2", "symbol2");
+    }
+}
+
+contract SpokeTestUpdateShareHook is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updateShareHook(POOL_A, SC_1, HOOK);
+    }
+
+    function testErrOldHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        _mockValidShareHook(HOOK);
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.OldHook.selector);
+        spoke.updateShareHook(POOL_A, SC_1, HOOK);
+    }
+
+    function testUpdateShareHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        _mockValidShareHook(HOOK);
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
+
+        _mockValidShareHook(HOOK2);
+        vm.prank(AUTH);
+        spoke.updateShareHook(POOL_A, SC_1, HOOK2);
+    }
+}
+
+contract SpokeTestUpdateRestriction is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updateRestriction(POOL_A, SC_1, PAYLOAD);
+    }
+
+    function testErrInvalidHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.mockCall(address(share), abi.encodeWithSelector(share.hook.selector), abi.encode(NO_HOOK));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidHook.selector);
+        spoke.updateRestriction(POOL_A, SC_1, PAYLOAD);
+    }
+
+    function testUpdateShareHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        _mockValidShareHook(HOOK);
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
+
+        vm.prank(AUTH);
+        spoke.updateRestriction(POOL_A, SC_1, PAYLOAD);
+    }
+}
+
+contract SpokeTestExecuteTransferShares is SpokeTest {
+    using CastLib for *;
+
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.executeTransferShares(POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT);
+    }
+
+    function testExecuteTransferShares() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.mockCall(address(share), abi.encodeWithSelector(share.mint.selector, RECEIVER, AMOUNT), abi.encode());
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, RECEIVER, AMOUNT);
+        spoke.executeTransferShares(POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT);
     }
 }
