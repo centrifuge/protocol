@@ -263,12 +263,9 @@ def get_import_category(path: str) -> str:
             elif cleaned_path.startswith('./'):
                 cleaned_path = cleaned_path[2:]  # Remove './'
         
-        # If path originally started with ./ and the cleaned path is for current directory, return '.'
+        # If path originally started with ./ then it's a current directory import
         if path.startswith('./'):
-            path_parts = cleaned_path.split('/')
-            # Check if first part is a known current directory subdirectory or if it's just a file
-            if len(path_parts) == 1 or path_parts[0] in ['interfaces', 'types', 'libraries', 'factories', 'mocks']:
-                return '.'
+            return '.'
         
         # Split the cleaned path and find relevant directory
         path_parts = cleaned_path.split('/')
@@ -283,7 +280,7 @@ def get_import_category(path: str) -> str:
         path_parts = path.split('/')
         
         # Check if first part is a known subdirectory or if it's just a file
-        if len(path_parts) == 1 or path_parts[0] in ['interfaces', 'types', 'libraries', 'factories', 'mocks']:
+        if len(path_parts) == 1 or path_parts[0] in ['interfaces', 'types', 'libraries', 'factories', 'mocks', 'utils']:
             return '.'
         
         # Otherwise check for known directories
@@ -823,8 +820,8 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
         first_part = path_parts[0]
         
         # Only add ./ if the first part looks like a local subdirectory
-        # Common local subdirectories: interfaces, types, libraries, factories, mocks
-        if first_part in ['interfaces', 'types', 'libraries', 'factories', 'mocks']:
+        # Common local subdirectories: interfaces, types, libraries, factories, mocks, utils
+        if first_part in ['interfaces', 'types', 'libraries', 'factories', 'mocks', 'utils']:
             prefixed_path = f"./{current_path}"
             new_import = import_stmt.replace(f'"{current_path}"', f'"{prefixed_path}"')
             return new_import

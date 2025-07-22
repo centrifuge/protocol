@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {LocalAdapter} from "./adapters/LocalAdapter.sol";
+
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18, d18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
@@ -51,8 +53,6 @@ import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestr
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///

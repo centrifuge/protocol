@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+
 import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
 import {GasService} from "../src/common/GasService.sol";
@@ -14,8 +16,6 @@ import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
-
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 struct CommonInput {
     uint16 centrifugeId;

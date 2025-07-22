@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {EndToEndFlows} from "./EndToEnd.t.sol";
+import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
@@ -20,8 +21,6 @@ import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
-
-import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 
 enum CrossChainDirection {
     WithIntermediaryHub, // C -> A -> B (Hub is on A)
