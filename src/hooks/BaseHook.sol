@@ -16,6 +16,19 @@ import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
 import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
 import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+/// @notice Transfer type classification for policy dispatch
+enum TransferType {
+    DepositRequest, // from=0, to=user
+    DepositFulfillment, // from=0, to=ESCROW
+    DepositClaim, // from=ESCROW, to=user
+    RedeemRequest, // from=user, to=ESCROW
+    RedeemFulfillment, // from=ESCROW, to=0
+    RedeemClaim, // from=user, to=0
+    CrosschainTransfer, // from=spoke, to=0
+    LocalTransfer // from=user, to=user
+
+}
+
 /// @title  BaseHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
@@ -61,49 +74,63 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
         return ITransferHook.onERC20AuthTransfer.selector;
     }
 
+    /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+        public
+        view
+        virtual
+        returns (bool)
+    {
+        // Always check freeze status first
+        if (isSourceOrTargetFrozen(from, to, hookData)) return false;
+
+        // Classify transfer type and dispatch to policy
+        TransferType transferType = classifyTransfer(from, to);
+        return checkTransferPolicy(transferType, from, to, hookData);
+    }
+
+    /// @notice Classify the type of transfer based on from/to addresses
+    function classifyTransfer(address from, address to) public view returns (TransferType) {
+        if (from == address(0)) {
+            return to == ESCROW_HOOK_ID ? TransferType.DepositFulfillment : TransferType.DepositRequest;
+        }
+
+        if (to == address(0)) {
+            if (from == ESCROW_HOOK_ID) return TransferType.RedeemFulfillment;
+            if (from == spoke) return TransferType.CrosschainTransfer;
+            return TransferType.RedeemClaim;
+        }
+
+        if (from == ESCROW_HOOK_ID) {
+            return TransferType.DepositClaim;
+        }
+
+        if (to == ESCROW_HOOK_ID) {
+            return TransferType.RedeemRequest;
+        }
+
+        return TransferType.LocalTransfer;
+    }
+
+    /// @notice Hook-specific transfer policy - must be implemented by concrete hooks
+    function checkTransferPolicy(TransferType transferType, address from, address to, HookData calldata hookData)
         public
         view
         virtual
         returns (bool);
 
-    function isDepositRequest(address from, address to) public pure returns (bool) {
-        return from == address(0) && to != ESCROW_HOOK_ID;
-    }
-
-    function isDepositFulfillment(address from, address to) public pure returns (bool) {
-        return from == address(0) && to == ESCROW_HOOK_ID;
-    }
-
-    function isDepositClaim(address from, address to) public pure returns (bool) {
-        return from == ESCROW_HOOK_ID && to != address(0);
-    }
-
-    function isRedeemRequest(address from, address to) public pure returns (bool) {
-        return from != address(0) && from != ESCROW_HOOK_ID && to == ESCROW_HOOK_ID;
-    }
-
-    function isRedeemFulfillment(address from, address to) public pure returns (bool) {
-        return from == ESCROW_HOOK_ID && to == address(0);
-    }
-
-    function isRedeemClaim(address from, address to) public view returns (bool) {
-        return (from != ESCROW_HOOK_ID && from != spoke) && to == address(0);
-    }
-
-    function isCrosschainTransfer(address from, address to) public view returns (bool) {
-        return from == spoke && to == address(0);
-    }
-
+    /// @notice Check if source or target account is frozen
     function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {
         return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from))
             || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !root.endorsed(to));
     }
 
+    /// @notice Check if source account is a member
     function isSourceMember(address from, HookData calldata hookData) public view returns (bool) {
         return uint128(hookData.from) >> 64 >= block.timestamp || root.endorsed(from);
     }
 
+    /// @notice Check if target account is a member
     function isTargetMember(address to, HookData calldata hookData) public view returns (bool) {
         return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to);
     }

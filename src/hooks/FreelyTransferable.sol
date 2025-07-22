@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ITransferHook, HookData} from "src/common/interfaces/ITransferHook.sol";
 
-import {BaseHook} from "src/hooks/BaseHook.sol";
+import {BaseHook, TransferType} from "src/hooks/BaseHook.sol";
 
 /// @title  Freely Transferable
 /// @notice Hook implementation that:
@@ -13,20 +13,21 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 contract FreelyTransferable is BaseHook {
     constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
 
-    /// @inheritdoc ITransferHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    /// @inheritdoc BaseHook
+    function checkTransferPolicy(TransferType transferType, address from, address to, HookData calldata hookData)
         public
         view
         override
         returns (bool)
     {
-        if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isDepositRequest(from, to)) return isTargetMember(to, hookData);
-        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRedeemClaim(from, to)) return isSourceMember(from, hookData);
+        if (transferType == TransferType.DepositRequest || transferType == TransferType.DepositClaim) {
+            return isTargetMember(to, hookData);
+        }
+        if (transferType == TransferType.RedeemRequest || transferType == TransferType.RedeemClaim) {
+            return isSourceMember(from, hookData);
+        }
 
-        // Else, it's a fulfillment, redemption, or transfer
+        // All other transfers are allowed (fulfillments, claims, cross-chain, local transfers)
         return true;
     }
 }

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ITransferHook, HookData} from "src/common/interfaces/ITransferHook.sol";
 
-import {BaseHook} from "src/hooks/BaseHook.sol";
+import {BaseHook, TransferType} from "src/hooks/BaseHook.sol";
 
 /// @title  Redemption Restrictions
 /// @notice Hook implementation that:
@@ -13,18 +13,16 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 contract RedemptionRestrictions is BaseHook {
     constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
 
-    /// @inheritdoc ITransferHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    /// @inheritdoc BaseHook
+    function checkTransferPolicy(TransferType transferType, address from, address, /* to */ HookData calldata hookData)
         public
         view
         override
         returns (bool)
     {
-        if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRedeemClaim(from, to)) return isSourceMember(from, hookData);
-
-        // Else, it's a deposit request, redemption fulfillment, or transfer
+        if (transferType == TransferType.RedeemRequest || transferType == TransferType.RedeemClaim) {
+            return isSourceMember(from, hookData);
+        }
         return true;
     }
 }
