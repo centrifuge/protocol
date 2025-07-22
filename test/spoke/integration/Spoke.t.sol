@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
+
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 

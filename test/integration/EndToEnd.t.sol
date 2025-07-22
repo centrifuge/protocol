@@ -11,6 +11,8 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 import {IdentityValuation} from "../../src/misc/IdentityValuation.sol";
 
+import {MockValuation} from "../common/mocks/MockValuation.sol";
+
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
@@ -18,7 +20,6 @@ import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
-import {MockValuation} from "../common/mocks/MockValuation.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
@@ -44,8 +45,9 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
+
+import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";

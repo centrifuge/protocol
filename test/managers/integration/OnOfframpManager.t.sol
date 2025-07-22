@@ -12,6 +12,7 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import "../../spoke/BaseTest.sol";
+
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";

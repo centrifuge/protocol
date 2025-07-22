@@ -151,7 +151,7 @@ import {Auth} from "../../misc/Auth.sol";
 
 ## 📊 Import Priority System
 
-Imports are automatically organized into priority groups with empty lines between categories:
+Imports are automatically organized into priority groups with **subgroup separation** for enhanced clarity:
 
 ```python
 IMPORT_PRIORITY = [
@@ -170,8 +170,20 @@ IMPORT_PRIORITY = [
 ]
 ```
 
+### 🎯 **Advanced Subgrouping**
+
+Within each priority category, imports are further organized by their **base directory**:
+
+1. **`../` imports** (direct relative paths)
+2. **`src/` imports** (via src directory)  
+3. **`test/` imports** (via test directory)
+4. **`script/` imports** (via script directory)
+
+**Each subgroup is separated by empty lines** for maximum clarity.
+
 ### Organized Output Example
 
+**Simple organization:**
 ```solidity
 pragma solidity ^0.8.28;
 
@@ -186,6 +198,26 @@ import {PoolId} from "../common/types/PoolId.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
+```
+
+**Advanced subgrouping example:**
+```solidity
+pragma solidity ^0.8.28;
+
+// Current directory imports
+import {LocalInterface} from "./interfaces/ILocal.sol";
+
+// Common category - '../' subgroup (direct relative)
+import {SharedUtil} from "../common/SharedUtil.sol";
+
+// Common category - 'src' subgroup (via src/)  
+import {CommonType} from "../../src/common/types/CommonType.sol";
+
+// Common category - 'test' subgroup (via test/)
+import {MockCommon} from "../test/common/mocks/MockCommon.sol";
+
+// Hub category - 'src' subgroup
+import {IHub} from "../../src/hub/interfaces/IHub.sol";
 ```
 
 ## 📝 How It Works

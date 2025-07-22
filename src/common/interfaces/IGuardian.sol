@@ -2,11 +2,11 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
+import {IAxelarAdapter} from "./adapters/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "./adapters/IWormholeAdapter.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IAxelarAdapter} from "./adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "./adapters/IWormholeAdapter.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);

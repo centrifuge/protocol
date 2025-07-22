@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {MockRoot} from "../../common/mocks/MockRoot.sol";
+
 import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 
 import {ShareToken} from "../../../src/spoke/ShareToken.sol";

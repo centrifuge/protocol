@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Mock} from "../../common/mocks/Mock.sol";
+
 import {ISafe} from "../../../src/common/Guardian.sol";
 
 contract MockSafe is Mock, ISafe {

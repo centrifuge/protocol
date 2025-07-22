@@ -267,12 +267,20 @@ def get_import_category(path: str) -> str:
         if path.startswith('./'):
             return '.'
         
-        # Split the cleaned path and find relevant directory
+        # Split the cleaned path and find the most specific relevant directory
         path_parts = cleaned_path.split('/')
         
+        # Find all matching parts and return the one with highest priority (lowest index)
+        matches = []
         for part in path_parts:
             if part in IMPORT_PRIORITY:
-                return part
+                matches.append(part)
+        
+        if matches:
+            # Return the match with highest priority (lowest index in IMPORT_PRIORITY)
+            return min(matches, key=lambda x: IMPORT_PRIORITY.index(x))
+            
+        return None
     
     # Handle relative paths without ./ prefix (also current directory or subdirectories)
     elif not path.startswith('/') and not path.startswith('centrifuge-v3/') and not path.startswith('src/'):
@@ -283,16 +291,33 @@ def get_import_category(path: str) -> str:
         if len(path_parts) == 1 or path_parts[0] in ['interfaces', 'types', 'libraries', 'factories', 'mocks', 'utils']:
             return '.'
         
-        # Otherwise check for known directories
+        # Otherwise check for known directories - find the one with highest priority
+        matches = []
         for part in path_parts:
             if part in IMPORT_PRIORITY:
-                return part
+                matches.append(part)
+        
+        if matches:
+            # Return the match with highest priority (lowest index in IMPORT_PRIORITY)
+            return min(matches, key=lambda x: IMPORT_PRIORITY.index(x))
     
     return None
 
-def categorize_imports(imports: List[str]) -> Tuple[Dict[str, List[str]], List[str]]:
-    """Categorize imports by their path prefix, supporting both absolute and relative paths"""
-    categorized = {priority: [] for priority in IMPORT_PRIORITY}
+def get_import_subgroup(path: str) -> str:
+    """Determine the subgroup for an import path within its category"""
+    if '/src/' in path:
+        return 'src'
+    elif '/test/' in path:
+        return 'test'  
+    elif '/script/' in path:
+        return 'script'
+    else:
+        return '../'  # Default for relative paths without specific base directory
+
+def categorize_imports(imports: List[str]) -> Tuple[Dict[str, Dict[str, List[str]]], List[str]]:
+    """Categorize imports by their path prefix and subgroup"""
+    # Create nested dictionary: {category: {subgroup: [imports]}}
+    categorized = {priority: {'../': [], 'src': [], 'test': [], 'script': []} for priority in IMPORT_PRIORITY}
     other_imports = []
 
     for import_stmt in imports:
@@ -307,7 +332,8 @@ def categorize_imports(imports: List[str]) -> Tuple[Dict[str, List[str]], List[s
             category = get_import_category(path)
             
             if category and category in categorized:
-                categorized[category].append(import_stmt)
+                subgroup = get_import_subgroup(path)
+                categorized[category][subgroup].append(import_stmt)
             else:
                 other_imports.append(import_stmt)
         else:
@@ -315,17 +341,22 @@ def categorize_imports(imports: List[str]) -> Tuple[Dict[str, List[str]], List[s
 
     return categorized, other_imports
 
-def organize_imports(categorized: Dict[str, List[str]], other_imports: List[str]) -> str:
-    """Organize imports according to priority with empty lines between categories, sorted by ascending length within each category"""
+def organize_imports(categorized: Dict[str, Dict[str, List[str]]], other_imports: List[str]) -> str:
+    """Organize imports according to priority with subgroups, separated by empty lines"""
     organized_imports = []
+    subgroup_order = ['../', 'src', 'test', 'script']
 
     for priority in IMPORT_PRIORITY:
-        if categorized[priority]:
-            # Remove duplicates and sort by length (ascending), then alphabetically
-            unique_imports = list(set(categorized[priority]))
-            sorted_imports = sorted(unique_imports, key=lambda x: (len(x), x))
-            organized_imports.extend(sorted_imports)
-            organized_imports.append("")  # Empty line after each category
+        category_has_imports = False
+        
+        for subgroup in subgroup_order:
+            if categorized[priority][subgroup]:
+                # Remove duplicates and sort by length (ascending), then alphabetically
+                unique_imports = list(set(categorized[priority][subgroup]))
+                sorted_imports = sorted(unique_imports, key=lambda x: (len(x), x))
+                organized_imports.extend(sorted_imports)
+                organized_imports.append("")  # Empty line after each subgroup
+                category_has_imports = True
 
     # Add other imports at the end
     if other_imports:

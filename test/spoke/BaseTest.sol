@@ -5,13 +5,15 @@ pragma abicoder v2;
 import {MockSafe} from "./mocks/MockSafe.sol";
 import {MockCentrifugeChain} from "./mocks/MockCentrifugeChain.sol";
 
+import {MockERC6909} from "../misc/mocks/MockERC6909.sol";
+
 import "../../src/misc/interfaces/IERC20.sol";
 import {ERC20} from "../../src/misc/ERC20.sol";
-import {MockERC6909} from "../misc/mocks/MockERC6909.sol";
 import {IERC6909Fungible} from "../../src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "../../src/common/types/AssetId.sol";
 import {MockAdapter} from "../common/mocks/MockAdapter.sol";
+
+import {AssetId} from "../../src/common/types/AssetId.sol";
 import {newAssetId} from "../../src/common/types/AssetId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";

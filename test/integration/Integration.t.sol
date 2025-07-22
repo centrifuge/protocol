@@ -3,8 +3,9 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
 import {MockValuation} from "../common/mocks/MockValuation.sol";
+
+import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {MAX_MESSAGE_COST as GAS} from "../../src/common/interfaces/IGasService.sol";
 

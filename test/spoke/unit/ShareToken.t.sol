@@ -8,6 +8,7 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {MockRoot} from "../../common/mocks/MockRoot.sol";
+
 import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 
 import {ShareToken} from "../../../src/spoke/ShareToken.sol";

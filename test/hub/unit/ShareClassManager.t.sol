@@ -14,7 +14,7 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
-import { IShareClassManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, ShareClassMetadata, ShareClassMetrics, QueuedOrder, RequestType } from "../../../src/hub/interfaces/IShareClassManager.sol";
+import {IShareClassManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, QueuedOrder} from "../../../src/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 
