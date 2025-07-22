@@ -19,7 +19,7 @@ import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libr
 /// @title  BaseHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
+abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
@@ -55,41 +55,57 @@ contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
         address, /* to */
         uint256, /* value */
         HookData calldata /* hookData */
-    ) external virtual pure returns (bytes4) {
+    ) external pure virtual returns (bytes4) {
         return ITransferHook.onERC20AuthTransfer.selector;
     }
 
-    function isDepositRequest(address from, address to) public returns (bool) {
+    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+        public
+        view
+        virtual
+        returns (bool);
+
+    function isDepositRequest(address from, address to) public view returns (bool) {
         return from == address(0) && to != ESCROW_HOOK_ID;
     }
 
-    function isDepositFulfillment(address from, address to) public returns (bool) {
+    function isDepositFulfillment(address from, address to) public view returns (bool) {
         return from == address(0) && to == ESCROW_HOOK_ID;
     }
 
-    function isDepositClaim(address from, address to) public returns (bool) {
+    function isDepositClaim(address from, address to) public view returns (bool) {
         return from == ESCROW_HOOK_ID && to != address(0);
     }
 
-    function isRedeemRequest(address from, address to) public returns (bool) {
+    function isRedeemRequest(address from, address to) public view returns (bool) {
         return from != address(0) && from != ESCROW_HOOK_ID && to == ESCROW_HOOK_ID;
     }
 
-    function isRedeemFulfillment(address from, address to) public returns (bool) {
-        return from == ESCROW_HOOK_ID && to == addresss(0);
+    function isRedeemFulfillment(address from, address to) public view returns (bool) {
+        return from == ESCROW_HOOK_ID && to == address(0);
     }
 
-    function isRedeemClaim(address from, address to) public returns (bool) {
-        return from != ESCROW_HOOK_ID && to == addresss(0);
+    function isRedeemClaim(address from, address to) public view returns (bool) {
+        return from != ESCROW_HOOK_ID && to == address(0);
     }
 
-    function isSourceOrTargetFrozen(address from, HookData calldata hookData) public returns (bool) {
-        return uint128(hookData.from).getBit(FREEZE_BIT) == true || toHookData.getBit(FREEZE_BIT) == true;
+    // TODO: separate into isRedeemClaim and isCrosschainTransfer,
+    // by checking from == spoke && to == address(0)
+
+    // function isCrosschainTransfer(address from, address to) public view returns (bool) {
+    //     return from != ESCROW_HOOK_ID && to == address(0);
+    // }
+
+    function isSourceOrTargetFrozen(HookData calldata hookData) public view returns (bool) {
+        return uint128(hookData.from).getBit(FREEZE_BIT) == true || uint128(hookData.to).getBit(FREEZE_BIT) == true;
     }
 
-    function isTargetMember(HookData calldata hookData) public returns (bool) {
-        uint128 toHookData = uint128(hookData.to);
-        return toHookData >> 64 < block.timestamp;
+    function isSourceMember(address from, HookData calldata hookData) public view returns (bool) {
+        return uint128(hookData.from) >> 64 >= block.timestamp || root.endorsed(from);
+    }
+
+    function isTargetMember(address to, HookData calldata hookData) public view returns (bool) {
+        return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -121,7 +137,7 @@ contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
         require(!root.endorsed(user), EndorsedUserCannotBeFrozen());
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
-        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, true)));
+        IShareToken(token).setHookData(user, bytes16(hookData.withBit(FREEZE_BIT, true)));
 
         emit Freeze(token, user);
     }
@@ -129,7 +145,7 @@ contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
     /// @inheritdoc IFreezable
     function unfreeze(address token, address user) public auth {
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
-        IShareToken(token).setHookData(user, bytes16(hookData.setBit(FREEZE_BIT, false)));
+        IShareToken(token).setHookData(user, bytes16(hookData.withBit(FREEZE_BIT, false)));
 
         emit Unfreeze(token, user);
     }
@@ -145,7 +161,7 @@ contract FullRestrictions is Auth, IMemberlist, IFreezable, ITransferHook {
         require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
-        hookData.setBit(FREEZE_BIT, isFrozen(token, user));
+        hookData.withBit(FREEZE_BIT, isFrozen(token, user));
         IShareToken(token).setHookData(user, bytes16(hookData));
 
         emit UpdateMember(token, user, validUntil);

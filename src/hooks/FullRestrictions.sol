@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ITransferHook, HookData} from "src/common/interfaces/ITransferHook.sol";
+
 import {BaseHook} from "src/hooks/BaseHook.sol";
 
 /// @title  Full Restrictions
@@ -14,33 +16,19 @@ contract FullRestrictions is BaseHook {
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
         public
         view
+        override
         returns (bool)
     {
-        if (isDepositRequest(from, to) && isTargetMember(hookData)) return true;
-        if (isDepositFulfillment())
-        
-           
-        if (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from) && from != ESCROW_HOOK_ID) {
-            // Source is frozen and not endorsed
-            return false;
-        }
+        if (isSourceOrTargetFrozen(hookData)) return false;
 
-        if (root.endorsed(to) || to == address(0) || to == ESCROW_HOOK_ID) {
-            // Destination is endorsed or escrow and source was already checked, so the transfer is allowed
-            return true;
-        }
+        if (isDepositRequest(from, to)) return isTargetMember(to, hookData);
+        if (isDepositFulfillment(from, to)) return true;
+        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
+        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
+        if (isRedeemFulfillment(from, to)) return true;
+        if (isRedeemClaim(from, to)) return true;
 
-        uint128 toHookData = uint128(hookData.to);
-        if (toHookData.getBit(FREEZE_BIT) == true) {
-            // Destination is frozen
-            return false;
-        }
-
-        if (toHookData >> 64 < block.timestamp) {
-            // Destination is not a member
-            return false;
-        }
-
-        return true;
+        // Else, it's a transfer
+        return isTargetMember(to, hookData);
     }
 }
