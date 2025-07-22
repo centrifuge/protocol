@@ -161,7 +161,7 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
         require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
-        hookData.withBit(FREEZE_BIT, isFrozen(token, user));
+        hookData = hookData.withBit(FREEZE_BIT, isFrozen(token, user));
         IShareToken(token).setHookData(user, bytes16(hookData));
 
         emit UpdateMember(token, user, validUntil);
