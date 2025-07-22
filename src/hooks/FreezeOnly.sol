@@ -15,13 +15,13 @@ contract FreezeOnly is BaseHook {
     constructor(address root_, address deployer) BaseHook(root_, deployer) {}
 
     /// @inheritdoc ITransferHook
-    function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
+    function checkERC20Transfer(address from, address to, uint256, HookData calldata hookData)
         public
         view
         override
         returns (bool)
     {
-        if (isSourceOrTargetFrozen(hookData)) return false;
+        if (isSourceOrTargetFrozen(from, to, hookData)) return false;
         return true;
     }
 }

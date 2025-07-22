@@ -20,7 +20,7 @@ contract RedemptionRestrictions is BaseHook {
         override
         returns (bool)
     {
-        if (isSourceOrTargetFrozen(hookData)) return false;
+        if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
         if (isDepositRequest(from, to)) return true;
         if (isDepositFulfillment(from, to)) return true;

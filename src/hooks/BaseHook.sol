@@ -65,39 +65,40 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
         virtual
         returns (bool);
 
-    function isDepositRequest(address from, address to) public view returns (bool) {
+    function isDepositRequest(address from, address to) public pure returns (bool) {
         return from == address(0) && to != ESCROW_HOOK_ID;
     }
 
-    function isDepositFulfillment(address from, address to) public view returns (bool) {
+    function isDepositFulfillment(address from, address to) public pure returns (bool) {
         return from == address(0) && to == ESCROW_HOOK_ID;
     }
 
-    function isDepositClaim(address from, address to) public view returns (bool) {
+    function isDepositClaim(address from, address to) public pure returns (bool) {
         return from == ESCROW_HOOK_ID && to != address(0);
     }
 
-    function isRedeemRequest(address from, address to) public view returns (bool) {
+    function isRedeemRequest(address from, address to) public pure returns (bool) {
         return from != address(0) && from != ESCROW_HOOK_ID && to == ESCROW_HOOK_ID;
     }
 
-    function isRedeemFulfillment(address from, address to) public view returns (bool) {
+    function isRedeemFulfillment(address from, address to) public pure returns (bool) {
         return from == ESCROW_HOOK_ID && to == address(0);
     }
 
-    function isRedeemClaim(address from, address to) public view returns (bool) {
+    function isRedeemClaim(address from, address to) public pure returns (bool) {
         return from != ESCROW_HOOK_ID && to == address(0);
     }
 
     // TODO: separate into isRedeemClaim and isCrosschainTransfer,
     // by checking from == spoke && to == address(0)
 
-    // function isCrosschainTransfer(address from, address to) public view returns (bool) {
+    // function isCrosschainTransfer(address from, address to) public pure returns (bool) {
     //     return from != ESCROW_HOOK_ID && to == address(0);
     // }
 
-    function isSourceOrTargetFrozen(HookData calldata hookData) public view returns (bool) {
-        return uint128(hookData.from).getBit(FREEZE_BIT) == true || uint128(hookData.to).getBit(FREEZE_BIT) == true;
+    function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {
+        return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from))
+            || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !root.endorsed(to));
     }
 
     function isSourceMember(address from, HookData calldata hookData) public view returns (bool) {
