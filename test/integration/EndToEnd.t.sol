@@ -660,7 +660,7 @@ contract EndToEndUseCases is EndToEndFlows {
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.updateSharePrice(POOL_A, SC_1, ZERO_PRICE);
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+        h.hub.setSnapshotHook(POOL_A, h.navManager);
 
         // Each message will return half of the gas wasted
         adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
@@ -684,8 +684,6 @@ contract EndToEndUseCases is EndToEndFlows {
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
         assertEq(address(s.gateway).balance, 0);
-
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
 
     /// forge-config: default.isolate = true
