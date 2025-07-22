@@ -13,7 +13,7 @@ display_help() {
     echo
     echo "Required Environment Variables:"
     echo "  RPC_URL               The RPC URL"
-    echo "  ETHERSCAN_KEY         The Etherscan API key"
+    echo "  ETHERSCAN_API_KEY         The Etherscan API key"
     echo "  VERIFIER_URL          The verifier URL"
     echo "  CHAIN_ID              The chain ID"
     echo
@@ -24,8 +24,8 @@ if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     display_help
 fi
 
-if [ -z "$RPC_URL" ] || [ -z "$ETHERSCAN_KEY" ] || [ -z "$VERIFIER_URL" ] || [ -z "$CHAIN_ID" ]; then
-    echo "Error: RPC_URL, ETHERSCAN_KEY, VERIFIER_URL, and CHAIN_ID must be set in the .env file."
+if [ -z "$RPC_URL" ] || [ -z "$ETHERSCAN_API_KEY" ] || [ -z "$VERIFIER_URL" ] || [ -z "$CHAIN_ID" ]; then
+    echo "Error: RPC_URL, ETHERSCAN_API_KEY, VERIFIER_URL, and CHAIN_ID must be set in the .env file."
     exit 1
 fi
 
@@ -52,5 +52,5 @@ echo "root: $root"
 echo "asyncRequestManager: $asyncRequestManager"
 echo "hook: $hook"
 echo "token decimals: $decimals"
-forge verify-contract --constructor-args $(cast abi-encode "constructor(uint8)" $decimals) --watch --etherscan-api-key $ETHERSCAN_KEY $share src/spoke/ShareToken.sol:ShareToken --verifier-url $VERIFIER_URL --chain $CHAIN_ID
-forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,address,address,address)" $poolId $scId $asset $share $root $asyncRequestManager) --watch --etherscan-api-key $ETHERSCAN_KEY $contract_address src/vaults/AsyncVault.sol:AsyncVault --verifier-url $VERIFIER_URL --chain $CHAIN_ID
+forge verify-contract --constructor-args $(cast abi-encode "constructor(uint8)" $decimals) --watch --etherscan-api-key $ETHERSCAN_API_KEY $share src/spoke/ShareToken.sol:ShareToken --verifier-url $VERIFIER_URL --chain $CHAIN_ID
+forge verify-contract --constructor-args $(cast abi-encode "constructor(uint64,bytes16,address,address,address,address)" $poolId $scId $asset $share $root $asyncRequestManager) --watch --etherscan-api-key $ETHERSCAN_API_KEY $contract_address src/vaults/AsyncVault.sol:AsyncVault --verifier-url $VERIFIER_URL --chain $CHAIN_ID
