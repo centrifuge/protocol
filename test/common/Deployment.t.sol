@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import {CommonDeployer, CommonInput, CommonActionBatcher} from "script/CommonDeployer.s.sol";
@@ -13,13 +12,7 @@ contract CommonDeploymentInputTest is Test {
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
 
     function _commonInput() internal view returns (CommonInput memory) {
-        return CommonInput({
-            centrifugeId: CENTRIFUGE_ID,
-            root: IRoot(address(0)),
-            adminSafe: ADMIN_SAFE,
-            batchGasLimit: 0,
-            version: bytes32(0)
-        });
+        return CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, batchGasLimit: 0, version: bytes32(0)});
     }
 }
 
@@ -33,10 +26,12 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testRoot(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(tokenRecoverer));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(root.wards(address(guardian)), 1);
+        assertEq(root.wards(address(tokenRecoverer)), 1);
         assertEq(root.wards(address(messageProcessor)), 1);
         assertEq(root.wards(address(messageDispatcher)), 1);
         assertEq(root.wards(nonWard), 0);

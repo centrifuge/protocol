@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
 import {GasService} from "src/common/GasService.sol";
 import {Guardian, ISafe} from "src/common/Guardian.sol";
 import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
@@ -18,7 +18,6 @@ import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
     uint16 centrifugeId;
-    IRoot root;
     ISafe adminSafe;
     uint128 batchGasLimit;
     bytes32 version;
@@ -38,23 +37,32 @@ struct CommonReport {
 }
 
 contract CommonActionBatcher {
-    // @dev lock to ensure we forbid calling engage/revoke methods after deployment
-    bool isLock;
+    error NotDeployer();
 
-    modifier unlocked() {
-        if (!isLock) _;
+    address deployer;
+
+    constructor() {
+        deployer = msg.sender;
     }
 
-    function lock() public unlocked {
-        isLock = true;
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, NotDeployer());
+        _;
     }
 
-    function engageCommon(CommonReport memory report, bool newRoot) public unlocked {
-        if (newRoot) {
-            report.root.rely(address(report.guardian));
-            report.root.rely(address(report.messageProcessor));
-            report.root.rely(address(report.messageDispatcher));
-        }
+    function setDeployer(address newDeployer) public onlyDeployer {
+        deployer = newDeployer;
+    }
+
+    function lock() public onlyDeployer {
+        deployer = address(0);
+    }
+
+    function engageCommon(CommonReport memory report) public onlyDeployer {
+        report.root.rely(address(report.guardian));
+        report.root.rely(address(report.tokenRecoverer));
+        report.root.rely(address(report.messageProcessor));
+        report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
         report.gateway.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.multiAdapter));
@@ -75,15 +83,13 @@ contract CommonActionBatcher {
         report.poolEscrowFactory.file("gateway", address(report.gateway));
     }
 
-    function postEngageCommon(CommonReport memory report) public unlocked {
+    function postEngageCommon(CommonReport memory report) public onlyDeployer {
         // We override the deployer with the correct admin once everything is deployed
         report.guardian.file("safe", address(report.adminSafe));
     }
 
-    function revokeCommon(CommonReport memory report, bool newRoot) public unlocked {
-        if (newRoot) {
-            report.root.deny(address(this));
-        }
+    function revokeCommon(CommonReport memory report) public onlyDeployer {
+        report.root.deny(address(this));
         report.gateway.deny(address(this));
         report.multiAdapter.deny(address(this));
         report.tokenRecoverer.deny(address(this));
@@ -94,7 +100,7 @@ contract CommonActionBatcher {
 }
 
 abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
-    uint256 constant DELAY = 48 hours;
+    uint256 public constant DELAY = 48 hours;
 
     bytes32 version;
     ISafe public adminSafe;
@@ -108,8 +114,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
     MessageProcessor public messageProcessor;
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
-
-    bool newRoot;
 
     /**
      * @dev Generates a salt for contract deployment
@@ -138,14 +142,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         adminSafe = input.adminSafe;
         version = input.version;
 
-        if (address(input.root) == address(0)) {
-            newRoot = true;
-            root = Root(
-                create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
-            );
-        } else {
-            root = Root(address(input.root));
-        }
+        root =
+            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
         tokenRecoverer = TokenRecoverer(
             create3(
@@ -211,12 +209,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             )
         );
 
-        batcher.engageCommon(_commonReport(), newRoot);
+        batcher.engageCommon(_commonReport());
 
-        if (newRoot) {
-            register("root", address(root));
-            // Otherwise already present in load_vars.sh and not needed to be registered
-        }
+        register("root", address(root));
         // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
@@ -240,7 +235,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             return; // Already removed. Make this method idempotent.
         }
 
-        batcher.revokeCommon(_commonReport(), newRoot);
+        batcher.revokeCommon(_commonReport());
     }
 
     function _commonReport() internal view returns (CommonReport memory) {

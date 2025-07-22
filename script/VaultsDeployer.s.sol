@@ -29,7 +29,7 @@ struct VaultsReport {
 }
 
 contract VaultsActionBatcher is SpokeActionBatcher {
-    function engageVaults(VaultsReport memory report, bool newRoot) public unlocked {
+    function engageVaults(VaultsReport memory report) public onlyDeployer {
         // Rely Spoke
         report.asyncVaultFactory.rely(address(report.spoke.spoke));
         report.syncDepositVaultFactory.rely(address(report.spoke.spoke));
@@ -65,14 +65,12 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
 
         // Endorse methods
-        if (newRoot) {
-            report.spoke.common.root.endorse(address(report.asyncRequestManager));
-            report.spoke.common.root.endorse(address(report.globalEscrow));
-            report.spoke.common.root.endorse(address(report.vaultRouter));
-        }
+        report.spoke.common.root.endorse(address(report.asyncRequestManager));
+        report.spoke.common.root.endorse(address(report.globalEscrow));
+        report.spoke.common.root.endorse(address(report.vaultRouter));
     }
 
-    function revokeVaults(VaultsReport memory report) public unlocked {
+    function revokeVaults(VaultsReport memory report) public onlyDeployer {
         report.asyncVaultFactory.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
@@ -147,7 +145,7 @@ contract VaultsDeployer is SpokeDeployer {
             )
         );
 
-        batcher.engageVaults(_vaultsReport(), newRoot);
+        batcher.engageVaults(_vaultsReport());
 
         register("routerEscrow", address(routerEscrow));
         register("globalEscrow", address(globalEscrow));

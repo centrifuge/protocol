@@ -6,12 +6,14 @@ import {D18, d18} from "src/misc/types/D18.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
 import {IdentityValuation} from "src/misc/IdentityValuation.sol";
 
+import {Root} from "src/common/Root.sol";
 import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
 import {Guardian} from "src/common/Guardian.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
+import {GasService} from "src/common/GasService.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
 import {ISafe} from "src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "src/common/interfaces/IAdapter.sol";
@@ -28,6 +30,7 @@ import {HubRegistry} from "src/hub/HubRegistry.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 
 import {Spoke} from "src/spoke/Spoke.sol";
+import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -80,6 +83,7 @@ contract EndToEndDeployment is Test {
         Root root;
         Guardian guardian;
         Gateway gateway;
+        GasService gasService;
         // Hub
         HubRegistry hubRegistry;
         Accounting accounting;
@@ -115,8 +119,8 @@ contract EndToEndDeployment is Test {
         AssetId usdcId;
     }
 
-    ISafe immutable safeAdminA = ISafe(makeAddr("SafeAdminA"));
-    ISafe immutable safeAdminB = ISafe(makeAddr("SafeAdminB"));
+    ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
+    ISafe immutable SAFE_ADMIN_B = ISafe(makeAddr("SafeAdminB"));
 
     uint16 constant CENTRIFUGE_ID_A = 5;
     uint16 constant CENTRIFUGE_ID_B = 6;
@@ -163,8 +167,8 @@ contract EndToEndDeployment is Test {
     D18 currentSharePrice = IDENTITY_PRICE;
 
     function setUp() public virtual {
-        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, safeAdminA);
-        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, safeAdminB);
+        adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
+        adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
         // We connect both deploys through the adapters
         adapterAToB.setEndpoint(adapterBToA);
@@ -189,6 +193,7 @@ contract EndToEndDeployment is Test {
             root: deployA.root(),
             guardian: deployA.guardian(),
             gateway: deployA.gateway(),
+            gasService: deployA.gasService(),
             hubRegistry: deployA.hubRegistry(),
             accounting: deployA.accounting(),
             holdings: deployA.holdings(),
@@ -222,17 +227,17 @@ contract EndToEndDeployment is Test {
         internal
         returns (LocalAdapter adapter)
     {
-        CommonInput memory input = CommonInput({
+        CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
-            root: IRoot(address(0)),
             adminSafe: adminSafe,
             batchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
         FullActionBatcher batcher = new FullActionBatcher();
+        batcher.setDeployer(address(deploy));
 
-        deploy.deployFull(input, batcher);
+        deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
         _wire(deploy, remoteCentrifugeId, adapter);
@@ -359,7 +364,8 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
         h.hub.updateHubManager(POOL_A, address(priceManager), true);
 
-        vm.stopPrank();
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _configurePool(CSpoke memory s_) internal {
@@ -386,24 +392,16 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.navManager);
 
-        vm.startPrank(BSM);
-        s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-
-        vm.stopPrank();
+        // We also subsidize the hub
+        if (s.centrifugeId != h.centrifugeId) {
+            vm.startPrank(ANY);
+            s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        }
     }
 
     function _configurePool(bool sameChain) internal {
         _setSpoke(sameChain);
         _configurePool(s);
-
-        /// We subsidize the hub using the local spoke deployment
-        if (s.centrifugeId != h.centrifugeId) {
-            vm.startPrank(FM);
-            h.hub.notifyPool{value: GAS}(POOL_A, h.centrifugeId);
-
-            vm.startPrank(BSM);
-            h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
-        }
     }
 
     function _configurePrices(D18 assetPrice, D18 sharePrice) internal {
@@ -586,6 +584,44 @@ contract EndToEndUseCases is EndToEndFlows {
     using MathLib for *;
 
     /// forge-config: default.isolate = true
+    function testWardUpgrade(bool sameChain) public {
+        address NEW_WARD = makeAddr("NewWard");
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
+        h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
+
+        vm.warp(block.timestamp + deployA.DELAY() + 1000);
+
+        vm.startPrank(ANY);
+        s.root.executeScheduledRely(NEW_WARD);
+    }
+
+    /// forge-config: default.isolate = true
+    function testTokenRecover(bool sameChain) public {
+        address RECEIVER = makeAddr("Receiver");
+        uint256 VALUE = 123;
+
+        _setSpoke(sameChain);
+
+        vm.startPrank(ANY);
+        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+
+        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
+
+        vm.startPrank(address(SAFE_ADMIN_A));
+        h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
+
+        assertEq(RECEIVER.balance, VALUE);
+    }
+
+    /// forge-config: default.isolate = true
     function testConfigureAsset(bool sameChain) public {
         _setSpoke(sameChain);
         _configureAsset(s);
@@ -595,14 +631,82 @@ contract EndToEndUseCases is EndToEndFlows {
 
     /// forge-config: default.isolate = true
     function testConfigurePool(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
+    }
+
+    /// forge-config: default.isolate = true
+    function testConfigurePoolExtra(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.updateShareClassMetadata{value: GAS}(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
+        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.updateShareHook{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
+
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
+        assertEq(s.spoke.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRefundSubsidizedCycle() public {
+        _setSpoke(false);
+        _createPool();
+
+        vm.startPrank(FM);
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(0).toBytes32());
+        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        h.hub.updateSharePrice(POOL_A, SC_1, ZERO_PRICE);
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+
+        // Each message will return half of the gas wasted
+        adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
+
+        // We just subsidize for two message
+        vm.startPrank(ANY);
+        s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, h.gasService.updateShares());
+
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
+        assertEq(address(s.gateway).balance, 0);
+
+        // This message is fully paid with refunded amount
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
+        assertEq(address(s.gateway).balance, 0);
+
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
+    }
+
+    /// forge-config: default.isolate = true
+    function testUpdatePriceAge(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+
+        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
+        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
+
+        (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
+        assertEq(validUntil, uint64(block.timestamp));
+
+        (,, validUntil) = s.spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(validUntil, uint64(block.timestamp));
     }
 
     /// forge-config: default.isolate = true
     function testFundManagement(bool sameChain) public {
-        _setSpoke(sameChain);
-        _configurePool(s);
+        _configurePool(sameChain);
         _configurePrices(ASSET_PRICE, SHARE_PRICE);
 
         vm.startPrank(ERC20_DEPLOYER);
@@ -628,6 +732,26 @@ contract EndToEndUseCases is EndToEndFlows {
         (uint128 issuance, D18 poolPerShare) = h.shareClassManager.metrics(SC_1);
         assertEq(issuance, 0);
         assertEq(poolPerShare.raw(), d18(1, 1).raw());
+    }
+
+    /// forge-config: default.isolate = true
+    function testVaultManagement(bool sameChain) public {
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
+        );
+
+        address vault = address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId));
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), false);
+
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
+
+        assertEq(s.spoke.isLinked(IVault(vault)), true);
     }
 
     /// forge-config: default.isolate = true

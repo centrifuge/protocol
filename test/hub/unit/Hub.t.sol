@@ -57,6 +57,12 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.file(bytes32(""), address(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.createPool(PoolId.wrap(0), address(0), AssetId.wrap(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.registerAsset(AssetId.wrap(0), 0);
 
         bytes memory EMPTY_BYTES;
@@ -70,6 +76,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.initiateTransferShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
 
         vm.stopPrank();
     }
@@ -173,6 +182,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateHoldingIsLiability(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), true);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));

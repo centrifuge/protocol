@@ -5,35 +5,44 @@ import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
+import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
 
 import "test/spoke/BaseTest.sol";
 
-contract RedemptionRestrictionsTest is BaseTest {
+contract FreelyTransferableTest is BaseTest {
     using CastLib for *;
 
-    function testRedemptionRestrictionsHook(uint256 amount) public {
+    function testFreelyTransferableHook(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, 6, address(redemptionRestrictionsHook), bytes16(bytes("1")), address(erc20), 0, 0
-        );
+        (, address vault_, uint128 assetId) =
+            deployVault(VaultKind.Async, 6, address(freelyTransferableHook), bytes16(bytes("1")), address(erc20), 0, 0);
         AsyncVault vault = AsyncVault(vault_);
-        RedemptionRestrictions hook = RedemptionRestrictions(redemptionRestrictionsHook);
+        FreelyTransferable hook = FreelyTransferable(freelyTransferableHook);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
         centrifugeChain.updatePricePoolPerShare(
             vault.poolId().raw(), vault.scId().raw(), defaultPrice, uint64(block.timestamp)
         );
 
-        // Anyone can deposit
+        // Only members can deposit
         address investor = makeAddr("Investor");
         erc20.mint(investor, amount);
 
         vm.startPrank(investor);
         erc20.approve(vault_, amount);
+
         (bool isMember,) = hook.isMember(address(shareToken), investor);
         assertEq(isMember, false);
+
+        vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
+        vault.requestDeposit(amount, investor, investor);
+
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
+
+        (isMember,) = hook.isMember(address(shareToken), investor);
+        assertEq(isMember, true);
+
         vault.requestDeposit(amount, investor, investor);
         vm.stopPrank();
 
@@ -57,22 +66,22 @@ contract RedemptionRestrictionsTest is BaseTest {
 
         // Not everyone can redeem
         vm.expectRevert(IAsyncRequestManager.TransferNotAllowed.selector);
-        vm.prank(investor);
-        vault.requestRedeem(amount / 2, investor, investor);
+        vm.prank(investor2);
+        vault.requestRedeem(amount / 2, investor2, investor2);
 
-        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
-        (isMember,) = hook.isMember(address(shareToken), investor);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor2, type(uint64).max);
+        (isMember,) = hook.isMember(address(shareToken), investor2);
         assertEq(isMember, true);
 
-        vm.prank(investor);
-        vault.requestRedeem(amount / 2, investor, investor);
+        vm.prank(investor2);
+        vault.requestRedeem(amount / 2, investor2, investor2);
         uint128 fulfillment = uint128(amount / 2);
 
         centrifugeChain.isFulfilledRedeemRequest(
-            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(investor)), assetId, fulfillment, fulfillment, 0
+            vault.poolId().raw(), vault.scId().raw(), bytes32(bytes20(investor2)), assetId, fulfillment, fulfillment, 0
         );
 
-        vm.prank(investor);
-        vault.redeem(amount / 2, investor, investor);
+        vm.prank(investor2);
+        vault.redeem(amount / 2, investor2, investor2);
     }
 }

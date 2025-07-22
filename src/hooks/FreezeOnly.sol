@@ -19,7 +19,6 @@ import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libr
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
-///         * Allows authTransferFrom calls
 ///
 /// @dev    The last bit of hookData is used to denote whether the account is frozen.
 contract FreezeOnly is Auth, IFreezable, ITransferHook {
