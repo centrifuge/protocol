@@ -5,7 +5,15 @@ import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "../interfaces/IMessageHandler.sol";
-import { IAxelarAdapter, IAdapter, IAxelarGateway, IAxelarGasService, AxelarSource, AxelarDestination, IAxelarExecutable } from "../interfaces/adapters/IAxelarAdapter.sol";
+import {
+    IAxelarAdapter,
+    IAdapter,
+    IAxelarGateway,
+    IAxelarGasService,
+    AxelarSource,
+    AxelarDestination,
+    IAxelarExecutable
+} from "../interfaces/adapters/IAxelarAdapter.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway

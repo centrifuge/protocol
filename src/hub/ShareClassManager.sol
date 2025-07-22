@@ -2,7 +2,17 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import { IShareClassManager, EpochInvestAmounts, EpochRedeemAmounts, UserOrder, ShareClassMetadata, ShareClassMetrics, QueuedOrder, RequestType, EpochId } from "./interfaces/IShareClassManager.sol";
+import {
+    IShareClassManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    ShareClassMetadata,
+    ShareClassMetrics,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";

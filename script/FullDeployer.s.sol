@@ -4,7 +4,13 @@ pragma solidity 0.8.28;
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {HubDeployer, HubActionBatcher} from "./HubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
-import { WormholeInput, AxelarInput, AdaptersInput, AdaptersDeployer, AdaptersActionBatcher } from "./AdaptersDeployer.s.sol";
+import {
+    WormholeInput,
+    AxelarInput,
+    AdaptersInput,
+    AdaptersDeployer,
+    AdaptersActionBatcher
+} from "./AdaptersDeployer.s.sol";
 
 import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 

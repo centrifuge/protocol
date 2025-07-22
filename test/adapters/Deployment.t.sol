@@ -5,7 +5,13 @@ import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/common/interfaces/adapters/IWormholeAdapter.sol";
 
-import { AdaptersDeployer, AdaptersActionBatcher, AdaptersInput, WormholeInput, AxelarInput } from "../../script/AdaptersDeployer.s.sol";
+import {
+    AdaptersDeployer,
+    AdaptersActionBatcher,
+    AdaptersInput,
+    WormholeInput,
+    AxelarInput
+} from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

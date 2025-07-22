@@ -5,7 +5,15 @@ import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 
 import {IMessageHandler} from "../interfaces/IMessageHandler.sol";
-import { IWormholeAdapter, IAdapter, IWormholeRelayer, IWormholeDeliveryProvider, IWormholeReceiver, WormholeSource, WormholeDestination } from "../interfaces/adapters/IWormholeAdapter.sol";
+import {
+    IWormholeAdapter,
+    IAdapter,
+    IWormholeRelayer,
+    IWormholeDeliveryProvider,
+    IWormholeReceiver,
+    WormholeSource,
+    WormholeDestination
+} from "../interfaces/adapters/IWormholeAdapter.sol";
 
 /// @title  Wormhole Adapter
 /// @notice Routing contract that integrates with the Wormhole Relayer service

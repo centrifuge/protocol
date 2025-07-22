@@ -28,7 +28,9 @@ import {IVaultFactory} from "../../src/spoke/factories/interfaces/IVaultFactory.
 
 import {AsyncVault} from "../../src/vaults/AsyncVault.sol";
 
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "../../script/ExtendedSpokeDeployer.s.sol";
+import {
+    ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
+} from "../../script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
