@@ -4,10 +4,10 @@
         "environment": "mainnet",
         "centrifugeId": 1,
         "connectsTo": [
-            "arbitrum",
             "base",
-            "plume",
-            "avalanche"
+            "arbitrum",
+            "avalanche",
+            "bnb-smart-chain"
         ],
         "safeAdmin": "0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD"
     },
