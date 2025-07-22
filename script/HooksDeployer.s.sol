@@ -61,28 +61,34 @@ contract HooksDeployer is SpokeDeployer {
         freezeOnlyHook = FreezeOnly(
             create3(
                 generateSalt("freezeOnlyHook"),
-                abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), address(spoke), batcher))
             )
         );
 
         fullRestrictionsHook = FullRestrictions(
             create3(
                 generateSalt("fullRestrictionsHook"),
-                abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(
+                    type(FullRestrictions).creationCode, abi.encode(address(root), address(spoke), batcher)
+                )
             )
         );
 
         freelyTransferableHook = FreelyTransferable(
             create3(
                 generateSalt("freelyTransferableHook"),
-                abi.encodePacked(type(FreelyTransferable).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(
+                    type(FreelyTransferable).creationCode, abi.encode(address(root), address(spoke), batcher)
+                )
             )
         );
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
                 generateSalt("redemptionRestrictionsHook"),
-                abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(
+                    type(RedemptionRestrictions).creationCode, abi.encode(address(root), address(spoke), batcher)
+                )
             )
         );
 

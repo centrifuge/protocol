@@ -10,7 +10,7 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
 contract FullRestrictions is BaseHook {
-    constructor(address root_, address deployer) BaseHook(root_, deployer) {}
+    constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
@@ -27,6 +27,7 @@ contract FullRestrictions is BaseHook {
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
         if (isRedeemFulfillment(from, to)) return true;
         if (isRedeemClaim(from, to)) return true;
+        if (isCrosschainTransfer(from, to)) return true;
 
         // Else, it's a transfer
         return isTargetMember(to, hookData);

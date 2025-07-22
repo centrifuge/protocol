@@ -36,7 +36,7 @@ contract ShareTokenTest is Test {
         token.file("name", "Some Token");
         token.file("symbol", "ST");
 
-        fullRestrictionsHook = new MockFullRestrictions(address(new MockRoot()), address(this));
+        fullRestrictionsHook = new MockFullRestrictions(address(new MockRoot()), makeAddr("spoke"), address(this));
         token.file("hook", address(fullRestrictionsHook));
     }
 

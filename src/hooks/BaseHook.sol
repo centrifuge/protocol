@@ -29,9 +29,11 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
+    address public immutable spoke;
 
-    constructor(address root_, address deployer) Auth(deployer) {
+    constructor(address root_, address spoke_, address deployer) Auth(deployer) {
         root = IRoot(root_);
+        spoke = spoke_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -85,16 +87,13 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
         return from == ESCROW_HOOK_ID && to == address(0);
     }
 
-    function isRedeemClaim(address from, address to) public pure returns (bool) {
-        return from != ESCROW_HOOK_ID && to == address(0);
+    function isRedeemClaim(address from, address to) public view returns (bool) {
+        return (from != ESCROW_HOOK_ID && from != spoke) && to == address(0);
     }
 
-    // TODO: separate into isRedeemClaim and isCrosschainTransfer,
-    // by checking from == spoke && to == address(0)
-
-    // function isCrosschainTransfer(address from, address to) public pure returns (bool) {
-    //     return from != ESCROW_HOOK_ID && to == address(0);
-    // }
+    function isCrosschainTransfer(address from, address to) public view returns (bool) {
+        return from == spoke && to == address(0);
+    }
 
     function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {
         return (uint128(hookData.from).getBit(FREEZE_BIT) == true && !root.endorsed(from))

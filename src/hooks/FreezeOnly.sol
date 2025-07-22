@@ -12,7 +12,7 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 ///
 /// @dev    The last bit of hookData is used to denote whether the account is frozen.
 contract FreezeOnly is BaseHook {
-    constructor(address root_, address deployer) BaseHook(root_, deployer) {}
+    constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, HookData calldata hookData)
@@ -22,6 +22,7 @@ contract FreezeOnly is BaseHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
+
         return true;
     }
 }

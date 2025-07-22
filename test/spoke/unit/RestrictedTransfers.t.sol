@@ -23,7 +23,7 @@ contract FullRestrictionsTest is Test {
     function setUp() public {
         root = new MockRoot();
         token = new ShareToken(18);
-        fullRestrictionsHook = new FullRestrictions(address(root), address(this));
+        fullRestrictionsHook = new FullRestrictions(address(root), makeAddr("spoke"), address(this));
         token.file("hook", address(fullRestrictionsHook));
     }
 

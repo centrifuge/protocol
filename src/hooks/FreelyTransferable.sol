@@ -11,7 +11,7 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 ///         * Requires accounts to be added as a member before submitting a deposit or redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
 contract FreelyTransferable is BaseHook {
-    constructor(address root_, address deployer) BaseHook(root_, deployer) {}
+    constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
@@ -28,6 +28,7 @@ contract FreelyTransferable is BaseHook {
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
         if (isRedeemFulfillment(from, to)) return true;
         if (isRedeemClaim(from, to)) return true;
+        if (isCrosschainTransfer(from, to)) return true;
 
         // Else, it's a transfer
         return true;
