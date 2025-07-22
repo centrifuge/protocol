@@ -72,6 +72,19 @@ jobs:
       - name: Check import order
         run: python3 script/utils/fix_imports.py --check-relative
 
+  roundtrip-relative-absolute-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --test-roundtrip
+
   unused-imports:
     runs-on: ubuntu-latest
     steps:

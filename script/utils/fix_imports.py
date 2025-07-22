@@ -743,6 +743,53 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
     except ValueError:
         return import_path
 
+def convert_relative_to_absolute_path(current_file: str, relative_path: str) -> str:
+    """Convert a relative import path to an absolute path"""
+    # Skip if already absolute or library import
+    if (relative_path.startswith('centrifuge-v3/') or 
+        relative_path.startswith('src/') or
+        relative_path.startswith('test/') or
+        relative_path.startswith('script/') or
+        'forge-std' in relative_path or
+        relative_path.startswith('createx-forge/') or
+        not (relative_path.startswith('./') or relative_path.startswith('../'))):
+        return relative_path
+    
+    # Convert current file path to use forward slashes and remove leading ./
+    current_file_clean = current_file.replace('\\', '/').lstrip('./')
+    current_dir = os.path.dirname(current_file_clean)
+    
+    # Resolve the relative path to absolute
+    try:
+        # Join current directory with relative path and normalize
+        absolute_path = os.path.normpath(os.path.join(current_dir, relative_path))
+        absolute_path = absolute_path.replace('\\', '/')  # Ensure forward slashes
+        return absolute_path
+    except Exception:
+        # Fallback to original path if resolution fails
+        return relative_path
+
+def convert_import_to_absolute(import_stmt: str, current_file: str) -> str:
+    """Convert an import statement to use absolute paths"""
+    # Extract the path from the import statement
+    path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
+    if not path_match:
+        path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
+    
+    if not path_match:
+        return import_stmt
+    
+    current_path = path_match.group(1)
+    
+    # Convert relative paths to absolute
+    if current_path.startswith('./') or current_path.startswith('../'):
+        absolute_path = convert_relative_to_absolute_path(current_file, current_path)
+        new_import = import_stmt.replace(f'"{current_path}"', f'"{absolute_path}"')
+        return new_import
+    
+    # Already absolute or library import - return as is
+    return import_stmt
+
 def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
     """Convert an import statement to use relative paths"""
     # Extract the path from the import statement
@@ -946,6 +993,63 @@ def check_all_relative_imports():
     
     return True
 
+def fix_absolute_imports_in_file(file_path: str) -> bool:
+    """Convert all relative imports to absolute imports in a file"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        imports = extract_imports(content)
+        if not imports:
+            return False
+        
+        new_content = content
+        changes_made = False
+        
+        for import_stmt in imports:
+            # Convert import to absolute
+            new_import = convert_import_to_absolute(import_stmt, file_path)
+            if new_import != import_stmt:
+                new_content = new_content.replace(import_stmt, new_import)
+                changes_made = True
+        
+        if changes_made:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            return True
+        
+        return False
+    
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        return False
+
+def check_absolute_imports_in_file(file_path: str) -> Tuple[bool, List[str]]:
+    """Check if all imports in a file use absolute paths"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        imports = extract_imports(content)
+        issues = []
+        
+        for import_stmt in imports:
+            # Extract the path from the import statement
+            path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
+            if not path_match:
+                path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
+            
+            if path_match:
+                path = path_match.group(1)
+                # Check if it's a relative path that should be absolute
+                if path.startswith('./') or path.startswith('../'):
+                    issues.append(f"Relative import found: {import_stmt}")
+        
+        return len(issues) == 0, issues
+    
+    except Exception as e:
+        return False, [f"Error processing file: {e}"]
+
 def fix_all_relative_imports():
     """Convert all absolute imports to relative imports in all Solidity files"""
     files = get_all_solidity_files()
@@ -966,10 +1070,154 @@ def fix_all_relative_imports():
     print(f"   Files processed: {len(files)}")
     print(f"   Files with imports converted: {total_files_fixed}")
 
+def fix_all_absolute_imports():
+    """Convert all relative imports to absolute imports in all Solidity files"""
+    files = get_all_solidity_files()
+    print(f"Converting to absolute imports in {len(files)} Solidity files...\n")
+    
+    total_files_fixed = 0
+    
+    for file_path in files:
+        if file_path.strip():
+            print(f"Processing: {file_path}")
+            if fix_absolute_imports_in_file(file_path):
+                total_files_fixed += 1
+                print(f"  ✅ Converted to absolute imports")
+            else:
+                print(f"  ℹ️  No relative imports found")
+    
+    print(f"\n📊 Summary:")
+    print(f"   Files processed: {len(files)}")
+    print(f"   Files with imports converted: {total_files_fixed}")
+
+def check_all_absolute_imports():
+    """Check if all imports use absolute paths in all Solidity files"""
+    files = get_all_solidity_files()
+    print(f"Checking absolute imports in {len(files)} Solidity files...\n")
+    
+    total_files_with_issues = 0
+    total_issues = 0
+    
+    for file_path in files:
+        if file_path.strip():
+            is_absolute, issues = check_absolute_imports_in_file(file_path)
+            if not is_absolute:
+                total_files_with_issues += 1
+                total_issues += len(issues)
+                print(f"\n📁 {file_path}")
+                for issue in issues:
+                    print(f"  ❌ {issue}")
+    
+    print(f"\n📊 Summary:")
+    print(f"   Files checked: {len(files)}")
+    print(f"   Files with relative imports: {total_files_with_issues}")
+    print(f"   Total relative imports: {total_issues}")
+    
+    if total_files_with_issues > 0:
+        print(f"\n💡 Run with --fix-absolute to convert these to absolute imports")
+        return False  # Return False to indicate issues found (for CI)
+    
+    return True
+
+def test_roundtrip_idempotency():
+    """Test that relative -> absolute -> relative conversion is idempotent"""
+    files = get_all_solidity_files()
+    print(f"Testing roundtrip idempotency on {len(files)} Solidity files...\n")
+    
+    # Step 1: Save original state
+    print("📝 Step 1: Saving original import state...")
+    original_content = {}
+    for file_path in files:
+        if file_path.strip():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    original_content[file_path] = f.read()
+            except Exception as e:
+                print(f"Error reading {file_path}: {e}")
+                continue
+    
+    print(f"✅ Saved original state for {len(original_content)} files")
+    
+    try:
+        # Step 2: Convert to absolute imports
+        print("\n🔄 Step 2: Converting all imports to absolute paths...")
+        converted_to_absolute = 0
+        for file_path in original_content.keys():
+            if fix_absolute_imports_in_file(file_path):
+                converted_to_absolute += 1
+        print(f"✅ Converted {converted_to_absolute} files to absolute imports")
+        
+        # Step 3: Convert back to relative imports
+        print("\n🔄 Step 3: Converting back to relative paths...")
+        converted_to_relative = 0
+        for file_path in original_content.keys():
+            if fix_relative_imports_in_file(file_path):
+                converted_to_relative += 1
+        print(f"✅ Converted {converted_to_relative} files back to relative imports")
+        
+        # Step 4: Compare with original state
+        print("\n🔍 Step 4: Comparing with original state...")
+        differences_found = 0
+        files_with_differences = []
+        
+        for file_path, original in original_content.items():
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    current_content = f.read()
+                
+                if current_content != original:
+                    differences_found += 1
+                    files_with_differences.append(file_path)
+                    
+                    # Show first few lines of difference for debugging
+                    orig_lines = original.split('\n')
+                    curr_lines = current_content.split('\n')
+                    print(f"\n❌ Difference in {file_path}:")
+                    for i, (orig, curr) in enumerate(zip(orig_lines, curr_lines)):
+                        if orig != curr:
+                            print(f"  Line {i+1}:")
+                            print(f"    Original: {orig}")
+                            print(f"    Current:  {curr}")
+                            break
+                            
+            except Exception as e:
+                print(f"Error comparing {file_path}: {e}")
+                differences_found += 1
+                files_with_differences.append(file_path)
+        
+        # Step 5: Report results
+        print(f"\n📊 Roundtrip Test Results:")
+        print(f"   Files tested: {len(original_content)}")
+        print(f"   Files converted to absolute: {converted_to_absolute}")
+        print(f"   Files converted back to relative: {converted_to_relative}")
+        print(f"   Files with differences: {differences_found}")
+        
+        if differences_found == 0:
+            print("✅ PASSED: Roundtrip conversion is idempotent!")
+            return True
+        else:
+            print("❌ FAILED: Roundtrip conversion is not idempotent!")
+            print(f"   Files with differences: {', '.join(files_with_differences)}")
+            return False
+            
+    finally:
+        # Restore original content in case of errors or differences
+        if differences_found > 0:
+            print("\n🔧 Restoring original content...")
+            restored = 0
+            for file_path, original in original_content.items():
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(original)
+                    restored += 1
+                except Exception as e:
+                    print(f"Error restoring {file_path}: {e}")
+            print(f"✅ Restored {restored} files to original state")
+
 def main():
     """Main function"""
     parser = argparse.ArgumentParser(
-        description='Solidity import organizer, unused import detector, and relative path converter',
+        description='Solidity import organizer, unused import detector, and path converter (relative/absolute)',
         epilog='''
 Examples:
   %(prog)s --check-unused              # Check for unused imports (default)
@@ -979,9 +1227,18 @@ Examples:
   %(prog)s --check-order               # Check import order (CI-friendly)
   %(prog)s --check-relative            # Check for absolute imports (CI-friendly)
   %(prog)s --fix-relative              # Convert absolute to relative imports only
+  %(prog)s --check-absolute            # Check for relative imports (CI-friendly)
+  %(prog)s --fix-absolute              # Convert relative to absolute imports only
+  %(prog)s --test-roundtrip            # Test that relative ↔ absolute conversion is idempotent (CI-friendly)
   %(prog)s --check-relative --file src/hub/Hub.sol  # Check specific file
 
-The --organize command now automatically converts to relative imports to ensure
+WORKFLOW FOR FILE REORGANIZATION:
+  1. %(prog)s --fix-absolute           # Convert all to absolute paths
+  2. # Move/reorganize files
+  3. # Update absolute paths (find/replace)
+  4. %(prog)s --fix-relative           # Convert back to relative paths
+
+The --organize command automatically converts to relative imports to ensure
 the repository can be used as a dependency without import path conflicts.
 Use --no-relative to disable this behavior if needed.
         ''',
@@ -993,12 +1250,20 @@ Use --no-relative to disable this behavior if needed.
     parser.add_argument('--check-order', action='store_true', help='Check if imports are properly ordered (dry-run of --organize)')
     parser.add_argument('--check-relative', action='store_true', help='Check if all imports use relative paths (for CI)')
     parser.add_argument('--fix-relative', action='store_true', help='Convert absolute imports to relative imports')
+    parser.add_argument('--check-absolute', action='store_true', help='Check if all imports use absolute paths (for CI)')
+    parser.add_argument('--fix-absolute', action='store_true', help='Convert relative imports to absolute imports')
+    parser.add_argument('--test-roundtrip', action='store_true', help='Test that relative ↔ absolute conversion is idempotent (for CI)')
     parser.add_argument('--no-relative', action='store_true', help='Skip relative path conversion when organizing (use with --organize)')
     parser.add_argument('--file', type=str, help='Process a specific file instead of all files')
 
     args = parser.parse_args()
 
-    if not args.check_unused and not args.organize and not args.fix_unused and not args.check_order and not args.check_relative and not args.fix_relative:
+    # Check for default behavior
+    has_action = (args.check_unused or args.organize or args.fix_unused or args.check_order or 
+                  args.check_relative or args.fix_relative or args.check_absolute or 
+                  args.fix_absolute or args.test_roundtrip)
+    
+    if not has_action:
         # Default behavior: check for unused imports
         args.check_unused = True
 
@@ -1060,6 +1325,22 @@ Use --no-relative to disable this behavior if needed.
                 print(f"✅ Converted to relative imports in {args.file}")
             else:
                 print(f"ℹ️  No absolute imports found in {args.file}")
+
+        if args.check_absolute:
+            is_absolute, issues = check_absolute_imports_in_file(args.file)
+            if is_absolute:
+                print(f"✅ All imports are absolute in {args.file}")
+            else:
+                print(f"📁 {args.file}")
+                for issue in issues:
+                    print(f"  ❌ {issue}")
+                print(f"\n💡 Run with --fix-absolute to convert these to absolute imports")
+
+        if args.fix_absolute:
+            if fix_absolute_imports_in_file(args.file):
+                print(f"✅ Converted to absolute imports in {args.file}")
+            else:
+                print(f"ℹ️  No relative imports found in {args.file}")
     else:
         # Process all files
         if args.check_unused:
@@ -1083,6 +1364,19 @@ Use --no-relative to disable this behavior if needed.
 
         if args.fix_relative:
             fix_all_relative_imports()
+
+        if args.check_absolute:
+            success = check_all_absolute_imports()
+            if not success:
+                exit(1)  # Exit with error code for CI
+
+        if args.fix_absolute:
+            fix_all_absolute_imports()
+
+        if args.test_roundtrip:
+            success = test_roundtrip_idempotency()
+            if not success:
+                exit(1)  # Exit with error code for CI
 
 if __name__ == "__main__":
     main()

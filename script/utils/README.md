@@ -8,11 +8,16 @@ This script transforms your Solidity codebase to use clean, relative import path
 
 ### Key Features
 
+- ✅ **Bidirectional Path Conversion**: Convert between relative ↔ absolute imports seamlessly
+- ✅ **File Reorganization Workflow**: Safe file moving with automatic import path management
 - ✅ **Absolute → Relative Path Conversion**: Converts `src/`, `script/`, `test/` imports to proper relative paths
+- ✅ **Relative → Absolute Path Conversion**: Convert relative paths to absolute for file reorganization
 - ✅ **Same-Directory Import Detection**: `src/misc/interfaces/IERC165.sol` → `./IERC165.sol`
 - ✅ **Smart Cross-Directory Imports**: `src/hub/Hub.sol` importing `src/misc/Auth.sol` → `../misc/Auth.sol`
 - ✅ **Test-to-Source Imports**: Preserves `src/` prefix when needed (e.g., test files importing source)
 - ✅ **Priority-Based Organization**: Groups imports by logical categories with proper spacing
+- ✅ **Advanced Subgrouping**: Organizes imports by base directory (`../`, `src`, `test`, `script`)
+- ✅ **Roundtrip Idempotency**: Ensures relative ↔ absolute conversions are lossless
 - ✅ **Unused Import Detection**: Identifies and removes unused imports
 - ✅ **Multi-line Import Support**: Handles complex import statements across multiple lines
 - ✅ **Local Import Prefixing**: Adds `./` to local subdirectory imports
@@ -36,6 +41,39 @@ python3 script/utils/fix_imports.py --check-order
 python3 script/utils/fix_imports.py --check-relative
 ```
 
+## 🔄 **File Reorganization Workflow**
+
+When you need to move/reorganize files in your repository, use this **safe workflow** to avoid breaking import paths:
+
+### Step 1: Convert to Absolute Imports
+```bash
+python3 script/utils/fix_imports.py --fix-absolute
+```
+This converts all relative imports (`./`, `../`) to absolute paths (`src/`, `test/`, `script/`), making them immune to file moves.
+
+### Step 2: Move Your Files
+Move, rename, or reorganize your files as needed. The absolute imports won't break.
+
+### Step 3: Update Absolute Paths (if needed) 
+If you moved files to different base directories, update the absolute paths:
+```bash
+# Example: If you moved src/hub/Hub.sol to src/core/Hub.sol
+find . -name "*.sol" -exec sed -i 's|src/hub/Hub.sol|src/core/Hub.sol|g' {} \;
+```
+
+### Step 4: Convert Back to Relative Imports
+```bash
+python3 script/utils/fix_imports.py --fix-relative
+```
+This converts all absolute imports back to clean relative paths.
+
+### 🧪 **Idempotency Testing**
+```bash
+# Test that relative ↔ absolute ↔ relative conversion is lossless
+python3 script/utils/fix_imports.py --test-roundtrip
+```
+Perfect for CI to ensure conversion reliability!
+
 ### Process Specific Files
 
 ```bash
@@ -48,16 +86,19 @@ python3 script/utils/fix_imports.py --check-unused --file src/misc/Auth.sol
 
 ## 📋 Command Reference
 
-| Command                    | Description                                      | Exit Code on Issues |
-| -------------------------- | ------------------------------------------------ | ------------------- |
-| `--check-unused`           | Check for unused imports (default)               | ❌                   |
-| `--fix-unused`             | Remove unused imports                            | ➖                   |
-| `--organize`               | **Organize imports + convert to relative paths** | ➖                   |
-| `--organize --no-relative` | Organize imports only (skip relative conversion) | ➖                   |
-| `--check-order`            | Check import organization (dry-run)              | ❌                   |
-| `--check-relative`         | Check for absolute imports                       | ❌                   |
-| `--fix-relative`           | Convert absolute to relative imports only        | ➖                   |
-| `--file <path>`            | Process specific file                            | ➖                   |
+| Command                    | Description                                         | Exit Code on Issues |
+| -------------------------- | --------------------------------------------------- | ------------------- |
+| `--check-unused`           | Check for unused imports (default)                  | ❌                   |
+| `--fix-unused`             | Remove unused imports                               | ➖                   |
+| `--organize`               | **Organize imports + convert to relative paths**    | ➖                   |
+| `--organize --no-relative` | Organize imports only (skip relative conversion)    | ➖                   |
+| `--check-order`            | Check import organization (dry-run)                 | ❌                   |
+| `--check-relative`         | Check for absolute imports                          | ❌                   |
+| `--fix-relative`           | Convert absolute to relative imports only           | ➖                   |
+| `--check-absolute`         | Check for relative imports                          | ❌                   |
+| `--fix-absolute`           | **Convert relative to absolute imports**            | ➖                   |
+| `--test-roundtrip`         | **Test relative ↔ absolute conversion is lossless** | ❌                   |
+| `--file <path>`            | Process specific file                               | ➖                   |
 
 **Legend**: ❌ = Exits with error code for CI, ➖ = Always exits successfully
 
@@ -78,6 +119,24 @@ python3 script/utils/fix_imports.py --check-relative
 
 # 4. Clean up unused imports
 python3 script/utils/fix_imports.py --fix-unused
+```
+
+### File Reorganization Workflow
+```bash
+# 1. Convert to absolute paths for safe file moving
+python3 script/utils/fix_imports.py --fix-absolute
+
+# 2. Move/reorganize files as needed
+# ... move your files ...
+
+# 3. Update absolute paths if needed (example)
+find . -name "*.sol" -exec sed -i 's|src/old/path|src/new/path|g' {} \;
+
+# 4. Convert back to relative paths
+python3 script/utils/fix_imports.py --fix-relative
+
+# 5. Verify everything is back to original state
+python3 script/utils/fix_imports.py --test-roundtrip
 ```
 
 ### Specific File Processing
