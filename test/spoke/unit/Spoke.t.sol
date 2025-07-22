@@ -3,16 +3,19 @@ pragma solidity 0.8.28;
 
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
@@ -40,10 +43,13 @@ contract SpokeTest is Test {
     address immutable RECEIVER = makeAddr("RECEIVER");
 
     ITokenFactory tokenFactory = ITokenFactory(makeAddr("tokenFactory"));
-    IPoolEscrowFactory poolEscrowFactory = IPoolEscrowFactory(makeAddr("poolEscrowFactory"));
+    IPoolEscrowFactory poolEscrowFactory = IPoolEscrowFactory(address(new IsContract()));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     IGateway gateway = IGateway(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
+    IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
+    address HOOK = makeAddr("hook");
+    address NO_HOOK = address(0);
 
     AssetId immutable ASSET_ID_20 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
     AssetId immutable ASSET_ID_6909_1 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
@@ -52,6 +58,11 @@ contract SpokeTest is Test {
     address erc6909 = address(new IsContract());
     uint256 constant TOKEN_1 = 23;
     uint256 constant TOKEN_2 = 123;
+
+    uint8 constant DECIMALS = 18;
+    string constant NAME = "name";
+    string constant SYMBOL = "symbol";
+    bytes32 constant SALT = "salt";
 
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
@@ -71,13 +82,35 @@ contract SpokeTest is Test {
 
         vm.stopPrank();
 
+        _mockBaseStuff();
+    }
+
+    function _mockBaseStuff() private {
         vm.mockCall(
             address(sender), abi.encodeWithSelector(sender.localCentrifugeId.selector), abi.encode(LOCAL_CENTRIFUGE_ID)
         );
-    }
 
-    function testConstructor() public view {
-        assertEq(address(spoke.tokenFactory()), address(tokenFactory));
+        vm.mockCall(
+            address(poolEscrowFactory),
+            abi.encodeWithSelector(poolEscrowFactory.escrow.selector, POOL_A),
+            abi.encode(escrow)
+        );
+
+        vm.mockCall(
+            address(poolEscrowFactory),
+            abi.encodeWithSelector(poolEscrowFactory.newEscrow.selector, POOL_A),
+            abi.encode(escrow)
+        );
+
+        vm.mockCall(
+            address(gateway), abi.encodeWithSelector(gateway.setRefundAddress.selector, POOL_A, escrow), abi.encode()
+        );
+
+        vm.mockCall(
+            address(tokenFactory),
+            abi.encodeWithSelector(tokenFactory.newToken.selector, NAME, SYMBOL, DECIMALS, SALT),
+            abi.encode(share)
+        );
     }
 
     function _mockPayment(address who) internal {
@@ -86,6 +119,10 @@ contract SpokeTest is Test {
         );
 
         vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endTransactionPayment.selector), abi.encode());
+    }
+
+    function testConstructor() public view {
+        assertEq(address(spoke.tokenFactory()), address(tokenFactory));
     }
 }
 
@@ -191,10 +228,6 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 }
 
 contract SpokeTestRegisterAsset is SpokeTest {
-    uint8 constant DECIMALS = 18;
-    string constant NAME = "name";
-    string constant SYMBOL = "symbol";
-
     function setUp() public override {
         super.setUp();
         _mockPayment(ANY);
@@ -333,5 +366,113 @@ contract SpokeTestRegisterAsset is SpokeTest {
         spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_2);
 
         assertEq(spoke.assetCounter(), 2);
+    }
+}
+
+contract SpokeTestAddPool is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.addPool(POOL_A);
+    }
+
+    function testErrPoolAlreadyAdded() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.PoolAlreadyAdded.selector);
+        spoke.addPool(POOL_A);
+    }
+
+    function testAddPool() public {
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.AddPool(POOL_A);
+        spoke.addPool(POOL_A);
+
+        assertEq(spoke.pools(POOL_A), block.timestamp);
+    }
+}
+
+contract SpokeTestAddShareClass is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+    }
+
+    function testErrInvalidPool() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidPool.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+    }
+
+    function testErrTooFewDecimals() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.TooFewDecimals.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 1, SALT, NO_HOOK);
+    }
+
+    function testErrTooManyDecimals() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.TooManyDecimals.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 19, SALT, NO_HOOK);
+    }
+
+    function testErrShareClassAlreadyRegistered() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareClassAlreadyRegistered.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+    }
+
+    function testAddShareClass() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.AddShareClass(POOL_A, SC_1, share);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        assertEq(address(spoke.shareToken(POOL_A, SC_1)), address(share));
+    }
+
+    function testErrInvalidHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidHook.selector);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
+    }
+
+    function testAddShareClassWithHook() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.mockCall(
+            HOOK,
+            abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(share), abi.encodeWithSignature("file(bytes32,address)", bytes32("hook"), HOOK), abi.encode()
+        );
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
     }
 }
