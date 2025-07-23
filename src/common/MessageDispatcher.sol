@@ -18,6 +18,8 @@ import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -256,7 +258,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IHubMessageSender
     function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setRequestManager(poolId, scId, assetId, manager.toAddress());
+            spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
                 assetId.centrifugeId(),

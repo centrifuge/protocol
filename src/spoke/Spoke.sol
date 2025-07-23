@@ -205,11 +205,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) public auth {
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+        public
+        auth
+    {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         require(shareClass.asset[assetId].numVaults == 0, MoreThanZeroLinkedVaults());
-        shareClass.asset[assetId].manager = IRequestManager(manager);
-        emit SetRequestManager(poolId, scId, assetId, IRequestManager(manager));
+        shareClass.asset[assetId].manager = manager;
+        emit SetRequestManager(poolId, scId, assetId, manager);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -257,14 +260,16 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        Price storage poolPerShare = shareClass.pricePoolPerShare;
         require(computedAt >= shareClass.pricePoolPerShare.computedAt, CannotSetOlderPrice());
 
-        // Disable expiration of the price
-        if (shareClass.pricePoolPerShare.computedAt == 0) {
-            shareClass.pricePoolPerShare.maxAge = type(uint64).max;
+        // Disable expiration of the price if never initialized
+        if (poolPerShare.computedAt == 0 && poolPerShare.maxAge == 0) {
+            poolPerShare.maxAge = type(uint64).max;
         }
 
-        shareClass.pricePoolPerShare = Price(price, computedAt, shareClass.pricePoolPerShare.maxAge);
+        poolPerShare.price = price;
+        poolPerShare.computedAt = computedAt;
         emit UpdateSharePrice(poolId, scId, price, computedAt);
     }
 
@@ -281,8 +286,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
-        // Disable expiration of the price
-        if (poolPerAsset.computedAt == 0) {
+        // Disable expiration of the price if never initialized
+        if (poolPerAsset.computedAt == 0 && poolPerAsset.maxAge == 0) {
             poolPerAsset.maxAge = type(uint64).max;
         }
 
@@ -299,7 +304,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        require(assetId.raw() != 0, UnknownAsset());
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         shareClass.pricePoolPerAsset[asset][tokenId].maxAge = maxPriceAge;
@@ -379,7 +383,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
-        require(!vaultDetails_.isLinked);
+        require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
         IVaultManager manager = vault.manager();
         manager.addVault(poolId, scId, assetId, vault, asset, tokenId);
@@ -402,7 +406,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
-        require(vaultDetails_.isLinked);
+        require(vaultDetails_.isLinked, AlreadyLinkedVault());
 
         IVaultManager manager = vault.manager();
         manager.removeVault(poolId, scId, assetId, vault, asset, tokenId);

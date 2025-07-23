@@ -203,7 +203,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             );
         }
 
-        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(asyncRequestManager));
+        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), asyncRequestManager);
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncManager), true);
 

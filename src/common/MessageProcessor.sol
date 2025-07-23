@@ -17,6 +17,8 @@ import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
@@ -141,7 +143,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
             spoke.setRequestManager(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.manager.toAddress()
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                IRequestManager(m.manager.toAddress())
             );
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
             MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);

@@ -8,6 +8,8 @@ import {AssetId} from "src/common/types/AssetId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+
 /// -----------------------------------------------------
 ///  Hub Handlers
 /// -----------------------------------------------------
@@ -85,7 +87,7 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {D18, d18} from "src/misc/types/D18.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
 import {IERC165} from "src/misc/interfaces/IERC7575.sol";
@@ -22,6 +23,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {Spoke, ISpoke} from "src/spoke/Spoke.sol";
 import {IVault} from "src/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -58,11 +60,18 @@ contract SpokeTest is Test {
     IGateway gateway = IGateway(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
     IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
+    IRequestManager requestManager = IRequestManager(address(new IsContract()));
+    IVaultManager vaultManager = IVaultManager(address(new IsContract()));
     IVault vault = IVault(address(new IsContract()));
+
     address HOOK = makeAddr("hook");
     address HOOK2 = makeAddr("hook2");
-    address REQUEST_MANAGER = makeAddr("requestManager");
     address NO_HOOK = address(0);
+
+    PoolId constant POOL_A = PoolId.wrap(1);
+    PoolId constant POOL_B = PoolId.wrap(2);
+    ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
+    ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("sc2"));
 
     AssetId immutable ASSET_ID_20 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
     AssetId immutable ASSET_ID_6909_1 = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
@@ -78,11 +87,16 @@ contract SpokeTest is Test {
     bytes32 constant SALT = "salt";
     bytes constant PAYLOAD = "payload";
 
-    PoolId constant POOL_A = PoolId.wrap(1);
-    ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
+    uint128 constant PRICE_RAW = 42e18;
+    D18 immutable PRICE = d18(PRICE_RAW);
+    uint128 constant AMOUNT = 200;
+    uint64 immutable MAX_AGE = 10_000;
+    uint64 immutable PAST_OLD = 0;
+    uint64 immutable PRESENT = MAX_AGE;
+    uint64 immutable FUTURE = MAX_AGE + 1;
+
     uint16 constant INITIAL_GAS = 1000;
     uint16 constant GAS = 100;
-    uint128 constant AMOUNT = 200;
 
     SpokeExt spoke = new SpokeExt(tokenFactory, AUTH);
 
@@ -95,6 +109,7 @@ contract SpokeTest is Test {
         spoke.file("poolEscrowFactory", address(poolEscrowFactory));
 
         vm.stopPrank();
+        vm.warp(MAX_AGE);
 
         _mockBaseStuff();
     }
@@ -129,6 +144,10 @@ contract SpokeTest is Test {
         vm.mockCall(address(share), abi.encodeWithSelector(share.name.selector), abi.encode(NAME));
         vm.mockCall(address(share), abi.encodeWithSelector(share.symbol.selector), abi.encode(SYMBOL));
         vm.mockCall(address(share), abi.encodeWithSelector(share.hook.selector), abi.encode(HOOK));
+
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_A));
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_1));
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.manager.selector), abi.encode(vaultManager));
     }
 
     function _mockPayment(address who) internal {
@@ -151,6 +170,34 @@ contract SpokeTest is Test {
         vm.mockCall(
             address(hook),
             abi.encodeWithSelector(ITransferHook(hook).updateRestriction.selector, share, PAYLOAD),
+            abi.encode()
+        );
+    }
+
+    function _mockERC20(uint8 decimals) internal {
+        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(decimals));
+        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.name.selector), abi.encode(NAME));
+        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode(SYMBOL));
+    }
+
+    function _mockERC6909(uint8 decimals, uint256 token) internal {
+        vm.mockCall(
+            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector, token), abi.encode(decimals)
+        );
+
+        vm.mockCall(
+            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.name.selector, token), abi.encode(NAME)
+        );
+
+        vm.mockCall(
+            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.symbol.selector, token), abi.encode(SYMBOL)
+        );
+    }
+
+    function _mockSendRegisterAsset(AssetId assetId) internal {
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
             abi.encode()
         );
     }
@@ -265,34 +312,6 @@ contract SpokeTestRegisterAsset is SpokeTest {
     function setUp() public override {
         super.setUp();
         _mockPayment(ANY);
-    }
-
-    function _mockERC20(uint8 decimals) private {
-        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(decimals));
-        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.name.selector), abi.encode(NAME));
-        vm.mockCall(address(erc20), abi.encodeWithSelector(IERC20Metadata.symbol.selector), abi.encode(SYMBOL));
-    }
-
-    function _mockERC6909(uint8 decimals, uint256 token) private {
-        vm.mockCall(
-            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.decimals.selector, token), abi.encode(decimals)
-        );
-
-        vm.mockCall(
-            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.name.selector, token), abi.encode(NAME)
-        );
-
-        vm.mockCall(
-            address(erc6909), abi.encodeWithSelector(IERC6909MetadataExt.symbol.selector, token), abi.encode(SYMBOL)
-        );
-    }
-
-    function _mockSendRegisterAsset(AssetId assetId) private {
-        vm.mockCall(
-            address(sender),
-            abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
-            abi.encode()
-        );
     }
 
     function testErrAssetMissingDecimalsERC20() public {
@@ -416,6 +435,12 @@ contract SpokeTestRequest is SpokeTest {
         spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
     }
 
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
+    }
+
     function testRequest() public {
         vm.prank(AUTH);
         spoke.addPool(POOL_A);
@@ -424,7 +449,7 @@ contract SpokeTestRequest is SpokeTest {
         spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
 
         vm.mockCall(
             address(sender),
@@ -432,7 +457,7 @@ contract SpokeTestRequest is SpokeTest {
             abi.encode()
         );
 
-        vm.prank(REQUEST_MANAGER);
+        vm.prank(address(requestManager));
         spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
     }
 }
@@ -460,6 +485,7 @@ contract SpokeTestAddPool is SpokeTest {
         spoke.addPool(POOL_A);
 
         assertEq(spoke.pools(POOL_A), block.timestamp);
+        assertEq(spoke.isPoolActive(POOL_A), true);
     }
 }
 
@@ -559,7 +585,13 @@ contract SpokeTestSetRequestManager is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
     }
 
     function testErrMoreThanZeroLinkedVaults() public {
@@ -574,7 +606,7 @@ contract SpokeTestSetRequestManager is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.MoreThanZeroLinkedVaults.selector);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
     }
 
     function testSetRequestManager() public {
@@ -586,10 +618,10 @@ contract SpokeTestSetRequestManager is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpoke.SetRequestManager(POOL_A, SC_1, ASSET_ID_20, IRequestManager(REQUEST_MANAGER));
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, REQUEST_MANAGER);
+        emit ISpoke.SetRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
 
-        assertEq(address(spoke.requestManager(POOL_A, SC_1, ASSET_ID_20)), REQUEST_MANAGER);
+        assertEq(address(spoke.requestManager(POOL_A, SC_1, ASSET_ID_20)), address(requestManager));
     }
 }
 
@@ -718,5 +750,370 @@ contract SpokeTestExecuteTransferShares is SpokeTest {
         vm.expectEmit();
         emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, RECEIVER, AMOUNT);
         spoke.executeTransferShares(POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT);
+    }
+}
+
+contract SpokeTestUpdatePricePoolPerShare is SpokeTest {
+    using CastLib for *;
+
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+    }
+
+    function testErrCannotSetOlderPrice() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+    }
+
+    function testUpdatePricePoolPerShare() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UpdateSharePrice(POOL_A, SC_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+
+        (uint64 computeAt, uint64 maxAge, uint64 validUntil) = spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(computeAt, FUTURE);
+        assertEq(maxAge, type(uint64).max);
+        assertEq(validUntil, type(uint64).max);
+    }
+
+    function testMaxAgeNotOverwritenAfterUpdatingPrice() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.setMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+
+        (, uint64 maxAge,) = spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(maxAge, MAX_AGE);
+    }
+}
+
+contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
+    using CastLib for *;
+
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+    }
+
+    function testErrUnknownAsset() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+    }
+
+    function testErrCannotSetOlderPrice() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+    }
+
+    function testUpdatePricePoolPerAsset() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UpdateAssetPrice(POOL_A, SC_1, erc6909, TOKEN_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        (uint64 computeAt, uint64 maxAge, uint64 validUntil) =
+            spoke.markersPricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1);
+        assertEq(computeAt, FUTURE);
+        assertEq(maxAge, type(uint64).max);
+        assertEq(validUntil, type(uint64).max);
+    }
+
+    function testMaxAgeNotOverwritenAfterUpdatingPrice() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        (, uint64 maxAge,) = spoke.markersPricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1);
+        assertEq(maxAge, MAX_AGE);
+    }
+}
+
+contract SpokeTestSetMaxSharePriceAge is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.setMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.setMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
+    }
+
+    function testSetMaxSharePriceAge() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UpdateMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
+        spoke.setMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
+
+        (, uint64 maxAge, uint64 validUntil) = spoke.markersPricePoolPerShare(POOL_A, SC_1);
+        assertEq(maxAge, MAX_AGE);
+        assertEq(validUntil, MAX_AGE);
+    }
+}
+
+contract SpokeTestSetMaxAssetPriceAge is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
+    }
+
+    function testErrUnknownAsset() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
+    }
+
+    function testSetMaxAssetPriceAge() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UpdateMaxAssetPriceAge(POOL_A, SC_1, erc6909, TOKEN_1, MAX_AGE);
+        spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
+
+        (, uint64 maxAge, uint64 validUntil) = spoke.markersPricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1);
+        assertEq(maxAge, MAX_AGE);
+        assertEq(validUntil, MAX_AGE);
+    }
+}
+
+contract SpokeTestRequestCallback is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.requestCallback(POOL_A, SC_1, ASSET_ID_6909_1, PAYLOAD);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.requestCallback(POOL_A, SC_1, ASSET_ID_6909_1, PAYLOAD);
+    }
+
+    function testErrInvalidRequestManager() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidRequestManager.selector);
+        spoke.requestCallback(POOL_A, SC_1, ASSET_ID_6909_1, PAYLOAD);
+    }
+
+    function testRequestCallback() public {
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+
+        vm.mockCall(
+            address(requestManager),
+            abi.encodeWithSelector(requestManager.callback.selector, POOL_A, SC_1, ASSET_ID_6909_1, PAYLOAD),
+            abi.encode()
+        );
+
+        vm.prank(AUTH);
+        spoke.requestCallback(POOL_A, SC_1, ASSET_ID_6909_1, PAYLOAD);
+    }
+}
+
+contract SpokeTestLinkVault is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrInvalidVaultByPoolId() public {
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_B));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrInvalidVaultByShareClassId() public {
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_2));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrUnknownAsset() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testLinkVault() public {
+        _mockPayment(ANY);
+        _mockERC6909(18, TOKEN_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1);
+
+        vm.prank(ANY);
+        spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.addPool(POOL_A);
+
+        vm.prank(AUTH);
+        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
+
+        vm.mockCall(
+            address(vaultManager),
+            abi.encodeWithSelector(
+                vaultManager.addVault.selector, POOL_A, SC_1, ASSET_ID_6909_1, vault, erc6909, TOKEN_1
+            ),
+            abi.encode()
+        );
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 }
