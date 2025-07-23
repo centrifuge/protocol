@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
-import {ReentrancyProtection} from "src/misc/ReentrancyProtection.sol";
+import {Price} from "./types/Price.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IShareToken} from "./interfaces/IShareToken.sol";
+import {IVaultManager} from "./interfaces/IVaultManager.sol";
+import {IRequestManager} from "./interfaces/IRequestManager.sol";
+import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
+import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
+import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {newAssetId, AssetId} from "src/common/types/AssetId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {ISpokeGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {VaultUpdateKind, MessageLib} from "src/common/libraries/MessageLib.sol";
-import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18} from "../misc/types/D18.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {IERC165} from "../misc/interfaces/IERC7575.sol";
+import {IERC20Metadata} from "../misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "../misc/interfaces/IERC6909.sol";
+import {ReentrancyProtection} from "../misc/ReentrancyProtection.sol";
 
-import {Price} from "src/spoke/types/Price.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
-import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
-import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "src/spoke/interfaces/ISpoke.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {newAssetId, AssetId} from "../common/types/AssetId.sol";
+import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
+import {ITransferHook} from "../common/interfaces/ITransferHook.sol";
+import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {ISpokeGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
+import {VaultUpdateKind, MessageLib} from "../common/libraries/MessageLib.sol";
+import {IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
