@@ -212,17 +212,6 @@ interface ISpoke {
         external
         returns (IVault);
 
-    /// @notice Register a vault.
-    function registerVault(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        IVaultFactory factory,
-        IVault vault
-    ) external;
-
     /// @notice Links a deployed vault to the given pool, share class and asset.
     ///
     /// @param poolId The pool id

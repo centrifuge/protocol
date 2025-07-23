@@ -21,9 +21,10 @@ import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {Spoke, ISpoke, VaultDetails} from "src/spoke/Spoke.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
+import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import "forge-std/Test.sol";
 
@@ -56,6 +57,7 @@ contract SpokeTest is Test {
 
     ITokenFactory tokenFactory = ITokenFactory(makeAddr("tokenFactory"));
     IPoolEscrowFactory poolEscrowFactory = IPoolEscrowFactory(address(new IsContract()));
+    IVaultFactory vaultFactory = IVaultFactory(address(new IsContract()));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     IGateway gateway = IGateway(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
@@ -146,6 +148,7 @@ contract SpokeTest is Test {
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_1));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.manager.selector), abi.encode(vaultManager));
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.vaultKind.selector), abi.encode(VaultKind.Async));
     }
 
     function _mockPayment(address who) internal {
@@ -214,6 +217,16 @@ contract SpokeTest is Test {
         );
     }
 
+    function _mockVaultFactory(address asset, uint256 tokenId) internal {
+        vm.mockCall(
+            address(vaultFactory),
+            abi.encodeWithSelector(
+                vaultFactory.newVault.selector, POOL_A, SC_1, asset, tokenId, share, new address[](0)
+            ),
+            abi.encode(vault)
+        );
+    }
+
     function _utilRegisterAsset(address asset) internal {
         _mockPayment(ANY);
 
@@ -238,6 +251,19 @@ contract SpokeTest is Test {
 
         vm.prank(AUTH);
         spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, hook);
+    }
+
+    function _utilDeployVault(address asset) internal {
+        uint256 tokenId = 0;
+        if (asset == erc6909) tokenId = TOKEN_1;
+
+        AssetId assetId = ASSET_ID_20;
+        if (asset == erc6909) assetId = ASSET_ID_6909_1;
+
+        _mockVaultFactory(asset, tokenId);
+
+        vm.prank(AUTH);
+        spoke.deployVault(POOL_A, SC_1, assetId, vaultFactory);
     }
 
     function testConstructor() public view {
@@ -633,6 +659,7 @@ contract SpokeTestSetRequestManager is SpokeTest {
     function testErrMoreThanZeroLinkedVaults() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc6909);
 
         _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
@@ -974,6 +1001,46 @@ contract SpokeTestRequestCallback is SpokeTest {
     }
 }
 
+contract SpokeTestDeployVault is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+    }
+
+    function testErrUnknownAsset() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+    }
+
+    function testDeployVault() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultFactory(erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.DeployVault(POOL_A, SC_1, erc6909, TOKEN_1, vaultFactory, vault, VaultKind.Async);
+        IVault returnedVault = spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+
+        assertEq(address(returnedVault), address(vault));
+        assertEq(spoke.vaultDetails(vault).assetId.raw(), ASSET_ID_6909_1.raw());
+        assertEq(spoke.vaultDetails(vault).asset, erc6909);
+        assertEq(spoke.vaultDetails(vault).tokenId, TOKEN_1);
+        assertEq(spoke.vaultDetails(vault).isLinked, false);
+    }
+}
+
 contract SpokeTestLinkVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -1014,6 +1081,7 @@ contract SpokeTestLinkVault is SpokeTest {
     function testErrAlreadyLinkedVault() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc6909);
 
         _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
@@ -1028,6 +1096,7 @@ contract SpokeTestLinkVault is SpokeTest {
     function testLinkVaultERC6909() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc6909);
 
         _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
@@ -1043,6 +1112,7 @@ contract SpokeTestLinkVault is SpokeTest {
     function testLinkVaultERC20() public {
         _utilRegisterAsset(erc20);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc20);
 
         _mockVaultManager(ASSET_ID_20, erc20, 0);
 
@@ -1106,6 +1176,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
     function testUnlinkVaultERC6909() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc6909);
 
         _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
@@ -1124,6 +1195,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
     function testUnlinkVaultERC20() public {
         _utilRegisterAsset(erc20);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc20);
 
         _mockVaultManager(ASSET_ID_20, erc20, 0);
 
