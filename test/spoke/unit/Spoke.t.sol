@@ -206,6 +206,12 @@ contract SpokeTest is Test {
             abi.encodeWithSelector(vaultManager.addVault.selector, POOL_A, SC_1, assetId, vault, asset, tokenId),
             abi.encode()
         );
+
+        vm.mockCall(
+            address(vaultManager),
+            abi.encodeWithSelector(vaultManager.removeVault.selector, POOL_A, SC_1, assetId, vault, asset, tokenId),
+            abi.encode()
+        );
     }
 
     function _utilRegisterAsset(address asset) internal {
@@ -1046,5 +1052,91 @@ contract SpokeTestLinkVault is SpokeTest {
         vm.expectEmit();
         emit ISpoke.LinkVault(POOL_A, SC_1, erc20, 0, vault);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+    }
+}
+
+contract SpokeTestUnlinkVault is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrInvalidVaultByPoolId() public {
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_B));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrInvalidVaultByShareClassId() public {
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_2));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidVault.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrUnknownAsset() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrShareTokenDoesNotExists() public {
+        _utilRegisterAsset(erc6909);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrAlreadyUnlinkedVault() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.AlreadyUnlinkedVault.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testUnlinkVaultERC6909() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UnlinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        assertEq(spoke.numVaults(POOL_A, SC_1, ASSET_ID_6909_1), 0);
+        assertEq(spoke.isLinked(vault), false);
+    }
+
+    function testUnlinkVaultERC20() public {
+        _utilRegisterAsset(erc20);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultManager(ASSET_ID_20, erc20, 0);
+
+        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
+
+        vm.prank(AUTH);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+
+        vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, address(0)), abi.encode());
+
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpoke.UnlinkVault(POOL_A, SC_1, erc20, 0, vault);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
     }
 }

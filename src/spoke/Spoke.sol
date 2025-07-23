@@ -406,7 +406,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
-        require(vaultDetails_.isLinked, AlreadyLinkedVault());
+        require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
         IVaultManager manager = vault.manager();
         manager.removeVault(poolId, scId, assetId, vault, asset, tokenId);
