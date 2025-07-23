@@ -278,7 +278,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         _mockPayment(ANY);
     }
 
-    function _mockShare(address sender, bool value) public {
+    function _mockCrossTransferShare(address sender, bool value) public {
         vm.mockCall(
             address(share),
             abi.encodeWithSelector(share.checkTransferRestriction.selector, sender, REMOTE_CENTRIFUGE_ID, AMOUNT),
@@ -294,9 +294,14 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.mockCall(address(share), abi.encodeWithSelector(share.burn.selector, spoke, AMOUNT), abi.encode());
     }
 
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.crosschainTransferShares{value: GAS}(LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
+    }
+
     function testErrLocalTransferNotAllowed() public {
-        vm.prank(AUTH);
-        spoke.linkToken(POOL_A, SC_1, share);
+        _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.LocalTransferNotAllowed.selector);
@@ -304,10 +309,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
     }
 
     function testErrCrossChainTransferNotAllowed() public {
-        vm.prank(AUTH);
-        spoke.linkToken(POOL_A, SC_1, share);
+        _utilAddPoolAndShareClass(NO_HOOK);
 
-        _mockShare(ANY, false);
+        _mockCrossTransferShare(ANY, false);
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
@@ -315,10 +319,9 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
     }
 
     function testCrossChainTransfer() public {
-        vm.prank(AUTH);
-        spoke.linkToken(POOL_A, SC_1, share);
+        _utilAddPoolAndShareClass(NO_HOOK);
 
-        _mockShare(ANY, true);
+        _mockCrossTransferShare(ANY, true);
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(

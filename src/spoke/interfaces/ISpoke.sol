@@ -124,7 +124,6 @@ interface ISpoke {
     error UnknownVault();
     error UnknownAsset();
     error MalformedVaultUpdateMessage();
-    error UnknownToken();
     error InvalidFactory();
     error InvalidPrice();
     error AssetMissingDecimals();

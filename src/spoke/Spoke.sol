@@ -432,9 +432,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function shareToken(PoolId poolId, ShareClassId scId) public view returns (IShareToken) {
-        IShareToken token = pools[poolId].shareClasses[scId].shareToken;
-        require(address(token) != address(0), UnknownToken());
-        return token;
+        return _shareClass(poolId, scId).shareToken;
     }
 
     /// @inheritdoc ISpoke
