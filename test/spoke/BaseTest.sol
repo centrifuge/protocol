@@ -2,38 +2,35 @@
 pragma solidity 0.8.28;
 pragma abicoder v2;
 
-import "src/misc/interfaces/IERC20.sol";
-import {ERC20} from "src/misc/ERC20.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909Fungible} from "src/misc/interfaces/IERC6909.sol";
+import {MockSafe} from "./mocks/MockSafe.sol";
+import {MockCentrifugeChain} from "./mocks/MockCentrifugeChain.sol";
 
-import {Gateway} from "src/common/Gateway.sol";
-import {Root, IRoot} from "src/common/Root.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {newAssetId} from "src/common/types/AssetId.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
-import {MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {MockERC6909} from "../misc/mocks/MockERC6909.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import "../../src/misc/interfaces/IERC20.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
+import {IERC6909Fungible} from "../../src/misc/interfaces/IERC6909.sol";
 
-import {AsyncVault} from "src/vaults/AsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
+import {MockAdapter} from "../common/mocks/MockAdapter.sol";
 
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput} from "script/ExtendedSpokeDeployer.s.sol";
+import {AssetId} from "../../src/common/types/AssetId.sol";
+import {newAssetId} from "../../src/common/types/AssetId.sol";
+import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
+import {PoolId, newPoolId} from "../../src/common/types/PoolId.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "../../src/common/interfaces/IGasService.sol";
+import {MessageLib, VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
 
-import {MockSafe} from "test/spoke/mocks/MockSafe.sol";
-import {MockERC6909} from "test/misc/mocks/MockERC6909.sol";
-import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
-import {MockCentrifugeChain} from "test/spoke/mocks/MockCentrifugeChain.sol";
+import {VaultKind} from "../../src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "../../src/spoke/factories/interfaces/IVaultFactory.sol";
+
+import {AsyncVault} from "../../src/vaults/AsyncVault.sol";
+
+import {
+    ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
+} from "../../script/ExtendedSpokeDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -76,16 +73,6 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
-    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).rely(address(guardian));
-        IAuth(address(adapter)).deny(address(this));
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-        multiAdapter.file("adapters", centrifugeId, adapters);
-    }
-
     function setUp() public virtual {
         // make yourself owner of the adminSafe
         address[] memory pausers = new address[](1);
@@ -95,13 +82,15 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         // deploy core contracts
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
-            root: IRoot(address(0)),
             adminSafe: adminSafe,
             batchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
 
+        setDeployer(address(this));
+        labelAddresses("");
         deployExtendedSpoke(input, this);
+        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
 
         // deploy mock adapters
         adapter1 = new MockAdapter(OTHER_CHAIN_ID, multiAdapter);
@@ -116,60 +105,11 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         testAdapters.push(adapter2);
         testAdapters.push(adapter3);
 
-        // wire contracts
-        _wire(OTHER_CHAIN_ID, adapter1);
-        // removeExtendedSpokeDeployerAccess(address(adapter)); // need auth permissions in tests
-
         centrifugeChain = new MockCentrifugeChain(testAdapters, spoke, syncManager);
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
         multiAdapter.file("adapters", OTHER_CHAIN_ID, testAdapters);
-
-        // Label contracts
-        vm.label(address(root), "Root");
-        vm.label(address(asyncRequestManager), "AsyncRequestManager");
-        vm.label(address(syncManager), "SyncManager");
-        vm.label(address(spoke), "Spoke");
-        vm.label(address(balanceSheet), "BalanceSheet");
-        vm.label(address(gateway), "Gateway");
-        vm.label(address(messageProcessor), "MessageProcessor");
-        vm.label(address(messageDispatcher), "MessageDispatcher");
-        vm.label(address(adapter1), "MockAdapter1");
-        vm.label(address(adapter2), "MockAdapter2");
-        vm.label(address(adapter3), "MockAdapter3");
-        vm.label(address(erc20), "ERC20");
-        vm.label(address(erc6909), "ERC6909");
-        vm.label(address(centrifugeChain), "CentrifugeChain");
-        vm.label(address(vaultRouter), "VaultRouter");
-        vm.label(address(gasService), "GasService");
-        vm.label(address(routerEscrow), "RouterEscrow");
-        vm.label(address(guardian), "Guardian");
-        vm.label(address(spoke.tokenFactory()), "TokenFactory");
-        vm.label(address(asyncVaultFactory), "AsyncVaultFactory");
-        vm.label(address(syncDepositVaultFactory), "SyncDepositVaultFactory");
-        vm.label(address(poolEscrowFactory), "PoolEscrowFactory");
-
-        // Exclude predeployed contracts from invariant tests by default
-        excludeContract(address(root));
-        excludeContract(address(asyncRequestManager));
-        excludeContract(address(syncManager));
-        excludeContract(address(balanceSheet));
-        excludeContract(address(spoke));
-        excludeContract(address(gateway));
-        excludeContract(address(erc20));
-        excludeContract(address(erc6909));
-        excludeContract(address(centrifugeChain));
-        excludeContract(address(vaultRouter));
-        excludeContract(address(adapter1));
-        excludeContract(address(adapter2));
-        excludeContract(address(adapter3));
-        excludeContract(address(routerEscrow));
-        excludeContract(address(guardian));
-        excludeContract(address(spoke.tokenFactory()));
-        excludeContract(address(asyncVaultFactory));
-        excludeContract(address(syncDepositVaultFactory));
-        excludeContract(address(poolEscrowFactory));
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);

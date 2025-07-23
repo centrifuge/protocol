@@ -59,6 +59,32 @@ jobs:
       - name: Check import order
         run: python3 script/utils/fix_imports.py --check-order
 
+  relative-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --check-relative
+
+  roundtrip-relative-absolute-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Check import order
+        run: python3 script/utils/fix_imports.py --test-roundtrip
+
   unused-imports:
     runs-on: ubuntu-latest
     steps:
@@ -107,39 +133,39 @@ jobs:
   anvil-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: 'read'
-      id-token: 'write'        
+      contents: "read"
+      id-token: "write"
     steps:
-    - uses: actions/checkout@v3
-    - id: 'auth'
-      uses: 'google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f' # v2.1.7
-      with:
-        workload_identity_provider: ${{ secrets.GCP_WIP }}
-        service_account: ${{ secrets.GCP_SA }}
-        create_credentials_file: true
-        cleanup_credentials: true
+      - uses: actions/checkout@v3
+      - id: "auth"
+        uses: "google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f" # v2.1.7
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          service_account: ${{ secrets.GCP_SA }}
+          create_credentials_file: true
+          cleanup_credentials: true
 
-    - name: 'Set up Cloud SDK'
-      uses: 'google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a' # v2.1.2
-      with:
-        version: '>= 363.0.0'
-    - name: Install Foundry
-      uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # 1.4.0
-      with:
-        version: v1.2.3          
-    #Make sure all tools are installed and with proper versions
-    - name: Setup deployer tools
-      env:
-        CI_MODE: true
-      run: |
-        script/deploy/setup.sh
-    - name: Install dependencies (forge)
-      run: |
-        forge install -j 0 --shallow --color auto
-    - name: Deploy Anvil
-      run: |
-        python3 script/deploy/deploy.py --network anvil 
-          
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a" # v2.1.2
+        with:
+          version: ">= 363.0.0"
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # 1.4.0
+        with:
+          version: v1.2.3
+      #Make sure all tools are installed and with proper versions
+      - name: Setup deployer tools
+        env:
+          CI_MODE: true
+        run: |
+          script/deploy/setup.sh
+      - name: Install dependencies (forge)
+        run: |
+          forge install -j 0 --shallow --color auto
+      - name: Deploy Anvil
+        run: |
+          python3 script/deploy/deploy.py --network anvil
+
   coverage:
     runs-on: ubuntu-latest
     permissions:
@@ -192,3 +218,12 @@ jobs:
           coverage-files: ./lcov.info
           minimum-coverage: 0 # Set coverage threshold.
 
+  spelling:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run codespell
+        uses: codespell-project/actions-codespell@v2
+        with:
+          skip: ./docs

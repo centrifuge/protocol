@@ -18,12 +18,12 @@ import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IGateway} from "src/common/interfaces/IGateway.sol";
 import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
 import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IRequestManager} from "src/common/interfaces/IRequestManager.sol";
 
 import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {Spoke, ISpoke, VaultDetails} from "src/spoke/Spoke.sol";
 import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
 import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 

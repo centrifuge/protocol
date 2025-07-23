@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
+import {IERC6909} from "../../../src/misc/interfaces/IERC6909.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {IRoot} from "../../../src/common/interfaces/IRoot.sol";
+import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {IPoolEscrow} from "../../../src/common/interfaces/IPoolEscrow.sol";
+import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
+import {IPoolEscrowProvider} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {BalanceSheet, IBalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
+import {BalanceSheet, IBalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -47,7 +47,7 @@ contract BalanceSheetTest is Test {
     IRoot root = IRoot(makeAddr("Root"));
     ISpoke spoke = ISpoke(makeAddr("Spoke"));
     IGateway gateway = IGateway(makeAddr("Gateway"));
-    ISpokeMessageSender sender = ISpokeMessageSender(makeAddr("Sender"));
+    ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     address erc6909 = address(new IsContract());
     address erc20 = address(new IsContract());
     address share = address(new IsContract());
@@ -162,11 +162,14 @@ contract BalanceSheetTest is Test {
                 POOL_A,
                 SC_1,
                 assetId,
-                amount,
+                ISpokeMessageSender.UpdateData({
+                    netAmount: amount,
+                    isIncrease: isDeposit,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }),
                 price,
-                isDeposit,
-                isSnapshot,
-                nonce
+                EXTRA_GAS
             ),
             abi.encode()
         );
@@ -176,7 +179,16 @@ contract BalanceSheetTest is Test {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                ISpokeMessageSender.sendUpdateShares.selector, POOL_A, SC_1, delta, isPositive, isSnapshot, nonce
+                ISpokeMessageSender.sendUpdateShares.selector,
+                POOL_A,
+                SC_1,
+                ISpokeMessageSender.UpdateData({
+                    netAmount: delta,
+                    isIncrease: isPositive,
+                    isSnapshot: isSnapshot,
+                    nonce: nonce
+                }),
+                EXTRA_GAS
             ),
             abi.encode()
         );
@@ -638,7 +650,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssets(bool managerOrAuth) public {
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
@@ -648,14 +660,14 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssetsOverridingPrice() public {
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, IDENTITY_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, IDENTITY_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
         emit IBalanceSheet.SubmitQueuedAssets(
-            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, true, IS_SNAPSHOT, 0), IDENTITY_PRICE
+            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, IS_DEPOSIT, IS_SNAPSHOT, 0), IDENTITY_PRICE
         );
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
     }
@@ -671,7 +683,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
         vm.expectEmit();
         emit IBalanceSheet.SubmitQueuedAssets(
-            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(AMOUNT * 2, true, IS_SNAPSHOT, 0), ASSET_PRICE
+            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(AMOUNT * 2, IS_DEPOSIT, IS_SNAPSHOT, 0), ASSET_PRICE
         );
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
 
@@ -706,7 +718,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsWithSameAmount() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
-        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
@@ -742,10 +754,11 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssetsTwice() public {
-        _mockSendUpdateHoldingAmount(ASSET_20, AMOUNT, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 1);
-
         vm.startPrank(AUTH);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 1);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
@@ -785,7 +798,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
 
         (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(delta, 0);
-        assertEq(isPositive, true);
+        assertEq(isPositive, false);
         assertEq(nonce, 1);
     }
 
@@ -814,7 +827,9 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         _mockSendUpdateShares(0, IS_ISSUANCE, IS_SNAPSHOT, 2);
 
         vm.startPrank(AUTH);
+        _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 1);
         balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {Auth} from "../misc/Auth.sol";
+import {IAuth} from "../misc/interfaces/IAuth.sol";
 
 /// @title  Root
 /// @notice Core contract that is a ward on all other deployed contracts.

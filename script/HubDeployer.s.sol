@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {IdentityValuation} from "../src/misc/IdentityValuation.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubHelpers} from "src/hub/HubHelpers.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
 
-import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
+import {Hub} from "../src/hub/Hub.sol";
+import {Holdings} from "../src/hub/Holdings.sol";
+import {Accounting} from "../src/hub/Accounting.sol";
+import {HubHelpers} from "../src/hub/HubHelpers.sol";
+import {HubRegistry} from "../src/hub/HubRegistry.sol";
+import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";
 
@@ -34,7 +34,7 @@ struct HubReport {
 }
 
 contract HubActionBatcher is CommonActionBatcher, HubConstants {
-    function engageHub(HubReport memory report) public unlocked {
+    function engageHub(HubReport memory report) public onlyDeployer {
         // Rely hub
         report.hubRegistry.rely(address(report.hub));
         report.holdings.rely(address(report.hub));
@@ -80,7 +80,7 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
     }
 
-    function revokeHub(HubReport memory report) public unlocked {
+    function revokeHub(HubReport memory report) public onlyDeployer {
         report.hubRegistry.deny(address(this));
         report.accounting.deny(address(this));
         report.holdings.deny(address(this));

@@ -9,17 +9,25 @@ class CreateXScript
 class CommonDeployer
 class HubDeployer
 class SpokeDeployer
-class FullDeployer
+class AdaptersDeployer
 
 class ManagersDeployer
 class VaultsDeployer
 class HooksDeployer
 class ExtendedSpokeDeployer
 
+class FullDeployer {
+    + function run()
+}
+
+class CommonInput << (S,application) JsonConfig >>
+class AdaptersInput << (S,application) JsonConfig >>
+
 CommonDeployer -up-|> JsonRegistry
 CommonDeployer -up-|> CreateXScript
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
+AdaptersDeployer -up-|> CommonDeployer
 
 ManagersDeployer -up-|> SpokeDeployer
 VaultsDeployer -up-|> SpokeDeployer
@@ -31,6 +39,10 @@ ExtendedSpokeDeployer -up-|> HooksDeployer
 
 FullDeployer -up---|> HubDeployer
 FullDeployer -up-|> ExtendedSpokeDeployer
+FullDeployer -up---|> AdaptersDeployer
+
+CommonDeployer -> CommonInput
+AdaptersDeployer -left> AdaptersInput
 
 note right of ExtendedSpokeDeployer: Used in spoke ITs
 note right of HubDeployer: Used in hub ITs

@@ -3,7 +3,6 @@
         "chainId": 12345,
         "environment": "testnet OR mainnet",
         "centrifugeId": 2,
-        "root": "0x... (optional - set to null or omit if not deploying a new root)",
         "batchGasLimit": "25000000 (max gas limit for batched messages)",
         "connectsTo": [
             "sepolia",

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
-import {HooksDeployer, HooksActionBatcher} from "script/HooksDeployer.s.sol";
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {HooksDeployer, HooksActionBatcher} from "../../script/HooksDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -40,6 +40,19 @@ contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
 
         // dependencies set correctly
         assertEq(address(redemptionRestrictionsHook.root()), address(root));
+    }
+
+    function testFreelyTransferable(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(spoke));
+
+        assertEq(IAuth(freelyTransferableHook).wards(address(root)), 1);
+        assertEq(IAuth(freelyTransferableHook).wards(address(spoke)), 1);
+        assertEq(IAuth(freelyTransferableHook).wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(freelyTransferableHook.root()), address(root));
     }
 
     function testFullRestriction(address nonWard) public view {

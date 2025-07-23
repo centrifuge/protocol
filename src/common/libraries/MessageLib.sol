@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
 
 // NOTE: Should never exceed 254 messages because id == 255 corresponds to message proofs
 enum MessageType {
@@ -664,7 +664,7 @@ library MessageLib {
     }
 
     function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
-        require(messageType(data) == MessageType.UpdateHoldingAmount, "UnknownMessageType");
+        require(messageType(data) == MessageType.UpdateHoldingAmount, UnknownMessageType());
 
         return UpdateHoldingAmount({
             poolId: data.toUint64(1),

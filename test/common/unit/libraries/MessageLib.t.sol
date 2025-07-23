@@ -1,16 +1,147 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {MessageProofLib} from "src/common/libraries/MessageProofLib.sol";
-import {MessageType, MessageLib} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../../src/common/types/AssetId.sol";
+import {MessageProofLib} from "../../../../src/common/libraries/MessageProofLib.sol";
+import {MessageType, MessageLib} from "../../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
 contract TestMessageProofCompatibility is Test {
     function testMessageProofCompatibility() public pure {
         assertNotEq(uint8(type(MessageType).max), MessageProofLib.MESSAGE_PROOF_ID);
+    }
+}
+
+contract TestMessageLibIds is Test {
+    function _prepareFor() private returns (bytes memory buffer) {
+        buffer = new bytes(1);
+        buffer[0] = 0;
+        vm.expectRevert(MessageLib.UnknownMessageType.selector);
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeScheduleUpgrade() public {
+        MessageLib.deserializeScheduleUpgrade(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeCancelUpgrade() public {
+        MessageLib.deserializeCancelUpgrade(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeRecoverTokens() public {
+        MessageLib.deserializeRecoverTokens(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeRegisterAsset() public {
+        MessageLib.deserializeRegisterAsset(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyPool() public {
+        MessageLib.deserializeNotifyPool(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyShareClass() public {
+        MessageLib.deserializeNotifyShareClass(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyPricePoolPerShare() public {
+        MessageLib.deserializeNotifyPricePoolPerShare(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyPricePoolPerAsset() public {
+        MessageLib.deserializeNotifyPricePoolPerAsset(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyShareMetadata() public {
+        MessageLib.deserializeNotifyShareMetadata(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeNotifyShareHook() public {
+        MessageLib.deserializeUpdateShareHook(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeInitiateTransferShares() public {
+        MessageLib.deserializeInitiateTransferShares(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeExecuteTransferShares() public {
+        MessageLib.deserializeExecuteTransferShares(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateRestriction() public {
+        MessageLib.deserializeUpdateRestriction(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateContract() public {
+        MessageLib.deserializeUpdateContract(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateVault() public {
+        MessageLib.deserializeUpdateVault(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateBalanceSheetManager() public {
+        MessageLib.deserializeUpdateBalanceSheetManager(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateHoldingAmount() public {
+        MessageLib.deserializeUpdateHoldingAmount(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUpdateShares() public {
+        MessageLib.deserializeUpdateShares(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeMaxAssetPriceAge() public {
+        MessageLib.deserializeMaxAssetPriceAge(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeMaxSharePriceAge() public {
+        MessageLib.deserializeMaxSharePriceAge(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeRequest() public {
+        MessageLib.deserializeRequest(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeRequestCallback() public {
+        MessageLib.deserializeRequestCallback(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeSetRequestManager() public {
+        MessageLib.deserializeSetRequestManager(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testMessageLength() public {
+        bytes memory buffer = new bytes(1);
+        buffer[0] = bytes1(uint8(type(MessageType).max) + 1);
+        vm.expectRevert(MessageLib.UnknownMessageType.selector);
+        MessageLib.messageLength(buffer);
     }
 }
 

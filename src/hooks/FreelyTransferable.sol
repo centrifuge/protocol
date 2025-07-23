@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
-import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
+import {IFreezable} from "./interfaces/IFreezable.sol";
+import {IMemberlist} from "./interfaces/IMemberlist.sol";
+import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
 
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "src/common/interfaces/ITransferHook.sol";
+import {Auth} from "../misc/Auth.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {IERC165} from "../misc/interfaces/IERC7575.sol";
+import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IRoot} from "../common/interfaces/IRoot.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
 
-import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
-import {IMemberlist} from "src/hooks/interfaces/IMemberlist.sol";
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
 /// @title  Freely Transferable
 /// @notice Hook implementation that:
@@ -80,6 +80,11 @@ contract FreelyTransferable is Auth, IMemberlist, IFreezable, ITransferHook {
         if (toHookData.getBit(FREEZE_BIT) == true) {
             // Destination is frozen
             return false;
+        }
+
+        if (from == address(0) && root.endorsed(to)) {
+            // Deposit request fulfillment
+            return true;
         }
 
         if (from == address(0) && toHookData >> 64 < block.timestamp) {

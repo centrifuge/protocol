@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 contract BaseDecoder {
     error FunctionNotImplemented(bytes _calldata);

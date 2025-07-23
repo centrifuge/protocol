@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 // Small library to handle fixed point number operations with 18 decimals with static typing support.
 
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {MathLib} from "../libraries/MathLib.sol";
 
 type D18 is uint128;
 
@@ -14,7 +14,7 @@ function add(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) + D18.unwrap(d2));
 }
 
-/// @dev substract two D18 types
+/// @dev subtract two D18 types
 function sub(D18 d1, D18 d2) pure returns (D18) {
     return D18.wrap(D18.unwrap(d1) - D18.unwrap(d2));
 }

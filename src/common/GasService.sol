@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IGasService} from "src/common/interfaces/IGasService.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {IGasService} from "./interfaces/IGasService.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "./libraries/MessageLib.sol";
 
 /// @title  GasService
 /// @notice This contract stores the gas limits (in gas units) for cross-chain message execution.
@@ -46,13 +46,12 @@ contract GasService is IGasService {
         _batchGasLimit = batchGasLimit_;
 
         // NOTE: The hardcoded values are take from the EndToEnd tests. This should be automated in the future.
-
         scheduleUpgrade = BASE_COST + 28514;
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
         registerAsset = BASE_COST + 34329;
         request = BASE_COST + 86084; // request deposit case
-        notifyPool = BASE_COST + 38190;
+        notifyPool = BASE_COST + 1154806; // create escrow case
         notifyShareClass = BASE_COST + 1775916;
         notifyPricePoolPerShare = BASE_COST + 30496;
         notifyPricePoolPerAsset = BASE_COST + 35759;
@@ -125,7 +124,7 @@ contract GasService is IGasService {
             } else if (vaultKind == VaultUpdateKind.Unlink) {
                 return updateVaultUnlink;
             } else {
-                return type(uint128).max; // Unreachable
+                revert InvalidMessageType(); // Unreachable
             }
         } else if (kind == MessageType.SetRequestManager) {
             return setRequestManager;
@@ -140,7 +139,7 @@ contract GasService is IGasService {
         } else if (kind == MessageType.MaxSharePriceAge) {
             return maxSharePriceAge;
         } else {
-            return type(uint128).max; // Unreachable
+            revert InvalidMessageType(); // Unreachable
         }
     }
 }

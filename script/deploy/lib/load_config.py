@@ -164,7 +164,7 @@ class EnvironmentLoader:
             if self.is_testnet:
                 rpc_url = "https://testnet-rpc.plume.org"
             else:
-                rpc_url = "https://mainnet-rpc.plume.org"
+                rpc_url = "https://rpc.plume.org"
             print_info("Using Plume RPC endpoint")
         else:
             # Use Alchemy for other networks

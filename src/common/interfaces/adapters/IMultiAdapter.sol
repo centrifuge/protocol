@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../IAdapter.sol";
+import {IMessageHandler} from "../IMessageHandler.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
@@ -132,7 +132,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
-    ///         the result of two or more independ request from the user of the same type.
+    ///         the result of two or more independent request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  payloadHash The hash value of the incoming message.
