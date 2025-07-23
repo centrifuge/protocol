@@ -1221,6 +1221,16 @@ contract SpokeTestUpdateVault is SpokeTest {
         spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
     }
 
+    function testErrUnknownAsset() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.Link);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.Unlink);
+    }
+
     function testDeployAndLinkAndUnlinkAndLink() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
@@ -1242,5 +1252,151 @@ contract SpokeTestUpdateVault is SpokeTest {
         spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Link);
 
         assertEq(spoke.isLinked(vault), true, "linked again");
+    }
+}
+
+contract SpokeTestPricePoolPerShare is SpokeTest {
+    function testErrShareTokenDoesNotExists() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.pricePoolPerShare(POOL_A, SC_1, false);
+    }
+
+    function testErrInvalidPrice() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.InvalidPrice.selector);
+        spoke.pricePoolPerShare(POOL_A, SC_1, true);
+    }
+
+    function testPricePoolPerShareWithoutValidity() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        D18 price = spoke.pricePoolPerShare(POOL_A, SC_1, false);
+
+        assertEq(price.raw(), 0);
+    }
+
+    function testPricePoolPerShareWithValidity() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+
+        vm.prank(ANY);
+        D18 price = spoke.pricePoolPerShare(POOL_A, SC_1, true);
+
+        assertEq(price.raw(), PRICE_RAW);
+    }
+}
+
+contract SpokeTestPricePoolPerAsset is SpokeTest {
+    function testErrAssetTokenDoesNotExists() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, false);
+    }
+
+    function testErrUnknownAsset() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, false);
+    }
+
+    function testErrInvalidPrice() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.InvalidPrice.selector);
+        spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, true);
+    }
+
+    function testPricePoolPerAssetWithoutValidity() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        D18 price = spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, false);
+
+        assertEq(price.raw(), 0);
+    }
+
+    function testPricePoolPerAssetWithValidity() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        vm.prank(ANY);
+        D18 price = spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, true);
+
+        assertEq(price.raw(), PRICE_RAW);
+    }
+}
+
+contract SpokeTestPricesPoolPer is SpokeTest {
+    function testErrAssetTokenDoesNotExists() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
+        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, false);
+    }
+
+    function testErrUnknownAsset() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.UnknownAsset.selector);
+        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, false);
+    }
+
+    function testErrInvalidPrice() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.InvalidPrice.selector);
+        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
+    }
+
+    function testPricePoolPerAssetWithoutValidity() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(ANY);
+        (D18 assetPrice, D18 sharePrice) = spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, false);
+
+        assertEq(assetPrice.raw(), 0);
+        assertEq(sharePrice.raw(), 0);
+    }
+
+    function testPricePoolPerAssetWithValidity() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW + 1, FUTURE);
+
+        vm.prank(ANY);
+        (D18 assetPrice, D18 sharePrice) = spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
+
+        assertEq(assetPrice.raw(), PRICE_RAW);
+        assertEq(sharePrice.raw(), PRICE_RAW + 1);
+    }
+}
+
+contract SpokeTestVaultDetails is SpokeTest {
+    function testErrUnknownVault() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.vaultDetails(vault);
     }
 }

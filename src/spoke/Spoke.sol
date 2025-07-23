@@ -337,6 +337,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         } else {
             IVault vault = IVault(vaultOrFactory);
 
+            // Needed as safeguard against non-validated vaults
+            // I.e. we only accept vaults that have been deployed by the pool manager
+            require(_vaultDetails[vault].asset != address(0), UnknownVault());
+
             if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
             else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
             else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
@@ -368,7 +372,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
-        require(vaultDetails_.asset != address(0), UnknownVault());
 
         IVaultManager manager = vault.manager();
         manager.addVault(poolId, scId, assetId, vault, asset, tokenId);
@@ -449,7 +452,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (D18 price)
     {
-        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        (address asset, uint256 tokenId) = idToAsset(assetId);
+        Price memory poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
         if (checkValidity) {
             require(poolPerAsset.isValid(), InvalidPrice());
         }
