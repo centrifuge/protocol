@@ -9,6 +9,7 @@ import {IERC165} from "src/misc/interfaces/IERC7575.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
+import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
 import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 import {PoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
@@ -1210,5 +1211,36 @@ contract SpokeTestUnlinkVault is SpokeTest {
         vm.expectEmit();
         emit ISpoke.UnlinkVault(POOL_A, SC_1, erc20, 0, vault);
         spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+    }
+}
+
+contract SpokeTestUpdateVault is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
+    }
+
+    function testDeployAndLinkAndUnlinkAndLink() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultFactory(erc6909, TOKEN_1);
+        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
+
+        assertEq(spoke.isLinked(vault), true, "deploy and linked");
+
+        vm.prank(AUTH);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Unlink);
+
+        assertEq(spoke.isLinked(vault), false, "unlinked");
+
+        vm.prank(AUTH);
+        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault), VaultUpdateKind.Link);
+
+        assertEq(spoke.isLinked(vault), true, "linked again");
     }
 }

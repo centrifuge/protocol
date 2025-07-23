@@ -337,13 +337,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         } else {
             IVault vault = IVault(vaultOrFactory);
 
-            // Needed as safeguard against non-validated vaults
-            // I.e. we only accept vaults that have been deployed by the pool manager
-            require(_vaultDetails[vault].asset != address(0), UnknownVault());
-
             if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
             else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
-            else revert MalformedVaultUpdateMessage();
+            else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
         }
     }
 
