@@ -116,6 +116,10 @@ contract _CentrifugeIntegrationTestWithUtilsTest is CentrifugeIntegrationTestWit
         _createPool();
     }
 
+    function testMintUSDC(uint256 amount) public {
+        _mintUSDC(makeAddr("receiver"), amount);
+    }
+
     function testRegisterUSDC() public {
         _registerUSDC();
     }
