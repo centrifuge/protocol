@@ -1,31 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {IERC6909MetadataExt} from "src/misc/interfaces/IERC6909.sol";
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
+import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
+import {IERC6909MetadataExt} from "../../../src/misc/interfaces/IERC6909.sol";
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
+import {IPoolEscrow} from "../../../src/common/interfaces/IPoolEscrow.sol";
+import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
+import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import {IRequestManager} from "../../../src/common/interfaces/IRequestManager.sol";
+import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
+import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "src/common/interfaces/IRequestManager.sol";
-
-import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {Spoke, ISpoke, VaultDetails} from "src/spoke/Spoke.sol";
-import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
+import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
+import {IVaultManager} from "../../../src/spoke/interfaces/IVaultManager.sol";
+import {ITokenFactory} from "../../../src/spoke/factories/interfaces/ITokenFactory.sol";
+import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import "forge-std/Test.sol";
 

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
 
 interface IRequestManager {
     error UnknownRequestCallbackType();
