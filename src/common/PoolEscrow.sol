@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
+
 import {Escrow} from "src/misc/Escrow.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
 
@@ -64,6 +66,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     /// @inheritdoc IPoolEscrow
     function availableBalanceOf(ShareClassId scId, address asset, uint256 tokenId) public view returns (uint128) {
         Holding storage holding_ = holding[scId][asset][tokenId];
+        console2.log("availableBalanceOf: total %d, reserved %d", holding_.total, holding_.reserved);
         if (holding_.total < holding_.reserved) return 0;
         return holding_.total - holding_.reserved;
     }

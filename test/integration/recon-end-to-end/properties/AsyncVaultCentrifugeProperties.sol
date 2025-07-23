@@ -137,9 +137,11 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         //     maxMintBefore = syncManager.maxMint(IBaseVault(_getVault()), _getActor());
         // }
 
+        console2.log("asyncVault_maxDeposit: isAsyncVault == ", isAsyncVault);
+
         vm.prank(_getActor());
         try IBaseVault(_getVault()).deposit(depositAmount, _getActor()) returns (uint256 shares) {
-            console2.log(" === After Max Deposit === ");
+            console2.log(" === After Depositing: Max Deposit === ");
             uint256 maxDepositAfter = IBaseVault(_getVault()).maxDeposit(_getActor());
             uint256 difference = maxDepositBefore - depositAmount;
 
@@ -150,11 +152,19 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             } else {
                 maxDepositLess = int256(difference - maxDepositAfter);
             }
-
-            // console2.log("difference in asyncVault_maxDeposit: ", difference);
-            // console2.log("maxDepositAfter in asyncVault_maxDeposit: ", maxDepositAfter);
-            // console2.log("maxDepositBefore in asyncVault_maxDeposit: ", maxDepositBefore);
-            // console2.log("shares in asyncVault_maxDeposit: ", shares);
+            // NOTE: For debugging difference = poolEscrow.reserved - poolEscrow.availableBefore
+            // TODO(@wischli)): Why reserved (unchanged by deposit) before not factored in but now? -> because before
+            // holdings < reserved and now holdings > reserved
+            console2.log("depositAmount: ", depositAmount);
+            console2.log("difference in asyncVault_maxDeposit: ", difference);
+            console2.log("maxDepositAfter in asyncVault_maxDeposit: ", maxDepositAfter);
+            console2.log("maxDepositBefore in asyncVault_maxDeposit: ", maxDepositBefore);
+            // FIXME: Should be zero
+            console2.log(
+                "abs(maxDepositAfter - difference): ",
+                maxDepositAfter > difference ? maxDepositAfter - difference : difference - maxDepositAfter
+            );
+            console2.log("shares in asyncVault_maxDeposit: ", shares);
             // NOTE: temporarily remove the assertion to optimize the difference
             // otherwise it asserts false and undoes state changes
             // t(difference == maxDepositAfter, "rounding error in maxDeposit");

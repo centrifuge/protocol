@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
+
 import {Auth} from "src/misc/Auth.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {Recoverable} from "src/misc/Recoverable.sol";
@@ -119,6 +121,8 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         shares = previewDeposit(vault_, owner, assets);
 
         _issueShares(vault_, shares.toUint128(), receiver, assets.toUint128());
+
+        console2.log("SyncManager.deposit: assets", assets);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -228,6 +232,10 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         } else {
             maxDeposit_ = maxReserve_ - availableBalance;
         }
+
+        console2.log("SyncManager._maxDeposit: availableBalance", availableBalance);
+        console2.log("SyncManager._maxDeposit: maxReserve_", maxReserve_);
+        console2.log("SyncManager._maxDeposit: maxDeposit_", maxDeposit_);
     }
 
     function _shareToAssetAmount(IBaseVault vault_, uint256 shares, MathLib.Rounding rounding)
