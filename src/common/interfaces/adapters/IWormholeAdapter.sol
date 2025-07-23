@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IAdapter} from "../IAdapter.sol";
 
 // From https://github.com/wormhole-foundation/wormhole-solidity-sdk/blob/main/src/interfaces/IWormholeRelayer.sol#L75
 interface IWormholeRelayer {
