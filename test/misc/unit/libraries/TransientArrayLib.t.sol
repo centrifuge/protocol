@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientArrayLib} from "../../../../src/misc/libraries/TransientArrayLib.sol";
 
 import "forge-std/Test.sol";
 

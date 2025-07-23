@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
+import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
 ///  Hub Handlers
@@ -115,7 +115,7 @@ interface ISpokeGatewayHandler {
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  hook The new hook addres
+    /// @param  hook The new hook address
     function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external;
 
     /// @notice Updates the restrictions on a share class token for a specific user

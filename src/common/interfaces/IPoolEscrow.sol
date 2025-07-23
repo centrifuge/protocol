@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IRecoverable} from "src/misc/Recoverable.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {IRecoverable} from "../../misc/Recoverable.sol";
+import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../types/PoolId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
 
 struct Holding {
     uint128 total;
@@ -67,8 +67,8 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         address indexed asset, uint256 indexed tokenId, PoolId indexed poolId, ShareClassId scId, uint128 value
     );
 
-    /// @notice Emmitted when ETH is transfered to the escrow
-    /// @param amount transfered
+    /// @notice Emitted when ETH is transferred to the escrow
+    /// @param amount transferred
     event ReceiveNativeTokens(address who, uint256 amount);
 
     // --- Errors ---

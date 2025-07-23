@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {AxelarAdapter, IAdapter, IAxelarExecutable} from "src/common/adapters/AxelarAdapter.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
+import {AxelarAdapter, IAdapter, IAxelarExecutable} from "../../../src/common/adapters/AxelarAdapter.sol";
 
-import {Mock} from "test/common/mocks/Mock.sol";
+import {Mock} from "../mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 
