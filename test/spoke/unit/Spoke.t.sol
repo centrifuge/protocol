@@ -1363,6 +1363,30 @@ contract SpokeTestPricesPoolPer is SpokeTest {
         spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
     }
 
+    function testErrInvalidPriceOnlyAsset() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW + 1, FUTURE);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.InvalidPrice.selector);
+        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
+    }
+
+    function testErrInvalidPriceOnlyShare() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.InvalidPrice.selector);
+        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
+    }
+
     function testPricePoolPerAssetWithoutValidity() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
