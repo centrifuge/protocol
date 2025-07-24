@@ -20,7 +20,7 @@ import "forge-std/Script.sol";
 struct CommonInput {
     uint16 centrifugeId;
     ISafe adminSafe;
-    uint128 maxGasLimit;
+    uint128 maxBatchGasLimit;
     bytes32 version;
 }
 
@@ -163,7 +163,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         gasService = GasService(
             create3(
                 generateSalt("gasService-2"),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxGasLimit))
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchGasLimit))
             )
         );
 

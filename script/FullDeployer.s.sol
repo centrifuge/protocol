@@ -23,9 +23,6 @@ contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, Adap
  * @notice Deploys the complete Centrifuge protocol stack (Hub + Spoke + Adapters)
  */
 contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
-    // Config variables
-    uint256 public maxGasLimit;
-
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
     {
@@ -124,11 +121,12 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
 
-        // Parse maxGasLimit with defaults
-        try vm.parseJsonUint(config, "$.network.maxGasLimit") returns (uint256 _batchGasLimit) {
-            maxGasLimit = _batchGasLimit;
+        // Parse maxBatchGasLimit with defaults
+        uint256 maxBatchGasLimit;
+        try vm.parseJsonUint(config, "$.network.maxBatchGasLimit") returns (uint256 _batchGasLimit) {
+            maxBatchGasLimit = _batchGasLimit;
         } catch {
-            maxGasLimit = 25_000_000; // 25M gas
+            maxBatchGasLimit = 25_000_000; // 25M gas
         }
 
         console.log("Network:", network);
@@ -141,7 +139,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
-            maxGasLimit: uint128(maxGasLimit),
+            maxBatchGasLimit: uint128(maxBatchGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 

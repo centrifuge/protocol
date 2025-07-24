@@ -136,7 +136,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
             uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasLimit;
-            require(newGasLimit <= gasService.maxGasLimit(centrifugeId), ExceedsMaxGasLimit());
+            require(newGasLimit <= gasService.maxBatchGasLimit(centrifugeId), ExceedsMaxGasLimit());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {

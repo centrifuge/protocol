@@ -124,7 +124,7 @@ contract GatewayTest is Test {
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
     uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
-    uint256 constant MAX_GAS_LIMIT = 50.0 gwei;
+    uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
     uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
@@ -160,7 +160,9 @@ contract GatewayTest is Test {
             abi.encode(MESSAGE_GAS_LIMIT)
         );
         vm.mockCall(
-            address(gasService), abi.encodeWithSelector(IGasService.maxGasLimit.selector), abi.encode(MAX_GAS_LIMIT)
+            address(gasService),
+            abi.encodeWithSelector(IGasService.maxBatchGasLimit.selector),
+            abi.encode(MAX_BATCH_GAS_LIMIT)
         );
     }
 
@@ -462,7 +464,7 @@ contract GatewayTestSend is GatewayTest {
 
     function testErrExceedsMaxBatching() public {
         gateway.startBatching();
-        uint256 maxMessages = MAX_GAS_LIMIT / MESSAGE_GAS_LIMIT;
+        uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
             gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());

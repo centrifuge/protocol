@@ -3,7 +3,7 @@
         "chainId": 12345,
         "environment": "testnet OR mainnet",
         "centrifugeId": 2,
-        "maxGasLimit": "25000000 (max gas limit for batched messages)",
+        "maxBatchGasLimit": "25000000 (max gas limit for batched messages)",
         "connectsTo": [
             "sepolia",
             "base-sepolia",
@@ -31,7 +31,7 @@
             "environment": "The environment type - can be 'testnet' or 'mainnet'",
             "centrifugeId": "Unique identifier for this network in the Centrifuge ecosystem. Sequence 1,2,3,4 etc.",
             "root": "Address of existing root contract. Set to null or omit to deploy a new root. If provided, must be a valid contract address.",
-            "maxGasLimit": "Maximum gas limit for batched messages in gas units. Default: 25,000,000 gas.",
+            "maxBatchGasLimit": "Maximum gas limit for batched messages in gas units. Default: 25,000,000 gas.",
             "etherscanUrl": "The Etherscan API URL for contract verification. Examples: https://api.etherscan.io/api (mainnet), https://api-sepolia.etherscan.io/api (sepolia), https://api.basescan.org/api (base)",
             "connectsTo": "Only used by Wireadapters.s.sol - List of networks this network can connect to. Use the same name as the env/$chainName.json files"
         },
