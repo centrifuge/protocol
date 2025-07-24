@@ -83,7 +83,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
             adminSafe: adminSafe,
-            batchGasLimit: uint128(GAS_COST_LIMIT) * 100,
+            maxBatchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
 
