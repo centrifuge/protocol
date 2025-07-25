@@ -8,6 +8,7 @@ import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 interface VaultLike {
     function poolId() external view returns (uint64);
     function trancheId() external view returns (bytes16);
+    function manager() external view returns (address);
     function pendingDepositRequest(uint256, address controller) external view returns (uint256 pendingAssets);
     function claimableDepositRequest(uint256, address controller) external view returns (uint256 claimableAssets);
 }
@@ -47,10 +48,10 @@ contract RelinkV2Eth is RelinkV2Common {
     address public constant USDC_TOKEN = address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
     uint128 public constant USDC_ASSET_ID = 242333941209166991950178742833476896417;
 
-    address public constant JTRSY_VAULT_ADDRESS = address(0x1d01Ef1997d44206d839b78bA6813f60F1B3A970);
+    address public constant JTRSY_VAULT_ADDRESS = address(0x36036fFd9B1C6966ab23209E073c68Eb9A992f50);
     address public constant JAAA_VAULT_ADDRESS = address(0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01);
 
-    address public constant JAAA_INVESTOR = address(0x491EDFB0B8b608044e227225C715981a30F3A44E);
+    address public constant INVESTOR = address(0x491EDFB0B8b608044e227225C715981a30F3A44E);
 
     InvestmentManagerLike public constant V2_INVESTMENT_MANAGER =
         InvestmentManagerLike(0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9);
@@ -87,7 +88,7 @@ contract RelinkV2Eth is RelinkV2Common {
 
         // Fulfill and burn shares
         V2_AXELAR_ADAPTER.execute(COMMAND_ID, SOURCE_CHAIN, SOURCE_ADDR, PAYLOAD);
-        V2_INVESTMENT_MANAGER.mint(JAAA_VAULT_ADDRESS, 50000000000000, address(this), JAAA_INVESTOR);
+        V2_INVESTMENT_MANAGER.mint(JAAA_VAULT_ADDRESS, 50000000000000, address(this), INVESTOR);
         JAAA_SHARE_TOKEN.burn(address(this), 50000000000000);
 
         // Remove permissions on restriction manager from the spell

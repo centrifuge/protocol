@@ -65,6 +65,7 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         castSpell();
 
         _checkLinkedVaults();
+        _checkManagers();
         _checkShareBalances();
         _checkInvestmentState();
         _checkMembershipState();
@@ -78,18 +79,23 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         assertEq(spell.JAAA_SHARE_TOKEN().vault(spell.USDC_TOKEN()), spell.JAAA_VAULT_ADDRESS());
     }
 
+    function _checkManagers() internal view {
+        assertEq(VaultLike(spell.JTRSY_VAULT_ADDRESS()).manager(), address(spell.V2_INVESTMENT_MANAGER()));
+        assertEq(VaultLike(spell.JAAA_VAULT_ADDRESS()).manager(), address(spell.V2_INVESTMENT_MANAGER()));
+    }
+
     function _checkShareBalances() internal view {
         uint256 postJaaaTotalSupply = spell.JAAA_SHARE_TOKEN().totalSupply();
         assertEq(preJaaaTotalSupply, postJaaaTotalSupply);
 
-        assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(spell.JAAA_INVESTOR()), 50_000_000e6);
+        assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(spell.INVESTOR()), 50_000_000e6);
         assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(address(spell)), 0);
     }
 
     function _checkInvestmentState() internal view {
         VaultLike vault = VaultLike(spell.JAAA_VAULT_ADDRESS());
-        assertEq(vault.pendingDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
-        assertEq(vault.claimableDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
+        assertEq(vault.pendingDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
+        assertEq(vault.claimableDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
     }
 
     function _checkMembershipState() internal {
@@ -145,13 +151,13 @@ contract RelinkV2TestAsyncDepositFlow is RelinkV2TestBase {
     address poolAdmin = 0x742d100011fFbC6e509E39DbcB0334159e86be1e;
 
     function test_completeAsyncDepositFlow() public {
-        // _completeAsyncDepositFlow(spell.JTRSY_VAULT_ADDRESS(), spell.JAAA_INVESTOR(), 100_000e6);
-        _completeAsyncDepositFlow(spell.JAAA_VAULT_ADDRESS(), spell.JAAA_INVESTOR(), 100_000e6);
+        castSpell();
+
+        _completeAsyncDepositFlow(spell.JTRSY_VAULT_ADDRESS(), spell.INVESTOR(), 100_000e6);
+        _completeAsyncDepositFlow(spell.JAAA_VAULT_ADDRESS(), spell.INVESTOR(), 100_000e6);
     }
 
     function _completeAsyncDepositFlow(address vault_, address investor, uint128 depositAmount) internal {
-        castSpell();
-
         IERC7540Vault vault = IERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
