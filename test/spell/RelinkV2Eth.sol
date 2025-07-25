@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-
 import {RelinkV2Common} from "./RelinkV2Common.sol";
+
+import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 
 interface VaultLike {
     function poolId() external view returns (uint64);
@@ -50,7 +50,7 @@ contract RelinkV2Eth is RelinkV2Common {
         // Rely spell on investment manager
         V2_ROOT.relyContract(address(manager), address(this));
 
-        // Cancel and then fulfill cancelation at price 0.0 the investment, since shares were already issued separately
+        // Cancel and then fulfill cancellation at price 0.0 the investment, since shares were already issued separately
         VaultLike vault_ = VaultLike(vault);
         manager.fulfillDepositRequest(vault_.poolId(), vault_.trancheId(), user, USDC_ASSET_ID, 50_000_000e6, 0);
         manager.mint(vault, 0, user, user);
