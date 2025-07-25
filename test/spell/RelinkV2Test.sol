@@ -6,9 +6,6 @@ import {RelinkV2Eth, VaultLike, AxelarAdapterLike, InvestmentManagerLike} from "
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
-
 import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 
 import {
