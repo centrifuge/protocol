@@ -73,6 +73,7 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         _checkAxelarTransactionCannotBeReexecuted();
         _checkSpellCannotBeCastedSecondTime();
         _checkSpellAccessIsCleared();
+        _checkRootPermissionsForAllContracts();
     }
 
     function _checkLinkedVaults() internal view {
@@ -165,6 +166,15 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         _checkWard(address(spell.V2_RESTRICTION_MANAGER()), spellAddr, 0);
         _checkWard(address(spell.JTRSY_SHARE_TOKEN()), spellAddr, 0);
         _checkWard(address(spell.JAAA_SHARE_TOKEN()), spellAddr, 0);
+    }
+
+    function _checkRootPermissionsForAllContracts() internal view {
+        address root = address(spell.V2_ROOT());
+        _checkWard(address(spell.V2_INVESTMENT_MANAGER()), root, 1);
+        _checkWard(address(spell.V2_RESTRICTION_MANAGER()), root, 1);
+        _checkWard(address(spell.V2_AXELAR_ADAPTER()), root, 1);
+        _checkWard(address(spell.JTRSY_SHARE_TOKEN()), root, 1);
+        _checkWard(address(spell.JAAA_SHARE_TOKEN()), root, 1);
     }
 
     function _checkWard(address where, address who, uint256 status) internal view {
