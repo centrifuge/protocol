@@ -25,6 +25,21 @@ interface InvestmentManagerLike {
     function mint(address vault, uint256 shares, address receiver, address controller)
         external
         returns (uint256 assets);
+    function investments(address vault, address investor)
+        external
+        view
+        returns (
+            uint128 maxMint,
+            uint128 maxWithdraw,
+            uint256 depositPrice,
+            uint256 redeemPrice,
+            uint128 pendingDepositRequest,
+            uint128 pendingRedeemRequest,
+            uint128 claimableCancelDepositRequest,
+            uint128 claimableCancelRedeemRequest,
+            bool pendingCancelDepositRequest,
+            bool pendingCancelRedeemRequest
+        );
 }
 
 interface RestrictionManagerLike {

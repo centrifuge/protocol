@@ -64,10 +64,15 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
 
         castSpell();
 
+        VaultLike jtrsyVault = VaultLike(spell.JTRSY_VAULT_ADDRESS());
+        VaultLike jaaaVault = VaultLike(spell.JAAA_VAULT_ADDRESS());
+
         _checkLinkedVaults();
         _checkManagers();
         _checkShareBalances();
-        _checkInvestmentState();
+        _checkInvestmentStateIsCleared(jtrsyVault);
+        _checkInvestmentStateIsCleared(jaaaVault);
+        _checkV3VaultsState();
         _checkMembershipState();
         _checkAxelarTransactionCannotBeReexecuted();
         _checkSpellCannotBeCastedSecondTime();
@@ -92,10 +97,40 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(address(spell)), 0);
     }
 
-    function _checkInvestmentState() internal view {
-        VaultLike vault = VaultLike(spell.JAAA_VAULT_ADDRESS());
+    function _checkInvestmentStateIsCleared(VaultLike vault) internal view {
         assertEq(vault.pendingDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
         assertEq(vault.claimableDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
+
+        (
+            uint128 maxMint,
+            uint128 maxWithdraw,
+            , // Prices are not cleared after claiming
+            , // Prices are not cleared after claiming
+            uint128 pendingDepositRequest,
+            uint128 pendingRedeemRequest,
+            uint128 claimableCancelDepositRequest,
+            uint128 claimableCancelRedeemRequest,
+            bool pendingCancelDepositRequest,
+            bool pendingCancelRedeemRequest
+        ) = spell.V2_INVESTMENT_MANAGER().investments(address(vault), spell.INVESTOR());
+        assertEq(maxMint, 0, "maxMint mismatch");
+        assertEq(maxWithdraw, 0, "maxWithdraw mismatch");
+        assertEq(pendingDepositRequest, 0, "pendingDepositRequest mismatch");
+        assertEq(pendingRedeemRequest, 0, "pendingRedeemRequest mismatch");
+        assertEq(claimableCancelDepositRequest, 0, "maxclaimableCancelDepositRequestMint mismatch");
+        assertEq(claimableCancelRedeemRequest, 0, "claimableCancelRedeemRequest mismatch");
+        assertEq(pendingCancelDepositRequest, false, "pendingCancelDepositRequest mismatch");
+        assertEq(pendingCancelRedeemRequest, false, "pendingCancelRedeemRequest mismatch");
+    }
+
+    function _checkV3VaultsState() internal view {
+        VaultLike jtrsyV3Vault = VaultLike(0xFE6920eB6C421f1179cA8c8d4170530CDBdfd77A);
+        assertEq(jtrsyV3Vault.pendingDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
+        assertEq(jtrsyV3Vault.claimableDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
+
+        VaultLike jaaaV3Vault = VaultLike(0x4880799eE5200fC58DA299e965df644fBf46780B);
+        assertEq(jaaaV3Vault.pendingDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
+        assertEq(jaaaV3Vault.claimableDepositRequest(REQUEST_ID, spell.INVESTOR()), 0);
     }
 
     function _checkMembershipState() internal {
@@ -146,10 +181,6 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
 }
 
 contract RelinkV2TestAsyncDepositFlow is RelinkV2TestBase {
-    using CastLib for *;
-
-    address poolAdmin = 0x742d100011fFbC6e509E39DbcB0334159e86be1e;
-
     function test_completeAsyncDepositFlow() public {
         castSpell();
 
