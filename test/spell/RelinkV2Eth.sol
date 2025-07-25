@@ -50,7 +50,7 @@ contract RelinkV2Eth is RelinkV2Common {
     address public constant JAAA_INVESTOR = address(0x491EDFB0B8b608044e227225C715981a30F3A44E);
 
     InvestmentManagerLike public constant V2_INVESTMENT_MANAGER =
-        InvestmentManagerLike(0xE79f06573d6aF1B66166A926483ba00924285d20);
+        InvestmentManagerLike(0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9);
     RestrictionManagerLike public constant V2_RESTRICTION_MANAGER =
         RestrictionManagerLike(0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0);
     AxelarAdapterLike public constant V2_AXELAR_ADAPTER = AxelarAdapterLike(0x85bAFcAdeA202258e3512FFBC3E2c9eE6Ad56365);
@@ -58,7 +58,8 @@ contract RelinkV2Eth is RelinkV2Common {
     bytes32 public constant COMMAND_ID = 0x373a36b10c3b4c2b0e6c1f7efe871cef762e96a72c68249094b05238b7a5efe0;
     string public constant SOURCE_CHAIN = "centrifuge";
     string public constant SOURCE_ADDR = "0x7369626CEF070000000000000000000000000000";
-    bytes public constant PAYLOAD = hex'1600000000097583fd57e1b211a9ce6306b69a414f274f9998491edfb0b8b608044e227225c715981a30f3a44e000000000000000145564d00b64fd1c3a60c260188389850000186a1000000000000000000002d79883d2000000000000000000000002d79883d2000';
+    bytes public constant PAYLOAD =
+        hex"1600000000097583fd57e1b211a9ce6306b69a414f274f9998491edfb0b8b608044e227225c715981a30f3a44e000000000000000145564d00b64fd1c3a60c260188389850000186a1000000000000000000002d79883d2000000000000000000000002d79883d2000";
 
     function execute() internal override {
         // Relink JTRSY and JAAAA
@@ -87,7 +88,7 @@ contract RelinkV2Eth is RelinkV2Common {
         JAAA_SHARE_TOKEN.burn(address(this), 50000000000000);
 
         // Remove permissions on restriction manager from the spell
-        V2_RESTRICTION_MANAGER.updateMember(address(JAAA_SHARE_TOKEN), address(this), 0);
+        V2_RESTRICTION_MANAGER.updateMember(address(JAAA_SHARE_TOKEN), address(this), uint64(block.timestamp));
 
         // Deny spell on investment manager + restriction manager + JAAA token
         V2_ROOT.denyContract(address(V2_INVESTMENT_MANAGER), address(this));
