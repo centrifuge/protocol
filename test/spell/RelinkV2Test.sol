@@ -27,6 +27,10 @@ interface IERC7540Vault {
         returns (uint256 pendingAssets);
     function maxMint(address receiver) external view returns (uint256 maxShares);
     function mint(uint256 shares, address receiver) external returns (uint256 assets);
+    function requestRedeem(uint256 shares, address controller, address owner) external returns (uint256);
+    function pendingRedeemRequest(uint256, address controller) external view returns (uint256 pendingShares);
+    function maxWithdraw(address controller) external view returns (uint256 maxAssets);
+    function withdraw(uint256 assets, address receiver, address controller) external returns (uint256 shares);
 }
 
 contract RelinkV2TestBase is Test {
@@ -186,15 +190,18 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
     }
 }
 
-contract RelinkV2TestAsyncDepositFlow is RelinkV2TestBase {
-    function test_completeAsyncDepositFlow() public {
+contract RelinkV2TestAsyncInvestmentFlow is RelinkV2TestBase {
+    function test_completeAsyncInvestmentFlow() public {
         castSpell();
 
         _completeAsyncDepositFlow(spell.JTRSY_VAULT_ADDRESS(), spell.INVESTOR(), 100_000e6);
+        _completeAsyncRedeemFlow(spell.JTRSY_VAULT_ADDRESS(), spell.INVESTOR(), 50_000e6);
+
         _completeAsyncDepositFlow(spell.JAAA_VAULT_ADDRESS(), spell.INVESTOR(), 100_000e6);
+        _completeAsyncRedeemFlow(spell.JAAA_VAULT_ADDRESS(), spell.INVESTOR(), 50_000e6);
     }
 
-    function _completeAsyncDepositFlow(address vault_, address investor, uint128 depositAmount) internal {
+    function _completeAsyncDepositFlow(address vault_, address investor, uint128 amount) internal {
         IERC7540Vault vault = IERC7540Vault(vault_);
         uint64 poolId = vault.poolId();
         bytes16 trancheId = vault.trancheId();
@@ -203,21 +210,17 @@ contract RelinkV2TestAsyncDepositFlow is RelinkV2TestBase {
 
         InvestmentManagerLike investmentManager = spell.V2_INVESTMENT_MANAGER();
 
-        deal(vault.asset(), investor, depositAmount);
+        deal(vault.asset(), investor, amount);
 
         vm.startPrank(investor);
-        IERC20(vault.asset()).approve(address(vault), depositAmount);
-        vault.requestDeposit(depositAmount, investor, investor);
+        IERC20(vault.asset()).approve(address(vault), amount);
+        vault.requestDeposit(amount, investor, investor);
         vm.stopPrank();
 
-        assertEq(
-            vault.pendingDepositRequest(REQUEST_ID, investor),
-            depositAmount,
-            "Deposit request not recorded with new manager"
-        );
+        assertEq(vault.pendingDepositRequest(REQUEST_ID, investor), amount, "Deposit request not recorded with vault");
 
         vm.startPrank(address(spell.V2_ROOT()));
-        investmentManager.fulfillDepositRequest(poolId, trancheId, investor, assetId, depositAmount, depositAmount);
+        investmentManager.fulfillDepositRequest(poolId, trancheId, investor, assetId, amount, amount);
         vm.stopPrank();
 
         uint256 sharesBefore = shareToken.balanceOf(investor);
@@ -229,6 +232,37 @@ contract RelinkV2TestAsyncDepositFlow is RelinkV2TestBase {
         vm.stopPrank();
 
         uint256 sharesAfter = shareToken.balanceOf(investor);
-        assertGt(sharesAfter, sharesBefore, "User should have received shares");
+        assertEq(sharesAfter, sharesBefore + amount, "User should have received shares");
+    }
+
+    function _completeAsyncRedeemFlow(address vault_, address investor, uint128 amount) internal {
+        IERC7540Vault vault = IERC7540Vault(vault_);
+        uint64 poolId = vault.poolId();
+        bytes16 trancheId = vault.trancheId();
+        uint128 assetId = spell.USDC_ASSET_ID();
+        IShareToken shareToken = IShareToken(address(vault.share()));
+
+        InvestmentManagerLike investmentManager = spell.V2_INVESTMENT_MANAGER();
+
+        uint256 sharesBefore = shareToken.balanceOf(investor);
+
+        vm.startPrank(investor);
+        vault.requestRedeem(amount, investor, investor);
+        vm.stopPrank();
+
+        assertEq(vault.pendingRedeemRequest(REQUEST_ID, investor), amount, "Redeem request not recorded with vault");
+
+        vm.startPrank(address(spell.V2_ROOT()));
+        investmentManager.fulfillRedeemRequest(poolId, trancheId, investor, assetId, amount, amount);
+        vm.stopPrank();
+
+        vm.startPrank(investor);
+        uint256 maxWithdrawable = vault.maxWithdraw(investor);
+        assertGt(maxWithdrawable, 0, "Max withdrawable shares should be greater than 0");
+        vault.withdraw(maxWithdrawable, investor, investor);
+        vm.stopPrank();
+
+        uint256 sharesAfter = shareToken.balanceOf(investor);
+        assertEq(sharesAfter, sharesBefore - amount, "User should have burned shares");
     }
 }

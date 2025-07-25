@@ -22,6 +22,14 @@ interface InvestmentManagerLike {
         uint128 assets,
         uint128 shares
     ) external;
+    function fulfillRedeemRequest(
+        uint64 poolId,
+        bytes16 trancheId,
+        address user,
+        uint128 assetId,
+        uint128 assets,
+        uint128 shares
+    ) external;
     function mint(address vault, uint256 shares, address receiver, address controller)
         external
         returns (uint256 assets);
