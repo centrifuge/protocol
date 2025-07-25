@@ -58,6 +58,7 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         _checkLinkedVaults();
         _checkShareBalances();
         _checkInvestmentState();
+        _checkMembershipState();
         _checkAxelarTransactionCannotBeReexecuted();
         _checkSpellCannotBeCastedSecondTime();
         _checkSpellAccessIsCleared();
@@ -88,6 +89,15 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         VaultLike vault = VaultLike(spell.JAAA_VAULT_ADDRESS());
         assertEq(vault.pendingDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
         assertEq(vault.claimableDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
+    }
+
+    function _checkMembershipState() internal {
+        (bool isValid,) = spell.V2_RESTRICTION_MANAGER().isMember(address(spell.JAAA_SHARE_TOKEN()), address(spell));
+        assertEq(isValid, true);
+
+        vm.warp(block.timestamp + 1);
+        (isValid,) = spell.V2_RESTRICTION_MANAGER().isMember(address(spell.JAAA_SHARE_TOKEN()), address(spell));
+        assertEq(isValid, false);
     }
 
     function _checkAxelarTransactionCannotBeReexecuted() internal {

@@ -28,6 +28,7 @@ interface InvestmentManagerLike {
 
 interface RestrictionManagerLike {
     function updateMember(address token, address user, uint64 validUntil) external;
+    function isMember(address token, address user) external view returns (bool isValid, uint64 validUntil);
 }
 
 interface AxelarAdapterLike {
