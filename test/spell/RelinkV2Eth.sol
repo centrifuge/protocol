@@ -8,6 +8,8 @@ import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 interface VaultLike {
     function poolId() external view returns (uint64);
     function trancheId() external view returns (bytes16);
+    function pendingDepositRequest(uint256, address controller) external view returns (uint256 pendingAssets);
+    function claimableDepositRequest(uint256, address controller) external view returns (uint256 claimableAssets);
 }
 
 interface InvestmentManagerLike {

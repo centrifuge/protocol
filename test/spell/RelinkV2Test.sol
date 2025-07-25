@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {RelinkV2Eth} from "./RelinkV2Eth.sol";
+import {RelinkV2Eth, VaultLike, AxelarAdapterLike} from "./RelinkV2Eth.sol";
 
 import {D18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
@@ -25,6 +25,8 @@ import {
 import "forge-std/Test.sol";
 
 contract RelinkV2TestBase is Test {
+    uint256 public constant REQUEST_ID = 0;
+
     RelinkV2Eth public spell;
 
     function setUp() public {
@@ -45,11 +47,18 @@ contract RelinkV2TestBase is Test {
 }
 
 contract RelinkV2TestIntegrity is RelinkV2TestBase {
+    uint256 preJaaaTotalSupply;
+
     // Main integration test
     function testSpellIntegration() public {
+        preJaaaTotalSupply = spell.JAAA_SHARE_TOKEN().totalSupply();
+
         castSpell();
 
         _checkLinkedVaults();
+        _checkShareBalances();
+        _checkInvestmentState();
+        _checkAxelarTransactionCannotBeReexecuted();
         _checkSpellCannotBeCastedSecondTime();
         _checkSpellAccessIsCleared();
     }
@@ -67,6 +76,31 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         );
     }
 
+    function _checkShareBalances() internal view {
+        uint256 postJaaaTotalSupply = spell.JAAA_SHARE_TOKEN().totalSupply();
+        assertEq(preJaaaTotalSupply, postJaaaTotalSupply);
+
+        assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(spell.JAAA_INVESTOR()), 50_000_000e6);
+        assertEq(spell.JAAA_SHARE_TOKEN().balanceOf(address(spell)), 0);
+    }
+
+    function _checkInvestmentState() internal view {
+        VaultLike vault = VaultLike(spell.JAAA_VAULT_ADDRESS());
+        assertEq(vault.pendingDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
+        assertEq(vault.claimableDepositRequest(REQUEST_ID, spell.JAAA_INVESTOR()), 0);
+    }
+
+    function _checkAxelarTransactionCannotBeReexecuted() internal {
+        AxelarAdapterLike adapter = spell.V2_AXELAR_ADAPTER();
+        bytes32 commandId = spell.COMMAND_ID();
+        string memory sourceChain = spell.SOURCE_CHAIN();
+        string memory sourceAddr = spell.SOURCE_ADDR();
+        bytes memory payload = spell.PAYLOAD();
+
+        vm.expectRevert("AxelarAdapter/not-approved-by-axelar-gateway");
+        adapter.execute(commandId, sourceChain, sourceAddr, payload);
+    }
+
     function _checkSpellCannotBeCastedSecondTime() internal {
         address root = address(spell.V2_ROOT());
 
@@ -79,6 +113,8 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
     function _checkSpellAccessIsCleared() internal view {
         address spellAddr = address(spell);
         _checkWard(address(spell.V2_ROOT()), spellAddr, 0);
+        _checkWard(address(spell.V2_INVESTMENT_MANAGER()), spellAddr, 0);
+        _checkWard(address(spell.V2_RESTRICTION_MANAGER()), spellAddr, 0);
         _checkWard(address(spell.JTRSY_SHARE_TOKEN()), spellAddr, 0);
         _checkWard(address(spell.JAAA_SHARE_TOKEN()), spellAddr, 0);
     }
