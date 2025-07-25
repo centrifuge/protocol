@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {RelinkV2Eth} from "./RelinkV2Eth.sol";
 
 import {D18} from "../../src/misc/types/D18.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
@@ -49,9 +50,11 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
         castSpell();
 
         _checkLinkedVaults();
+        _checkSpellCannotBeCastedSecondTime();
+        _checkSpellAccessIsCleared();
     }
 
-    function _checkLinkedVaults() internal {
+    function _checkLinkedVaults() internal view {
         assertEq(
             spell.JTRSY_SHARE_TOKEN().vault(spell.USDC_TOKEN()),
             spell.JTRSY_VAULT_ADDRESS(),
@@ -61,6 +64,30 @@ contract RelinkV2TestIntegrity is RelinkV2TestBase {
             spell.JAAA_SHARE_TOKEN().vault(spell.USDC_TOKEN()),
             spell.JAAA_VAULT_ADDRESS(),
             "JAAA_SHARE_TOKEN.vault mismatch"
+        );
+    }
+
+    function _checkSpellCannotBeCastedSecondTime() internal {
+        address root = address(spell.V2_ROOT());
+
+        assertTrue(spell.done(), "Spell should be marked as done");
+        vm.expectRevert("spell-already-cast");
+        vm.prank(root);
+        spell.cast();
+    }
+
+    function _checkSpellAccessIsCleared() internal view {
+        address spellAddr = address(spell);
+        _checkWard(address(spell.V2_ROOT()), spellAddr, 0);
+        _checkWard(address(spell.JTRSY_SHARE_TOKEN()), spellAddr, 0);
+        _checkWard(address(spell.JAAA_SHARE_TOKEN()), spellAddr, 0);
+    }
+
+    function _checkWard(address where, address who, uint256 status) internal view {
+        assertEq(
+            IAuth(where).wards(who),
+            status,
+            string(abi.encodePacked("Ward check failed for ", vm.toString(who), " on ", vm.toString(where)))
         );
     }
 }
