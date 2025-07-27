@@ -121,7 +121,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // B: Initiate transfer of shares
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
-        emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
+        emit IHub.ForwardTransferShares(sB.centrifugeId, sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction != CrossChainDirection.FromHub) {

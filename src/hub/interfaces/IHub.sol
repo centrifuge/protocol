@@ -58,7 +58,12 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
     );
     event ForwardTransferShares(
-        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
+        uint16 indexed fromCentrifugeId,
+        uint16 indexed toCentrifugeId,
+        PoolId indexed poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount
     );
 
     /// @notice Emitted when a call to `file()` was performed.

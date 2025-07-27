@@ -11,4 +11,8 @@ contract MockSnapshotHook is ISnapshotHook {
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
         synced[poolId][scId][centrifugeId]++;
     }
+
+    function onTransfer(PoolId poolId, ShareClassId scId, uint16 fromCentrifugeId, uint16 toCentrifugeId) external {
+        // TODO
+    }
 }

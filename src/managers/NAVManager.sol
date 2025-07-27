@@ -126,6 +126,10 @@ contract NAVManager is Auth, ISnapshotHook {
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
     }
 
+    function onTransfer(PoolId poolId, ShareClassId scId, uint16 fromCentrifugeId, uint16 toCentrifugeId) external {
+        // TODO
+    }
+
     function updateHoldingValue(ShareClassId scId, AssetId assetId) external {
         hub.updateHoldingValue(poolId, scId, assetId);
     }

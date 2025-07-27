@@ -39,7 +39,8 @@ interface IHubGatewayHandler {
 
     /// @notice Forward an initiated share transfer to the destination chain.
     function initiateTransferShares(
-        uint16 centrifugeId,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
