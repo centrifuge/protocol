@@ -58,14 +58,14 @@ contract HooksDeployer is SpokeDeployer {
 
         freezeOnlyHook = FreezeOnly(
             create3(
-                generateSalt("freezeOnlyHook"),
+                generateSalt("freezeOnlyHook-2"),
                 abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), address(spoke), batcher))
             )
         );
 
         fullRestrictionsHook = FullRestrictions(
             create3(
-                generateSalt("fullRestrictionsHook"),
+                generateSalt("fullRestrictionsHook-2"),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode, abi.encode(address(root), address(spoke), batcher)
                 )
@@ -74,7 +74,7 @@ contract HooksDeployer is SpokeDeployer {
 
         freelyTransferableHook = FreelyTransferable(
             create3(
-                generateSalt("freelyTransferableHook"),
+                generateSalt("freelyTransferableHook-2"),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode, abi.encode(address(root), address(spoke), batcher)
                 )
@@ -83,7 +83,7 @@ contract HooksDeployer is SpokeDeployer {
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
-                generateSalt("redemptionRestrictionsHook"),
+                generateSalt("redemptionRestrictionsHook-2"),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode, abi.encode(address(root), address(spoke), batcher)
                 )
