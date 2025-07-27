@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18, d18} from "../misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
-import {AccountId, withCentrifugeId} from "src/common/types/AccountId.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IValuation} from "../common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
+import {AccountId, withCentrifugeId} from "../common/types/AccountId.sol";
 
-import {IHub} from "src/hub/interfaces/IHub.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
+import {IHub} from "../hub/interfaces/IHub.sol";
+import {IAccounting} from "../hub/interfaces/IAccounting.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
+import {TransientBytesLib} from "../../../../src/misc/libraries/TransientBytesLib.sol";
 
 import "forge-std/Test.sol";
 

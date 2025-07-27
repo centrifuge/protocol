@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
+import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 
-import {CommonDeployer, CommonInput, CommonActionBatcher} from "script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonActionBatcher} from "../../script/CommonDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -12,7 +12,8 @@ contract CommonDeploymentInputTest is Test {
     ISafe immutable ADMIN_SAFE = ISafe(makeAddr("AdminSafe"));
 
     function _commonInput() internal view returns (CommonInput memory) {
-        return CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, batchGasLimit: 0, version: bytes32(0)});
+        return
+            CommonInput({centrifugeId: CENTRIFUGE_ID, adminSafe: ADMIN_SAFE, maxBatchGasLimit: 0, version: bytes32(0)});
     }
 }
 

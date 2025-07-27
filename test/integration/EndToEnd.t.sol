@@ -1,58 +1,59 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {ETH_ADDRESS} from "src/misc/interfaces/IRecoverable.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {Guardian} from "src/common/Guardian.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {GasService} from "src/common/GasService.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
+import {D18, d18} from "../../src/misc/types/D18.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../src/misc/libraries/MathLib.sol";
+import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
+import {IdentityValuation} from "../../src/misc/IdentityValuation.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {MockValuation} from "../common/mocks/MockValuation.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Root} from "../../src/common/Root.sol";
+import {Gateway} from "../../src/common/Gateway.sol";
+import {Guardian} from "../../src/common/Guardian.sol";
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {GasService} from "../../src/common/GasService.sol";
+import {AccountId} from "../../src/common/types/AccountId.sol";
+import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
+import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
+import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {MAX_MESSAGE_COST} from "../../src/common/interfaces/IGasService.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {VaultRouter} from "src/vaults/VaultRouter.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
+import {Hub} from "../../src/hub/Hub.sol";
+import {Holdings} from "../../src/hub/Holdings.sol";
+import {Accounting} from "../../src/hub/Accounting.sol";
+import {HubRegistry} from "../../src/hub/HubRegistry.sol";
+import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {Spoke} from "../../src/spoke/Spoke.sol";
+import {IVault} from "../../src/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {NAVManager} from "src/managers/NAVManager.sol";
-import {SimplePriceManager} from "src/managers/SimplePriceManager.sol";
+import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
+import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
+import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
+import {NAVManager} from "../../src/managers/NAVManager.sol";
+import {SimplePriceManager} from "../../src/managers/SimplePriceManager.sol";
 
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
-import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
+import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -206,7 +207,6 @@ contract EndToEndDeployment is Test {
 
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
-        vm.label(address(h.hub), "Hub");
     }
 
     function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
@@ -230,13 +230,14 @@ contract EndToEndDeployment is Test {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             adminSafe: adminSafe,
-            batchGasLimit: uint128(GAS) * 100,
+            maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 
         FullActionBatcher batcher = new FullActionBatcher();
         batcher.setDeployer(address(deploy));
 
+        deploy.labelAddresses(string(abi.encodePacked(localCentrifugeId, "-")));
         deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));

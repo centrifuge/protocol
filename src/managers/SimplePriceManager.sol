@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IMulticall} from "src/misc/interfaces/IMulticall.sol";
+import {INAVHook} from "./NAVManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18, d18} from "../misc/types/D18.sol";
+import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 
-import {IHub} from "src/hub/interfaces/IHub.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "../common/interfaces/IGasService.sol";
 
-import {INAVHook} from "src/managers/NAVManager.sol";
+import {IHub} from "../hub/interfaces/IHub.sol";
+import {IShareClassManager} from "../hub/interfaces/IShareClassManager.sol";
 
 struct NetworkMetrics {
     D18 netAssetValue;
