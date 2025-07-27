@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import {IUpdateContract} from "./interfaces/IUpdateContract.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IUpdateContractGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
+import {Auth} from "../misc/Auth.sol";
 
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IUpdateContractGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 
 contract ContractUpdater is Auth, IUpdateContractGatewayHandler {
     event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);

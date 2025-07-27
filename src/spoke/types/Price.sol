@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
+import {D18, d18} from "../../misc/types/D18.sol";
 
 /// @dev Price struct that contains a price, the timestamp at which it was computed and the max age of the price.
 struct Price {

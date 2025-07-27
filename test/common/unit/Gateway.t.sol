@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth, IAuth} from "src/misc/Auth.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
-import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {Auth, IAuth} from "../../../src/misc/Auth.sol";
+import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
+import {Recoverable, IRecoverable} from "../../../src/misc/Recoverable.sol";
+import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {Gateway, IRoot, IGasService, IGateway} from "../../../src/common/Gateway.sol";
+import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
 
@@ -124,7 +124,7 @@ contract GatewayTest is Test {
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
     uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
-    uint256 constant BATCH_GAS_LIMIT = 50.0 gwei;
+    uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
     uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
@@ -160,7 +160,9 @@ contract GatewayTest is Test {
             abi.encode(MESSAGE_GAS_LIMIT)
         );
         vm.mockCall(
-            address(gasService), abi.encodeWithSelector(IGasService.batchGasLimit.selector), abi.encode(BATCH_GAS_LIMIT)
+            address(gasService),
+            abi.encodeWithSelector(IGasService.maxBatchGasLimit.selector),
+            abi.encode(MAX_BATCH_GAS_LIMIT)
         );
     }
 
@@ -462,13 +464,13 @@ contract GatewayTestSend is GatewayTest {
 
     function testErrExceedsMaxBatching() public {
         gateway.startBatching();
-        uint256 maxMessages = BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
+        uint256 maxMessages = MAX_BATCH_GAS_LIMIT / MESSAGE_GAS_LIMIT;
 
         for (uint256 i; i < maxMessages; i++) {
             gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
         }
 
-        vm.expectRevert(IGateway.ExceedsBatchGasLimit.selector);
+        vm.expectRevert(IGateway.ExceedsMaxGasLimit.selector);
         gateway.send(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes());
     }
 

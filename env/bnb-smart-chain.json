@@ -1,25 +1,25 @@
 {
   "network": {
-    "chainId": 43114,
+    "chainId": 56,
     "environment": "mainnet",
-    "centrifugeId": 5,
+    "centrifugeId": 6,
     "connectsTo": [
       "ethereum",
       "base",
       "arbitrum",
-      "bnb-smart-chain"
+      "avalanche"
     ],
-    "safeAdmin": "0xb6642fEd2221e177dD29581BB6d1959Bd1c54185"
+    "safeAdmin": "0x57066D897cB9cDef21b9Ecd7CecdD1d39b6eE445"
   },
   "adapters": {
     "wormhole": {
-      "wormholeId": "6",
+      "wormholeId": "4",
       "relayer": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911",
       "deploy": true
     },
     "axelar": {
-      "axelarId": "Avalanche",
-      "gateway": "0x5029C0EFf6C34351a0CEc334542cDb22c7928f78",
+      "axelarId": "binance",
+      "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
       "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "deploy": true
     }
@@ -64,8 +64,8 @@
   },
   "deploymentInfo": {
     "deploy:protocol": {
-      "gitCommit": "34c53fc2",
-      "timestamp": "2025-07-15T13:40:56Z",
+      "gitCommit": "56e3dfda",
+      "timestamp": "2025-07-21T11:48:56Z",
       "version": "3"
     }
   }

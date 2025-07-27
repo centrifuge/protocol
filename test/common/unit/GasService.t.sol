@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
-import {GasService} from "src/common/GasService.sol";
-import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
-import {MessageLib, MessageType, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {GasService} from "../../../src/common/GasService.sol";
+import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -13,10 +13,10 @@ contract GasServiceTest is Test {
     using MessageLib for *;
     using BytesLib for *;
 
-    uint128 constant BATCH_GAS_LIMIT = 25_000_000; // 25M gas units
+    uint128 constant MAX_BATCH_GAS_LIMIT = 25_000_000; // 25M gas units
     uint16 constant CENTRIFUGE_ID = 1;
 
-    GasService service = new GasService(BATCH_GAS_LIMIT);
+    GasService service = new GasService(MAX_BATCH_GAS_LIMIT);
 
     function testGasLimit(bytes calldata message) public view {
         vm.assume(message.length > 0);
@@ -39,8 +39,8 @@ contract GasServiceTest is Test {
         assert(messageGasLimit <= MAX_MESSAGE_COST);
     }
 
-    function testBatchGasLimit(bytes calldata) public view {
-        uint256 batchGasLimit = service.batchGasLimit(CENTRIFUGE_ID);
-        assertEq(batchGasLimit, BATCH_GAS_LIMIT);
+    function testMaxGasLimit(bytes calldata) public view {
+        uint256 maxBatchGasLimit = service.maxBatchGasLimit(CENTRIFUGE_ID);
+        assertEq(maxBatchGasLimit, MAX_BATCH_GAS_LIMIT);
     }
 }

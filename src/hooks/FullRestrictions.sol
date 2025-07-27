@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ITransferHook, HookData} from "src/common/interfaces/ITransferHook.sol";
+import {BaseHook} from "./BaseHook.sol";
 
-import {BaseHook} from "src/hooks/BaseHook.sol";
+import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
 /// @title  Full Restrictions
 /// @notice Hook implementation that:

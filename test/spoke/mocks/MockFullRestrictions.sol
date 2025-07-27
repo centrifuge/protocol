@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/hooks/FullRestrictions.sol";
+import "../../common/mocks/Mock.sol";
 
-import {BaseHook} from "src/hooks/BaseHook.sol";
+import {HookData} from "../../../src/common/interfaces/ITransferHook.sol";
+
+import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
 import "test/common/mocks/Mock.sol";
 
@@ -12,7 +14,7 @@ contract MockFullRestrictions is FullRestrictions, Mock {
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public
-        override(BaseHook)
+        override
         returns (bytes4)
     {
         require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());

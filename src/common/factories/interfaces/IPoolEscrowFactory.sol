@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {PoolId} from "../../types/PoolId.sol";
+import {IPoolEscrow} from "../../interfaces/IPoolEscrow.sol";
 
 interface IPoolEscrowProvider {
     /// @notice Returns the deterministic address of an escrow contract based on a given pool id wrapped into the
