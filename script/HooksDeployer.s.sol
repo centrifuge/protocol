@@ -11,8 +11,6 @@ import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
-import "forge-std/Script.sol";
-
 struct HooksReport {
     SpokeReport spoke;
     FreezeOnly freezeOnlyHook;

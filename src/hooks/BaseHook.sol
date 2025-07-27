@@ -67,28 +67,28 @@ abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
         virtual
         returns (bool);
 
-    function isDepositRequest(address from, address to) public pure returns (bool) {
-        return from == address(0) && to != ESCROW_HOOK_ID;
+    function isDepositRequest(address from, address to) public view returns (bool) {
+        return from == address(0) && !root.endorsed(to);
     }
 
-    function isDepositFulfillment(address from, address to) public pure returns (bool) {
-        return from == address(0) && to == ESCROW_HOOK_ID;
+    function isDepositFulfillment(address from, address to) public view returns (bool) {
+        return from == address(0) && root.endorsed(to);
     }
 
-    function isDepositClaim(address from, address to) public pure returns (bool) {
-        return from == ESCROW_HOOK_ID && to != address(0);
+    function isDepositClaim(address from, address to) public view returns (bool) {
+        return root.endorsed(from) && to != address(0);
     }
 
-    function isRedeemRequest(address from, address to) public pure returns (bool) {
-        return from != address(0) && from != ESCROW_HOOK_ID && to == ESCROW_HOOK_ID;
+    function isRedeemRequest(address, address to) public pure returns (bool) {
+        return to == ESCROW_HOOK_ID;
     }
 
-    function isRedeemFulfillment(address from, address to) public pure returns (bool) {
-        return from == ESCROW_HOOK_ID && to == address(0);
+    function isRedeemFulfillment(address from, address to) public view returns (bool) {
+        return root.endorsed(from) && to == address(0);
     }
 
     function isRedeemClaim(address from, address to) public view returns (bool) {
-        return (from != ESCROW_HOOK_ID && from != spoke) && to == address(0);
+        return (!root.endorsed(from) && from != spoke) && to == address(0);
     }
 
     function isCrosschainTransfer(address from, address to) public view returns (bool) {
