@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "./BaseTest.sol";
+
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
@@ -16,10 +18,6 @@ import {IVault} from "../../../src/spoke/interfaces/IVaultManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
-import {MockHook} from "../mocks/MockHook.sol";
-
-import "../BaseTest.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;
@@ -49,7 +47,7 @@ contract SpokeTestHelper is BaseTest {
         scId = scId_;
 
         spoke.addPool(poolId);
-        spoke.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), address(new MockHook()));
+        spoke.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, bytes32(0), address(0));
     }
 
     function registerAssetErc20() public {

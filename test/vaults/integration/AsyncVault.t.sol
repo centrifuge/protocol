@@ -6,10 +6,10 @@ import "../../../src/misc/interfaces/IERC7575.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
+import "../../spoke/integration/BaseTest.sol";
+
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
-import "../BaseTest.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment

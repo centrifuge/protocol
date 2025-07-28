@@ -11,11 +11,11 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {RequestMessageLib} from "../../../src/common/libraries/RequestMessageLib.sol";
 
+import "../../spoke/integration/BaseTest.sol";
+
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
-import "../BaseTest.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
