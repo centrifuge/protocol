@@ -4,8 +4,6 @@ pragma solidity 0.8.28;
 import {CommonInput} from "script/CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-
 import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";

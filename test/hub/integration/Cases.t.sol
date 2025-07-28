@@ -48,8 +48,9 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         if (withInitialization) {
+            valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
             hub.initializeHolding(
-                poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+                poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
             );
             hub.initializeHolding(
                 poolId,
@@ -230,8 +231,6 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        MockValuation valuation = new MockValuation(hubRegistry);
-        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
         hub.initializeHolding(
             poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );

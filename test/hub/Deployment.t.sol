@@ -109,17 +109,6 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         assertEq(accounting.wards(address(hubHelpers)), 1);
         assertEq(accounting.wards(nonWard), 0);
     }
-
-    function testIdentityValuation(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-
-        assertEq(identityValuation.wards(address(root)), 1);
-        assertEq(identityValuation.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(identityValuation.erc6909()), address(hubRegistry));
-    }
 }
 
 /// This checks the nonWard and the integrity of the common contract after hub changes
