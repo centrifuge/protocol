@@ -19,7 +19,7 @@ import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRe
 
 import {MockHook} from "../mocks/MockHook.sol";
 
-import "../BaseTest.sol";
+import "./BaseTest.sol";
 
 contract SpokeTestHelper is BaseTest {
     PoolId poolId;

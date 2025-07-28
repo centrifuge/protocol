@@ -17,7 +17,7 @@ import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 
-import "../BaseTest.sol";
+import "./BaseTest.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);

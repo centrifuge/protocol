@@ -6,7 +6,7 @@ import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
-import "../BaseTest.sol";
+import "./BaseTest.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {

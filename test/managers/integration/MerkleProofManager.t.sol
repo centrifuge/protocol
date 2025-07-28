@@ -8,7 +8,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import "../../spoke/BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";

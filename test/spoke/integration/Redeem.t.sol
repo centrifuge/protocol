@@ -14,7 +14,7 @@ import {RequestMessageLib} from "../../../src/common/libraries/RequestMessageLib
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "../BaseTest.sol";
+import "./BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

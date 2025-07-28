@@ -13,7 +13,7 @@ import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 import {ISyncManager, ISyncDepositValuation} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "../BaseTest.sol";
+import "./BaseTest.sol";
 
 contract SyncManagerBaseTest is BaseTest {
     function _deploySyncDepositVault(D18 pricePoolPerShare, D18 pricePoolPerAsset)
