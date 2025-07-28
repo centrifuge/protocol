@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IBaseVault} from "./IBaseVault.sol";
-import {IAsyncRedeemManager} from "./IVaultManagers.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
-import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "../../misc/interfaces/IERC7540.sol";
+import {IERC7540Redeem, IERC7887Redeem, IERC7887Deposit, IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
 
 /**
  * @title  IAsyncRedeemVault

@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IFreezable} from "./interfaces/IFreezable.sol";
-import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
+import {IFreezable} from "src/hooks/interfaces/IFreezable.sol";
+import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {IERC165} from "../misc/interfaces/IERC7575.sol";
-import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {BitmapLib} from "src/misc/libraries/BitmapLib.sol";
 
-import {IRoot} from "../common/interfaces/IRoot.sol";
-import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {ITransferHook, HookData} from "src/common/interfaces/ITransferHook.sol";
 
-import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Freeze Only
 /// @notice Hook implementation that:

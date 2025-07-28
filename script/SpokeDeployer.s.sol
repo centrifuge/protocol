@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "script/CommonDeployer.s.sol";
 
-import {Spoke} from "../src/spoke/Spoke.sol";
-import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
-import {ContractUpdater} from "../src/spoke/ContractUpdater.sol";
-import {TokenFactory} from "../src/spoke/factories/TokenFactory.sol";
+import {Spoke} from "src/spoke/Spoke.sol";
+import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
+import {ContractUpdater} from "src/spoke/ContractUpdater.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
 import "forge-std/Script.sol";
 

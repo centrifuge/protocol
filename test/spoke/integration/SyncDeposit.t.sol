@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "../../../src/misc/interfaces/IERC7540.sol";
-import "../../../src/misc/interfaces/IERC7575.sol";
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
-import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
+import "src/misc/interfaces/IERC7540.sol";
+import "src/misc/interfaces/IERC7575.sol";
+import {D18, d18} from "src/misc/types/D18.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {MessageLib} from "src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
 
-import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {IVault} from "../../../src/spoke/interfaces/IVaultManager.sol";
-import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
+import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
+import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
 
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
-import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
+import {ISyncManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
-import "../BaseTest.sol";
+import "test/spoke/BaseTest.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;

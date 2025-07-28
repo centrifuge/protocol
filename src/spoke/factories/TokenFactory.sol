@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ITokenFactory} from "./interfaces/ITokenFactory.sol";
+import {ITokenFactory} from "src/spoke/factories/interfaces/ITokenFactory.sol";
 
-import {Auth} from "../../misc/Auth.sol";
+import {Auth} from "src/misc/Auth.sol";
 
-import {ShareToken} from "../ShareToken.sol";
-import {IShareToken} from "../interfaces/IShareToken.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 /// @title  Share Token Factory
 /// @dev    Utility for deploying new share class token contracts

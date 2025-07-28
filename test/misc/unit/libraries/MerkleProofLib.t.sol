@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {MerkleProofLib} from "../../../../src/misc/libraries/MerkleProofLib.sol";
+import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
 
 import "forge-std/Test.sol";
 

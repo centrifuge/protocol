@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {IHoldings, Holding, HoldingAccount, Snapshot} from "./interfaces/IHoldings.sol";
+import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings, Holding, HoldingAccount, Snapshot} from "src/hub/interfaces/IHoldings.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {D18} from "../misc/types/D18.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {D18} from "src/misc/types/D18.sol";
+import {MathLib} from "src/misc/libraries/MathLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {AccountId} from "../common/types/AccountId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IValuation} from "../common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {AccountId} from "src/common/types/AccountId.sol";
+import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
 
 /// @title  Holdings
 /// @notice Bookkeeping of the holdings and its associated accounting IDs for each pool.

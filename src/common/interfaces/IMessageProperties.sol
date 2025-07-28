@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../types/PoolId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
 
 /// @notice Defines methods to get properties from raw messages
 interface IMessageProperties {

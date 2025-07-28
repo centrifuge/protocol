@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonInput} from "./CommonDeployer.s.sol";
-import {HubDeployer, HubActionBatcher} from "./HubDeployer.s.sol";
-import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
+import {CommonInput} from "script/CommonDeployer.s.sol";
+import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
+import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "script/ExtendedSpokeDeployer.s.sol";
 import {
     WormholeInput,
     AxelarInput,
@@ -12,7 +12,7 @@ import {
     AdaptersActionBatcher
 } from "./AdaptersDeployer.s.sol";
 
-import {ISafe} from "../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
 import "forge-std/Script.sol";
 

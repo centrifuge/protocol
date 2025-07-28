@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "./types/PoolId.sol";
-import {IRoot} from "./interfaces/IRoot.sol";
-import {IAdapter} from "./interfaces/IAdapter.sol";
-import {IGateway} from "./interfaces/IGateway.sol";
-import {IGasService} from "./interfaces/IGasService.sol";
-import {IMessageSender} from "./interfaces/IMessageSender.sol";
-import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {IRoot} from "src/common/interfaces/IRoot.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {IGateway} from "src/common/interfaces/IGateway.sol";
+import {IGasService} from "src/common/interfaces/IGasService.sol";
+import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
+import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
-import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
+import {Auth} from "src/misc/Auth.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {Recoverable, IRecoverable, ETH_ADDRESS} from "src/misc/Recoverable.sol";
 
 /// @title  Gateway
 /// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)

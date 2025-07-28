@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonInput} from "./CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
+import {CommonInput} from "script/CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
 
-import {VaultDecoder} from "../src/managers/decoders/VaultDecoder.sol";
-import {CircleDecoder} from "../src/managers/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../src/managers/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../src/managers/MerkleProofManager.sol";
+import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
+import {CircleDecoder} from "src/managers/decoders/CircleDecoder.sol";
+import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
+import {MerkleProofManagerFactory} from "src/managers/MerkleProofManager.sol";
 
 import "forge-std/Script.sol";
 

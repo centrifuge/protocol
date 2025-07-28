@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {PoolId} from "../types/PoolId.sol";
-import {ShareClassId} from "../types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 /// @notice Hook interface that is called whenever the accounting system of the Hub, for a given share token on
 ///         1 network, as in a (poolId, scId, centrifugeId) tuple, is in a synchronous state. This means the assets

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IRecoverable} from "../../misc/Recoverable.sol";
-import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
+import {IRecoverable} from "src/misc/Recoverable.sol";
+import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
 
-import {PoolId} from "../types/PoolId.sol";
-import {ShareClassId} from "../types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 struct Holding {
     uint128 total;

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 
-import "../BaseTest.sol";
+import "test/spoke/BaseTest.sol";
 
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {

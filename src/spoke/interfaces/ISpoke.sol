@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IShareToken} from "./IShareToken.sol";
-import {IVault, VaultKind} from "./IVault.sol";
-import {IRequestManager} from "./IRequestManager.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
 
-import {D18} from "../../misc/types/D18.sol";
+import {D18} from "src/misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {AssetId} from "src/common/types/AssetId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
-import {Price} from "../types/Price.sol";
-import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
+import {Price} from "src/spoke/types/Price.sol";
+import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {

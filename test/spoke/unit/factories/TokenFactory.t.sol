@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+import {IAuth} from "src/misc/interfaces/IAuth.sol";
 
-import {Root} from "../../../../src/common/Root.sol";
+import {Root} from "src/common/Root.sol";
 
-import {ShareToken} from "../../../../src/spoke/ShareToken.sol";
-import {VaultKind} from "../../../../src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../../../src/spoke/interfaces/IShareToken.sol";
-import {TokenFactory} from "../../../../src/spoke/factories/TokenFactory.sol";
+import {ShareToken} from "src/spoke/ShareToken.sol";
+import {VaultKind} from "src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
 
 import "forge-std/Test.sol";
 
-import {BaseTest} from "../../BaseTest.sol";
+import {BaseTest} from "test/spoke/BaseTest.sol";
 
 interface SpokeLike {
     function getShare(uint64 poolId, bytes16 scId) external view returns (address);

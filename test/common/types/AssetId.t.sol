@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
+import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 
 import "forge-std/Test.sol";
 

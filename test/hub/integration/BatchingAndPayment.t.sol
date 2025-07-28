@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import "./BaseTest.sol";
+import "test/hub/integration/BaseTest.sol";
 
 contract TestBatchingAndPayment is BaseTest {
     /// Test the following:

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
-import "../../spoke/BaseTest.sol";
+import "test/spoke/BaseTest.sol";
 
-import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 
-import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;

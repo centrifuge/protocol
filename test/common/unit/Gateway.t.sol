@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth, IAuth} from "../../../src/misc/Auth.sol";
-import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
-import {Recoverable, IRecoverable} from "../../../src/misc/Recoverable.sol";
-import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
-import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
-import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
+import {Auth, IAuth} from "src/misc/Auth.sol";
+import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {Recoverable, IRecoverable} from "src/misc/Recoverable.sol";
+import {TransientArrayLib} from "src/misc/libraries/TransientArrayLib.sol";
+import {TransientBytesLib} from "src/misc/libraries/TransientBytesLib.sol";
+import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {Gateway, IRoot, IGasService, IGateway} from "../../../src/common/Gateway.sol";
-import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {IAdapter} from "src/common/interfaces/IAdapter.sol";
+import {Gateway, IRoot, IGasService, IGateway} from "src/common/Gateway.sol";
+import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
 
 import "forge-std/Test.sol";
 

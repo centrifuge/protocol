@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {ISafe} from "src/common/interfaces/IGuardian.sol";
 
-import {CommonDeployer, CommonInput, CommonActionBatcher} from "../../script/CommonDeployer.s.sol";
+import {CommonDeployer, CommonInput, CommonActionBatcher} from "script/CommonDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
