@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
-
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
 import "../../../src/misc/interfaces/IERC20.sol";
@@ -29,6 +27,8 @@ import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {
     ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
 } from "../../../script/ExtendedSpokeDeployer.s.sol";
+
+import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 

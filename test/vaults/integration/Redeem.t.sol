@@ -11,10 +11,10 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {RequestMessageLib} from "../../../src/common/libraries/RequestMessageLib.sol";
 
+import "../../spoke/integration/BaseTest.sol";
+
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 contract RedeemTest is BaseTest {
     using MessageLib for *;

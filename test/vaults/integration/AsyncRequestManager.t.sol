@@ -9,6 +9,8 @@ import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
 
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 
+import "../../spoke/integration/BaseTest.sol";
+
 import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -16,8 +18,6 @@ import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);
