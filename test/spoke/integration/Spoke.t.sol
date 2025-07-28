@@ -235,34 +235,8 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertEq(adapter1.sent(message), 1);
     }
 
-    function testTransferSharesFromCentrifuge(uint128 amount) public {
-        vm.assume(amount > 0);
-        uint64 validUntil = uint64(block.timestamp + 7 days);
-        address destinationAddress = makeAddr("destinationAddress");
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        IShareToken shareToken = IShareToken(address(vault.share()));
-
-        vm.expectRevert(ITransferHook.TransferBlocked.selector);
-        spoke.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
-        spoke.updateRestriction(
-            poolId,
-            scId,
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
-        );
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.executeTransferShares(PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount);
-
-        assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
-        spoke.executeTransferShares(poolId, scId, destinationAddress.toBytes32(), amount);
-        assertEq(shareToken.balanceOf(destinationAddress), amount);
-    }
-
-    function testTransferSharesToEVM(uint128 amount) public {
+    // TODO: Refactorize and move this to restriction tests
+    function testCrossChainTransferSharesToEVM(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
         vm.assume(amount > 0);
@@ -284,7 +258,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
         assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
 
-        // Fund this address with samount
+        // Fund this address with amount
         spoke.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
         assertEq(shareToken.balanceOf(address(this)), amount);
 
@@ -296,14 +270,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
             ).serialize()
         );
 
-        // fails for invalid share class token
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, PoolId.wrap(poolId.raw() + 1), scId, destinationAddress.toBytes32(), amount, 0
-        );
-
         // Transfer amount from this address to destinationAddress
         spoke.crosschainTransferShares{value: DEFAULT_GAS}(
             OTHER_CHAIN_ID, vault.poolId(), vault.scId(), destinationAddress.toBytes32(), amount, 0
@@ -311,34 +277,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertEq(shareToken.balanceOf(address(this)), 0);
     }
 
-    function testUpdateMember(uint64 validUntil) public {
-        validUntil = uint64(bound(validUntil, block.timestamp, type(uint64).max));
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        IShareToken shareToken = IShareToken(AsyncVault(vault_).share());
-
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        IMemberlist hook = IMemberlist(shareToken.hook());
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        hook.updateMember(address(shareToken), randomUser, validUntil);
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateRestriction(
-            PoolId.wrap(100),
-            ShareClassId.wrap(bytes16(bytes("100"))),
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
-        ); // use random poolId & shareId
-
-        spoke.updateRestriction(
-            poolId,
-            scId,
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(randomUser.toBytes32(), validUntil).serialize()
-        );
-        assertTrue(shareToken.checkTransferRestriction(address(0), randomUser, 0));
-    }
-
+    // TODO: Refactorize and move this to restriction tests
     function testFreezeAndUnfreeze() public {
         (, address vault_,) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
@@ -347,20 +286,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         IShareToken shareToken = IShareToken(AsyncVault(vault_).share());
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address secondUser = makeAddr("secondUser");
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateRestriction(
-            PoolId.wrap(poolId.raw() + 1),
-            scId,
-            UpdateRestrictionMessageLib.UpdateRestrictionFreeze(randomUser.toBytes32()).serialize()
-        );
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateRestriction(
-            PoolId.wrap(poolId.raw() + 1),
-            scId,
-            UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(randomUser.toBytes32()).serialize()
-        );
 
         spoke.updateRestriction(
             poolId,
@@ -395,154 +320,7 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
     }
 
-    function testUpdateShareMetadata() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
-
-        string memory updatedTokenName = "newName";
-        string memory updatedTokenSymbol = "newSymbol";
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateShareMetadata(
-            PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), updatedTokenName, updatedTokenSymbol
-        );
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        spoke.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
-
-        assertEq(shareToken.name(), "name");
-        assertEq(shareToken.symbol(), "symbol");
-
-        spoke.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
-        assertEq(shareToken.name(), updatedTokenName);
-        assertEq(shareToken.symbol(), updatedTokenSymbol);
-
-        vm.expectRevert(ISpoke.OldMetadata.selector);
-        spoke.updateShareMetadata(poolId, scId, updatedTokenName, updatedTokenSymbol);
-    }
-
-    function testUpdateShareHook() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
-
-        address newHook = makeAddr("NewHook");
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateShareHook(PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), newHook);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        spoke.updateShareHook(poolId, scId, newHook);
-
-        assertEq(shareToken.hook(), address(fullRestrictionsHook));
-
-        spoke.updateShareHook(poolId, scId, newHook);
-        assertEq(shareToken.hook(), newHook);
-
-        vm.expectRevert(ISpoke.OldHook.selector);
-        spoke.updateShareHook(poolId, scId, newHook);
-    }
-
-    function testUpdateRestriction() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
-
-        bytes memory update =
-            UpdateRestrictionMessageLib.UpdateRestrictionFreeze(makeAddr("User").toBytes32()).serialize();
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updateRestriction(PoolId.wrap(100), ShareClassId.wrap(bytes16(bytes("100"))), update);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        spoke.updateRestriction(poolId, scId, update);
-
-        address hook = shareToken.hook();
-        spoke.updateShareHook(poolId, scId, address(0));
-
-        vm.expectRevert(ISpoke.InvalidHook.selector);
-        spoke.updateRestriction(poolId, scId, update);
-
-        spoke.updateShareHook(poolId, scId, hook);
-
-        spoke.updateRestriction(poolId, scId, update);
-    }
-
-    function testUpdatePricePoolPerShareWorks(
-        PoolId poolId,
-        uint8 decimals,
-        string memory tokenName,
-        string memory tokenSymbol,
-        ShareClassId scId,
-        uint128 price,
-        bytes32 salt
-    ) public {
-        decimals = uint8(bound(decimals, 2, 18));
-        vm.assume(poolId.raw() > 0);
-        vm.assume(scId.raw() > 0);
-        spoke.addPool(poolId);
-        AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, address(erc20), 0);
-
-        address hook = address(new MockHook());
-
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-
-        spoke.addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, salt, hook);
-
-        spoke.updatePricePoolPerAsset(poolId, scId, assetId, 1e18, uint64(block.timestamp));
-
-        // Allows us to go back in time later
-        vm.warp(block.timestamp + 1 days);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(randomUser);
-        spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, uint64(block.timestamp));
-
-        spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp));
-
-        vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
-        spoke.updatePricePoolPerShare(poolId, scId, price, uint64(block.timestamp - 1));
-    }
-
-    function testVaultMigration() public {
-        (, address oldVault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
-
-        AsyncVault oldVault = AsyncVault(oldVault_);
-        PoolId poolId = oldVault.poolId();
-        ShareClassId scId = oldVault.scId();
-        address asset = address(oldVault.asset());
-
-        AsyncVaultFactory newVaultFactory = new AsyncVaultFactory(address(root), asyncRequestManager, address(this));
-
-        // rewire factory contracts
-        newVaultFactory.rely(address(spoke));
-        asyncRequestManager.rely(address(newVaultFactory));
-
-        // Unlink old vault
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(assetId), oldVault);
-        assertEq(spoke.shareToken(poolId, scId).vault(asset), address(0));
-
-        // Deploy and link new vault
-        IVault newVault = spoke.deployVault(poolId, scId, AssetId.wrap(assetId), newVaultFactory);
-        assert(oldVault_ != address(newVault));
-        spoke.linkVault(poolId, scId, AssetId.wrap(assetId), newVault);
-        assertEq(spoke.shareToken(poolId, scId).vault(asset), address(newVault));
-    }
-
+    // TODO: refacorize and move this to restriction tests
     function testSpokeCannotTransferSharesOnAccountRestrictions(uint128 amount) public {
         uint64 validUntil = uint64(block.timestamp + 7 days);
         address destinationAddress = makeAddr("destinationAddress");
@@ -580,11 +358,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
         );
         assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
 
-        vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
-        );
-
         spoke.updateRestriction(
             vault.poolId(),
             vault.scId(),
@@ -593,10 +366,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
             ).serialize()
         );
 
-        vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
-        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
-        );
         assertEq(shareToken.balanceOf(address(this)), amount);
 
         spoke.updateRestriction(
@@ -606,68 +375,6 @@ contract SpokeTest is BaseTest, SpokeTestHelper {
             OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
         );
         assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
-    }
-
-    function testLinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
-        vm.assume(poolId.raw() != 1);
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
-
-        vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testLinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
-        vm.assume(scId.raw() != bytes16("2"));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
-
-        vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testLinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
-
-        vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testUnlinkVaultInvalidPoolVault(PoolId poolId, ShareClassId scId) public {
-        vm.assume(poolId.raw() != 1);
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(1));
-
-        vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testUnlinkVaultInvalidScIdVault(PoolId poolId, ShareClassId scId) public {
-        vm.assume(scId.raw() != bytes16("2"));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(bytes16("2")));
-
-        vm.expectRevert(ISpoke.InvalidVault.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testUnlinkVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
-        vm.mockCall(address(VAULT), abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
-
-        vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), VAULT);
-    }
-
-    function testLinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.linkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
-    }
-
-    function testUnlinkVaultUnauthorized(PoolId poolId, ShareClassId scId) public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.unlinkVault(poolId, scId, AssetId.wrap(defaultAssetId), IBaseVault(address(0)));
     }
 }
 
@@ -750,10 +457,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         // Check event except for vault address which cannot be known
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
-        vm.expectEmit(true, true, true, false);
-        emit ISpoke.DeployVault(
-            poolId, scId, asset, erc20TokenId, asyncVaultFactory, IBaseVault(address(0)), VaultKind.Async
-        );
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
@@ -773,21 +476,8 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
-        vm.expectEmit(true, true, true, false);
-        emit ISpoke.LinkVault(poolId, scId, asset, erc20TokenId, vault);
         spoke.linkVault(poolId, scId, assetId, vault);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, true);
-    }
-
-    function testDeploVaultInvalidShare(PoolId poolId, ShareClassId scId) public {
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.deployVault(poolId, scId, AssetId.wrap(defaultAssetId), asyncVaultFactory);
-    }
-
-    function testDeployVaultUnauthorized() public {
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.deployVault(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), IVaultFactory(address(0)));
     }
 }
