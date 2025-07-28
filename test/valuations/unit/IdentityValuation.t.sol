@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import {IdentityValuation} from "../../../src/misc/IdentityValuation.sol";
+import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 
-import {MockERC6909} from "../mocks/MockERC6909.sol";
+import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Test.sol";
 
