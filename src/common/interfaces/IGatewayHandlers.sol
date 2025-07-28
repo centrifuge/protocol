@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IRequestManager} from "./IRequestManager.sol";
+
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../types/PoolId.sol";
@@ -85,7 +87,7 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)

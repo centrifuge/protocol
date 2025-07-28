@@ -6,6 +6,7 @@ import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
@@ -140,7 +141,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
             spoke.setRequestManager(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.manager.toAddress()
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                IRequestManager(m.manager.toAddress())
             );
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
             MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);
