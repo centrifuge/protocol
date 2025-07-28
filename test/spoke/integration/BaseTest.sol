@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockSafe} from "../mocks/MockSafe.sol";
 import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
@@ -48,6 +47,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
+    address immutable ADMIN = address(adminSafe);
 
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
@@ -73,15 +73,10 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
-        // make yourself owner of the adminSafe
-        address[] memory pausers = new address[](1);
-        pausers[0] = self;
-        ISafe adminSafe = new MockSafe(pausers, 1);
-
         // deploy core contracts
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
-            adminSafe: adminSafe,
+            adminSafe: ISafe(ADMIN),
             maxBatchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
