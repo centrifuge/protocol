@@ -9,7 +9,7 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "./BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract AsyncVaultTest is BaseTest {
     // Deployment

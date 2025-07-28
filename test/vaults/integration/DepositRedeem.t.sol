@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18} from "../../../src/misc/types/D18.sol";
 
-import "./BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract DepositRedeem is BaseTest {
     function testPartialDepositAndRedeemExecutions(bytes16 scId) public {

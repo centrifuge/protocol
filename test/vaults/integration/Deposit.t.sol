@@ -15,7 +15,7 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "./BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

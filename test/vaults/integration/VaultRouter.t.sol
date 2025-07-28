@@ -19,7 +19,7 @@ import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
-import "./BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
