@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
+import {ERC20} from "../../src/misc/ERC20.sol";
 
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {MockValuation} from "../common/mocks/MockValuation.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST as GAS} from "src/common/interfaces/IGasService.sol";
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {AssetId} from "../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST as GAS} from "../../src/common/interfaces/IGasService.sol";
 
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {FullDeployer, FullActionBatcher, CommonInput} from "script/FullDeployer.s.sol";
+import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

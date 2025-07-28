@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {ValuationsDeployer, ValuationsActionBatcher} from "script/ValuationsDeployer.s.sol";
+import {CommonInput} from "./CommonDeployer.s.sol";
+import {ValuationsDeployer, ValuationsActionBatcher} from "./ValuationsDeployer.s.sol";
 
 import "forge-std/Script.sol";
 

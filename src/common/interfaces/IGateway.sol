@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageSender} from "src/common/interfaces/IMessageSender.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IMessageSender} from "./IMessageSender.sol";
+import {IMessageHandler} from "./IMessageHandler.sol";
 
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
+import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolId} from "../types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
 interface IGateway is IMessageHandler, IMessageSender, IRecoverable {

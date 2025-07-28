@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IBaseVault} from "./interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
+import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 
-import {Auth} from "src/misc/Auth.sol";
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
-import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {Auth} from "../misc/Auth.sol";
+import "../misc/interfaces/IERC7540.sol";
+import "../misc/interfaces/IERC7575.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {IERC7575} from "../misc/interfaces/IERC7575.sol";
+import {EIP712Lib} from "../misc/libraries/EIP712Lib.sol";
+import {IERC20Metadata} from "../misc/interfaces/IERC20.sol";
+import {SignatureLib} from "../misc/libraries/SignatureLib.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {IRoot} from "../common/interfaces/IRoot.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVault} from "../spoke/interfaces/IVaultManager.sol";
+import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
+import {IVaultManager} from "../spoke/interfaces/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0

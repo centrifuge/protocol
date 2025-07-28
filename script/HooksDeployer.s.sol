@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
+import {CommonInput} from "./CommonDeployer.s.sol";
+import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
 import "forge-std/Script.sol";
 

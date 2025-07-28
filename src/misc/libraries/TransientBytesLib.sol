@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {BytesLib} from "./BytesLib.sol";
+import {TransientStorageLib} from "./TransientStorageLib.sol";
 
 /// @title  TransientBytesLib
 library TransientBytesLib {

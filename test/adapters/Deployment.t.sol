@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {IWormholeRelayer, IWormholeDeliveryProvider} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 import {
     AdaptersDeployer,

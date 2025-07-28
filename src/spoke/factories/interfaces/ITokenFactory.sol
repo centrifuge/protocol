@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../interfaces/IShareToken.sol";
 
 interface ITokenFactory {
     event File(bytes32 what, address[] addr);

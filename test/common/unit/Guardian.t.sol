@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
+import {AxelarAddressToString} from "./AxelarAdapter.t.sol";
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGuardian} from "src/common/interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
-import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IGuardian} from "../../../src/common/interfaces/IGuardian.sol";
+import {IHubGuardianActions} from "../../../src/common/interfaces/IGuardianActions.sol";
+import {IAxelarAdapter} from "../../../src/common/interfaces/adapters/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../../../src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/common/Guardian.sol";
 
 import "forge-std/Test.sol";
 

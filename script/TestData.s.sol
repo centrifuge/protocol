@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {FullDeployer} from "./FullDeployer.s.sol";
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {ERC20} from "../src/misc/ERC20.sol";
+import {D18, d18} from "../src/misc/types/D18.sol";
+import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {Guardian} from "src/common/Guardian.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {Guardian} from "../src/common/Guardian.sol";
+import {PoolId} from "../src/common/types/PoolId.sol";
+import {AccountId} from "../src/common/types/AccountId.sol";
+import {ShareClassId} from "../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
+import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Hub} from "../src/hub/Hub.sol";
+import {HubRegistry} from "../src/hub/HubRegistry.sol";
+import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Spoke} from "../src/spoke/Spoke.sol";
+import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
+import {IShareToken} from "../src/spoke/interfaces/IShareToken.sol";
+import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SyncManager} from "../src/vaults/SyncManager.sol";
+import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
 

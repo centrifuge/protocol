@@ -1,31 +1,31 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {IHoldings} from "./interfaces/IHoldings.sol";
+import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
+import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
+import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
+import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18} from "../misc/types/D18.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {Multicall, IMulticall} from "../misc/Multicall.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IHubGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
-import {IPoolEscrow, IPoolEscrowFactory} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {AccountId} from "../common/types/AccountId.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IValuation} from "../common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
+import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
+import {IHubGuardianActions} from "../common/interfaces/IGuardianActions.sol";
+import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
+import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.

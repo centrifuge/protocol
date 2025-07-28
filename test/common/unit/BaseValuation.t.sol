@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC6909Decimals} from "../../../src/misc/interfaces/IERC6909.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {BaseValuation} from "src/common/BaseValuation.sol";
-import {IBaseValuation} from "src/common/interfaces/IBaseValuation.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {BaseValuation} from "../../../src/common/BaseValuation.sol";
+import {IBaseValuation} from "../../../src/common/interfaces/IBaseValuation.sol";
 
 import "forge-std/Test.sol";
 
