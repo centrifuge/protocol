@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "../../../src/misc/interfaces/IERC7540.sol";
+import "../../../src/misc/interfaces/IERC7575.sol";
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
@@ -199,5 +201,43 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
+    }
+
+    // --- erc165 checks ---
+    function testERC165SupportSyncDeposit(bytes4 unsupportedInterfaceId) public {
+        bytes4 erc165 = 0x01ffc9a7;
+        bytes4 erc7575Vault = 0x2f0a18c5;
+        bytes4 asyncVaultOperator = 0xe3bc4e65;
+        bytes4 asyncVaultRedeem = 0x620ee8e4;
+        bytes4 asyncVaultCancelRedeem = 0xe76cffc7;
+        bytes4 erc7741 = 0xa9e50872;
+        bytes4 erc7714 = 0x78d77ecb;
+
+        vm.assume(
+            unsupportedInterfaceId != erc165 && unsupportedInterfaceId != erc7575Vault
+                && unsupportedInterfaceId != asyncVaultOperator && unsupportedInterfaceId != asyncVaultRedeem
+                && unsupportedInterfaceId != asyncVaultCancelRedeem && unsupportedInterfaceId != erc7741
+                && unsupportedInterfaceId != erc7714
+        );
+
+        (SyncDepositVault vault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
+
+        assertEq(type(IERC165).interfaceId, erc165);
+        assertEq(type(IERC7575).interfaceId, erc7575Vault);
+        assertEq(type(IERC7540Operator).interfaceId, asyncVaultOperator);
+        assertEq(type(IERC7540Redeem).interfaceId, asyncVaultRedeem);
+        assertEq(type(IERC7887Redeem).interfaceId, asyncVaultCancelRedeem);
+        assertEq(type(IERC7741).interfaceId, erc7741);
+        assertEq(type(IERC7714).interfaceId, erc7714);
+
+        assertEq(vault.supportsInterface(erc165), true);
+        assertEq(vault.supportsInterface(erc7575Vault), true);
+        assertEq(vault.supportsInterface(asyncVaultOperator), true);
+        assertEq(vault.supportsInterface(asyncVaultRedeem), true);
+        assertEq(vault.supportsInterface(asyncVaultCancelRedeem), true);
+        assertEq(vault.supportsInterface(erc7741), true);
+        assertEq(vault.supportsInterface(erc7714), true);
+
+        assertEq(vault.supportsInterface(unsupportedInterfaceId), false);
     }
 }
