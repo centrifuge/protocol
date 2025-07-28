@@ -3,13 +3,13 @@ pragma solidity >=0.5.0;
 
 import {IShareToken} from "./IShareToken.sol";
 import {IVault, VaultKind} from "./IVault.sol";
-import {IRequestManager} from "./IRequestManager.sol";
 
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 
 import {Price} from "../types/Price.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
@@ -125,7 +125,6 @@ interface ISpoke {
     error UnknownVault();
     error UnknownAsset();
     error MalformedVaultUpdateMessage();
-    error UnknownToken();
     error InvalidFactory();
     error InvalidPrice();
     error AssetMissingDecimals();
@@ -139,6 +138,8 @@ interface ISpoke {
     error RequestManagerNotSet();
     error InvalidManager();
     error InvalidVault();
+    error AlreadyLinkedVault();
+    error AlreadyUnlinkedVault();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -211,17 +212,6 @@ interface ISpoke {
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         external
         returns (IVault);
-
-    /// @notice Register a vault.
-    function registerVault(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        address asset,
-        uint256 tokenId,
-        IVaultFactory factory,
-        IVault vault
-    ) external;
 
     /// @notice Links a deployed vault to the given pool, share class and asset.
     ///

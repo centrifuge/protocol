@@ -6,6 +6,7 @@ import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
+import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
@@ -255,7 +256,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IHubMessageSender
     function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setRequestManager(poolId, scId, assetId, manager.toAddress());
+            spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
                 assetId.centrifugeId(),
