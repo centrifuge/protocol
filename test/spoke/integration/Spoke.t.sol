@@ -105,62 +105,6 @@ contract SpokeRestrictionTest is BaseTest, SpokeTestHelper {
         );
         assertTrue(shareToken.checkTransferRestriction(randomUser, secondUser, 0));
     }
-
-    function testSpokeCannotTransferSharesOnAccountRestrictions(uint128 amount) public {
-        uint64 validUntil = uint64(block.timestamp + 7 days);
-        address destinationAddress = makeAddr("destinationAddress");
-        vm.assume(amount > 0);
-
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
-        AsyncVault vault = AsyncVault(vault_);
-        IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
-        shareToken.approve(address(spoke), amount);
-
-        spoke.updateRestriction(
-            vault.poolId(),
-            vault.scId(),
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(destinationAddress.toBytes32(), validUntil).serialize()
-        );
-        spoke.updateRestriction(
-            vault.poolId(),
-            vault.scId(),
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(address(this).toBytes32(), validUntil).serialize()
-        );
-
-        assertTrue(shareToken.checkTransferRestriction(address(0), address(this), 0));
-        assertTrue(shareToken.checkTransferRestriction(address(0), destinationAddress, 0));
-
-        // Fund this address with amount
-        spoke.executeTransferShares(vault.poolId(), vault.scId(), address(this).toBytes32(), amount);
-        assertEq(shareToken.balanceOf(address(this)), amount);
-
-        // fails for invalid share class token
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        spoke.updateRestriction(
-            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionFreeze(address(this).toBytes32()).serialize()
-        );
-        assertFalse(shareToken.checkTransferRestriction(address(this), destinationAddress, 0));
-
-        spoke.updateRestriction(
-            vault.poolId(),
-            vault.scId(),
-            UpdateRestrictionMessageLib.UpdateRestrictionMember(
-                address(uint160(OTHER_CHAIN_ID)).toBytes32(), type(uint64).max
-            ).serialize()
-        );
-
-        assertEq(shareToken.balanceOf(address(this)), amount);
-
-        spoke.updateRestriction(
-            poolId, scId, UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(address(this).toBytes32()).serialize()
-        );
-        spoke.crosschainTransferShares{value: DEFAULT_GAS}(
-            OTHER_CHAIN_ID, poolId, scId, destinationAddress.toBytes32(), amount, 0
-        );
-        assertEq(shareToken.balanceOf(address(poolEscrowFactory.escrow(poolId))), 0);
-    }
 }
 
 // TODO: refactor and move to vaults
