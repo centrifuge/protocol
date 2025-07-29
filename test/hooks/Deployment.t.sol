@@ -6,14 +6,17 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
 import {HooksDeployer, HooksActionBatcher} from "../../script/HooksDeployer.s.sol";
-
-import "forge-std/Test.sol";
+import {VaultsActionBatcher} from "../../script/VaultsDeployer.s.sol";
 
 contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        HooksActionBatcher batcher = new HooksActionBatcher();
-        deployHooks(_commonInput(), batcher);
-        removeHooksDeployerAccess(batcher);
+        VaultsActionBatcher vaultsBatcher = new VaultsActionBatcher();
+        deployVaults(_commonInput(), vaultsBatcher);
+        removeVaultsDeployerAccess(vaultsBatcher);
+
+        HooksActionBatcher hooksBatcher = new HooksActionBatcher();
+        deployHooks(_commonInput(), hooksBatcher);
+        removeHooksDeployerAccess(hooksBatcher);
     }
 
     function testFreezeOnly(address nonWard) public view {
