@@ -40,7 +40,7 @@ Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/dev
 ├── docs
 │  └── audits
 ├── script
-├── [src](./src)
+├── src
 ├── test
 ├── foundry.toml
 └── README.json
@@ -49,7 +49,7 @@ Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/dev
 - `deployments` contains the deployment information of the supported chains
 - `docs` documentation, diagrams and security audit reports
 - `script` deployment scripts used to deploy a part or the full system, along with adapters.
-- `src` main source containing all the contrats. Look for the interfaces and libraries inside of each module.
+- [`src`](./src) main source containing all the contrats. Look for the interfaces and libraries inside of each module.
 - `test` contains all tests: unit tests, integration test per module, and end-to-end integration tests
 
 
