@@ -436,9 +436,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpoke
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        if (checkValidity) {
-            require(shareClass.pricePoolPerShare.isValid(), InvalidPrice());
-        }
+        require(!checkValidity || shareClass.pricePoolPerShare.isValid(), InvalidPrice());
 
         return shareClass.pricePoolPerShare.price;
     }
@@ -451,9 +449,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         Price memory poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
-        if (checkValidity) {
-            require(poolPerAsset.isValid(), InvalidPrice());
-        }
+        require(!checkValidity || poolPerAsset.isValid(), InvalidPrice());
 
         return poolPerAsset.price;
     }
