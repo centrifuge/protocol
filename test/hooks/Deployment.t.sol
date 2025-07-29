@@ -5,8 +5,8 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
 import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {HooksDeployer, HooksActionBatcher} from "../../script/HooksDeployer.s.sol";
 import {VaultsActionBatcher} from "../../script/VaultsDeployer.s.sol";
+import {HooksDeployer, HooksActionBatcher} from "../../script/HooksDeployer.s.sol";
 
 contract VaultsDeploymentTest is HooksDeployer, CommonDeploymentInputTest {
     function setUp() public {
