@@ -148,20 +148,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
-        external
-        auth
-    {
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 price) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, price, timestamp);
         } else {
             gateway.send(
                 chainId,
                 MessageLib.NotifyPricePoolPerShare({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    price: sharePrice.raw(),
+                    price: price.raw(),
                     timestamp: timestamp
                 }).serialize()
             );
@@ -172,7 +169,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
+            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
