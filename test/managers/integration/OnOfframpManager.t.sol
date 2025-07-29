@@ -56,10 +56,10 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             address(fullRestrictionsHook)
         );
         spoke.updatePricePoolPerShare(
-            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updatePricePoolPerAsset(
-            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updateRestriction(
             POOL_A,

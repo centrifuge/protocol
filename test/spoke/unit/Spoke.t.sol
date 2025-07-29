@@ -87,8 +87,7 @@ contract SpokeTest is Test {
     bytes32 constant SALT = "salt";
     bytes constant PAYLOAD = "payload";
 
-    uint128 constant PRICE_RAW = 42e18;
-    D18 immutable PRICE = d18(PRICE_RAW);
+    D18 immutable PRICE = d18(42e18);
     uint128 constant AMOUNT = 200;
     uint64 immutable MAX_AGE = 10_000;
     uint64 immutable PAST_OLD = 0;
@@ -786,24 +785,24 @@ contract SpokeTestUpdatePricePoolPerShare is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, PRESENT);
     }
 
     function testErrShareTokenDoesNotExists() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, PRESENT);
     }
 
     function testErrCannotSetOlderPrice() public {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, FUTURE);
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, PRESENT);
     }
 
     function testUpdatePricePoolPerShare() public {
@@ -811,8 +810,8 @@ contract SpokeTestUpdatePricePoolPerShare is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpoke.UpdateSharePrice(POOL_A, SC_1, PRICE_RAW, FUTURE);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+        emit ISpoke.UpdateSharePrice(POOL_A, SC_1, PRICE, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, FUTURE);
 
         (uint64 computeAt, uint64 maxAge, uint64 validUntil) = spoke.markersPricePoolPerShare(POOL_A, SC_1);
         assertEq(computeAt, FUTURE);
@@ -827,7 +826,7 @@ contract SpokeTestUpdatePricePoolPerShare is SpokeTest {
         spoke.setMaxSharePriceAge(POOL_A, SC_1, MAX_AGE);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, FUTURE);
 
         (, uint64 maxAge,) = spoke.markersPricePoolPerShare(POOL_A, SC_1);
         assertEq(maxAge, MAX_AGE);
@@ -840,13 +839,13 @@ contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, PRESENT);
     }
 
     function testErrUnknownAsset() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
     }
 
     function testErrShareTokenDoesNotExists() public {
@@ -854,7 +853,7 @@ contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, PRESENT);
     }
 
     function testErrCannotSetOlderPrice() public {
@@ -862,11 +861,11 @@ contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.CannotSetOlderPrice.selector);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, PRESENT);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, PRESENT);
     }
 
     function testUpdatePricePoolPerAsset() public {
@@ -875,8 +874,8 @@ contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpoke.UpdateAssetPrice(POOL_A, SC_1, erc6909, TOKEN_1, PRICE_RAW, FUTURE);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        emit ISpoke.UpdateAssetPrice(POOL_A, SC_1, erc6909, TOKEN_1, PRICE, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         (uint64 computeAt, uint64 maxAge, uint64 validUntil) =
             spoke.markersPricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1);
@@ -893,7 +892,7 @@ contract SpokeTestUpdatePricePoolPerAsset is SpokeTest {
         spoke.setMaxAssetPriceAge(POOL_A, SC_1, ASSET_ID_6909_1, MAX_AGE);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         (, uint64 maxAge,) = spoke.markersPricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1);
         assertEq(maxAge, MAX_AGE);
@@ -1282,12 +1281,12 @@ contract SpokeTestPricePoolPerShare is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, FUTURE);
 
         vm.prank(ANY);
         D18 price = spoke.pricePoolPerShare(POOL_A, SC_1, true);
 
-        assertEq(price.raw(), PRICE_RAW);
+        assertEq(price.raw(), PRICE.raw());
     }
 }
 
@@ -1330,12 +1329,12 @@ contract SpokeTestPricePoolPerAsset is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         vm.prank(ANY);
         D18 price = spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, true);
 
-        assertEq(price.raw(), PRICE_RAW);
+        assertEq(price.raw(), PRICE.raw());
     }
 }
 
@@ -1368,7 +1367,7 @@ contract SpokeTestPricesPoolPer is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW + 1, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE, FUTURE);
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.InvalidPrice.selector);
@@ -1380,7 +1379,7 @@ contract SpokeTestPricesPoolPer is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         vm.prank(ANY);
         vm.expectRevert(ISpoke.InvalidPrice.selector);
@@ -1403,16 +1402,16 @@ contract SpokeTestPricesPoolPer is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE_RAW, FUTURE);
+        spoke.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, PRICE, FUTURE);
 
         vm.prank(AUTH);
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE_RAW + 1, FUTURE);
+        spoke.updatePricePoolPerShare(POOL_A, SC_1, PRICE + d18(1), FUTURE);
 
         vm.prank(ANY);
         (D18 assetPrice, D18 sharePrice) = spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, true);
 
-        assertEq(assetPrice.raw(), PRICE_RAW);
-        assertEq(sharePrice.raw(), PRICE_RAW + 1);
+        assertEq(assetPrice.raw(), PRICE.raw());
+        assertEq(sharePrice.raw(), (PRICE + d18(1)).raw());
     }
 }
 

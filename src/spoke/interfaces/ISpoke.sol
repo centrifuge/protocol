@@ -86,10 +86,10 @@ interface ISpoke {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        uint256 price,
+        D18 price,
         uint64 computedAt
     );
-    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
     event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
