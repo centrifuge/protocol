@@ -1297,14 +1297,6 @@ contract SpokeTestPricePoolPerAsset is SpokeTest {
         spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, false);
     }
 
-    function testErrUnknownAsset() public {
-        _utilAddPoolAndShareClass(NO_HOOK);
-
-        vm.prank(ANY);
-        vm.expectRevert(ISpoke.UnknownAsset.selector);
-        spoke.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID_6909_1, false);
-    }
-
     function testErrInvalidPrice() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
@@ -1342,14 +1334,6 @@ contract SpokeTestPricesPoolPer is SpokeTest {
     function testErrAssetTokenDoesNotExists() public {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, false);
-    }
-
-    function testErrUnknownAsset() public {
-        _utilAddPoolAndShareClass(NO_HOOK);
-
-        vm.prank(ANY);
-        vm.expectRevert(ISpoke.UnknownAsset.selector);
         spoke.pricesPoolPer(POOL_A, SC_1, ASSET_ID_6909_1, false);
     }
 
