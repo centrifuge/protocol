@@ -37,27 +37,16 @@ Centrifuge V3 operates on a hub-and-spoke model. Each pool chooses a single hub 
 │  └── audits
 ├── script
 ├── src
-│  ├── misc
-│  ├── common
-│  ├── hub
-│  ├── spoke
-│  ├── vaults
-│  └── hooks
 ├── test
 ├── foundry.toml
 └── README.json
 ```
+
 - `deployments` contains the deployment information of the supported chains
 - `docs` documentation, diagrams and security audit reports
 - `script` deployment scripts used to deploy a part or the full system, along with adapters.
 - `src` main source containing all the contrats. Look for the interfaces and libraries inside of each module.
-  - `misc` generic contracts
-  - `common` common code to `hub` and `spoke`
-  - `hub` code related to Centrifuge Hub
-  - `spoke` code related to Centrifuge Spoke
-  - `vaults` extension of Centrifuge Spoke, for ERC-4626 and ERC-7540 vaults
-  - `hooks` extension of Centrifuge Spoke, for implementing transfer hooks
-- `test` contains all tests: unitary test, integration test per module, and end-to-end integration tests
+- `test` contains all tests: unit tests, integration test per module, and end-to-end integration tests
 
 
 ## Contributing
