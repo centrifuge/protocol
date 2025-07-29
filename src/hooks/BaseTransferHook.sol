@@ -16,10 +16,10 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITra
 
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
-/// @title  BaseHook
+/// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseHook is Auth, IMemberlist, IFreezable, ITransferHook {
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;

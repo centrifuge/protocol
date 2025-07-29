@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseHook} from "./BaseHook.sol";
+import {BaseTransferHook} from "./BaseTransferHook.sol";
 
 import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
@@ -11,8 +11,8 @@ import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 ///         * Supports freezing accounts which blocks transfers both to and from them
 ///
 /// @dev    The last bit of hookData is used to denote whether the account is frozen.
-contract FreezeOnly is BaseHook {
-    constructor(address root_, address spoke_, address deployer) BaseHook(root_, spoke_, deployer) {}
+contract FreezeOnly is BaseTransferHook {
+    constructor(address root_, address spoke_, address deployer) BaseTransferHook(root_, spoke_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, HookData calldata hookData)
