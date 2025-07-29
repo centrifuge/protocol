@@ -49,7 +49,7 @@ Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/dev
 - [`docs`](./docs) documentation, diagrams and security audit reports
 - [`env`](./env) contains the deployment information of the supported chains
 - [`script`](./script) deployment scripts used to deploy a part or the full system, along with adapters.
-- [`src`](./src) main source containing all the contrats. Look for the interfaces and libraries inside of each module.
+- [`src`](./src) main source containing all the contracts. Look for the interfaces and libraries inside of each module.
 - [`test`](./test) contains all tests: unit tests, integration test per module, and end-to-end integration tests
 
 
