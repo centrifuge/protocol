@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTransferHook} from "./BaseTransferHook.sol";
+import {BaseTransferHook, TransferType} from "./BaseTransferHook.sol";
 
 import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
@@ -29,6 +29,7 @@ contract FreezeOnly is BaseTransferHook {
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
+        // All transfer types are allowed if not frozen
         return true;
     }
 }

@@ -16,6 +16,17 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITra
 
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
+enum TransferType {
+    DepositRequest,
+    DepositFulfillment,
+    DepositClaim,
+    RedeemRequest,
+    RedeemFulfillment,
+    RedeemClaim,
+    CrosschainTransfer,
+    LocalTransfer
+}
+
 /// @title  BaseTransferHook
 /// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
 ///         the last bit is used to denote whether the account is frozen.
@@ -84,6 +95,23 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         virtual
         returns (bool);
 
+
+    /// @notice Determines the type of transfer based on from/to addresses
+    /// @param from The source address of the transfer
+    /// @param to The destination address of the transfer
+    /// @return The TransferType enum representing the transfer category
+    function getTransferType(address from, address to) public view returns (TransferType) {
+        if (isDepositRequest(from, to)) return TransferType.DepositRequest;
+        if (isDepositFulfillment(from, to)) return TransferType.DepositFulfillment;
+        if (isDepositClaim(from, to)) return TransferType.DepositClaim;
+        if (isRedeemRequest(from, to)) return TransferType.RedeemRequest;
+        if (isRedeemFulfillment(from, to)) return TransferType.RedeemFulfillment;
+        if (isRedeemClaim(from, to)) return TransferType.RedeemClaim;
+        if (isCrosschainTransfer(from, to)) return TransferType.CrosschainTransfer;
+        
+        return TransferType.LocalTransfer;
+    }
+
     function isDepositRequest(address from, address to) public view returns (bool) {
         return from == address(0) && to != depositTarget;
     }
@@ -124,6 +152,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     function isTargetMember(address to, HookData calldata hookData) public view returns (bool) {
         return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to);
     }
+
 
     //----------------------------------------------------------------------------------------------
     // Restriction updates

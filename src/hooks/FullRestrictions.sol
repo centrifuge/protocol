@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTransferHook} from "./BaseTransferHook.sol";
+import {BaseTransferHook, TransferType} from "./BaseTransferHook.sol";
 
 import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
@@ -27,15 +27,17 @@ contract FullRestrictions is BaseTransferHook {
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
-        if (isDepositRequest(from, to)) return isTargetMember(to, hookData);
-        if (isDepositFulfillment(from, to)) return true;
-        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRedeemFulfillment(from, to)) return true;
-        if (isRedeemClaim(from, to)) return true;
-        if (isCrosschainTransfer(from, to)) return true;
+        TransferType transferType = getTransferType(from, to);
+        
+        if (transferType == TransferType.DepositRequest) return isTargetMember(to, hookData);
+        if (transferType == TransferType.DepositFulfillment) return true;
+        if (transferType == TransferType.DepositClaim) return isTargetMember(to, hookData);
+        if (transferType == TransferType.RedeemRequest) return isSourceMember(from, hookData);
+        if (transferType == TransferType.RedeemFulfillment) return true;
+        if (transferType == TransferType.RedeemClaim) return true;
+        if (transferType == TransferType.CrosschainTransfer) return true;
 
-        // Else, it's a transfer
+        // Else, it's a local transfer
         return isTargetMember(to, hookData);
     }
 }

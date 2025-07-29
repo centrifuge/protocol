@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTransferHook} from "./BaseTransferHook.sol";
+import {BaseTransferHook, TransferType} from "./BaseTransferHook.sol";
 
 import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
@@ -27,12 +27,15 @@ contract FreelyTransferable is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isDepositRequest(from, to)) return isTargetMember(to, hookData);
-        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRedeemClaim(from, to)) return isSourceMember(from, hookData);
+        
+        TransferType transferType = getTransferType(from, to);
+        
+        if (transferType == TransferType.DepositRequest) return isTargetMember(to, hookData);
+        if (transferType == TransferType.DepositClaim) return isTargetMember(to, hookData);
+        if (transferType == TransferType.RedeemRequest) return isSourceMember(from, hookData);
+        if (transferType == TransferType.RedeemClaim) return isSourceMember(from, hookData);
 
-        // Else, it's a fulfillment, redemption, or transfer
+        // Else, it's a fulfillment, crosschain transfer, or local transfer
         return true;
     }
 }

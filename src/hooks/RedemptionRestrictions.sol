@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseTransferHook} from "./BaseTransferHook.sol";
+import {BaseTransferHook, TransferType} from "./BaseTransferHook.sol";
 
 import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 
@@ -27,7 +27,10 @@ contract RedemptionRestrictions is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
+        
+        TransferType transferType = getTransferType(from, to);
+        
+        if (transferType == TransferType.RedeemRequest) return isSourceMember(from, hookData);
 
         // Else, it's a deposit request, redemption fulfillment or claiming, or transfer
         return true;
