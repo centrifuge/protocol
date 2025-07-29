@@ -40,7 +40,7 @@ Centrifuge V3 operates on a [hub-and-spoke model](https://docs.centrifuge.io/dev
 ├── docs
 │  └── audits
 ├── script
-├── src
+├── [src](./src)
 ├── test
 ├── foundry.toml
 └── README.json
