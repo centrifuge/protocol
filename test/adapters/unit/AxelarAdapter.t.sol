@@ -3,12 +3,13 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {AxelarAdapter, IAdapter, IAxelarExecutable} from "../../../src/common/adapters/AxelarAdapter.sol";
+import {Mock} from "../../common/mocks/Mock.sol";
 
-import {Mock} from "../mocks/Mock.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
+
+import {AxelarAdapter, IAdapter, IAxelarExecutable} from "../../../src/adapters/AxelarAdapter.sol";
 
 contract MockAxelarGateway is Mock {
     function validateContractCall(bytes32, string calldata, string calldata, bytes32) public view returns (bool) {

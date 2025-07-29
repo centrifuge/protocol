@@ -4,11 +4,11 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 
+import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {MultiAdapter} from "../../../src/common/adapters/MultiAdapter.sol";
 import {MessageProofLib} from "../../../src/common/libraries/MessageProofLib.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/common/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
 
