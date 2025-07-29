@@ -1,36 +1,34 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
-pragma abicoder v2;
 
-import {MockSafe} from "./mocks/MockSafe.sol";
-import {MockCentrifugeChain} from "./mocks/MockCentrifugeChain.sol";
+import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
-import {MockERC6909} from "../misc/mocks/MockERC6909.sol";
+import "../../../src/misc/interfaces/IERC20.sol";
+import {ERC20} from "../../../src/misc/ERC20.sol";
+import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
 
-import "../../src/misc/interfaces/IERC20.sol";
-import {ERC20} from "../../src/misc/ERC20.sol";
-import {IERC6909Fungible} from "../../src/misc/interfaces/IERC6909.sol";
+import {MockAdapter} from "../../common/mocks/MockAdapter.sol";
 
-import {MockAdapter} from "../common/mocks/MockAdapter.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {newAssetId} from "../../../src/common/types/AssetId.sol";
+import {ISafe} from "../../../src/common/interfaces/IGuardian.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {PoolId, newPoolId} from "../../../src/common/types/PoolId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
+import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 
-import {AssetId} from "../../src/common/types/AssetId.sol";
-import {newAssetId} from "../../src/common/types/AssetId.sol";
-import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
-import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
-import {PoolId, newPoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "../../src/common/interfaces/IGasService.sol";
-import {MessageLib, VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
+import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
-import {VaultKind} from "../../src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "../../src/spoke/factories/interfaces/IVaultFactory.sol";
-
-import {AsyncVault} from "../../src/vaults/AsyncVault.sol";
+import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 
 import {
     ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
-} from "../../script/ExtendedSpokeDeployer.s.sol";
+} from "../../../script/ExtendedSpokeDeployer.s.sol";
+
+import {MockCentrifugeChain} from "../mocks/MockCentrifugeChain.sol";
 
 import "forge-std/Test.sol";
 
@@ -49,6 +47,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     address investor = makeAddr("investor");
     address nonMember = makeAddr("nonMember");
     address randomUser = makeAddr("randomUser");
+    address immutable ADMIN = address(adminSafe);
 
     uint128 constant MAX_UINT128 = type(uint128).max;
     uint64 constant MAX_UINT64 = type(uint64).max;
@@ -74,15 +73,10 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
     function setUp() public virtual {
-        // make yourself owner of the adminSafe
-        address[] memory pausers = new address[](1);
-        pausers[0] = self;
-        ISafe adminSafe = new MockSafe(pausers, 1);
-
         // deploy core contracts
         CommonInput memory input = CommonInput({
             centrifugeId: THIS_CHAIN_ID,
-            adminSafe: adminSafe,
+            adminSafe: ISafe(ADMIN),
             maxBatchGasLimit: uint128(GAS_COST_LIMIT) * 100,
             version: bytes32(0)
         });
