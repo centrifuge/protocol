@@ -10,7 +10,13 @@ import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 ///         * Requires adding accounts to the memberlist before they can receive tokens
 ///         * Supports freezing accounts which blocks transfers both to and from them
 contract FullRestrictions is BaseTransferHook {
-    constructor(address root_, address spoke_, address deployer) BaseTransferHook(root_, spoke_, deployer) {}
+    constructor(
+        address root_,
+        address redeemSource_,
+        address depositTarget_,
+        address crosschainSource_,
+        address deployer
+    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)

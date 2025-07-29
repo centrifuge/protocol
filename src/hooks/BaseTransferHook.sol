@@ -29,11 +29,21 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     uint8 public constant FREEZE_BIT = 0;
 
     IRoot public immutable root;
-    address public immutable spoke;
+    address public immutable redeemSource;
+    address public immutable depositTarget;
+    address public immutable crosschainSource;
 
-    constructor(address root_, address spoke_, address deployer) Auth(deployer) {
+    constructor(
+        address root_,
+        address redeemSource_,
+        address depositTarget_,
+        address crosschainSource_,
+        address deployer
+    ) Auth(deployer) {
         root = IRoot(root_);
-        spoke = spoke_;
+        redeemSource = redeemSource_;
+        depositTarget = depositTarget_;
+        crosschainSource = crosschainSource_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -68,15 +78,15 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         returns (bool);
 
     function isDepositRequest(address from, address to) public view returns (bool) {
-        return from == address(0) && !root.endorsed(to);
+        return from == address(0) && to != depositTarget;
     }
 
     function isDepositFulfillment(address from, address to) public view returns (bool) {
-        return from == address(0) && root.endorsed(to);
+        return from == address(0) && to == depositTarget;
     }
 
     function isDepositClaim(address from, address to) public view returns (bool) {
-        return root.endorsed(from) && to != address(0);
+        return from == depositTarget && to != address(0);
     }
 
     function isRedeemRequest(address, address to) public pure returns (bool) {
@@ -84,15 +94,15 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     }
 
     function isRedeemFulfillment(address from, address to) public view returns (bool) {
-        return root.endorsed(from) && to == address(0);
+        return from == redeemSource && to == address(0);
     }
 
     function isRedeemClaim(address from, address to) public view returns (bool) {
-        return (!root.endorsed(from) && from != spoke) && to == address(0);
+        return (from != redeemSource && from != crosschainSource) && to == address(0);
     }
 
     function isCrosschainTransfer(address from, address to) public view returns (bool) {
-        return from == spoke && to == address(0);
+        return from == crosschainSource && to == address(0);
     }
 
     function isSourceOrTargetFrozen(address from, address to, HookData calldata hookData) public view returns (bool) {

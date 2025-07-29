@@ -11,7 +11,13 @@ import {ITransferHook, HookData} from "../common/interfaces/ITransferHook.sol";
 ///         * Requires accounts to be added as a member before submitting a deposit or redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
 contract FreelyTransferable is BaseTransferHook {
-    constructor(address root_, address spoke_, address deployer) BaseTransferHook(root_, spoke_, deployer) {}
+    constructor(
+        address root_,
+        address redeemSource_,
+        address depositTarget_,
+        address crosschainSource_,
+        address deployer
+    ) BaseTransferHook(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, /* value */ HookData calldata hookData)
