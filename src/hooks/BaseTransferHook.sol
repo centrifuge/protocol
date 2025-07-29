@@ -42,7 +42,10 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         address crosschainSource_,
         address deployer
     ) Auth(deployer) {
-        require(redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_, InvalidInputs());
+        require(
+            redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_ && redeemSource_ != crosschainSource_,
+            InvalidInputs()
+        );
 
         root = IRoot(root_);
         redeemSource = redeemSource_;
