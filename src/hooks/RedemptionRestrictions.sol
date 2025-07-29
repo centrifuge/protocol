@@ -27,9 +27,9 @@ contract RedemptionRestrictions is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        
+
         TransferType transferType = getTransferType(from, to);
-        
+
         if (transferType == TransferType.RedeemRequest) return isSourceMember(from, hookData);
 
         // Else, it's a deposit request, redemption fulfillment or claiming, or transfer

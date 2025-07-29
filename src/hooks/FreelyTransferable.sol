@@ -27,9 +27,9 @@ contract FreelyTransferable is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        
+
         TransferType transferType = getTransferType(from, to);
-        
+
         if (transferType == TransferType.DepositRequest) return isTargetMember(to, hookData);
         if (transferType == TransferType.DepositClaim) return isTargetMember(to, hookData);
         if (transferType == TransferType.RedeemRequest) return isSourceMember(from, hookData);

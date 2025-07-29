@@ -28,7 +28,7 @@ contract FullRestrictions is BaseTransferHook {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
         TransferType transferType = getTransferType(from, to);
-        
+
         if (transferType == TransferType.DepositRequest) return isTargetMember(to, hookData);
         if (transferType == TransferType.DepositFulfillment) return true;
         if (transferType == TransferType.DepositClaim) return isTargetMember(to, hookData);

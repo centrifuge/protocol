@@ -95,7 +95,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         virtual
         returns (bool);
 
-
     /// @notice Determines the type of transfer based on from/to addresses
     /// @param from The source address of the transfer
     /// @param to The destination address of the transfer
@@ -108,7 +107,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         if (isRedeemFulfillment(from, to)) return TransferType.RedeemFulfillment;
         if (isRedeemClaim(from, to)) return TransferType.RedeemClaim;
         if (isCrosschainTransfer(from, to)) return TransferType.CrosschainTransfer;
-        
+
         return TransferType.LocalTransfer;
     }
 
@@ -152,7 +151,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     function isTargetMember(address to, HookData calldata hookData) public view returns (bool) {
         return uint128(hookData.to) >> 64 >= block.timestamp || root.endorsed(to);
     }
-
 
     //----------------------------------------------------------------------------------------------
     // Restriction updates
