@@ -469,10 +469,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         Price memory poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
         Price memory poolPerShare = shareClass.pricePoolPerShare;
 
-        if (checkValidity) {
-            require(poolPerAsset.isValid(), InvalidPrice());
-            require(poolPerShare.isValid(), InvalidPrice());
-        }
+        require(!checkValidity || poolPerAsset.isValid() && poolPerShare.isValid(), InvalidPrice());
 
         return (poolPerAsset.price, poolPerShare.price);
     }
