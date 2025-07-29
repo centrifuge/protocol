@@ -9,7 +9,8 @@
 ├── managers
 ├── vaults
 ├── hooks
-└── valuations
+├── valuations
+└── adapters
 ```
 
 - [`misc`](./msic) generic contracts
@@ -20,4 +21,5 @@
 - [`vaults`](./vaults) extension of Centrifuge Spoke, for ERC-4626 and ERC-7540 vaults
 - [`hooks`](./hooks) extension of Centrifuge Spoke, for implementing transfer hooks
 - [`valuations`](./valuations) extension of Centrifuge Hub, for custom valuation logic
+- [`adapters`](./adapters) code containing cross-chain adapters
 

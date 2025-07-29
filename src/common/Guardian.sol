@@ -6,13 +6,14 @@ import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
-import {IMultiAdapter} from "./interfaces/adapters/IMultiAdapter.sol";
-import {IAxelarAdapter} from "./interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "./interfaces/adapters/IWormholeAdapter.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
+
+import {IAxelarAdapter} from "../adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../adapters/interfaces/IWormholeAdapter.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;
