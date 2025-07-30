@@ -7,10 +7,10 @@ import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
+import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 
 import {ISpoke} from "../../spoke/interfaces/ISpoke.sol";
 import {IVaultManager} from "../../spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "../../spoke/interfaces/IRequestManager.sol";
 
 interface IBaseRequestManager is IVaultManager, IRequestManager {
     event File(bytes32 indexed what, address data);

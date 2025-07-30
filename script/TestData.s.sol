@@ -6,7 +6,6 @@ import {FullDeployer} from "./FullDeployer.s.sol";
 import {ERC20} from "../src/misc/ERC20.sol";
 import {D18, d18} from "../src/misc/types/D18.sol";
 import {CastLib} from "../src/misc/libraries/CastLib.sol";
-import {IdentityValuation} from "../src/misc/IdentityValuation.sol";
 
 import {Guardian} from "../src/common/Guardian.sol";
 import {PoolId} from "../src/common/types/PoolId.sol";
@@ -33,6 +32,8 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
 

@@ -7,9 +7,9 @@ import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
 import {GasService} from "../src/common/GasService.sol";
 import {Guardian, ISafe} from "../src/common/Guardian.sol";
+import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
-import {MultiAdapter} from "../src/common/adapters/MultiAdapter.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
@@ -20,7 +20,7 @@ import "forge-std/Script.sol";
 struct CommonInput {
     uint16 centrifugeId;
     ISafe adminSafe;
-    uint128 batchGasLimit;
+    uint128 maxBatchGasLimit;
     bytes32 version;
 }
 
@@ -174,8 +174,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         gasService = GasService(
             create3(
-                generateSalt("gasService"),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.batchGasLimit))
+                generateSalt("gasService-2"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchGasLimit))
             )
         );
 

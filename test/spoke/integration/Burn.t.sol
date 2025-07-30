@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import "./BaseTest.sol";
+
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
-
-import "../BaseTest.sol";
 
 contract BurnTest is BaseTest {
     function testBurn(uint256 amount) public {

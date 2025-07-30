@@ -9,7 +9,6 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
-import {IdentityValuation} from "../../src/misc/IdentityValuation.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
 
@@ -51,6 +50,8 @@ import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
@@ -231,7 +232,7 @@ contract EndToEndDeployment is Test {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: localCentrifugeId,
             adminSafe: adminSafe,
-            batchGasLimit: uint128(GAS) * 100,
+            maxBatchGasLimit: uint128(GAS) * 100,
             version: bytes32(abi.encodePacked(localCentrifugeId))
         });
 

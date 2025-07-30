@@ -11,7 +11,7 @@ import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IGateway} from "../../src/common/interfaces/IGateway.sol";
 import {MessageLib} from "../../src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "../../src/common/interfaces/adapters/IMultiAdapter.sol";
+import {IMultiAdapter} from "../../src/common/interfaces/IMultiAdapter.sol";
 
 import {IHub} from "../../src/hub/interfaces/IHub.sol";
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {CommonInput} from "./CommonDeployer.s.sol";
-import {HubDeployer, HubActionBatcher} from "./HubDeployer.s.sol";
+import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "./ExtendedHubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
 import {
     WormholeInput,
@@ -16,16 +16,13 @@ import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 
 import "forge-std/Script.sol";
 
-contract FullActionBatcher is HubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
+contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
 
 /**
  * @title FullDeployer
- * @notice Deploys the complete Centrifuge protocol stack (Hub + Spoke + Adapters)
+ * @notice Deploys the complete Centrifuge protocol stack (hub + spoke + adapters + base integrations)
  */
-contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
-    // Config variables
-    uint256 public batchGasLimit;
-
+contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
     {
@@ -42,7 +39,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         AdaptersInput memory adaptersInput,
         FullActionBatcher batcher
     ) internal {
-        _preDeployHub(commonInput, batcher);
+        _preDeployExtendedHub(commonInput, batcher);
         _preDeployExtendedSpoke(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
     }
@@ -59,13 +56,13 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
-        _postDeployHub(batcher);
+        _postDeployExtendedHub(batcher);
         _postDeployExtendedSpoke(batcher);
         _postDeployAdapters(batcher);
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
-        removeHubDeployerAccess(batcher);
+        removeExtendedHubDeployerAccess(batcher);
         removeExtendedSpokeDeployerAccess(batcher);
         removeAdaptersDeployerAccess(batcher);
     }
@@ -85,7 +82,6 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         require(address(shareClassManager) == 0xe88e712d60bfd23048Dbc677FEb44E2145F2cDf4);
         require(address(hubHelpers) == 0xA30D9E76a80675A719d835a74d09683AD2CB71EE);
         require(address(hub) == 0x9c8454A506263549f07c80698E276e3622077098);
-        require(address(identityValuation) == 0x3b8FaE903a6511f9707A2f45747a0de3B747711f);
         require(address(tokenFactory) == 0xC8eDca090b772C48BcE5Ae14Eb7dd517cd70A32C);
         require(address(spoke) == 0xd30Da1d7F964E5f6C2D9fE2AAA97517F6B23FA2B);
         require(address(balanceSheet) == 0xBcC8D02d409e439D98453C0b1ffa398dFFb31fda);
@@ -105,6 +101,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         require(address(merkleProofManagerFactory) == 0xaBd3cDc17C15a9E7771876cE24aB10A8E722781d);
         require(address(vaultDecoder) == 0x72B188c37bD8Eb002d0D9c63CCd77F2Ff71d272e);
         require(address(circleDecoder) == 0x6fce63E718fED6E20bAa8179e313C24cbF2EDa24);
+        require(address(identityValuation) == 0x3b8FaE903a6511f9707A2f45747a0de3B747711f);
     }
 
     function run() public virtual {
@@ -124,11 +121,12 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         uint16 centrifugeId = uint16(vm.parseJsonUint(config, "$.network.centrifugeId"));
         string memory environment = vm.parseJsonString(config, "$.network.environment");
 
-        // Parse batchGasLimit with defaults
-        try vm.parseJsonUint(config, "$.network.batchGasLimit") returns (uint256 _batchGasLimit) {
-            batchGasLimit = _batchGasLimit;
+        // Parse maxBatchGasLimit with defaults
+        uint256 maxBatchGasLimit;
+        try vm.parseJsonUint(config, "$.network.maxBatchGasLimit") returns (uint256 _batchGasLimit) {
+            maxBatchGasLimit = _batchGasLimit;
         } catch {
-            batchGasLimit = 25_000_000; // 25M gas
+            maxBatchGasLimit = 25_000_000; // 25M gas
         }
 
         console.log("Network:", network);
@@ -141,7 +139,7 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         CommonInput memory commonInput = CommonInput({
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
-            batchGasLimit: uint128(batchGasLimit),
+            maxBatchGasLimit: uint128(maxBatchGasLimit),
             version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
         });
 

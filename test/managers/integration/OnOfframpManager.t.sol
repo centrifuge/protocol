@@ -11,7 +11,7 @@ import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import "../../spoke/BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
@@ -56,10 +56,10 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             address(fullRestrictionsHook)
         );
         spoke.updatePricePoolPerShare(
-            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updatePricePoolPerAsset(
-            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updateRestriction(
             POOL_A,
