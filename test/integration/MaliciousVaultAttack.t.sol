@@ -80,7 +80,7 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
 
         MaliciousFactory maliciousFactory = new MaliciousFactory(s.asyncRequestManager);
 
-        /// A malicious vault can be added but will not adquire any priviledge
+        /// A malicious vault can be added but will not acquire any privilege
         vm.startPrank(FM);
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, bytes32(bytes20(address(maliciousFactory))), VaultUpdateKind.DeployAndLink, 0
@@ -88,7 +88,7 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
 
         MaliciousVault maliciousVault = maliciousFactory.vault();
 
-        /// But the malicious vault can not attack interacting with the asyncRequestmanager
+        /// But the malicious vault can not attack interacting with the asyncRequestManager
         vm.expectRevert(IAuth.NotAuthorized.selector);
         maliciousVault.attack();
     }
