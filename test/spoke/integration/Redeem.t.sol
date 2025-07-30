@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
@@ -39,7 +38,7 @@ contract RedeemTest is BaseTest {
 
         // will fail - investment asset not allowed
         centrifugeChain.unlinkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
         // will fail - cannot fulfill if there is no pending redeem request
