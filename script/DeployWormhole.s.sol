@@ -30,7 +30,7 @@ contract DeployWormhole is Script, CreateXScript {
     function run() public {
         vm.startBroadcast();
 
-        version = "3";
+        version = keccak256(abi.encodePacked("3"));
 
         setUpCreateXFactory();
 
