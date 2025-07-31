@@ -7,9 +7,9 @@ import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
 import {GasService} from "../src/common/GasService.sol";
 import {Guardian, ISafe} from "../src/common/Guardian.sol";
+import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
-import {MultiAdapter} from "../src/common/adapters/MultiAdapter.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 

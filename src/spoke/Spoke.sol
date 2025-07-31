@@ -258,7 +258,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) public auth {
+    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 price, uint64 computedAt) public auth {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
         Price storage poolPerShare = shareClass.pricePoolPerShare;
         require(computedAt >= shareClass.pricePoolPerShare.computedAt, CannotSetOlderPrice());
@@ -274,16 +274,13 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updatePricePoolPerAsset(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 poolPerAsset_,
-        uint64 computedAt
-    ) public auth {
+    function updatePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, uint64 computedAt)
+        public
+        auth
+    {
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        Price storage poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
+        Price storage poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         // Disable expiration of the price if never initialized
@@ -291,9 +288,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
             poolPerAsset.maxAge = type(uint64).max;
         }
 
-        poolPerAsset.price = poolPerAsset_;
+        poolPerAsset.price = price;
         poolPerAsset.computedAt = computedAt;
-        emit UpdateAssetPrice(poolId, scId, asset, tokenId, poolPerAsset_, computedAt);
+        emit UpdateAssetPrice(poolId, scId, asset, tokenId, price, computedAt);
     }
 
     function setMaxSharePriceAge(PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external auth {
@@ -306,7 +303,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
-        shareClass.pricePoolPerAsset[asset][tokenId].maxAge = maxPriceAge;
+        shareClass.asset[assetId].pricePoolPerAsset.maxAge = maxPriceAge;
         emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, maxPriceAge);
     }
 
@@ -439,11 +436,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpoke
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        if (checkValidity) {
-            require(shareClass.pricePoolPerShare.isValid(), InvalidPrice());
-        }
+        require(!checkValidity || shareClass.pricePoolPerShare.isValid(), InvalidPrice());
 
-        price = shareClass.pricePoolPerShare.asPrice();
+        return shareClass.pricePoolPerShare.price;
     }
 
     /// @inheritdoc ISpoke
@@ -453,13 +448,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         returns (D18 price)
     {
         ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-        (address asset, uint256 tokenId) = idToAsset(assetId);
-        Price memory poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
-        if (checkValidity) {
-            require(poolPerAsset.isValid(), InvalidPrice());
-        }
+        Price memory poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
+        require(!checkValidity || poolPerAsset.isValid(), InvalidPrice());
 
-        price = poolPerAsset.asPrice();
+        return poolPerAsset.price;
     }
 
     /// @inheritdoc ISpoke
@@ -468,8 +460,14 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (D18 pricePoolPerAsset_, D18 pricePoolPerShare_)
     {
-        (Price memory poolPerAsset, Price memory poolPerShare) = _pricesPoolPer(poolId, scId, assetId, checkValidity);
-        return (poolPerAsset.asPrice(), poolPerShare.asPrice());
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+
+        Price memory poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
+        Price memory poolPerShare = shareClass.pricePoolPerShare;
+
+        require(!checkValidity || poolPerAsset.isValid() && poolPerShare.isValid(), InvalidPrice());
+
+        return (poolPerAsset.price, poolPerShare.price);
     }
 
     /// @inheritdoc ISpoke
@@ -490,7 +488,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
     {
-        (Price memory poolPerAsset,) = _pricesPoolPer(poolId, scId, assetId, false);
+        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
+        Price memory poolPerAsset = shareClass.asset[assetId].pricePoolPerAsset;
         computedAt = poolPerAsset.computedAt;
         maxAge = poolPerAsset.maxAge;
         validUntil = poolPerAsset.validUntil();
@@ -510,23 +509,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
-
-    function _pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
-        internal
-        view
-        returns (Price memory poolPerAsset, Price memory poolPerShare)
-    {
-        ShareClassDetails storage shareClass = _shareClass(poolId, scId);
-
-        (address asset, uint256 tokenId) = idToAsset(assetId);
-        poolPerAsset = shareClass.pricePoolPerAsset[asset][tokenId];
-        poolPerShare = shareClass.pricePoolPerShare;
-
-        if (checkValidity) {
-            require(poolPerAsset.isValid(), InvalidPrice());
-            require(poolPerShare.isValid(), InvalidPrice());
-        }
-    }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
         bytes memory callData;

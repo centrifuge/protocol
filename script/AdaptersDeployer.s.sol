@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {AxelarAdapter} from "../src/common/adapters/AxelarAdapter.sol";
-import {WormholeAdapter} from "../src/common/adapters/WormholeAdapter.sol";
-
 import "forge-std/Script.sol";
+
+import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
+import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
 
 struct WormholeInput {
     bool shouldDeploy;

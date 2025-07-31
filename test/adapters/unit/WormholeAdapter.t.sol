@@ -4,14 +4,15 @@ pragma solidity 0.8.28;
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {WormholeAdapter} from "../../../src/common/adapters/WormholeAdapter.sol";
-import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IWormholeAdapter} from "../../../src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {Mock} from "../../common/mocks/Mock.sol";
 
-import {Mock} from "../mocks/Mock.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
+
+import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
+import {IWormholeAdapter} from "../../../src/adapters/interfaces/IWormholeAdapter.sol";
 
 contract MockWormholeDeliveryProvider {
     uint16 public immutable chainId = 2;
