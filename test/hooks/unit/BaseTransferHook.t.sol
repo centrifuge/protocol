@@ -322,10 +322,10 @@ contract BaseTransferHookTestIsSourceMember is BaseTransferHookTest {
     }
 
     function testExpiredMember() public view {
-        uint64 pastTime = uint64(block.timestamp - 1);
+        uint64 timestamp = uint64(block.timestamp - 1);
 
         // Mock expired member data directly
-        HookData memory hookData = HookData({from: bytes16(uint128(pastTime) << 64), to: bytes16(0)});
+        HookData memory hookData = HookData({from: bytes16(uint128(timestamp) << 64), to: bytes16(0)});
 
         assertFalse(hook.isSourceMember(testUser, hookData));
     }
@@ -359,10 +359,10 @@ contract BaseTransferHookTestIsTargetMember is BaseTransferHookTest {
     }
 
     function testExpiredMember() public view {
-        uint64 pastTime = uint64(block.timestamp - 1);
+        uint64 timestamp = uint64(block.timestamp - 1);
 
         // Mock expired member data directly
-        HookData memory hookData = HookData({from: bytes16(0), to: bytes16(uint128(pastTime) << 64)});
+        HookData memory hookData = HookData({from: bytes16(0), to: bytes16(uint128(timestamp) << 64)});
 
         assertFalse(hook.isTargetMember(testUser, hookData));
     }
@@ -467,14 +467,14 @@ contract BaseTransferHookTestUpdateMember is BaseTransferHookTest {
     }
 
     function testUpdateMemberInvalidValidUntil() public {
-        uint64 pastTime = uint64(block.timestamp - 1);
+        uint64 timestamp = uint64(block.timestamp - 1);
 
         // Mock that we have ward permission on the hook
         vm.prank(DEPLOYER);
         hook.rely(address(this));
 
         vm.expectRevert(IMemberlist.InvalidValidUntil.selector);
-        hook.updateMember(address(shareToken), testUser, pastTime);
+        hook.updateMember(address(shareToken), testUser, timestamp);
     }
 
     function testUpdateMemberPreservesFrozenStatus() public {
@@ -511,14 +511,14 @@ contract BaseTransferHookTestIsMember is BaseTransferHookTest {
     }
 
     function testExpiredMember() public {
-        uint64 pastTime = uint64(block.timestamp - 1);
+        uint64 timestamp = uint64(block.timestamp - 1);
 
         // Mock expired member data directly
-        _mockMemberUser(testUser, pastTime);
+        _mockMemberUser(testUser, timestamp);
 
         (bool isValid, uint64 validUntil) = hook.isMember(address(shareToken), testUser);
         assertFalse(isValid);
-        assertEq(validUntil, pastTime); // validUntil doesn't change
+        assertEq(validUntil, timestamp); // validUntil doesn't change
     }
 }
 
