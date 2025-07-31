@@ -568,6 +568,7 @@ contract EndToEndFlows is EndToEndUtils {
         }
 
         vault = IAsyncVault(address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId)));
+        assertNotEq(address(vault), address(0));
     }
 
     function _executeAsyncDepositRequest(CSpoke memory spoke, IAsyncVault vault, address investor, uint128 amount)
@@ -720,7 +721,7 @@ contract EndToEndFlows is EndToEndUtils {
     }
 
     function _processSyncDeposit(
-        CHub memory hub,
+        CHub memory,
         CSpoke memory spoke,
         PoolId poolId,
         ShareClassId shareClassId,
@@ -859,7 +860,6 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(investor);
         vault.withdraw(vault.maxWithdraw(investor), investor, investor);
 
-        // CHECKS
         if (skipPreciseAssertion) {
             // For fork tests: just verify assets increased
             assertTrue(
@@ -932,7 +932,6 @@ contract EndToEndFlows is EndToEndUtils {
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
-        // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, 0, "expected amount");
         assertEq(value, assetToPool(0), "expected value");

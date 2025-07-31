@@ -13,11 +13,10 @@ import {MockValuation} from "../common/mocks/MockValuation.sol";
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {AssetId} from "../../src/common/types/AssetId.sol";
 import {GasService} from "../../src/common/GasService.sol";
-import {PoolId, newPoolId} from "../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
@@ -46,28 +45,25 @@ import "forge-std/Test.sol";
 contract ForkTestBase is EndToEndFlows {
     using CastLib for *;
 
-    address constant FORK_POOL_ADMIN = IntegrationConstants.ETH_DEFAULT_POOL_ADMIN;
-
     CHub forkHub;
     CSpoke forkSpoke;
-    ShareClassId forkShareClassId;
-    AssetId forkAssetId;
 
     function setUp() public virtual override {
-        vm.createSelectFork(_getRpcEndpoint());
-        _loadContractsFromJson();
-        _setupForkConfiguration();
+        vm.createSelectFork(_rpcEndpoint());
+        _loadContracts();
     }
 
-    function _getRpcEndpoint() internal view virtual returns (string memory) {
+    function _rpcEndpoint() internal view virtual returns (string memory) {
         return IntegrationConstants.RPC_ETHEREUM;
     }
 
-    function _loadContractsFromJson() internal {
-        uint16 centrifugeId = 1;
+    function _poolAdmin() internal pure virtual returns (address) {
+        return IntegrationConstants.ETH_DEFAULT_POOL_ADMIN;
+    }
 
+    function _loadContracts() internal virtual {
         forkHub = CHub({
-            centrifugeId: centrifugeId,
+            centrifugeId: IntegrationConstants.ETH_CENTRIFUGE_ID,
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
@@ -83,7 +79,7 @@ contract ForkTestBase is EndToEndFlows {
         });
 
         forkSpoke = CSpoke({
-            centrifugeId: centrifugeId,
+            centrifugeId: IntegrationConstants.ETH_CENTRIFUGE_ID,
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
@@ -98,7 +94,7 @@ contract ForkTestBase is EndToEndFlows {
             fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
             redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
             usdc: ERC20(IntegrationConstants.ETH_USDC),
-            usdcId: newAssetId(centrifugeId, 1)
+            usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.ETH_USDC, 0)
         });
 
         // Initialize pricing state
@@ -106,28 +102,19 @@ contract ForkTestBase is EndToEndFlows {
         currentSharePrice = IntegrationConstants.identityPrice();
 
         // Fund pool admin
-        vm.deal(FORK_POOL_ADMIN, 10 ether);
-    }
-
-    function _setupForkConfiguration() internal {
-        // Set up pool and share class configuration for fork tests
-        forkShareClassId = ShareClassId.wrap(bytes16(abi.encodePacked(uint128(1125899906842625))));
-        forkAssetId = newAssetId(1, 1);
-
-        // Initialize USD_ID for pricing utilities
-        USD_ID = forkAssetId;
+        vm.deal(_poolAdmin(), 10 ether);
     }
 
     function _addPoolMember(IBaseVault vault, address user) internal virtual {
-        vm.startPrank(FORK_POOL_ADMIN);
+        vm.startPrank(_poolAdmin());
         forkHub.hub.updateRestriction{value: GAS}(
             vault.poolId(), vault.scId(), forkSpoke.centrifugeId, _updateRestrictionMemberMsg(user), EXTRA_GAS
         );
         vm.stopPrank();
     }
 
-    /// @dev Override to skip mock valuation price setting in fork tests
-    /// Fork tests use real IdentityValuation which doesn't support setPrice()
+    /// @dev Override to handle fork-specific price configuration
+    /// Skip valuation.setPrice() since valuation is address(0) for fork tests
     function _baseConfigurePrices(
         CHub memory hub,
         CSpoke memory spoke,
@@ -137,21 +124,21 @@ contract ForkTestBase is EndToEndFlows {
         address poolManager,
         D18 assetPrice,
         D18 sharePrice
-    ) internal override {
-        // Fork tests use address(0) for valuation, so skip the setPrice() call
-        // But we still need to set the share price for the pool
+    ) internal virtual override {
         currentAssetPrice = assetPrice;
         currentSharePrice = sharePrice;
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
+        hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId);
+        hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId);
         vm.stopPrank();
     }
 }
 
 contract ForkTestAsyncInvestments is ForkTestBase {
-    // TODO: After v2 disable, switch to JAAA
-    address public constant VAULT = IntegrationConstants.ETH_DEJAAA_VAULT;
+    // TODO(later): After v2 disable, switch to JAAA
+    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAAA_VAULT);
 
     uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -163,9 +150,7 @@ contract ForkTestAsyncInvestments is ForkTestBase {
         _completeAsyncRedeem(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
-    function _completeAsyncDeposit(address vault_, address investor, uint128 amount) internal {
-        IBaseVault vault = IBaseVault(vault_);
-
+    function _completeAsyncDeposit(IBaseVault vault, address investor, uint128 amount) internal {
         deal(vault.asset(), investor, amount);
         _addPoolMember(vault, investor);
 
@@ -174,32 +159,30 @@ contract ForkTestAsyncInvestments is ForkTestBase {
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.spoke.assetToId(vault.asset(), 0),
-            IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
+            forkSpoke.usdcId,
+            _poolAdmin(),
             investor,
             amount,
             true,
             true,
-            vault_
+            address(vault)
         );
     }
 
-    function _completeAsyncRedeem(address vault_, address investor, uint128 amount) internal {
-        _completeAsyncDeposit(vault_, investor, amount);
-
-        IBaseVault vault = IBaseVault(vault_);
+    function _completeAsyncRedeem(IBaseVault vault, address investor, uint128 amount) internal {
+        _completeAsyncDeposit(vault, investor, amount);
 
         _syncRedeemFlow(
             forkHub,
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.spoke.assetToId(vault.asset(), 0),
-            IntegrationConstants.ETH_DEFAULT_POOL_ADMIN,
+            forkSpoke.usdcId,
+            _poolAdmin(),
             investor,
             true,
             true,
-            vault_
+            address(vault)
         );
     }
 }
@@ -207,118 +190,117 @@ contract ForkTestAsyncInvestments is ForkTestBase {
 contract ForkTestSyncInvestments is ForkTestBase {
     using CastLib for *;
 
-    // We'll create a new pool and vault on Ethereum mainnet fork
-    PoolId testPoolId;
-    ShareClassId testShareClassId;
-    AssetId testAssetId;
-    address testSyncDepositVault;
+    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT);
 
     function setUp() public override {
-        super.setUp();
-        _createTestPoolAndVault();
-    }
+        vm.createSelectFork(IntegrationConstants.RPC_PLUME);
 
-    function _createTestPoolAndVault() internal {
-        uint48 randomPoolId = uint48(uint256(keccak256(abi.encode(block.timestamp, block.number))) % 1e14);
-        testPoolId = newPoolId(1, randomPoolId);
+        _loadContracts();
 
-        // Use the pre-existing USD_ID that's already registered in hub registry during deployment
-        testAssetId = USD_ID; // USD_ID = newAssetId(840) is already registered with 18 decimals
-
-        vm.startPrank(address(forkHub.guardian.safe()));
-        forkHub.guardian.createPool(testPoolId, FORK_POOL_ADMIN, testAssetId);
-        vm.stopPrank();
-
-        // Set up the pool metadata and share class
-        vm.startPrank(FORK_POOL_ADMIN);
-        forkHub.hub.setPoolMetadata(testPoolId, bytes("Test Sync Pool"));
-        testShareClassId = forkHub.shareClassManager.previewNextShareClassId(testPoolId);
-        forkHub.hub.addShareClass(testPoolId, "Test Sync Shares", "TSS", bytes32("test_salt"));
-        vm.stopPrank();
-
-        _createPoolAccounts(forkHub, testPoolId, FORK_POOL_ADMIN);
-        _subsidizePool(forkHub, testPoolId);
-
-        AssetId spokeAssetId = forkSpoke.spoke.assetToId(address(forkSpoke.usdc), 0);
-
-        // Configure pool cross-chain to create share token on spoke
-        vm.startPrank(FORK_POOL_ADMIN);
-        forkHub.hub.notifyPool{value: GAS}(testPoolId, forkSpoke.centrifugeId);
-        forkHub.hub.notifyShareClass{value: GAS}(
-            testPoolId,
-            testShareClassId,
-            forkSpoke.centrifugeId,
-            address(forkSpoke.redemptionRestrictionsHook).toBytes32()
+        _baseConfigurePrices(
+            forkHub,
+            forkSpoke,
+            VAULT.poolId(),
+            VAULT.scId(),
+            forkSpoke.usdcId,
+            _poolAdmin(),
+            IntegrationConstants.identityPrice(),
+            IntegrationConstants.identityPrice()
         );
-        vm.stopPrank();
-
-        // Deploy the sync deposit vault
-        vm.startPrank(FORK_POOL_ADMIN);
-        forkHub.hub.updateVault{value: GAS}(
-            testPoolId,
-            testShareClassId,
-            spokeAssetId,
-            forkSpoke.syncDepositVaultFactory,
-            VaultUpdateKind.DeployAndLink,
-            EXTRA_GAS
-        );
-        vm.stopPrank();
-
-        testSyncDepositVault =
-            address(forkSpoke.asyncRequestManager.vaultByAssetId(testPoolId, testShareClassId, spokeAssetId));
-
-        // Update testAssetId to use the spoke-side asset ID for the tests
-        testAssetId = spokeAssetId;
     }
 
-    // Override _addPoolMember to use the correct pool admin for our test pool
-    function _addPoolMember(IBaseVault vault, address user) internal override {
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-
-        vm.startPrank(FORK_POOL_ADMIN);
-        _updateRestrictionMemberMsg(user);
-        vm.stopPrank();
+    function _rpcEndpoint() internal pure override returns (string memory) {
+        return IntegrationConstants.RPC_PLUME;
     }
 
-    // TODO: Re-enable when Plume mainnet has sync deposit vault deployed
-    // Currently disabled due to authorization issues with custom test pool setup
-    // Will use real Plume mainnet pool instead of creating test pools
-    /*
+    function _poolAdmin() internal pure override returns (address) {
+        return IntegrationConstants.PLUME_POOL_ADMIN;
+    }
+
+    function _loadContracts() internal override {
+        forkHub = CHub({
+            centrifugeId: IntegrationConstants.PLUME_CENTRIFUGE_ID,
+            root: Root(IntegrationConstants.ROOT),
+            guardian: Guardian(IntegrationConstants.GUARDIAN),
+            gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            gasService: GasService(IntegrationConstants.GAS_SERVICE),
+            hubRegistry: HubRegistry(IntegrationConstants.HUB_REGISTRY),
+            accounting: Accounting(IntegrationConstants.ACCOUNTING),
+            holdings: Holdings(IntegrationConstants.HOLDINGS),
+            shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
+            hub: Hub(IntegrationConstants.HUB),
+            identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
+            valuation: MockValuation(address(0)), // Fork tests don't use dynamic pricing
+            snapshotHook: MockSnapshotHook(address(0)) // Fork tests don't use snapshot hooks
+        });
+
+        forkSpoke = CSpoke({
+            centrifugeId: IntegrationConstants.PLUME_CENTRIFUGE_ID,
+            root: Root(IntegrationConstants.ROOT),
+            guardian: Guardian(IntegrationConstants.GUARDIAN),
+            gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            balanceSheet: BalanceSheet(IntegrationConstants.BALANCE_SHEET),
+            spoke: Spoke(IntegrationConstants.SPOKE),
+            router: VaultRouter(IntegrationConstants.ROUTER),
+            asyncVaultFactory: IntegrationConstants.ASYNC_VAULT_FACTORY.toBytes32(),
+            syncDepositVaultFactory: IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY.toBytes32(),
+            asyncRequestManager: AsyncRequestManager(IntegrationConstants.ASYNC_REQUEST_MANAGER),
+            syncManager: SyncManager(IntegrationConstants.SYNC_MANAGER),
+            freezeOnlyHook: FreezeOnly(IntegrationConstants.FREEZE_ONLY_HOOK),
+            fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
+            redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
+            usdc: ERC20(IntegrationConstants.PLUME_PUSD),
+            usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.PLUME_PUSD, 0)
+        });
+
+        // Initialize pricing state
+        currentAssetPrice = IntegrationConstants.identityPrice();
+        currentSharePrice = IntegrationConstants.identityPrice();
+
+        // Fund pool admin
+        vm.deal(_poolAdmin(), 10 ether);
+    }
+
     function test_completeSyncDepositFlow() public {
-        _completeSyncDeposit(testSyncDepositVault, makeAddr("INVESTOR_A"), 1e3); // 0.001 USDC
+        _completeSyncDeposit(makeAddr("INVESTOR_A"), 1000e18);
     }
 
     function test_completeSyncDepositAsyncRedeemFlow() public {
-        _completeAsyncRedeem(testSyncDepositVault, makeAddr("INVESTOR_A"), 1e6);
+        _completeSyncDepositAsyncRedeem(makeAddr("INVESTOR_A"), 1000e18);
     }
-    */
 
-    function _completeSyncDeposit(address vault_, address investor, uint128 amount) internal {
-        IBaseVault vault = IBaseVault(vault_);
-
-        _addPoolMember(vault, investor);
+    function _completeSyncDeposit(address investor, uint128 amount) internal {
+        _addPoolMember(VAULT, investor);
 
         deal(address(forkSpoke.usdc), investor, amount);
         _syncDepositFlow(
-            forkHub, forkSpoke, testPoolId, testShareClassId, testAssetId, FORK_POOL_ADMIN, investor, amount, true, true
+            forkHub,
+            forkSpoke,
+            VAULT.poolId(),
+            VAULT.scId(),
+            forkSpoke.usdcId,
+            _poolAdmin(),
+            investor,
+            amount,
+            true,
+            true
         );
     }
 
-    function _completeAsyncRedeem(address vault_, address investor, uint128 amount) internal {
-        _completeSyncDeposit(vault_, investor, amount);
+    function _completeSyncDepositAsyncRedeem(address investor, uint128 amount) internal {
+        _completeSyncDeposit(investor, amount);
 
         _syncRedeemFlow(
             forkHub,
             forkSpoke,
-            testPoolId,
-            testShareClassId,
-            testAssetId,
-            FORK_POOL_ADMIN,
+            VAULT.poolId(),
+            VAULT.scId(),
+            forkSpoke.usdcId,
+            _poolAdmin(),
             investor,
             true,
             true,
-            address(0)
+            address(VAULT)
         );
     }
 }

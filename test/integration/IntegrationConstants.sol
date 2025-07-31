@@ -60,13 +60,16 @@ library IntegrationConstants {
 
     // Token addresses
     address constant ETH_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant PLUME_PUSD = 0xdddD73F5Df1F0DC31373357beAC77545dC5A6f3F;
 
     // Pool admins
     address constant ETH_DEFAULT_POOL_ADMIN = 0x742d100011fFbC6e509E39DbcB0334159e86be1e;
+    address constant PLUME_POOL_ADMIN = 0xB3B442BFee81F9c2bE2c146A823cB54a2625DF98;
 
     // Vault addresses
     address constant ETH_JAAA_VAULT = 0x4880799eE5200fC58DA299e965df644fBf46780B;
     address constant ETH_DEJAAA_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
+    address constant PLUME_SYNC_DEPOSIT_VAULT = 0x374Bc3D556fBc9feC0b9537c259DCB7935f7E5bf;
 
     // ======== V2 Constants (Legacy) ========
     address constant V2_ROOT = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
@@ -77,8 +80,13 @@ library IntegrationConstants {
     uint256 constant V2_REQUEST_ID = 0;
     uint128 constant V2_USDC_ASSET_ID = 242333941209166991950178742833476896417;
 
+    // ======== Centrifuge Chain IDs ========
+    uint16 constant ETH_CENTRIFUGE_ID = 1;
+    uint16 constant PLUME_CENTRIFUGE_ID = 4;
+
     // ======== RPC Endpoints ========
     string constant RPC_ETHEREUM = "https://ethereum-rpc.publicnode.com";
+    string constant RPC_PLUME = "https://rpc.plume.org";
 
     // ======== Misc Constants ========
     uint256 constant PLACEHOLDER_REQUEST_ID = 0;
