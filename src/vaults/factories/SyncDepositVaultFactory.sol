@@ -51,6 +51,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         vault.rely(address(asyncRedeemManager));
 
         IAuth(address(syncDepositManager)).rely(address(vault));
+        IAuth(address(asyncRedeemManager)).rely(address(vault));
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

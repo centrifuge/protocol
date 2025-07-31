@@ -286,7 +286,6 @@ struct AsyncInvestmentState {
 }
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
-    error AssetNotAllowed();
     error ExceedsMaxDeposit();
     error AssetMismatch();
     error ZeroAmountNotAllowed();
@@ -299,6 +298,7 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();
     error ExceedsRedeemLimits();
+    error VaultNotLinked();
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)
