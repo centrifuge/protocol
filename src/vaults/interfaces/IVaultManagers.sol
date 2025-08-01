@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
+import {IBaseVault} from "./IBaseVault.sol";
+import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {IUpdateContract} from "../../spoke/interfaces/IUpdateContract.sol";
 
 interface IDepositManager {
     /// @notice Processes owner's asset deposit after the epoch has been executed on the corresponding CP instance and
@@ -286,7 +286,6 @@ struct AsyncInvestmentState {
 }
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
-    error AssetNotAllowed();
     error ExceedsMaxDeposit();
     error AssetMismatch();
     error ZeroAmountNotAllowed();
@@ -299,6 +298,7 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ShareTokenTransferFailed();
     error ExceedsMaxRedeem();
     error ExceedsRedeemLimits();
+    error VaultNotLinked();
 
     /// @notice Returns the investment state
     function investments(IBaseVault vaultAddr, address investor)

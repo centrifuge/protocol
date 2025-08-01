@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {IAdapter} from "./IAdapter.sol";
+
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {IAxelarAdapter} from "../../adapters/interfaces/IAxelarAdapter.sol"; // TODO: extract from guardian
+import {IWormholeAdapter} from "../../adapters/interfaces/IWormholeAdapter.sol"; // TODO: extract from guardian
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);

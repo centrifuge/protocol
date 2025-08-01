@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IERC20} from "src/misc/interfaces/IERC20.sol";
-import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
+import {IERC20} from "../interfaces/IERC20.sol";
+import {IERC7751} from "../interfaces/IERC7751.sol";
 
 /// @title  Safe Transfer Lib
 /// @author Modified from Uniswap v3 Periphery (libraries/TransferHelper.sol)

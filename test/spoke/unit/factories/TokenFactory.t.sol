@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
-import {Root} from "src/common/Root.sol";
+import {Root} from "../../../../src/common/Root.sol";
 
-import {ShareToken} from "src/spoke/ShareToken.sol";
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {TokenFactory} from "src/spoke/factories/TokenFactory.sol";
-
-import {BaseTest} from "test/spoke/BaseTest.sol";
+import {ShareToken} from "../../../../src/spoke/ShareToken.sol";
+import {IShareToken} from "../../../../src/spoke/interfaces/IShareToken.sol";
+import {TokenFactory} from "../../../../src/spoke/factories/TokenFactory.sol";
 
 import "forge-std/Test.sol";
 
@@ -19,56 +16,7 @@ interface SpokeLike {
 }
 
 contract FactoryTest is Test {
-    uint256 mainnetFork;
-    uint256 polygonFork;
-    address root;
-
-    function setUp() public {
-        if (vm.envOr("FORK_TESTS", false)) {
-            mainnetFork = vm.createFork(vm.rpcUrl("ethereum-mainnet"));
-            polygonFork = vm.createFork(vm.rpcUrl("polygon-mainnet"));
-        }
-
-        root = address(new Root(48 hours, address(this)));
-    }
-
-    function testTokenFactoryIsDeterministicAcrossChains(bytes16 scId) public {
-        if (vm.envOr("FORK_TESTS", false)) {
-            vm.setEnv("DEPLOYMENT_SALT", "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563");
-            vm.selectFork(mainnetFork);
-            BaseTest testSetup1 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
-            testSetup1.setUp();
-            testSetup1.deployVault(
-                VaultKind.Async,
-                18,
-                address(testSetup1.fullRestrictionsHook()),
-                bytes16(bytes("1")),
-                address(testSetup1.erc20()),
-                0,
-                0
-            );
-            address token1 = SpokeLike(address(testSetup1.spoke())).getShare(testSetup1.POOL_A().raw(), scId);
-            address root1 = address(testSetup1.root());
-
-            vm.selectFork(polygonFork);
-            BaseTest testSetup2 = new BaseTest{salt: keccak256(abi.encode(vm.envString("DEPLOYMENT_SALT")))}();
-            testSetup2.setUp();
-            testSetup2.deployVault(
-                VaultKind.Async,
-                18,
-                address(testSetup2.fullRestrictionsHook()),
-                bytes16(bytes("1")),
-                address(testSetup2.erc20()),
-                0,
-                0
-            );
-            address token2 = SpokeLike(address(testSetup2.spoke())).getShare(testSetup2.POOL_A().raw(), scId);
-            address root2 = address(testSetup2.root());
-
-            assertEq(address(root1), address(root2));
-            assertEq(token1, token2);
-        }
-    }
+    address root = address(new Root(48 hours, address(this)));
 
     function testShareShouldBeDeterministic(
         string memory name,
@@ -121,6 +69,7 @@ contract FactoryTest is Test {
 
         assertEq(IAuth(address(token)).wards(address(1)), 1);
         assertEq(IAuth(address(token)).wards(address(2)), 1);
+        assertEq(IAuth(address(token)).wards(address(root)), 1);
     }
 
     function _stringToBytes32(string memory source) internal pure returns (bytes32 result) {

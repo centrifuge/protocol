@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {IERC165} from "../../misc/interfaces/IERC7575.sol";
 
 struct HookData {
     bytes16 from;
@@ -22,12 +22,15 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
 ///           Deposit request:                  address(0)      -> address(user)
-///           Deposit request fulfillment:       address(0)      -> ESCROW_HOOK_ID
-///           Deposit claim:                    ESCROW_HOOK_ID  -> address(user)
+///           Deposit request fulfillment:       address(0)      -> Endorsed
+///           Deposit or cancel redeem claim:   Endorsed        -> address(user)
 ///           Redeem request:                   address(user)   -> ESCROW_HOOK_ID
-///           Redeem request fulfillment:        ESCROW_HOOK_ID  -> address(0)
-///           Redeem claim:                     address(user)   -> address(0)
-///           Cross-chain transfer:             address(user)   -> address(uint160(chainId))
+///           Redeem request fulfillment:        Endorsed        -> address(0)
+///           Redeem or cancel deposit claim:   address(user)   -> address(0)
+///           Cross-chain transfer check:       address(user)   -> address(uint160(chainId))
+///           Cross-chain transfer execution:   address(spoke)  -> address(0)
+///
+///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 interface ITransferHook is IERC165 {
     // --- Errors ---
     error TransferBlocked();

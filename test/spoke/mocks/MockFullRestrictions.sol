@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "src/hooks/FullRestrictions.sol";
+import "../../common/mocks/Mock.sol";
 
-import "test/common/mocks/Mock.sol";
+import {HookData} from "../../../src/common/interfaces/ITransferHook.sol";
+
+import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 
 contract MockFullRestrictions is FullRestrictions, Mock {
-    constructor(address root_, address deployer) FullRestrictions(root_, deployer) {}
+    constructor(
+        address root_,
+        address redeemSource_,
+        address depositTarget_,
+        address crosschainSource_,
+        address deployer
+    ) FullRestrictions(root_, redeemSource_, depositTarget_, crosschainSource_, deployer) {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public
-        override(FullRestrictions)
+        override
         returns (bytes4)
     {
         require(checkERC20Transfer(from, to, value, hookData), TransferBlocked());

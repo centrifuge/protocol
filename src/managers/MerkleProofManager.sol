@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
+import {IMerkleProofManagerFactory} from "./interfaces/IMerkleProofManagerFactory.sol";
+import {IMerkleProofManager, Call, PolicyLeaf} from "./interfaces/IMerkleProofManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MerkleProofLib} from "../misc/libraries/MerkleProofLib.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IMerkleProofManagerFactory} from "src/managers/interfaces/IMerkleProofManagerFactory.sol";
-import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas

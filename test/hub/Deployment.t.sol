@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {HubDeployer, HubActionBatcher} from "script/HubDeployer.s.sol";
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {HubDeployer, HubActionBatcher} from "../../script/HubDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -108,17 +108,6 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         assertEq(accounting.wards(address(hub)), 1);
         assertEq(accounting.wards(address(hubHelpers)), 1);
         assertEq(accounting.wards(nonWard), 0);
-    }
-
-    function testIdentityValuation(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-
-        assertEq(identityValuation.wards(address(root)), 1);
-        assertEq(identityValuation.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(identityValuation.erc6909()), address(hubRegistry));
     }
 }
 

@@ -6,7 +6,8 @@
         "ethereum": "eth-mainnet",
         "arbitrum": "arb-mainnet",
         "base": "base-mainnet",
-        "avalanche": "avax-mainnet"
+        "avalanche": "avax-mainnet",
+        "bnb-smart-chain": "bnb-mainnet"
     },
     "testnet": {
         "sepolia": "eth-sepolia",

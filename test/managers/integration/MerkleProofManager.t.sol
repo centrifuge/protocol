@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAuth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {IAuth} from "../../../src/misc/Auth.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import "../../spoke/integration/BaseTest.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {VaultDecoder} from "src/managers/decoders/VaultDecoder.sol";
-import {MerkleProofManager, PolicyLeaf, Call} from "src/managers/MerkleProofManager.sol";
-import {IMerkleProofManager, IERC7751} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import "test/spoke/BaseTest.sol";
-import {MerkleTreeLib} from "test/managers/libraries/MerkleTreeLib.sol";
+import {VaultDecoder} from "../../../src/managers/decoders/VaultDecoder.sol";
+import {MerkleProofManager, PolicyLeaf, Call} from "../../../src/managers/MerkleProofManager.sol";
+import {IMerkleProofManager, IERC7751} from "../../../src/managers/interfaces/IMerkleProofManager.sol";
+
+import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
 
 abstract contract MerkleProofManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -54,10 +55,10 @@ abstract contract MerkleProofManagerBaseTest is BaseTest {
             address(fullRestrictionsHook)
         );
         spoke.updatePricePoolPerShare(
-            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updatePricePoolPerAsset(
-            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updateRestriction(
             POOL_A,

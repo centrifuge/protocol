@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Spoke} from "src/spoke/Spoke.sol";
+import {CommonInput} from "./CommonDeployer.s.sol";
+import {VaultsDeployer} from "./VaultsDeployer.s.sol";
+import {SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
-import {FreezeOnly} from "src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "src/hooks/RedemptionRestrictions.sol";
-
-import {CommonInput} from "script/CommonDeployer.s.sol";
-import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "script/SpokeDeployer.s.sol";
-
-import "forge-std/Script.sol";
+import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
 
 struct HooksReport {
     SpokeReport spoke;
@@ -44,7 +41,10 @@ contract HooksActionBatcher is SpokeActionBatcher {
     }
 }
 
-contract HooksDeployer is SpokeDeployer {
+/// @dev These hook deployments assume `src/vaults` is used as the vaults logic for the pools.
+///      It sets `vaults.GlobalEscrow` as the deposit target, `vaults.AsyncRequestManager` as the redeem source,
+///      and `spoke.Spoke` as the cross-chain transfer source.
+contract HooksDeployer is VaultsDeployer {
     FreezeOnly public freezeOnlyHook;
     FullRestrictions public fullRestrictionsHook;
     FreelyTransferable public freelyTransferableHook;
@@ -60,29 +60,49 @@ contract HooksDeployer is SpokeDeployer {
 
         freezeOnlyHook = FreezeOnly(
             create3(
-                generateSalt("freezeOnlyHook"),
-                abi.encodePacked(type(FreezeOnly).creationCode, abi.encode(address(root), batcher))
+                generateSalt("freezeOnlyHook-2"),
+                abi.encodePacked(
+                    type(FreezeOnly).creationCode,
+                    abi.encode(
+                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
+                    )
+                )
             )
         );
 
         fullRestrictionsHook = FullRestrictions(
             create3(
-                generateSalt("fullRestrictionsHook"),
-                abi.encodePacked(type(FullRestrictions).creationCode, abi.encode(address(root), batcher))
+                generateSalt("fullRestrictionsHook-2"),
+                abi.encodePacked(
+                    type(FullRestrictions).creationCode,
+                    abi.encode(
+                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
+                    )
+                )
             )
         );
 
         freelyTransferableHook = FreelyTransferable(
             create3(
-                generateSalt("freelyTransferableHook"),
-                abi.encodePacked(type(FreelyTransferable).creationCode, abi.encode(address(root), batcher))
+                generateSalt("freelyTransferableHook-2"),
+                abi.encodePacked(
+                    type(FreelyTransferable).creationCode,
+                    abi.encode(
+                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
+                    )
+                )
             )
         );
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
-                generateSalt("redemptionRestrictionsHook"),
-                abi.encodePacked(type(RedemptionRestrictions).creationCode, abi.encode(address(root), batcher))
+                generateSalt("redemptionRestrictionsHook-2"),
+                abi.encodePacked(
+                    type(RedemptionRestrictions).creationCode,
+                    abi.encode(
+                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
+                    )
+                )
             )
         );
 

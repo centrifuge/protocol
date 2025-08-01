@@ -4,7 +4,10 @@
     "environment": "mainnet",
     "centrifugeId": 2,
     "connectsTo": [
-      "ethereum"
+      "ethereum",
+      "arbitrum",
+      "avalanche",
+      "bnb-smart-chain"
     ],
     "safeAdmin": "0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b"
   },
@@ -43,10 +46,10 @@
     "contractUpdater": "0x8dD5a3d4e9ec54388dAd23B8a1f3B2159B2f2D85",
     "routerEscrow": "0xB86B6AE94E6d05AAc086665534A73fee557EE9F6",
     "globalEscrow": "0x43d51be0B6dE2199A2396bA604114d24383F91E9",
-    "asyncRequestManager": "0x58d57896EBbF000c293327ADf33689D0a7Fd3d9A",
+    "asyncRequestManager": "0xF06f89a1b6C601235729A689595571B7455dD433",
     "syncManager": "0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773",
-    "asyncVaultFactory": "0xE01Ce2e604CCe985A06FA4F4bCD17f1F08417BF3",
-    "syncDepositVaultFactory": "0x3568184784E8ACCaacF51A7F710a3DE0144E4f29",
+    "asyncVaultFactory": "0xED9D489BB79c7cB58C522f36fC6944eaA95ce385",
+    "syncDepositVaultFactory": "0x21bf2544b5a0B03C8566a16592Ba1B3b192b50Bc",
     "vaultRouter": "0xdbCcee499563D4AC2D3788DeD3acb14FB92B175D",
     "freezeOnlyHook": "0xBb7ABFB0E62dfb36e02CeeCDA59ADFD71f50c88e",
     "fullRestrictionsHook": "0xa2C98F0F76Da0C97039688CA6280d082942d0b48",

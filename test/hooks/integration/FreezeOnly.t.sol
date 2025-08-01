@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {ITransferHook} from "src/common/interfaces/ITransferHook.sol";
+import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 
-import "test/spoke/BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;

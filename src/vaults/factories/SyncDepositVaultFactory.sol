@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
-import {IVault} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {IVault} from "../../spoke/interfaces/IVault.sol";
+import {IShareToken} from "../../spoke/interfaces/IShareToken.sol";
+import {IVaultFactory} from "../../spoke/factories/interfaces/IVaultFactory.sol";
 
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {SyncDepositVault} from "../SyncDepositVault.sol";
+import {IAsyncRedeemManager} from "../interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "../interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
 /// @dev    Utility for deploying new vault contracts
@@ -51,6 +51,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         vault.rely(address(asyncRedeemManager));
 
         IAuth(address(syncDepositManager)).rely(address(vault));
+        IAuth(address(asyncRedeemManager)).rely(address(vault));
 
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {

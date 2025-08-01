@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {VaultsDeployer, VaultsActionBatcher} from "script/VaultsDeployer.s.sol";
+import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
-import {CommonDeploymentInputTest} from "test/common/Deployment.t.sol";
+import {VaultsDeployer, VaultsActionBatcher} from "../../script/VaultsDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -41,10 +41,13 @@ contract VaultsDeploymentTest is VaultsDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(syncManager));
+        vm.assume(nonWard != address(syncDepositVaultFactory));
+        vm.assume(nonWard != address(asyncVaultFactory));
 
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spoke)), 1);
+        assertEq(asyncRequestManager.wards(address(syncDepositVaultFactory)), 1);
+        assertEq(asyncRequestManager.wards(address(asyncVaultFactory)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly

@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGuardian} from "src/common/interfaces/IGuardian.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
-import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "src/common/Guardian.sol";
-
-import {AxelarAddressToString} from "test/common/unit/AxelarAdapter.t.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IGuardian} from "../../../src/common/interfaces/IGuardian.sol";
+import {IHubGuardianActions} from "../../../src/common/interfaces/IGuardianActions.sol";
+import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../../src/common/Guardian.sol";
 
 import "forge-std/Test.sol";
+
+import {AxelarAddressToString} from "../../adapters/unit/AxelarAdapter.t.sol";
+import {IAxelarAdapter} from "../../../src/adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../../../src/adapters/interfaces/IWormholeAdapter.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}

@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
-import {IRecoverable} from "src/misc/interfaces/IRecoverable.sol";
-
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
-import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
-import {IMessageProcessor} from "src/common/interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "src/common/interfaces/IMessageProperties.sol";
-import {MessageType, MessageLib, VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-
+import {PoolId} from "./types/PoolId.sol";
+import {AssetId} from "./types/AssetId.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
+import {ShareClassId} from "./types/ShareClassId.sol";
+import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IRequestManager} from "./interfaces/IRequestManager.sol";
+import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
+import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {
     ISpokeGatewayHandler,
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler,
     IUpdateContractGatewayHandler
-} from "src/common/interfaces/IGatewayHandlers.sol";
+} from "./interfaces/IGatewayHandlers.sol";
+
+import {Auth} from "../misc/Auth.sol";
+import {D18} from "../misc/types/D18.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
@@ -100,11 +100,17 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
-            spoke.updatePricePoolPerShare(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.price, m.timestamp);
+            spoke.updatePricePoolPerShare(
+                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), D18.wrap(m.price), m.timestamp
+            );
         } else if (kind == MessageType.NotifyPricePoolPerAsset) {
             MessageLib.NotifyPricePoolPerAsset memory m = MessageLib.deserializeNotifyPricePoolPerAsset(message);
             spoke.updatePricePoolPerAsset(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.price, m.timestamp
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                D18.wrap(m.price),
+                m.timestamp
             );
         } else if (kind == MessageType.NotifyShareMetadata) {
             MessageLib.NotifyShareMetadata memory m = MessageLib.deserializeNotifyShareMetadata(message);
@@ -141,7 +147,10 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
             spoke.setRequestManager(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.manager.toAddress()
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                IRequestManager(m.manager.toAddress())
             );
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
             MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);

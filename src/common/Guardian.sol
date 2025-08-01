@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {PoolId} from "./types/PoolId.sol";
+import {AssetId} from "./types/AssetId.sol";
+import {IRoot} from "./interfaces/IRoot.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
+import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
+import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IGuardian, ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IRootMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IHubGuardianActions} from "src/common/interfaces/IGuardianActions.sol";
-import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
-import {IAxelarAdapter} from "src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+
+import {IAxelarAdapter} from "../adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../adapters/interfaces/IWormholeAdapter.sol";
 
 contract Guardian is IGuardian {
     using CastLib for address;

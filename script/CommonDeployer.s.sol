@@ -1,25 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {GasService} from "src/common/GasService.sol";
-import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
-import {MessageProcessor} from "src/common/MessageProcessor.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
-import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
-import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
+import {Root} from "../src/common/Root.sol";
+import {Gateway} from "../src/common/Gateway.sol";
+import {GasService} from "../src/common/GasService.sol";
+import {Guardian, ISafe} from "../src/common/Guardian.sol";
+import {MultiAdapter} from "../src/common/MultiAdapter.sol";
+import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
+import {MessageProcessor} from "../src/common/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
+import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
+
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
-import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 struct CommonInput {
     uint16 centrifugeId;
     ISafe adminSafe;
-    uint128 batchGasLimit;
+    uint128 maxBatchGasLimit;
     bytes32 version;
 }
 
@@ -122,6 +123,18 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
         if (version != bytes32(0)) {
+            bytes32 contractNameHash = keccak256(bytes(contractName));
+            // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
+            if (
+                version == keccak256(abi.encodePacked("3"))
+                    && (
+                        contractNameHash == keccak256(bytes("asyncRequestManager-2"))
+                            || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
+                            || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
+                    )
+            ) {
+                return keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+            }
             return keccak256(abi.encodePacked(contractName, version));
         }
         return keccak256(abi.encodePacked(contractName));
@@ -161,8 +174,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
 
         gasService = GasService(
             create3(
-                generateSalt("gasService"),
-                abi.encodePacked(type(GasService).creationCode, abi.encode(input.batchGasLimit))
+                generateSalt("gasService-2"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchGasLimit))
             )
         );
 

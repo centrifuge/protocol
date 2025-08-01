@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
+import {IBaseVault} from "./IBaseVault.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
+import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {ISpoke} from "../../spoke/interfaces/ISpoke.sol";
+import {IVaultManager} from "../../spoke/interfaces/IVaultManager.sol";
 
 interface IBaseRequestManager is IVaultManager, IRequestManager {
     event File(bytes32 indexed what, address data);
