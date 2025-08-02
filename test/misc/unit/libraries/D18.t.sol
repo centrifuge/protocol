@@ -22,7 +22,7 @@ contract D18Test is Test {
         assertEqDecimal(c.raw(), a - b, 18);
     }
 
-    function testMulUint128() public pure {
+    function testSymbolicMulUint128() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000;
 

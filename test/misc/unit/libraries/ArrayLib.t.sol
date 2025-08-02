@@ -10,14 +10,14 @@ contract ArrayLibTest is Test {
     uint16[8] initialArray;
     uint16[8] decreasedArray;
 
-    function testCountNonZeroValues(uint8 numNonZeroes) public view {
+    function testSymbolicCountNonZeroValues(uint8 numNonZeroes) public view {
         numNonZeroes = uint8(bound(numNonZeroes, 0, 8));
         uint16[8] memory arr = _randomArray(numNonZeroes);
 
         assertEq(ArrayLib.countNonZeroValues(arr), numNonZeroes);
     }
 
-    function testDecreaseFirstNValues(uint8 numValuesToDecrease) public {
+    function testSymbolicDecreaseFirstNValues(uint8 numValuesToDecrease) public {
         numValuesToDecrease = uint8(bound(numValuesToDecrease, 0, 8));
 
         initialArray = _randomArray(8);
@@ -29,7 +29,7 @@ contract ArrayLibTest is Test {
         assertEq(_count(initialArray) - _count(decreasedArray), _min(numNonZeroes, numValuesToDecrease));
     }
 
-    function testIsEmpty(uint8 numNonZeroes) public view {
+    function testSymbolicIsEmpty(uint8 numNonZeroes) public view {
         numNonZeroes = uint8(bound(numNonZeroes, 0, 8));
         uint16[8] memory arr = _randomArray(numNonZeroes);
 

@@ -6,7 +6,7 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import "forge-std/Test.sol";
 
 contract CastLibTest is Test {
-    function testToAddress(address addr) public pure {
+    function testSymbolicToAddress(address addr) public pure {
         assertEq(CastLib.toAddress(bytes32(bytes20(addr))), addr);
     }
 
