@@ -7,22 +7,22 @@ import "../../../../src/misc/libraries/MathLib.sol";
 import "forge-std/Test.sol";
 
 contract D18Test is Test {
-    function testFuzzAdd(uint128 a, uint128 b) public pure {
+    function testSymbolicAdd(uint128 a, uint128 b) public pure {
         vm.assume(a <= type(uint128).max / 2);
         vm.assume(b <= type(uint128).max / 2);
 
         D18 c = d18(a) + d18(b);
-        assertEqDecimal(c.raw(), a + b, 18);
+        assertEq(c.raw(), a + b);
     }
 
-    function testFuzzSub(uint128 a, uint128 b) public pure {
+    function testSymbolicSub(uint128 a, uint128 b) public pure {
         vm.assume(a >= b);
 
         D18 c = d18(a) - d18(b);
-        assertEqDecimal(c.raw(), a - b, 18);
+        assertEq(c.raw(), a - b);
     }
 
-    function testMulUint128() public pure {
+    function testSymbolicMulUint128() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint128 value = 4_000_000_000_000_000;
 
@@ -30,7 +30,7 @@ contract D18Test is Test {
         assertEq(factor.mulUint128(value, MathLib.Rounding.Up), 6_000_000_000_000_000);
     }
 
-    function testFuzzMulUInt128(uint128 a, uint128 b) public pure {
+    function testSymbolicMulUInt128(uint128 a, uint128 b) public pure {
         a = uint128(bound(a, 1, type(uint128).max));
         b = uint128(bound(b, 0, type(uint128).max / a));
 
@@ -40,7 +40,7 @@ contract D18Test is Test {
         assertEq(cUp, MathLib.mulDiv(a, b, 1e18));
     }
 
-    function testRoundingUint128(uint128 a) public pure {
+    function testSymbolicRoundingUint128(uint128 a) public pure {
         a = uint128(bound(a, 0, type(uint128).max / 1e18));
         D18 oneHundredPercent = d18(1e18);
 
@@ -48,7 +48,7 @@ contract D18Test is Test {
         assertEq(oneHundredPercent.mulUint128(a, MathLib.Rounding.Up), a);
     }
 
-    function testMulUint256() public pure {
+    function testSymbolicMulUint256() public pure {
         D18 factor = d18(1_500_000_000_000_000_000); // 1.5
         uint256 value = 4_000_000_000_000_000_000_000_000;
 
@@ -56,7 +56,7 @@ contract D18Test is Test {
         assertEq(factor.mulUint256(value, MathLib.Rounding.Up), 6_000_000_000_000_000_000_000_000);
     }
 
-    function testFuzzMulUInt256(uint128 a, uint256 b) public pure {
+    function testSymbolicMulUInt256(uint128 a, uint256 b) public pure {
         a = uint128(bound(a, 1, type(uint128).max));
         b = uint256(bound(b, 0, type(uint256).max / a));
 
@@ -66,7 +66,7 @@ contract D18Test is Test {
         assertEq(cUp, MathLib.mulDiv(a, b, 1e18));
     }
 
-    function testRoundingUint256(uint256 a) public pure {
+    function testSymbolicRoundingUint256(uint256 a) public pure {
         a = bound(a, 0, type(uint256).max / 1e18);
         D18 oneHundredPercent = d18(1e18);
 
@@ -74,7 +74,7 @@ contract D18Test is Test {
         assertEq(oneHundredPercent.mulUint256(a, MathLib.Rounding.Up), a);
     }
 
-    function testReciprocalMulInt128() public pure {
+    function testSymbolicReciprocalMulInt128() public pure {
         D18 divisor = d18(2e18);
         uint128 multiplier = 1e20;
 
@@ -82,7 +82,7 @@ contract D18Test is Test {
         assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Up), 5e19);
     }
 
-    function testFuzzReciprocalMulInt128(uint128 divisor_, uint128 multiplier) public pure {
+    function testSymbolicReciprocalMulInt128(uint128 divisor_, uint128 multiplier) public pure {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = uint128(bound(multiplier, 0, type(uint128).max / 1e18));
 
@@ -93,7 +93,7 @@ contract D18Test is Test {
         assertEq(divisor.reciprocalMulUint128(multiplier, MathLib.Rounding.Up), expectedUp);
     }
 
-    function testReciprocalMulInt256() public pure {
+    function testSymbolicReciprocalMulInt256() public pure {
         D18 divisor = d18(2e18);
         uint256 multiplier = 1e20;
 
@@ -101,7 +101,7 @@ contract D18Test is Test {
         assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Up), 5e19);
     }
 
-    function testFuzzReciprocalMulInt256(uint128 divisor_, uint256 multiplier) public pure {
+    function testSymbolicReciprocalMulInt256(uint128 divisor_, uint256 multiplier) public pure {
         D18 divisor = d18(uint128(bound(divisor_, 1e4, 1e20)));
         multiplier = bound(multiplier, 0, type(uint256).max / 1e18);
 
@@ -112,28 +112,28 @@ contract D18Test is Test {
         assertEq(divisor.reciprocalMulUint256(multiplier, MathLib.Rounding.Up), expectedUp);
     }
 
-    function testMulD18() public pure {
+    function testSymbolicMulD18() public pure {
         D18 left = d18(50e18);
         D18 right = d18(2e19);
 
         assertEq(mulD18(left, right).raw(), 100e19);
     }
 
-    function testFuzzMulD18(uint128 left_, uint128 right_) public pure {
+    function testSymbolicMulD18(uint128 left_, uint128 right_) public pure {
         D18 left = d18(uint128(bound(left_, 1, type(uint128).max)));
         D18 right = d18(uint128(bound(right_, 0, type(uint128).max / left.raw())));
 
         assertEq(mulD18(left, right).raw(), left.raw() * right.raw() / 1e18);
     }
 
-    function testDivD18() public pure {
+    function testSymbolicDivD18() public pure {
         D18 numerator = d18(50e18);
         D18 denominator = d18(2e19);
 
         assertEq(divD18(numerator, denominator).raw(), 25e17);
     }
 
-    function testFuzzDivD18(uint128 numerator_, uint128 denominator_) public pure {
+    function testSymbolicDivD18(uint128 numerator_, uint128 denominator_) public pure {
         D18 numerator = d18(uint128(bound(numerator_, 1, 1e20)));
         D18 denominator = d18(uint128(bound(denominator_, 1, 1e20)));
 
@@ -147,19 +147,19 @@ contract D18Test is Test {
         assert(!eq(a, d18(5235)));
     }
 
-    function testRawD18() public pure {
+    function testSymbolicRawD18() public pure {
         uint128 a_ = 3245252;
         D18 a = d18(a_);
 
         assertEq(raw(a), a_);
     }
 
-    function testIsZero() public pure {
+    function testSymbolicIsZero() public pure {
         assertEq(d18(0).isZero(), true);
         assertEq(d18(123).isZero(), false);
     }
 
-    function testIsNotZero() public pure {
+    function testSymbolicIsNotZero() public pure {
         assertEq(d18(0).isNotZero(), false);
         assertEq(d18(123).isNotZero(), true);
     }
@@ -167,7 +167,7 @@ contract D18Test is Test {
 
 contract D18ReciprocalTest is Test {
     /// @dev Fuzz test reciprocal function ensuring accurate calculation and round-trip multiplication.
-    function testFuzzReciprocal(uint128 val) public pure {
+    function testReciprocal(uint128 val) public pure {
         // Avoid division-by-zero, keep input reasonable
         val = uint128(bound(val, 1, type(uint128).max / 1e18));
         D18 input = D18.wrap(val);
@@ -182,7 +182,7 @@ contract D18ReciprocalTest is Test {
     }
 
     /// @dev Explicitly test edge case for reciprocal(1e18) == 1e18
-    function testReciprocalOne() public pure {
+    function testSymbolicReciprocalOne() public pure {
         D18 one = D18.wrap(1e18);
         D18 result = one.reciprocal();
         assertEq(result.raw(), 1e18, "Reciprocal of 1e18 should be 1e18");
