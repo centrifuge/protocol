@@ -15,9 +15,8 @@ import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
-import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
+import {AsyncRequestManager, IAsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 
 interface VaultLike {
     function priceComputedAt() external view returns (uint64);
@@ -76,7 +75,8 @@ contract AsyncRequestManagerTest is BaseTest {
 
         spoke.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
 
-        vm.expectRevert(IAsyncRequestManager.AssetNotAllowed.selector);
+        vm.prank(address(vault));
+        vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
         asyncRequestManager.requestDeposit(vault, 1, address(0), address(0), address(0));
     }
 

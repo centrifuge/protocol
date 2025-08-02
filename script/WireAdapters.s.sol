@@ -3,10 +3,11 @@ pragma solidity 0.8.28;
 
 import {Guardian} from "../src/common/Guardian.sol";
 import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
-import {IAxelarAdapter} from "../src/common/interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 import "forge-std/Script.sol";
+
+import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
 ///      This script only sets up one-directional communication (local → remote).

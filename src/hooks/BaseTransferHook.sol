@@ -25,6 +25,8 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
     using BytesLib for bytes;
     using CastLib for bytes32;
 
+    error InvalidInputs();
+
     /// @dev Least significant bit
     uint8 public constant FREEZE_BIT = 0;
 
@@ -40,6 +42,11 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         address crosschainSource_,
         address deployer
     ) Auth(deployer) {
+        require(
+            redeemSource_ != depositTarget_ && depositTarget_ != crosschainSource_ && redeemSource_ != crosschainSource_,
+            InvalidInputs()
+        );
+
         root = IRoot(root_);
         redeemSource = redeemSource_;
         depositTarget = depositTarget_;

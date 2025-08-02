@@ -25,6 +25,8 @@ struct ShareClassAsset {
     IRequestManager manager;
     /// @dev Number of linked vaults.
     uint32 numVaults;
+    /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
+    Price pricePoolPerAsset;
 }
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
@@ -33,8 +35,6 @@ struct ShareClassDetails {
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
     mapping(AssetId assetId => ShareClassAsset) asset;
-    /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
 }
 
 struct VaultDetails {
@@ -86,10 +86,10 @@ interface ISpoke {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        uint256 price,
+        D18 price,
         uint64 computedAt
     );
-    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
     event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
