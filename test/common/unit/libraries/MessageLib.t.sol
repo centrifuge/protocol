@@ -246,7 +246,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSymbolicNotifyPricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 timestamp) public pure {
+    function testSymbolicNotifyPricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 timestamp)
+        public
+        pure
+    {
         MessageLib.NotifyPricePoolPerShare memory a =
             MessageLib.NotifyPricePoolPerShare({poolId: poolId, scId: scId, price: price, timestamp: timestamp});
         MessageLib.NotifyPricePoolPerShare memory b = MessageLib.deserializeNotifyPricePoolPerShare(a.serialize());
@@ -260,10 +263,13 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSymbolicNotifyPricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 timestamp)
-        public
-        pure
-    {
+    function testSymbolicNotifyPricePoolPerAsset(
+        uint64 poolId,
+        bytes16 scId,
+        uint128 assetId,
+        uint128 price,
+        uint64 timestamp
+    ) public pure {
         MessageLib.NotifyPricePoolPerAsset memory a = MessageLib.NotifyPricePoolPerAsset({
             poolId: poolId,
             scId: scId,
@@ -344,7 +350,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testSymbolicExecuteTransferShares(uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount) public pure {
+    function testSymbolicExecuteTransferShares(uint64 poolId, bytes16 scId, bytes32 receiver, uint128 amount)
+        public
+        pure
+    {
         MessageLib.ExecuteTransferShares memory a =
             MessageLib.ExecuteTransferShares({poolId: poolId, scId: scId, receiver: receiver, amount: amount});
         MessageLib.ExecuteTransferShares memory b = MessageLib.deserializeExecuteTransferShares(a.serialize());
@@ -557,7 +566,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), 0);
     }
 
-    function testSymbolicMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
+    function testSymbolicMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge)
+        public
+        pure
+    {
         MessageLib.MaxAssetPriceAge memory a =
             MessageLib.MaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
         MessageLib.MaxAssetPriceAge memory b = MessageLib.deserializeMaxAssetPriceAge(a.serialize());
