@@ -211,7 +211,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSymbolicNotifyShareClass(
+    function testNotifyShareClass(
         uint64 poolId,
         bytes16 scId,
         string calldata name,
@@ -284,7 +284,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSymbolicNotifyShareMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol) public pure {
+    function testNotifyShareMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol) public pure {
         MessageLib.NotifyShareMetadata memory a =
             MessageLib.NotifyShareMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
         MessageLib.NotifyShareMetadata memory b = MessageLib.deserializeNotifyShareMetadata(a.serialize());
@@ -359,7 +359,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSymbolicUpdateRestriction(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
+    function testUpdateRestriction(uint64 poolId, bytes16 scId, bytes memory payload) public pure {
         MessageLib.UpdateRestriction memory a =
             MessageLib.UpdateRestriction({poolId: poolId, scId: scId, payload: payload});
         MessageLib.UpdateRestriction memory b = MessageLib.deserializeUpdateRestriction(a.serialize());
@@ -376,7 +376,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testSymbolicUpdateContract(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
+    function testUpdateContract(uint64 poolId, bytes16 scId, bytes32 target, bytes memory payload) public pure {
         MessageLib.UpdateContract memory a =
             MessageLib.UpdateContract({poolId: poolId, scId: scId, target: target, payload: payload});
         MessageLib.UpdateContract memory b = MessageLib.deserializeUpdateContract(a.serialize());
@@ -394,7 +394,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testSymbolicRequest(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+    function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
         MessageLib.Request memory a =
             MessageLib.Request({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
         MessageLib.Request memory b = MessageLib.deserializeRequest(a.serialize());
@@ -412,7 +412,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testSymbolicRequestCallback(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
+    function testRequestCallback(uint64 poolId, bytes16 scId, uint128 assetId, bytes memory payload) public pure {
         MessageLib.RequestCallback memory a =
             MessageLib.RequestCallback({poolId: poolId, scId: scId, assetId: assetId, payload: payload});
         MessageLib.RequestCallback memory b = MessageLib.deserializeRequestCallback(a.serialize());
