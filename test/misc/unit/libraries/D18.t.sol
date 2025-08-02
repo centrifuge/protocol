@@ -167,7 +167,7 @@ contract D18Test is Test {
 
 contract D18ReciprocalTest is Test {
     /// @dev Fuzz test reciprocal function ensuring accurate calculation and round-trip multiplication.
-    function testSymbolicReciprocal(uint128 val) public pure {
+    function testReciprocal(uint128 val) public pure {
         // Avoid division-by-zero, keep input reasonable
         val = uint128(bound(val, 1, type(uint128).max / 1e18));
         D18 input = D18.wrap(val);
@@ -189,7 +189,7 @@ contract D18ReciprocalTest is Test {
     }
 
     /// @dev Explicitly test rounding edge cases close to 1
-    function testSymbolicReciprocalRoundingEdges() public pure {
+    function testReciprocalRoundingEdges() public pure {
         D18 almostOneUp = D18.wrap(1e18 + 1);
         D18 almostOneDown = D18.wrap(1e18 - 1);
 
