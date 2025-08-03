@@ -27,7 +27,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
     using PricingLib for *;
     using MathLib for uint256;
 
-    function testSymbolicConvertWithPriceSimple() public pure {
+    function testConvertWithPriceSimple() public pure {
         uint8 baseDecimals = 2;
         uint8 quoteDecimals = 18;
         uint128 baseAmount = 4e10;
@@ -44,7 +44,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         );
     }
 
-    function testSymbolicConvertWithPriceSameDecimals(uint128 baseAmount, uint128 priceRaw) public pure {
+    function testConvertWithPriceSameDecimals(uint128 baseAmount, uint128 priceRaw) public pure {
         baseAmount = uint128(bound(baseAmount, 0, MAX_AMOUNT));
         D18 price = d18(uint128(bound(priceRaw, MIN_PRICE, MAX_PRICE_POOL_PER_ASSET)));
 
@@ -53,7 +53,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         assertEq(result, expected);
     }
 
-    function testSymbolicConvertWithPrice(uint128 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, uint128 priceRaw)
+    function testConvertWithPrice(uint128 baseAmount, uint8 baseDecimals, uint8 quoteDecimals, uint128 priceRaw)
         public
         pure
     {
@@ -83,7 +83,7 @@ contract ConvertWithPriceTest is PricingLibBaseTest {
         assertApproxEqAbs(expectedDown, expectedUp, 1, "Rounding diff should be at most one");
     }
 
-    function testSymbolicConvertWithPriceZeroValues() public pure {
+    function testConvertWithPriceZeroValues() public pure {
         uint256 result = PricingLib.convertWithPrice(0, 6, 18, d18(1e18), MathLib.Rounding.Down);
         assertEq(result, 0, "Zero asset amount should return 0");
 
@@ -101,7 +101,7 @@ contract ConvertWithPriceEdgeCasesTest is PricingLibBaseTest {
     uint8 quoteDecimals = 18;
     uint128 amountWithoutPrice = 1e10; // 1e18/1e8
 
-    function testSymbolicEdgeCaseWithPriceMinBaseAmount() public view {
+    function testEdgeCaseWithPriceMinBaseAmount() public view {
         D18 price = d18(1e18 - 1);
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
         uint256 expected = price.mulUint256(amountWithoutPrice, MathLib.Rounding.Down);
@@ -109,19 +109,19 @@ contract ConvertWithPriceEdgeCasesTest is PricingLibBaseTest {
         assertEq(expected, amountWithoutPrice - 1);
     }
 
-    function testSymbolicEdgeCaseWithPriceSmallestPriceToResultInOne() public view {
+    function testEdgeCaseWithPriceSmallestPriceToResultInOne() public view {
         D18 price = d18(1e18 / amountWithoutPrice);
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
         assertEq(result, 1);
     }
 
-    function testSymbolicEdgeCaseWithPriceSmallestPriceToResultInZero() public view {
+    function testEdgeCaseWithPriceSmallestPriceToResultInZero() public view {
         D18 price = d18(1e18 / amountWithoutPrice - 1);
         uint256 result = PricingLib.convertWithPrice(baseAmount, baseDecimals, quoteDecimals, price);
         assertEq(result, 0);
     }
 
-    function testSymbolicEdgeCaseWithPriceMaxAmounts() public view {
+    function testEdgeCaseWithPriceMaxAmounts() public view {
         uint128 maxBaseAmount = type(uint64).max;
         D18 price = d18(type(uint64).max);
         uint256 result = PricingLib.convertWithPrice(maxBaseAmount, baseDecimals, quoteDecimals, price);
@@ -130,7 +130,7 @@ contract ConvertWithPriceEdgeCasesTest is PricingLibBaseTest {
         assertEq(result, expected);
     }
 
-    function testSymbolicEdgeCaseWithPriceZeroPrice() public pure {
+    function testEdgeCaseWithPriceZeroPrice() public pure {
         uint256 result = PricingLib.convertWithPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
         assertEq(result, 0);
     }
@@ -642,15 +642,15 @@ contract AssetToPoolAmountTest is ConvertWithPriceTest {
         uint8 poolDecimals,
         uint128 pricePoolPerAsset
     ) public pure {
-        testSymbolicConvertWithPrice(assetAmount, assetDecimals, poolDecimals, pricePoolPerAsset);
+        testConvertWithPrice(assetAmount, assetDecimals, poolDecimals, pricePoolPerAsset);
     }
 
     function testAssetToPoolAmountSameDecimals(uint128 baseAmount, uint128 pricePoolPerAsset) public pure {
-        testSymbolicConvertWithPriceSameDecimals(baseAmount, pricePoolPerAsset);
+        testConvertWithPriceSameDecimals(baseAmount, pricePoolPerAsset);
     }
 
     function testAssetToPoolAmountZeroValues() public pure {
-        testSymbolicConvertWithPriceZeroValues();
+        testConvertWithPriceZeroValues();
     }
 }
 
