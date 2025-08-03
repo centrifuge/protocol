@@ -370,7 +370,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 remoteExtraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.initiateTransferShares(localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
+            hub.initiateTransferShares(
+                localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
+            );
         } else {
             gateway.send(
                 poolId.centrifugeId(),

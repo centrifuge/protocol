@@ -35,10 +35,10 @@ contract OnOfframpManager is IOnOfframpManager {
     mapping(address relayer => bool) public relayer;
     mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(PoolId poolId_, ShareClassId scId_, address contractUpdater_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
         scId = scId_;
-        contractUpdater = spoke_;
+        contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
     }
 
