@@ -4,15 +4,15 @@ pragma solidity 0.8.28;
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
+import {QueueManager} from "../src/managers/QueueManager.sol";
 import {VaultDecoder} from "../src/managers/decoders/VaultDecoder.sol";
 import {CircleDecoder} from "../src/managers/decoders/CircleDecoder.sol";
 import {OnOfframpManagerFactory} from "../src/managers/OnOfframpManager.sol";
 import {MerkleProofManagerFactory} from "../src/managers/MerkleProofManager.sol";
 
-import "forge-std/Script.sol";
-
 struct ManagersReport {
     SpokeReport spoke;
+    QueueManager queueManager;
     OnOfframpManagerFactory onOfframpManagerFactory;
     MerkleProofManagerFactory merkleProofManagerFactory;
     VaultDecoder vaultDecoder;
@@ -22,6 +22,7 @@ struct ManagersReport {
 contract ManagersActionBatcher is SpokeActionBatcher {}
 
 contract ManagersDeployer is SpokeDeployer {
+    QueueManager public queueManager;
     OnOfframpManagerFactory public onOfframpManagerFactory;
     MerkleProofManagerFactory public merkleProofManagerFactory;
     VaultDecoder public vaultDecoder;
@@ -34,6 +35,13 @@ contract ManagersDeployer is SpokeDeployer {
 
     function _preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
         _preDeploySpoke(input, batcher);
+
+        queueManager = QueueManager(
+            create3(
+                generateSalt("queueManager"),
+                abi.encodePacked(type(QueueManager).creationCode, abi.encode(contractUpdater, balanceSheet))
+            )
+        );
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
             create3(
@@ -57,6 +65,7 @@ contract ManagersDeployer is SpokeDeployer {
         circleDecoder =
             CircleDecoder(create3(generateSalt("circleDecoder"), abi.encodePacked(type(CircleDecoder).creationCode)));
 
+        register("queueManager", address(queueManager));
         register("onOfframpManagerFactory", address(onOfframpManagerFactory));
         register("merkleProofManagerFactory", address(merkleProofManagerFactory));
         register("vaultDecoder", address(vaultDecoder));
@@ -73,7 +82,12 @@ contract ManagersDeployer is SpokeDeployer {
 
     function _managersReport() internal view returns (ManagersReport memory) {
         return ManagersReport(
-            _spokeReport(), onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
+            _spokeReport(),
+            queueManager,
+            onOfframpManagerFactory,
+            merkleProofManagerFactory,
+            vaultDecoder,
+            circleDecoder
         );
     }
 }

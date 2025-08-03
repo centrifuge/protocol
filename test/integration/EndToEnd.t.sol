@@ -46,6 +46,7 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {NAVManager} from "../../src/managers/NAVManager.sol";
+import {QueueManager} from "../../src/managers/QueueManager.sol";
 import {SimplePriceManager} from "../../src/managers/SimplePriceManager.sol";
 
 import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
@@ -118,6 +119,7 @@ contract EndToEndDeployment is Test {
         // Others
         ERC20 usdc;
         AssetId usdcId;
+        QueueManager queueManager;
     }
 
     ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
@@ -140,6 +142,8 @@ contract EndToEndDeployment is Test {
     AssetId USD_ID;
     PoolId POOL_A;
     ShareClassId SC_1;
+
+    mapping (uint16 centrifugeId => AssetId[]) assetIds;
 
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
@@ -265,6 +269,8 @@ contract EndToEndDeployment is Test {
         s_.syncManager = deploy.syncManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
+        
+        assetIds[centrifugeId].push(s_.usdcId);
 
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
@@ -541,10 +547,7 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
-
-        vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -561,10 +564,7 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
         _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
-
-        vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
-        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -715,7 +715,7 @@ contract EndToEndUseCases is EndToEndFlows {
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
-        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
