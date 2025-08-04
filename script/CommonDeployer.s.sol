@@ -123,6 +123,18 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
         if (version != bytes32(0)) {
+            bytes32 contractNameHash = keccak256(bytes(contractName));
+            // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
+            if (
+                version == keccak256(abi.encodePacked("3"))
+                    && (
+                        contractNameHash == keccak256(bytes("asyncRequestManager-2"))
+                            || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
+                            || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
+                    )
+            ) {
+                return keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+            }
             return keccak256(abi.encodePacked(contractName, version));
         }
         return keccak256(abi.encodePacked(contractName));

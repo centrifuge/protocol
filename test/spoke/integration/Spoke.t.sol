@@ -146,9 +146,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
             // Check missing link
             assertEq(vault_, address(0), "Share link to vault requires linkVault");
-            assertEq(
-                asyncRequestManager.wards(vaultAddress), 0, "Vault auth on asyncRequestManager set up in linkVault"
-            );
         }
     }
 
