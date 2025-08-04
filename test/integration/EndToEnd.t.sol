@@ -143,7 +143,7 @@ contract EndToEndDeployment is Test {
     PoolId POOL_A;
     ShareClassId SC_1;
 
-    mapping (uint16 centrifugeId => AssetId[]) assetIds;
+    mapping(uint16 centrifugeId => AssetId[]) assetIds;
 
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
@@ -269,7 +269,7 @@ contract EndToEndDeployment is Test {
         s_.syncManager = deploy.syncManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
-        
+
         assetIds[centrifugeId].push(s_.usdcId);
 
         // Initialize default values

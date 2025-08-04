@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IQueueManager} from "./interfaces/IQueueManager.sol";
+
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
@@ -14,12 +16,8 @@ import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is IUpdateContract {
+contract QueueManager is IQueueManager, IUpdateContract {
     using CastLib for *;
-
-    error InvalidPoolId();
-    error NotSpoke();
-    error NoUpdates();
 
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
@@ -42,7 +40,7 @@ contract QueueManager is IUpdateContract {
 
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
-        require(msg.sender == contractUpdater, NotSpoke());
+        require(msg.sender == contractUpdater, NotContractUpdater());
 
         // TODO: allow updating lastSync, extraGasLimit
     }
