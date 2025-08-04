@@ -233,6 +233,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
+        register("tokenRecoverer", address(tokenRecoverer));
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
