@@ -6,6 +6,7 @@ import {IntegrationConstants} from "./IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
@@ -16,6 +17,7 @@ import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {AssetId} from "../../src/common/types/AssetId.sol";
 import {GasService} from "../../src/common/GasService.sol";
+import {IRoot} from "../../src/common/interfaces/IRoot.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
@@ -301,6 +303,82 @@ contract ForkTestSyncInvestments is ForkTestBase {
             true,
             true,
             address(VAULT)
+        );
+    }
+}
+
+/// @notice Contract for validating live contract permissions and state
+contract ForkTestLiveValidation is ForkTestAsyncInvestments {
+    /// @notice Validates that V3_ROOT has ward permissions on all Ethereum contracts, vaults, and share tokens
+    function _validateV3RootPermissions(IRoot v3Root) internal view {
+        // === CONTRACTS WITH ROOT PERMISSIONS (based on deployment scripts) ===
+
+        // From CommonDeployer
+        _validateV3RootWard(IntegrationConstants.TOKEN_RECOVERER, "tokenRecoverer", v3Root);
+
+        // From HubDeployer
+        _validateV3RootWard(IntegrationConstants.HUB_REGISTRY, "hubRegistry", v3Root);
+        _validateV3RootWard(IntegrationConstants.ACCOUNTING, "accounting", v3Root);
+        _validateV3RootWard(IntegrationConstants.HOLDINGS, "holdings", v3Root);
+        _validateV3RootWard(IntegrationConstants.SHARE_CLASS_MANAGER, "shareClassManager", v3Root);
+        _validateV3RootWard(IntegrationConstants.HUB, "hub", v3Root);
+        _validateV3RootWard(IntegrationConstants.HUB_HELPERS, "hubHelpers", v3Root);
+
+        // From SpokeDeployer
+        _validateV3RootWard(IntegrationConstants.SPOKE, "spoke", v3Root);
+        _validateV3RootWard(IntegrationConstants.BALANCE_SHEET, "balanceSheet", v3Root);
+        _validateV3RootWard(IntegrationConstants.TOKEN_FACTORY, "tokenFactory", v3Root);
+        _validateV3RootWard(IntegrationConstants.CONTRACT_UPDATER, "contractUpdater", v3Root);
+
+        // From VaultsDeployer
+        _validateV3RootWard(IntegrationConstants.ROUTER, "vaultRouter", v3Root);
+        _validateV3RootWard(IntegrationConstants.ASYNC_REQUEST_MANAGER, "asyncRequestManager", v3Root);
+        _validateV3RootWard(IntegrationConstants.SYNC_MANAGER, "syncManager", v3Root);
+        _validateV3RootWard(IntegrationConstants.ROUTER_ESCROW, "routerEscrow", v3Root);
+        _validateV3RootWard(IntegrationConstants.GLOBAL_ESCROW, "globalEscrow", v3Root);
+        _validateV3RootWard(IntegrationConstants.ASYNC_VAULT_FACTORY, "asyncVaultFactory", v3Root);
+        _validateV3RootWard(IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY, "syncDepositVaultFactory", v3Root);
+
+        // From ValuationsDeployer
+        _validateV3RootWard(IntegrationConstants.IDENTITY_VALUATION, "identityValuation", v3Root);
+
+        // === HOOKS (from HooksDeployer) ===
+        _validateV3RootWard(IntegrationConstants.FREEZE_ONLY_HOOK, "freezeOnlyHook", v3Root);
+        _validateV3RootWard(IntegrationConstants.FULL_RESTRICTIONS_HOOK, "fullRestrictionsHook", v3Root);
+        _validateV3RootWard(IntegrationConstants.FREELY_TRANSFERABLE_HOOK, "freelyTransferableHook", v3Root);
+        _validateV3RootWard(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK, "redemptionRestrictionsHook", v3Root);
+
+        // === ADAPTERS (from AdaptersDeployer) ===
+        _validateV3RootWard(IntegrationConstants.WORMHOLE_ADAPTER, "wormholeAdapter", v3Root);
+        _validateV3RootWard(IntegrationConstants.AXELAR_ADAPTER, "axelarAdapter", v3Root);
+
+        // === V3 VAULTS ===
+        _validateV3RootWard(IntegrationConstants.ETH_JAAA_VAULT, "JAAA V3 vault", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_JTRSY_VAULT, "JAAA V3 vault", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_DEJAAA_VAULT, "deJAAA vault", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_DEJTRSY_VAULT, "deJTRSY vault", v3Root);
+
+        // === SHARE TOKENS ===
+        _validateV3RootWard(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, "JAAA share token", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, "JTRSY share token", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN, "deJTRSY share token", v3Root);
+        _validateV3RootWard(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN, "deJAAA share token", v3Root);
+    }
+
+    /// @notice Helper function to validate V3_ROOT has ward permissions on a specific contract
+    function _validateV3RootWard(address contractAddr, string memory contractName, IRoot v3Root) internal view {
+        if (contractAddr.code.length == 0) {
+            revert(string(abi.encodePacked(contractName, " has no code")));
+        }
+
+        assertEq(
+            IAuth(contractAddr).wards(address(v3Root)),
+            1,
+            string(
+                abi.encodePacked(
+                    "V3_ROOT should have ward permissions on ", contractName, " (", vm.toString(contractAddr), ")"
+                )
+            )
         );
     }
 }
