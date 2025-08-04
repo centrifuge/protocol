@@ -1,32 +1,35 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {PoolId} from "src/common/types/PoolId.sol";
+import {ShareClassId} from "src/common/types/ShareClassId.sol";
 
 import {DisableV2Common} from "./DisableV2Common.sol";
 
 /// @notice Ethereum-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
 contract DisableV2Eth is DisableV2Common {
-    // JAAA configuration (only exists on Ethereum mainnet)
+    address public constant V3_JAAA_VAULT = 0x4880799eE5200fC58DA299e965df644fBf46780B;
     IShareToken public constant JAAA_SHARE_TOKEN = IShareToken(0x5a0F93D040De44e78F251b03c43be9CF317Dcf64);
 
-    address public constant JTRSY_VAULT_ADDRESS = address(0x36036fFd9B1C6966ab23209E073c68Eb9A992f50);
-    address public constant JAAA_VAULT_ADDRESS = address(0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01);
+    PoolId public constant JAAA_POOL_ID = PoolId.wrap(281474976710663);
+    ShareClassId public constant JAAA_SHARE_CLASS_ID = ShareClassId.wrap(0x00010000000000070000000000000001);
 
-    function getJTRSYVaultAddress() internal pure override returns (address) {
-        return JTRSY_VAULT_ADDRESS;
+    address public constant V2_JTRSY_VAULT_ADDRESS = address(0x36036fFd9B1C6966ab23209E073c68Eb9A992f50);
+    address public constant V2_JAAA_VAULT_ADDRESS = address(0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01);
+
+    /// @inheritdoc DisableV2Common
+    function getJTRSYVaultV2Address() internal pure override returns (address) {
+        return V2_JTRSY_VAULT_ADDRESS;
     }
 
     function execute() internal override {
-        // Disable V2 permissions and set V3 hook for JTRSY
-        _disableV2Permissions(JTRSY_SHARE_TOKEN, getJTRSYVaultAddress());
-        _setV3Hook(JTRSY_SHARE_TOKEN);
+        super.execute();
 
-        // Disable V2 permissions and set V3 hook for JAAA (Ethereum only)
-        _disableV2Permissions(JAAA_SHARE_TOKEN, JAAA_VAULT_ADDRESS);
+        _disableV2Permissions(JAAA_SHARE_TOKEN, V2_JAAA_VAULT_ADDRESS);
         _setV3Hook(JAAA_SHARE_TOKEN);
+        _linkTokenToV3Vault(JAAA_SHARE_TOKEN, V3_JAAA_VAULT, JAAA_POOL_ID, JAAA_SHARE_CLASS_ID);
 
-        // Final cleanup - deny spell's root permissions
         _cleanupRootPermissions();
     }
 }
