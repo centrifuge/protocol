@@ -12,8 +12,8 @@ import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IERC6909} from "../misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "../misc/Multicall.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
+import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
@@ -34,7 +34,7 @@ import {IPoolEscrowProvider} from "../common/factories/interfaces/IPoolEscrowFac
 ///
 ///         Share and asset updates to the Hub are optionally queued, to reduce the cost
 ///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
-contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
+contract BalanceSheet is Auth, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
     using MathLib for *;
     using CastLib for bytes32;
 
@@ -60,6 +60,39 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         _;
     }
 
+    bool transient isBatching;
+    bool transient isExecuting;
+
+    modifier batch() {
+        if (!isBatching || isExecuting) {
+            _;
+        } else {
+            // TODO: should be stored as dynamic length bytes, not bytes32.
+            // Requires merging TransientBytesLib and TransientArrayLib.
+            TransientArrayLib.push(keccak256("batch"), bytes32(msg.data));
+        }
+    }
+
+    function startBatch() external {
+        isBatching = true;
+    }
+
+    function stopBatch() external {
+        isExecuting = true;
+
+        uint256 length = TransientArrayLib.length(keccak256("batch"));
+        bytes32[] memory calls = TransientArrayLib.getBytes32(keccak256("batch"));
+
+        gateway.startBatching();
+        for (uint256 i = 0; i < length; i++) {
+            this.call(bytes(calls[i]));
+        }
+        gateway.endBatching();
+
+        isBatching = false;
+        isExecuting = false;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -75,21 +108,6 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         emit File(what, data);
     }
 
-    /// @inheritdoc IMulticall
-    /// @notice performs a multicall but all messages sent in the process will be batched
-    function multicall(bytes[] calldata data) public payable override {
-        bool wasBatching = gateway.isBatching();
-        if (!wasBatching) {
-            gateway.startBatching();
-        }
-
-        super.multicall(data);
-
-        if (!wasBatching) {
-            gateway.endBatching();
-        }
-    }
-
     //----------------------------------------------------------------------------------------------
     // Management functions
     //----------------------------------------------------------------------------------------------
@@ -97,6 +115,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
+        batch
         authOrManager(poolId)
     {
         noteDeposit(poolId, scId, asset, tokenId, amount);
@@ -113,6 +132,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        batch
         authOrManager(poolId)
     {
         AssetId assetId = spoke.assetToId(asset, tokenId);
@@ -132,7 +152,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external authOrManager(poolId) {
+    ) external batch authOrManager(poolId) {
         AssetId assetId = spoke.assetToId(asset, tokenId);
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.withdraw(scId, asset, tokenId, amount);
@@ -148,6 +168,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function reserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        batch
         authOrManager(poolId)
     {
         escrow(poolId).reserve(scId, asset, tokenId, amount);
@@ -156,13 +177,14 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function unreserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         public
+        batch
         authOrManager(poolId)
     {
         escrow(poolId).unreserve(scId, asset, tokenId, amount);
     }
 
     /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external authOrManager(poolId) {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external batch authOrManager(poolId) {
         emit Issue(poolId, scId, to, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -182,7 +204,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external authOrManager(poolId) {
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external batch authOrManager(poolId) {
         emit Revoke(poolId, scId, msg.sender, _pricePoolPerShare(poolId, scId), shares);
 
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -203,6 +225,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function submitQueuedAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 extraGasLimit)
         external
+        batch
         authOrManager(poolId)
     {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
@@ -232,6 +255,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit)
         external
+        batch
         authOrManager(poolId)
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
@@ -259,7 +283,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         address from,
         address to,
         uint256 amount
-    ) external authOrManager(poolId) {
+    ) external batch authOrManager(poolId) {
         require(!root.endorsed(from), CannotTransferFromEndorsedContract());
         IShareToken token = spoke.shareToken(poolId, scId);
         token.authTransferFrom(sender_, from, to, amount);
@@ -269,6 +293,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IBalanceSheet
     function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
         external
+        batch
         authOrManager(poolId)
     {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
@@ -276,18 +301,26 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external authOrManager(poolId) {
+    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        batch
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
     }
 
     /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external authOrManager(poolId) {
+    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value)
+        external
+        batch
+        authOrManager(poolId)
+    {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
     }
 
     /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external authOrManager(poolId) {
+    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external batch authOrManager(poolId) {
         TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
     }
 
