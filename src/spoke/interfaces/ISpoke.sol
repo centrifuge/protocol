@@ -34,7 +34,6 @@ struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
-    mapping(AssetId assetId => ShareClassAsset) asset;
 }
 
 struct VaultDetails {
