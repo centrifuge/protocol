@@ -67,7 +67,6 @@ abstract contract DisableV2Common {
         // Remove V2 permissions from share token
         V2_ROOT.denyContract(shareTokenAddress, v2PoolManager);
         V2_ROOT.denyContract(shareTokenAddress, v2InvestmentManager);
-        V2_ROOT.denyContract(shareTokenAddress, address(V2_ROOT));
 
         // Remove vault permissions from investment manager to disable operations
         V2_ROOT.denyContract(v2InvestmentManager, vaultAddress);
