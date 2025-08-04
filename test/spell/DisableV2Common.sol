@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {IRoot} from "../../src/common/interfaces/IRoot.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+
+import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 
 /// @notice Interface for interacting with V2 vaults
 interface VaultLike {

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-
 import {DisableV2Common} from "./DisableV2Common.sol";
+
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+
+import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 
 /// @notice Ethereum-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
 contract DisableV2Eth is DisableV2Common {
