@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
-import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../src/misc/interfaces/IERC6909.sol";
 
@@ -1007,7 +1006,7 @@ contract SpokeTestRegisterVault is SpokeTest {
         spoke.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
     }
 
-    // Sucessfull case tested under SpokeTestDeployVault
+    // Sucessful case tested under SpokeTestDeployVault
 }
 
 contract SpokeTestLinkVault is SpokeTest {
