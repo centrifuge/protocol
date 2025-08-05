@@ -24,6 +24,7 @@ import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
+import {IRequestManager} from "../common/interfaces/IRequestManager.sol";
 import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackType, RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
@@ -32,7 +33,6 @@ import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 import {IVaultManager} from "../spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "../spoke/interfaces/IRequestManager.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

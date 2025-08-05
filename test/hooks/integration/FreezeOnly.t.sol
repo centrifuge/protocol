@@ -5,7 +5,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 
-import "../../spoke/BaseTest.sol";
+import "../../spoke/integration/BaseTest.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;

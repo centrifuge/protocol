@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IRequestManager} from "./IRequestManager.sol";
+
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../types/PoolId.sol";
@@ -85,32 +87,27 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)
         external;
 
-    /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
+    /// @notice  Updates the price (pool currency amount per share class token) of a share class token
     /// @param  poolId The pool id
     /// @param  scId The share class id
-    /// @param  price The price of pool currency per share class token as factor.
+    /// @param  price The price of pool currency per share class token.
     /// @param  computedAt The timestamp when the price was computed
-    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) external;
+    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 price, uint64 computedAt) external;
 
-    /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
+    /// @notice  Updates the price (pool currency amount per asset unit) of an asset
     /// @param  poolId The pool id
     /// @param  scId The share class id
     /// @param  assetId The asset id
-    /// @param  poolPerAsset The price of pool currency per asset unit as factor.
+    /// @param  price The price of pool currency per asset unit.
     /// @param  computedAt The timestamp when the price was computed
-    function updatePricePoolPerAsset(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 poolPerAsset,
-        uint64 computedAt
-    ) external;
+    function updatePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, uint64 computedAt)
+        external;
 
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id

@@ -12,12 +12,13 @@ from pathlib import Path
 IMPORT_PRIORITY = [
     ".",        # Current directory (highest priority)
     "misc",
-    "common", 
+    "common",
     "hub",
     "spoke",
     "vaults",
     "hooks",
     "managers",
+    "valuations",
     "script",
     "test",
     "mocks",
@@ -38,14 +39,14 @@ def extract_imports(content: str) -> List[str]:
     # Updated pattern to handle multi-line imports
     import_pattern = r'import\s+.*?;'
     imports = re.findall(import_pattern, content, re.MULTILINE | re.DOTALL)
-    
+
     # Clean up whitespace and normalize multi-line imports to single lines
     cleaned_imports = []
     for import_stmt in imports:
         # Remove extra whitespace and newlines, but preserve structure
         cleaned = re.sub(r'\s+', ' ', import_stmt.strip())
         cleaned_imports.append(cleaned)
-    
+
     return cleaned_imports
 
 def parse_import_statement(import_stmt: str) -> Tuple[List[str], str]:
@@ -240,7 +241,7 @@ def get_import_category(path: str) -> str:
     # Handle forge-std first
     if 'forge-std' in path:
         return 'forge-std'
-    
+
     # Handle absolute paths (convert them for categorization)
     if path.startswith('centrifuge-v3/'):
         # Extract the directory from absolute path for categorization
@@ -252,7 +253,7 @@ def get_import_category(path: str) -> str:
             return 'script'
         elif path.startswith('centrifuge-v3/test'):
             return 'test'
-    
+
     # Handle relative paths by checking directory components
     if path.startswith('./') or path.startswith('../'):
         # Check if it's a current directory import after cleaning
@@ -262,45 +263,45 @@ def get_import_category(path: str) -> str:
                 cleaned_path = cleaned_path[3:]  # Remove '../'
             elif cleaned_path.startswith('./'):
                 cleaned_path = cleaned_path[2:]  # Remove './'
-        
+
         # If path originally started with ./ then it's a current directory import
         if path.startswith('./'):
             return '.'
-        
+
         # Split the cleaned path and find the most specific relevant directory
         path_parts = cleaned_path.split('/')
-        
+
         # Find all matching parts and return the one with highest priority (lowest index)
         matches = []
         for part in path_parts:
             if part in IMPORT_PRIORITY:
                 matches.append(part)
-        
+
         if matches:
             # Return the match with highest priority (lowest index in IMPORT_PRIORITY)
             return min(matches, key=lambda x: IMPORT_PRIORITY.index(x))
-            
+
         return None
-    
+
     # Handle relative paths without ./ prefix (also current directory or subdirectories)
     elif not path.startswith('/') and not path.startswith('centrifuge-v3/') and not path.startswith('src/'):
         # If it's just a filename or starts with a subdirectory name, treat as current directory
         path_parts = path.split('/')
-        
+
         # Check if first part is a known subdirectory or if it's just a file
         if len(path_parts) == 1 or path_parts[0] in ['interfaces', 'types', 'libraries', 'factories', 'mocks', 'utils']:
             return '.'
-        
+
         # Otherwise check for known directories - find the one with highest priority
         matches = []
         for part in path_parts:
             if part in IMPORT_PRIORITY:
                 matches.append(part)
-        
+
         if matches:
             # Return the match with highest priority (lowest index in IMPORT_PRIORITY)
             return min(matches, key=lambda x: IMPORT_PRIORITY.index(x))
-    
+
     return None
 
 def get_import_subgroup(path: str) -> str:
@@ -308,7 +309,7 @@ def get_import_subgroup(path: str) -> str:
     if '/src/' in path:
         return 'src'
     elif '/test/' in path:
-        return 'test'  
+        return 'test'
     elif '/script/' in path:
         return 'script'
     else:
@@ -330,7 +331,7 @@ def categorize_imports(imports: List[str]) -> Tuple[Dict[str, Dict[str, List[str
         if path_match:
             path = path_match.group(1)
             category = get_import_category(path)
-            
+
             if category and category in categorized:
                 subgroup = get_import_subgroup(path)
                 categorized[category][subgroup].append(import_stmt)
@@ -348,7 +349,7 @@ def organize_imports(categorized: Dict[str, Dict[str, List[str]]], other_imports
 
     for priority in IMPORT_PRIORITY:
         category_has_imports = False
-        
+
         for subgroup in subgroup_order:
             if categorized[priority][subgroup]:
                 # Remove duplicates and sort by length (ascending), then alphabetically
@@ -399,7 +400,7 @@ def fix_file_imports(file_path: str, convert_to_relative: bool = True) -> bool:
         # Remove all imports using regex pattern (handles both single-line and multi-line)
         import_removal_pattern = r'import\s+.*?;'
         content_without_imports = re.sub(import_removal_pattern, '', content, flags=re.MULTILINE | re.DOTALL)
-        
+
         # Convert to relative imports if requested
         if convert_to_relative:
             relative_imports = []
@@ -639,24 +640,24 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
     else:
         # Not an absolute path we recognize, return as is
         return import_path
-    
+
     # Convert current file path to use forward slashes and remove leading ./
     current_file_clean = current_file.replace('\\', '/').lstrip('./')
-    
+
     # Get the directory of the current file and target file
     current_dir = os.path.dirname(current_file_clean)
     target_dir = os.path.dirname(actual_path)
     target_filename = os.path.basename(actual_path)
-    
+
     # Determine the base directories for current file and target
     current_in_src = current_file_clean.startswith('src/')
     current_in_script = current_file_clean.startswith('script/')
     current_in_test = current_file_clean.startswith('test/')
-    
+
     target_in_src = actual_path.startswith('src/')
     target_in_script = actual_path.startswith('script/')
     target_in_test = actual_path.startswith('test/')
-    
+
     # If both are in the same base directory (src/, script/, or test/), we can work with relative paths
     if (current_in_src and target_in_src) or (current_in_script and target_in_script) or (current_in_test and target_in_test):
         # Remove base directory prefix from both paths for cleaner calculation
@@ -674,7 +675,7 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
             current_dir_rel = current_dir[5:]  # Remove 'test/'
         else:
             current_dir_rel = current_dir
-            
+
         if target_dir == 'src':
             target_dir_rel = ''
         elif target_dir.startswith('src/'):
@@ -689,11 +690,11 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
             target_dir_rel = target_dir[5:]  # Remove 'test/'
         else:
             target_dir_rel = target_dir
-        
+
         # Check if they're in the same directory
         if current_dir_rel == target_dir_rel:
             return f"./{target_filename}"
-        
+
         # Check if target is in a subdirectory of current
         if current_dir_rel == "" and target_dir_rel != "":
             # Current file is at base directory root, target is in subdirectory
@@ -701,12 +702,12 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
         elif target_dir_rel.startswith(current_dir_rel + '/'):
             subdir = target_dir_rel[len(current_dir_rel) + 1:]
             return f"./{subdir}/{target_filename}"
-        
+
         # Check if current is in a subdirectory of target
         if current_dir_rel.startswith(target_dir_rel + '/'):
             levels_up = current_dir_rel[len(target_dir_rel):].count('/')
             return f"{'../' * levels_up}{target_filename}"
-        
+
         # Calculate full relative path within src/
         try:
             relative_path = os.path.relpath(target_dir_rel, current_dir_rel)
@@ -718,7 +719,7 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
         except ValueError:
             # Fallback
             return f"./{target_filename}"
-    
+
     # If current file is in different base directory than target, keep full prefix
     elif (not current_in_src and target_in_src) or (not current_in_script and target_in_script) or (not current_in_test and target_in_test):
         try:
@@ -729,7 +730,7 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
             return f"{relative_path}/{target_filename}"
         except ValueError:
             return import_path
-    
+
     # Other cases - fallback to original calculation
     try:
         current_path = Path(current_dir)
@@ -746,7 +747,7 @@ def convert_to_relative_path(current_file: str, import_path: str) -> str:
 def convert_relative_to_absolute_path(current_file: str, relative_path: str) -> str:
     """Convert a relative import path to an absolute path"""
     # Skip if already absolute or library import
-    if (relative_path.startswith('centrifuge-v3/') or 
+    if (relative_path.startswith('centrifuge-v3/') or
         relative_path.startswith('src/') or
         relative_path.startswith('test/') or
         relative_path.startswith('script/') or
@@ -754,11 +755,11 @@ def convert_relative_to_absolute_path(current_file: str, relative_path: str) -> 
         relative_path.startswith('createx-forge/') or
         not (relative_path.startswith('./') or relative_path.startswith('../'))):
         return relative_path
-    
+
     # Convert current file path to use forward slashes and remove leading ./
     current_file_clean = current_file.replace('\\', '/').lstrip('./')
     current_dir = os.path.dirname(current_file_clean)
-    
+
     # Resolve the relative path to absolute
     try:
         # Join current directory with relative path and normalize
@@ -775,18 +776,18 @@ def convert_import_to_absolute(import_stmt: str, current_file: str) -> str:
     path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
     if not path_match:
         path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
-    
+
     if not path_match:
         return import_stmt
-    
+
     current_path = path_match.group(1)
-    
+
     # Convert relative paths to absolute
     if current_path.startswith('./') or current_path.startswith('../'):
         absolute_path = convert_relative_to_absolute_path(current_file, current_path)
         new_import = import_stmt.replace(f'"{current_path}"', f'"{absolute_path}"')
         return new_import
-    
+
     # Already absolute or library import - return as is
     return import_stmt
 
@@ -796,34 +797,34 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
     path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
     if not path_match:
         path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
-    
+
     if not path_match:
         return import_stmt
-    
+
     current_path = path_match.group(1)
-    
+
     # Handle absolute paths
     if current_path.startswith('centrifuge-v3/') or current_path.startswith('src/'):
         relative_path = convert_to_relative_path(current_file, current_path)
         new_import = import_stmt.replace(f'"{current_path}"', f'"{relative_path}"')
         return new_import
-    
-    # Handle relative paths that contain redundant /src/ components  
+
+    # Handle relative paths that contain redundant /src/ components
     if (current_path.startswith('./') or current_path.startswith('../')) and '/src/' in current_path:
         current_file_clean = current_file.replace('\\', '/').lstrip('./')
-        
+
         # If both current file and target are in src/, we can remove /src/
         if current_file_clean.startswith('src/'):
             optimized_path = current_path.replace('/src/', '/')
             new_import = import_stmt.replace(f'"{current_path}"', f'"{optimized_path}"')
             return new_import
-        
+
         # If current file is in test/ or script/, check if removing /src/ gives us a valid path
         elif current_file_clean.startswith(('test/', 'script/')):
             # Try removing /src/ and see if the target file exists
             current_dir = os.path.dirname(current_file_clean)
             test_path_without_src = current_path.replace('/src/', '/')
-            
+
             try:
                 target_path = os.path.normpath(os.path.join(current_dir, test_path_without_src))
                 if os.path.exists(target_path):
@@ -832,33 +833,33 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
                     return new_import
             except:
                 pass
-    
+
     # Handle potentially incorrect relative imports - but be much more careful
     if current_path.startswith('../'):
         current_file_clean = current_file.replace('\\', '/').lstrip('./')
         current_file_in_src = current_file_clean.startswith('src/')
-        
+
         # Only add src/ if current file is outside src/ and the path doesn't already have src/
         if not current_file_in_src and '/src/' not in current_path:
             # Try to resolve what the import is actually trying to import
             # by checking if the file exists with or without src/
             current_dir = os.path.dirname(current_file_clean)
-            
+
             try:
                 # Try to resolve the relative path
                 target_path_without_src = os.path.normpath(os.path.join(current_dir, current_path))
                 target_path_with_src = current_path
-                
+
                 # Check if target file exists without src/ (i.e., as a test/script file)
                 if os.path.exists(target_path_without_src):
                     # File exists without src/, so this is correct as-is
                     return import_stmt
-                
+
                 # If we're in test/ or script/ and importing what looks like src/ structure,
                 # only add src/ if we're going up to project root level (3+ levels)
                 path_parts = current_path.split('/')
                 up_levels = current_path.count('../')
-                
+
                 for i, part in enumerate(path_parts):
                     if part in ['misc', 'common', 'hub', 'spoke', 'vaults', 'hooks', 'managers']:
                         # Only add src/ if we're going up 3+ levels (suggesting we're going to project root)
@@ -872,38 +873,38 @@ def convert_import_to_relative(import_stmt: str, current_file: str) -> str:
             except:
                 # If path resolution fails, leave as-is
                 pass
-    
+
     # Handle project-absolute paths that should be converted to relative (script/, test/)
     if (current_path.startswith('script/') or current_path.startswith('test/')):
         relative_path = convert_to_relative_path(current_file, current_path)
         new_import = import_stmt.replace(f'"{current_path}"', f'"{relative_path}"')
         return new_import
-    
+
     # Handle local imports that need ./ prefix (only for same-directory or immediate subdirectories)
-    if (not current_path.startswith('./') and 
-        not current_path.startswith('../') and 
+    if (not current_path.startswith('./') and
+        not current_path.startswith('../') and
         not current_path.startswith('/') and
         not 'forge-std' in current_path and
         not current_path.startswith('centrifuge-v3/') and
         not current_path.startswith('src/') and
         not current_path.startswith('script/') and
         not current_path.startswith('test/')):
-        
+
         # Check if this is a true local import (within current directory structure)
         # by examining if the import path starts with known subdirectory names that would be local
         current_file_clean = current_file.replace('\\', '/').lstrip('./')
         current_dir = os.path.dirname(current_file_clean)
-        
+
         path_parts = current_path.split('/')
         first_part = path_parts[0]
-        
+
         # Only add ./ if the first part looks like a local subdirectory
         # Common local subdirectories: interfaces, types, libraries, factories, mocks, utils
         if first_part in ['interfaces', 'types', 'libraries', 'factories', 'mocks', 'utils']:
             prefixed_path = f"./{current_path}"
             new_import = import_stmt.replace(f'"{current_path}"', f'"{prefixed_path}"')
             return new_import
-    
+
     # Skip if already properly formatted relative or is a library import
     return import_stmt
 
@@ -912,24 +913,24 @@ def check_relative_imports_in_file(file_path: str) -> Tuple[bool, List[str]]:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         imports = extract_imports(content)
         issues = []
-        
+
         for import_stmt in imports:
             # Extract the path from the import statement
             path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
             if not path_match:
                 path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
-            
+
             if path_match:
                 path = path_match.group(1)
                 # Check if it's an absolute path that should be relative
                 if path.startswith('centrifuge-v3/') or path.startswith('src/'):
                     issues.append(f"Absolute import found: {import_stmt}")
-        
+
         return len(issues) == 0, issues
-    
+
     except Exception as e:
         return False, [f"Error processing file: {e}"]
 
@@ -938,28 +939,28 @@ def fix_relative_imports_in_file(file_path: str) -> bool:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         imports = extract_imports(content)
         if not imports:
             return False
-        
+
         new_content = content
         changes_made = False
-        
+
         for import_stmt in imports:
             # Convert import to relative
             new_import = convert_import_to_relative(import_stmt, file_path)
             if new_import != import_stmt:
                 new_content = new_content.replace(import_stmt, new_import)
                 changes_made = True
-        
+
         if changes_made:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             return True
-        
+
         return False
-    
+
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
         return False
@@ -968,10 +969,10 @@ def check_all_relative_imports():
     """Check if all imports use relative paths in all Solidity files"""
     files = get_all_solidity_files()
     print(f"Checking relative imports in {len(files)} Solidity files...\n")
-    
+
     total_files_with_issues = 0
     total_issues = 0
-    
+
     for file_path in files:
         if file_path.strip():
             is_relative, issues = check_relative_imports_in_file(file_path)
@@ -981,16 +982,16 @@ def check_all_relative_imports():
                 print(f"\n📁 {file_path}")
                 for issue in issues:
                     print(f"  ❌ {issue}")
-    
+
     print(f"\n📊 Summary:")
     print(f"   Files checked: {len(files)}")
     print(f"   Files with absolute imports: {total_files_with_issues}")
     print(f"   Total absolute imports: {total_issues}")
-    
+
     if total_files_with_issues > 0:
         print(f"\n💡 Run with --fix-relative to convert these to relative imports")
         return False  # Return False to indicate issues found (for CI)
-    
+
     return True
 
 def fix_absolute_imports_in_file(file_path: str) -> bool:
@@ -998,28 +999,28 @@ def fix_absolute_imports_in_file(file_path: str) -> bool:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         imports = extract_imports(content)
         if not imports:
             return False
-        
+
         new_content = content
         changes_made = False
-        
+
         for import_stmt in imports:
             # Convert import to absolute
             new_import = convert_import_to_absolute(import_stmt, file_path)
             if new_import != import_stmt:
                 new_content = new_content.replace(import_stmt, new_import)
                 changes_made = True
-        
+
         if changes_made:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             return True
-        
+
         return False
-    
+
     except Exception as e:
         print(f"Error processing {file_path}: {e}")
         return False
@@ -1029,24 +1030,24 @@ def check_absolute_imports_in_file(file_path: str) -> Tuple[bool, List[str]]:
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         imports = extract_imports(content)
         issues = []
-        
+
         for import_stmt in imports:
             # Extract the path from the import statement
             path_match = re.search(r'from\s+"([^"]+)"', import_stmt)
             if not path_match:
                 path_match = re.search(r'import\s+"([^"]+)"', import_stmt)
-            
+
             if path_match:
                 path = path_match.group(1)
                 # Check if it's a relative path that should be absolute
                 if path.startswith('./') or path.startswith('../'):
                     issues.append(f"Relative import found: {import_stmt}")
-        
+
         return len(issues) == 0, issues
-    
+
     except Exception as e:
         return False, [f"Error processing file: {e}"]
 
@@ -1054,9 +1055,9 @@ def fix_all_relative_imports():
     """Convert all absolute imports to relative imports in all Solidity files"""
     files = get_all_solidity_files()
     print(f"Converting to relative imports in {len(files)} Solidity files...\n")
-    
+
     total_files_fixed = 0
-    
+
     for file_path in files:
         if file_path.strip():
             print(f"Processing: {file_path}")
@@ -1065,7 +1066,7 @@ def fix_all_relative_imports():
                 print(f"  ✅ Converted to relative imports")
             else:
                 print(f"  ℹ️  No absolute imports found")
-    
+
     print(f"\n📊 Summary:")
     print(f"   Files processed: {len(files)}")
     print(f"   Files with imports converted: {total_files_fixed}")
@@ -1074,9 +1075,9 @@ def fix_all_absolute_imports():
     """Convert all relative imports to absolute imports in all Solidity files"""
     files = get_all_solidity_files()
     print(f"Converting to absolute imports in {len(files)} Solidity files...\n")
-    
+
     total_files_fixed = 0
-    
+
     for file_path in files:
         if file_path.strip():
             print(f"Processing: {file_path}")
@@ -1085,7 +1086,7 @@ def fix_all_absolute_imports():
                 print(f"  ✅ Converted to absolute imports")
             else:
                 print(f"  ℹ️  No relative imports found")
-    
+
     print(f"\n📊 Summary:")
     print(f"   Files processed: {len(files)}")
     print(f"   Files with imports converted: {total_files_fixed}")
@@ -1094,10 +1095,10 @@ def check_all_absolute_imports():
     """Check if all imports use absolute paths in all Solidity files"""
     files = get_all_solidity_files()
     print(f"Checking absolute imports in {len(files)} Solidity files...\n")
-    
+
     total_files_with_issues = 0
     total_issues = 0
-    
+
     for file_path in files:
         if file_path.strip():
             is_absolute, issues = check_absolute_imports_in_file(file_path)
@@ -1107,23 +1108,23 @@ def check_all_absolute_imports():
                 print(f"\n📁 {file_path}")
                 for issue in issues:
                     print(f"  ❌ {issue}")
-    
+
     print(f"\n📊 Summary:")
     print(f"   Files checked: {len(files)}")
     print(f"   Files with relative imports: {total_files_with_issues}")
     print(f"   Total relative imports: {total_issues}")
-    
+
     if total_files_with_issues > 0:
         print(f"\n💡 Run with --fix-absolute to convert these to absolute imports")
         return False  # Return False to indicate issues found (for CI)
-    
+
     return True
 
 def test_roundtrip_idempotency():
     """Test that relative -> absolute -> relative conversion is idempotent"""
     files = get_all_solidity_files()
     print(f"Testing roundtrip idempotency on {len(files)} Solidity files...\n")
-    
+
     # Step 1: Save original state
     print("📝 Step 1: Saving original import state...")
     original_content = {}
@@ -1135,9 +1136,9 @@ def test_roundtrip_idempotency():
             except Exception as e:
                 print(f"Error reading {file_path}: {e}")
                 continue
-    
+
     print(f"✅ Saved original state for {len(original_content)} files")
-    
+
     try:
         # Step 2: Convert to absolute imports
         print("\n🔄 Step 2: Converting all imports to absolute paths...")
@@ -1146,7 +1147,7 @@ def test_roundtrip_idempotency():
             if fix_absolute_imports_in_file(file_path):
                 converted_to_absolute += 1
         print(f"✅ Converted {converted_to_absolute} files to absolute imports")
-        
+
         # Step 3: Convert back to relative imports
         print("\n🔄 Step 3: Converting back to relative paths...")
         converted_to_relative = 0
@@ -1154,21 +1155,21 @@ def test_roundtrip_idempotency():
             if fix_relative_imports_in_file(file_path):
                 converted_to_relative += 1
         print(f"✅ Converted {converted_to_relative} files back to relative imports")
-        
+
         # Step 4: Compare with original state
         print("\n🔍 Step 4: Comparing with original state...")
         differences_found = 0
         files_with_differences = []
-        
+
         for file_path, original in original_content.items():
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     current_content = f.read()
-                
+
                 if current_content != original:
                     differences_found += 1
                     files_with_differences.append(file_path)
-                    
+
                     # Show first few lines of difference for debugging
                     orig_lines = original.split('\n')
                     curr_lines = current_content.split('\n')
@@ -1179,19 +1180,19 @@ def test_roundtrip_idempotency():
                             print(f"    Original: {orig}")
                             print(f"    Current:  {curr}")
                             break
-                            
+
             except Exception as e:
                 print(f"Error comparing {file_path}: {e}")
                 differences_found += 1
                 files_with_differences.append(file_path)
-        
+
         # Step 5: Report results
         print(f"\n📊 Roundtrip Test Results:")
         print(f"   Files tested: {len(original_content)}")
         print(f"   Files converted to absolute: {converted_to_absolute}")
         print(f"   Files converted back to relative: {converted_to_relative}")
         print(f"   Files with differences: {differences_found}")
-        
+
         if differences_found == 0:
             print("✅ PASSED: Roundtrip conversion is idempotent!")
             return True
@@ -1199,7 +1200,7 @@ def test_roundtrip_idempotency():
             print("❌ FAILED: Roundtrip conversion is not idempotent!")
             print(f"   Files with differences: {', '.join(files_with_differences)}")
             return False
-            
+
     finally:
         # Restore original content in case of errors or differences
         if differences_found > 0:
@@ -1259,10 +1260,10 @@ Use --no-relative to disable this behavior if needed.
     args = parser.parse_args()
 
     # Check for default behavior
-    has_action = (args.check_unused or args.organize or args.fix_unused or args.check_order or 
-                  args.check_relative or args.fix_relative or args.check_absolute or 
+    has_action = (args.check_unused or args.organize or args.fix_unused or args.check_order or
+                  args.check_relative or args.fix_relative or args.check_absolute or
                   args.fix_absolute or args.test_roundtrip)
-    
+
     if not has_action:
         # Default behavior: check for unused imports
         args.check_unused = True
