@@ -18,7 +18,7 @@ import {IRequestManager} from "../../../src/common/interfaces/IRequestManager.so
 import {ISpokeMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
 import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {Spoke, ISpoke, REQUEST_MANAGER_V3_0} from "../../../src/spoke/Spoke.sol";
+import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
 import {IVaultManager} from "../../../src/spoke/interfaces/legacy/IVaultManager.sol";
