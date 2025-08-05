@@ -529,7 +529,7 @@ contract SpokeTestAddPool is SpokeTest {
         emit ISpoke.AddPool(POOL_A);
         spoke.addPool(POOL_A);
 
-        assertEq(spoke.pools(POOL_A), block.timestamp);
+        assertEq(spoke.pool(POOL_A), block.timestamp);
         assertEq(spoke.isPoolActive(POOL_A), true);
     }
 }

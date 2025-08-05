@@ -51,7 +51,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     uint64 internal _assetCounter;
 
-    mapping(PoolId => Pool) public pools;
+    mapping(PoolId => Pool) public pool;
     mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClasses;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ShareClassAsset))) public assetInfo;
 
@@ -163,9 +163,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpokeGatewayHandler
     function addPool(PoolId poolId) public auth {
-        Pool storage pool = pools[poolId];
-        require(pool.createdAt == 0, PoolAlreadyAdded());
-        pool.createdAt = block.timestamp;
+        Pool storage pool_ = pool[poolId];
+        require(pool_.createdAt == 0, PoolAlreadyAdded());
+        pool_.createdAt = block.timestamp;
 
         IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
         if (address(escrow).code.length == 0) {
@@ -410,7 +410,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function isPoolActive(PoolId poolId) public view returns (bool) {
-        return pools[poolId].createdAt > 0;
+        return pool[poolId].createdAt > 0;
     }
 
     /// @inheritdoc ISpoke
