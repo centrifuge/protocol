@@ -1,0 +1,32 @@
+// Network: Ethereum (Chain ID: 1)
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {VaultMigrationSpellCommon} from "./VaultMigrationSpellCommon.sol";
+
+/**
+ * @title VaultMigrationSpellEthereum
+ * @notice Ethereum-specific governance spell to migrate 3 vaults to CREATE2 deployment
+ * @dev Extends VaultMigrationSpellCommon to handle Ethereum collision resolution vaults
+ */
+contract VaultMigrationSpellEthereum is VaultMigrationSpellCommon {
+    // deJAAA ETH USDC Vault (collision resolution target)
+    address public constant VAULT_1 = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
+    // deJTRSY ETH USDC Vault (collision resolution target)
+    address public constant VAULT_2 = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
+    // deJTRSY ETH JTRSY Vault (collision resolution target)
+    address public constant VAULT_3 = 0x04157759a9fe406d82a16BdEB20F9BeB9bBEb958;
+
+    /// @param asyncVaultFactory Address of the deployed AsyncVaultFactory
+    /// @param syncDepositVaultFactory Address of the deployed SyncDepositVaultFactory
+    constructor(address asyncVaultFactory, address syncDepositVaultFactory) 
+        VaultMigrationSpellCommon(asyncVaultFactory, syncDepositVaultFactory) {}
+
+    function _getVaults() internal pure override returns (address[] memory) {
+        address[] memory vaults = new address[](3);
+        vaults[0] = VAULT_1;  // deJAAA ETH USDC
+        vaults[1] = VAULT_2;  // deJTRSY ETH USDC  
+        vaults[2] = VAULT_3;  // deJTRSY ETH JTRSY
+        return vaults;
+    }
+}

@@ -12,6 +12,7 @@ import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
+import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
 
@@ -320,6 +321,14 @@ contract EndToEndUtils is EndToEndDeployment {
         assertEq(accountValue, value);
         assertEq(accountIsPositive, isPositive);
     }
+
+    function isShareToken(address token) internal view returns (bool) {
+        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
+            return supported;
+        } catch {
+            return false;
+        }
+    }
 }
 
 /// Base investment flows that can be shared between EndToEnd and Fork tests
@@ -578,7 +587,7 @@ contract EndToEndFlows is EndToEndUtils {
         internal
     {
         vm.startPrank(investor);
-        spoke.usdc.approve(address(vault), amount);
+        ERC20(vault.asset()).approve(address(vault), amount);
         vault.requestDeposit(amount, investor, investor);
     }
 
@@ -770,7 +779,7 @@ contract EndToEndFlows is EndToEndUtils {
     // Async Redeem Flows
     //----------------------------------------------------------------------------------------------
 
-    function _syncRedeemFlow(
+    function _asyncRedeemFlow(
         CHub memory hub,
         CSpoke memory spoke,
         PoolId poolId,
@@ -794,6 +803,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
+
         vault.requestRedeem(shares, investor, investor);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
@@ -877,7 +887,7 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _syncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
+        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
     }
 
     //----------------------------------------------------------------------------------------------

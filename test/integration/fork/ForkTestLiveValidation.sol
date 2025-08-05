@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ForkTestBase} from "./ForkTestBase.sol";
+import {ForkTestAsyncInvestments} from "./ForkTestInvestments.sol";
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
@@ -35,8 +36,147 @@ import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 /// @dev Currently inherits from ForkTestBase for basic fork setup.
 ///      For future spell validation tests that require investment flows,
 ///      consider inheriting from ForkTestAsyncInvestments or ForkTestSyncInvestments instead.
-contract ForkTestLiveValidation is ForkTestBase {
-    function test_validateCompleteDeployment() public view {
+///      VMLabeling functionality is inherited through the EndToEndDeployment -> EndToEndUtils chain.
+contract ForkTestLiveValidation is ForkTestAsyncInvestments {
+    //----------------------------------------------------------------------------------------------
+    // CORE PROTOCOL CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    // Core system contracts
+    address public root;
+    address public guardian;
+    address public gateway;
+    address public gasService;
+    address public tokenRecoverer;
+    address public hubRegistry;
+    address public accounting;
+    address public holdings;
+    address public shareClassManager;
+    address public hub;
+    address public hubHelpers;
+    address public identityValuation;
+    address public tokenFactory;
+    address public balanceSheet;
+    address public spoke;
+    address public contractUpdater;
+    address public router;
+    address public routerEscrow;
+    address public globalEscrow;
+    address public asyncRequestManager;
+    address public syncManager;
+    address public wormholeAdapter;
+    address public axelarAdapter;
+    address public messageProcessor;
+    address public messageDispatcher;
+    address public multiAdapter;
+    address public poolEscrowFactory;
+    address public adminSafe;
+
+    //----------------------------------------------------------------------------------------------
+    // FACTORY CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public asyncVaultFactory;
+    address public syncDepositVaultFactory;
+
+    //----------------------------------------------------------------------------------------------
+    // HOOK CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public freezeOnlyHook;
+    address public fullRestrictionsHook;
+    address public freelyTransferableHook;
+    address public redemptionRestrictionsHook;
+
+    //----------------------------------------------------------------------------------------------
+    // VAULT CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public ethJaaaVault;
+    address public ethJtrsyVault;
+    address public ethDejaaaVault;
+    address public ethDejtrsyVault;
+
+    //----------------------------------------------------------------------------------------------
+    // SHARE TOKEN CONTRACTS
+    //----------------------------------------------------------------------------------------------
+
+    address public ethJaaaShareToken;
+    address public ethJtrsyShareToken;
+    address public ethDejtrsyShareToken;
+    address public ethDejaaaShareToken;
+
+    //----------------------------------------------------------------------------------------------
+    // SETUP
+    //----------------------------------------------------------------------------------------------
+
+    function setUp() public virtual override {
+        super.setUp();
+        _initializeContractAddresses();
+        // Setup VM labels for improved test output readability
+        _setupVMLabels();
+    }
+
+    /// @notice Initialize all contract addresses from IntegrationConstants
+    /// @dev Virtual function to allow child contracts to override specific addresses
+    function _initializeContractAddresses() internal virtual {
+        // Core system contracts
+        root = IntegrationConstants.ROOT;
+        guardian = IntegrationConstants.GUARDIAN;
+        gateway = IntegrationConstants.GATEWAY;
+        gasService = IntegrationConstants.GAS_SERVICE;
+        tokenRecoverer = IntegrationConstants.TOKEN_RECOVERER;
+        hubRegistry = IntegrationConstants.HUB_REGISTRY;
+        accounting = IntegrationConstants.ACCOUNTING;
+        holdings = IntegrationConstants.HOLDINGS;
+        shareClassManager = IntegrationConstants.SHARE_CLASS_MANAGER;
+        hub = IntegrationConstants.HUB;
+        hubHelpers = IntegrationConstants.HUB_HELPERS;
+        identityValuation = IntegrationConstants.IDENTITY_VALUATION;
+        tokenFactory = IntegrationConstants.TOKEN_FACTORY;
+        balanceSheet = IntegrationConstants.BALANCE_SHEET;
+        spoke = IntegrationConstants.SPOKE;
+        contractUpdater = IntegrationConstants.CONTRACT_UPDATER;
+        router = IntegrationConstants.ROUTER;
+        routerEscrow = IntegrationConstants.ROUTER_ESCROW;
+        globalEscrow = IntegrationConstants.GLOBAL_ESCROW;
+        asyncRequestManager = IntegrationConstants.ASYNC_REQUEST_MANAGER;
+        syncManager = IntegrationConstants.SYNC_MANAGER;
+        wormholeAdapter = IntegrationConstants.WORMHOLE_ADAPTER;
+        axelarAdapter = IntegrationConstants.AXELAR_ADAPTER;
+        messageProcessor = IntegrationConstants.MESSAGE_PROCESSOR;
+        messageDispatcher = IntegrationConstants.MESSAGE_DISPATCHER;
+        multiAdapter = IntegrationConstants.MULTI_ADAPTER;
+        poolEscrowFactory = IntegrationConstants.POOL_ESCROW_FACTORY;
+        adminSafe = IntegrationConstants.ADMIN_SAFE;
+
+        // Factory contracts
+        asyncVaultFactory = IntegrationConstants.ASYNC_VAULT_FACTORY;
+        syncDepositVaultFactory = IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY;
+
+        // Hook contracts
+        freezeOnlyHook = IntegrationConstants.FREEZE_ONLY_HOOK;
+        fullRestrictionsHook = IntegrationConstants.FULL_RESTRICTIONS_HOOK;
+        freelyTransferableHook = IntegrationConstants.FREELY_TRANSFERABLE_HOOK;
+        redemptionRestrictionsHook = IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK;
+
+        // Vault contracts
+        ethJaaaVault = IntegrationConstants.ETH_JAAA_VAULT;
+        ethJtrsyVault = IntegrationConstants.ETH_JTRSY_VAULT;
+        ethDejaaaVault = IntegrationConstants.ETH_DEJAA_USDC_VAULT;
+        ethDejtrsyVault = IntegrationConstants.ETH_DEJTRSY_USDC_VAULT;
+
+        // Share token contracts
+        ethJaaaShareToken = IntegrationConstants.ETH_JAAA_SHARE_TOKEN;
+        ethJtrsyShareToken = IntegrationConstants.ETH_JTRSY_SHARE_TOKEN;
+        ethDejtrsyShareToken = IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN;
+        ethDejaaaShareToken = IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // VALIDATION FUNCTIONS
+    //----------------------------------------------------------------------------------------------
+    function test_validateCompleteDeployment() public virtual {
         validateDeployment();
     }
 
@@ -51,341 +191,298 @@ contract ForkTestLiveValidation is ForkTestBase {
     }
 
     /// @notice Validates that root has ward permissions on all core protocol contracts, vaults, and share tokens
-    function _validateV3RootPermissions() internal view {
+    function _validateV3RootPermissions() internal view virtual {
         // From CommonDeployer
-        _validateRootWard(IntegrationConstants.TOKEN_RECOVERER);
+        _validateRootWard(tokenRecoverer);
 
         // From HubDeployer
-        _validateRootWard(IntegrationConstants.HUB_REGISTRY);
-        _validateRootWard(IntegrationConstants.ACCOUNTING);
-        _validateRootWard(IntegrationConstants.HOLDINGS);
-        _validateRootWard(IntegrationConstants.SHARE_CLASS_MANAGER);
-        _validateRootWard(IntegrationConstants.HUB);
-        _validateRootWard(IntegrationConstants.HUB_HELPERS);
+        _validateRootWard(hubRegistry);
+        _validateRootWard(accounting);
+        _validateRootWard(holdings);
+        _validateRootWard(shareClassManager);
+        _validateRootWard(hub);
+        _validateRootWard(hubHelpers);
 
         // From SpokeDeployer
-        _validateRootWard(IntegrationConstants.SPOKE);
-        _validateRootWard(IntegrationConstants.BALANCE_SHEET);
-        _validateRootWard(IntegrationConstants.TOKEN_FACTORY);
-        _validateRootWard(IntegrationConstants.CONTRACT_UPDATER);
+        _validateRootWard(spoke);
+        _validateRootWard(balanceSheet);
+        _validateRootWard(tokenFactory);
+        _validateRootWard(contractUpdater);
 
         // From VaultsDeployer
-        _validateRootWard(IntegrationConstants.ROUTER);
-        _validateRootWard(IntegrationConstants.ASYNC_REQUEST_MANAGER);
-        _validateRootWard(IntegrationConstants.SYNC_MANAGER);
-        _validateRootWard(IntegrationConstants.ROUTER_ESCROW);
-        _validateRootWard(IntegrationConstants.GLOBAL_ESCROW);
-        _validateRootWard(IntegrationConstants.ASYNC_VAULT_FACTORY);
-        _validateRootWard(IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY);
+        _validateRootWard(router);
+        _validateRootWard(asyncRequestManager);
+        _validateRootWard(syncManager);
+        _validateRootWard(routerEscrow);
+        _validateRootWard(globalEscrow);
+        _validateRootWard(asyncVaultFactory);
+        _validateRootWard(syncDepositVaultFactory);
 
         // From ValuationsDeployer
-        _validateRootWard(IntegrationConstants.IDENTITY_VALUATION);
+        _validateRootWard(identityValuation);
 
         // From HooksDeployer
-        _validateRootWard(IntegrationConstants.FREEZE_ONLY_HOOK);
-        _validateRootWard(IntegrationConstants.FULL_RESTRICTIONS_HOOK);
-        _validateRootWard(IntegrationConstants.FREELY_TRANSFERABLE_HOOK);
-        _validateRootWard(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK);
+        _validateRootWard(freezeOnlyHook);
+        _validateRootWard(fullRestrictionsHook);
+        _validateRootWard(freelyTransferableHook);
+        _validateRootWard(redemptionRestrictionsHook);
 
         // From VaultsDeployer
-        _validateRootWard(IntegrationConstants.WORMHOLE_ADAPTER);
-        _validateRootWard(IntegrationConstants.AXELAR_ADAPTER);
+        _validateRootWard(wormholeAdapter);
+        _validateRootWard(axelarAdapter);
 
-        _validateRootWard(IntegrationConstants.ETH_JAAA_VAULT);
-        _validateRootWard(IntegrationConstants.ETH_JTRSY_VAULT);
-        _validateRootWard(IntegrationConstants.ETH_DEJAAA_VAULT);
-        _validateRootWard(IntegrationConstants.ETH_DEJTRSY_VAULT);
+        _validateRootWard(ethJaaaVault);
+        _validateRootWard(ethJtrsyVault);
+        _validateRootWard(ethDejaaaVault);
+        _validateRootWard(ethDejtrsyVault);
 
-        _validateRootWard(IntegrationConstants.ETH_JAAA_SHARE_TOKEN);
-        _validateRootWard(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN);
-        _validateRootWard(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN);
-        _validateRootWard(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN);
+        _validateRootWard(ethJaaaShareToken);
+        _validateRootWard(ethJtrsyShareToken);
+        _validateRootWard(ethDejtrsyShareToken);
+        _validateRootWard(ethDejaaaShareToken);
     }
 
     /// @notice Optimized ROOT ward validation using VM labels
     function _validateRootWard(address contractAddr) internal view {
         require(contractAddr.code.length > 0, "Contract has no code");
-        assertEq(IAuth(contractAddr).wards(IntegrationConstants.ROOT), 1);
+        assertEq(IAuth(contractAddr).wards(root), 1);
     }
 
     /// @notice Validates all contract-to-contract ward relationships based on deployment scripts
     function _validateContractWardRelationships() internal view {
         // CommonDeployer
-        _validateWard(IntegrationConstants.ROOT, IntegrationConstants.GUARDIAN);
-        _validateWard(IntegrationConstants.ROOT, IntegrationConstants.TOKEN_RECOVERER);
-        _validateWard(IntegrationConstants.ROOT, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.ROOT, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.MULTI_ADAPTER);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.BALANCE_SHEET);
-        _validateWard(IntegrationConstants.GATEWAY, IntegrationConstants.ROUTER);
-        _validateWard(IntegrationConstants.MULTI_ADAPTER, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.MULTI_ADAPTER, IntegrationConstants.GUARDIAN);
-        _validateWard(IntegrationConstants.MULTI_ADAPTER, IntegrationConstants.GATEWAY);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.GUARDIAN);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.HUB_HELPERS);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.MESSAGE_DISPATCHER, IntegrationConstants.BALANCE_SHEET);
-        _validateWard(IntegrationConstants.MESSAGE_PROCESSOR, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.MESSAGE_PROCESSOR, IntegrationConstants.GATEWAY);
-        _validateWard(IntegrationConstants.TOKEN_RECOVERER, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.TOKEN_RECOVERER, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.TOKEN_RECOVERER, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.POOL_ESCROW_FACTORY, IntegrationConstants.ROOT);
-        _validateWard(IntegrationConstants.POOL_ESCROW_FACTORY, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.POOL_ESCROW_FACTORY, IntegrationConstants.SPOKE);
+        _validateWard(root, guardian);
+        _validateWard(root, tokenRecoverer);
+        _validateWard(root, messageProcessor);
+        _validateWard(root, messageDispatcher);
+        _validateWard(gateway, root);
+        _validateWard(gateway, messageDispatcher);
+        _validateWard(gateway, multiAdapter);
+        _validateWard(gateway, hub);
+        _validateWard(gateway, spoke);
+        _validateWard(gateway, balanceSheet);
+        _validateWard(gateway, router);
+        _validateWard(multiAdapter, root);
+        _validateWard(multiAdapter, guardian);
+        _validateWard(multiAdapter, gateway);
+        _validateWard(messageDispatcher, root);
+        _validateWard(messageDispatcher, guardian);
+        _validateWard(messageDispatcher, hub);
+        _validateWard(messageDispatcher, hubHelpers);
+        _validateWard(messageDispatcher, spoke);
+        _validateWard(messageDispatcher, balanceSheet);
+        _validateWard(messageProcessor, root);
+        _validateWard(messageProcessor, gateway);
+        _validateWard(tokenRecoverer, root);
+        _validateWard(tokenRecoverer, messageDispatcher);
+        _validateWard(tokenRecoverer, messageProcessor);
+        _validateWard(poolEscrowFactory, root);
+        _validateWard(poolEscrowFactory, hub);
+        _validateWard(poolEscrowFactory, spoke);
 
         // HubDeployer
-        _validateWard(IntegrationConstants.HUB_REGISTRY, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.HOLDINGS, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.ACCOUNTING, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.SHARE_CLASS_MANAGER, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.HUB_HELPERS, IntegrationConstants.HUB);
-        _validateWard(IntegrationConstants.HUB, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.HUB, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.HUB, IntegrationConstants.GUARDIAN);
-        _validateWard(IntegrationConstants.ACCOUNTING, IntegrationConstants.HUB_HELPERS);
-        _validateWard(IntegrationConstants.SHARE_CLASS_MANAGER, IntegrationConstants.HUB_HELPERS);
+        _validateWard(hubRegistry, hub);
+        _validateWard(holdings, hub);
+        _validateWard(accounting, hub);
+        _validateWard(shareClassManager, hub);
+        _validateWard(hubHelpers, hub);
+        _validateWard(hub, messageProcessor);
+        _validateWard(hub, messageDispatcher);
+        _validateWard(hub, guardian);
+        _validateWard(accounting, hubHelpers);
+        _validateWard(shareClassManager, hubHelpers);
 
         // SpokeDeployer
-        _validateWard(IntegrationConstants.TOKEN_FACTORY, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.SPOKE, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.SPOKE, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.BALANCE_SHEET, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.BALANCE_SHEET, IntegrationConstants.MESSAGE_DISPATCHER);
-        _validateWard(IntegrationConstants.CONTRACT_UPDATER, IntegrationConstants.MESSAGE_PROCESSOR);
-        _validateWard(IntegrationConstants.CONTRACT_UPDATER, IntegrationConstants.MESSAGE_DISPATCHER);
+        _validateWard(tokenFactory, spoke);
+        _validateWard(spoke, messageProcessor);
+        _validateWard(spoke, messageDispatcher);
+        _validateWard(balanceSheet, messageProcessor);
+        _validateWard(balanceSheet, messageDispatcher);
+        _validateWard(contractUpdater, messageProcessor);
+        _validateWard(contractUpdater, messageDispatcher);
 
         // VaultsDeployer
-        _validateWard(IntegrationConstants.ASYNC_VAULT_FACTORY, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.ASYNC_REQUEST_MANAGER, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.SYNC_MANAGER, IntegrationConstants.CONTRACT_UPDATER);
-        _validateWard(IntegrationConstants.GLOBAL_ESCROW, IntegrationConstants.ASYNC_REQUEST_MANAGER);
-        _validateWard(IntegrationConstants.ROUTER_ESCROW, IntegrationConstants.ROUTER);
+        _validateWard(asyncVaultFactory, spoke);
+        _validateWard(syncDepositVaultFactory, spoke);
+        _validateWard(asyncRequestManager, spoke);
+        _validateWard(syncManager, contractUpdater);
+        _validateWard(globalEscrow, asyncRequestManager);
+        _validateWard(routerEscrow, router);
         // TODO: Ensure Missing syncManager <- syncDepositVaultFactory relationship is expected
-        _validateWard(IntegrationConstants.ASYNC_REQUEST_MANAGER, IntegrationConstants.SYNC_DEPOSIT_VAULT_FACTORY);
-        _validateWard(IntegrationConstants.ASYNC_REQUEST_MANAGER, IntegrationConstants.ASYNC_VAULT_FACTORY);
+        _validateWard(asyncRequestManager, syncDepositVaultFactory);
+        _validateWard(asyncRequestManager, asyncVaultFactory);
 
         // HooksDeployer
-        _validateWard(IntegrationConstants.FREEZE_ONLY_HOOK, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.FULL_RESTRICTIONS_HOOK, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.FREELY_TRANSFERABLE_HOOK, IntegrationConstants.SPOKE);
-        _validateWard(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK, IntegrationConstants.SPOKE);
+        _validateWard(freezeOnlyHook, spoke);
+        _validateWard(fullRestrictionsHook, spoke);
+        _validateWard(freelyTransferableHook, spoke);
+        _validateWard(redemptionRestrictionsHook, spoke);
     }
 
     /// @notice Validates file configurations set during deployment
     function _validateFileConfigurations() internal view {
         // CommonDeployer configs
-        assertEq(
-            address(Gateway(payable(IntegrationConstants.GATEWAY)).processor()), IntegrationConstants.MESSAGE_PROCESSOR
-        );
-        assertEq(address(Gateway(payable(IntegrationConstants.GATEWAY)).adapter()), IntegrationConstants.MULTI_ADAPTER);
-        assertEq(PoolEscrowFactory(IntegrationConstants.POOL_ESCROW_FACTORY).gateway(), IntegrationConstants.GATEWAY);
-        assertEq(address(Guardian(IntegrationConstants.GUARDIAN).safe()), IntegrationConstants.ADMIN_SAFE);
+        assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor);
+        assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter);
+        assertEq(PoolEscrowFactory(poolEscrowFactory).gateway(), gateway);
+        assertEq(address(Guardian(guardian).safe()), adminSafe);
 
         // HubDeployer Configs
-        assertEq(address(MessageProcessor(IntegrationConstants.MESSAGE_PROCESSOR).hub()), IntegrationConstants.HUB);
-        assertEq(address(MessageDispatcher(IntegrationConstants.MESSAGE_DISPATCHER).hub()), IntegrationConstants.HUB);
-        assertEq(address(Hub(IntegrationConstants.HUB).sender()), IntegrationConstants.MESSAGE_DISPATCHER);
-        assertEq(address(Hub(IntegrationConstants.HUB).poolEscrowFactory()), IntegrationConstants.POOL_ESCROW_FACTORY);
-        assertEq(address(Guardian(IntegrationConstants.GUARDIAN).hub()), IntegrationConstants.HUB);
-        assertEq(address(HubHelpers(IntegrationConstants.HUB_HELPERS).hub()), IntegrationConstants.HUB);
+        assertEq(address(MessageProcessor(messageProcessor).hub()), hub);
+        assertEq(address(MessageDispatcher(messageDispatcher).hub()), hub);
+        assertEq(address(Hub(hub).sender()), messageDispatcher);
+        assertEq(address(Hub(hub).poolEscrowFactory()), poolEscrowFactory);
+        assertEq(address(Guardian(guardian).hub()), hub);
+        assertEq(address(HubHelpers(hubHelpers).hub()), hub);
 
         // SpokeDeployer configs
-        assertEq(
-            address(MessageDispatcher(IntegrationConstants.MESSAGE_DISPATCHER).spoke()), IntegrationConstants.SPOKE
-        );
-        assertEq(
-            address(MessageDispatcher(IntegrationConstants.MESSAGE_DISPATCHER).balanceSheet()),
-            IntegrationConstants.BALANCE_SHEET
-        );
-        assertEq(
-            address(MessageDispatcher(IntegrationConstants.MESSAGE_DISPATCHER).contractUpdater()),
-            IntegrationConstants.CONTRACT_UPDATER
-        );
+        assertEq(address(MessageDispatcher(messageDispatcher).spoke()), spoke);
+        assertEq(address(MessageDispatcher(messageDispatcher).balanceSheet()), balanceSheet);
+        assertEq(address(MessageDispatcher(messageDispatcher).contractUpdater()), contractUpdater);
 
-        assertEq(address(MessageProcessor(IntegrationConstants.MESSAGE_PROCESSOR).spoke()), IntegrationConstants.SPOKE);
-        assertEq(
-            address(MessageProcessor(IntegrationConstants.MESSAGE_PROCESSOR).balanceSheet()),
-            IntegrationConstants.BALANCE_SHEET
-        );
-        assertEq(
-            address(MessageProcessor(IntegrationConstants.MESSAGE_PROCESSOR).contractUpdater()),
-            IntegrationConstants.CONTRACT_UPDATER
-        );
+        assertEq(address(MessageProcessor(messageProcessor).spoke()), spoke);
+        assertEq(address(MessageProcessor(messageProcessor).balanceSheet()), balanceSheet);
+        assertEq(address(MessageProcessor(messageProcessor).contractUpdater()), contractUpdater);
 
-        assertEq(address(Spoke(IntegrationConstants.SPOKE).gateway()), IntegrationConstants.GATEWAY);
-        assertEq(address(Spoke(IntegrationConstants.SPOKE).sender()), IntegrationConstants.MESSAGE_DISPATCHER);
-        assertEq(
-            address(Spoke(IntegrationConstants.SPOKE).poolEscrowFactory()), IntegrationConstants.POOL_ESCROW_FACTORY
-        );
+        assertEq(address(Spoke(spoke).gateway()), gateway);
+        assertEq(address(Spoke(spoke).sender()), messageDispatcher);
+        assertEq(address(Spoke(spoke).poolEscrowFactory()), poolEscrowFactory);
 
-        assertEq(address(BalanceSheet(IntegrationConstants.BALANCE_SHEET).spoke()), IntegrationConstants.SPOKE);
-        assertEq(
-            address(BalanceSheet(IntegrationConstants.BALANCE_SHEET).sender()), IntegrationConstants.MESSAGE_DISPATCHER
-        );
-        assertEq(address(BalanceSheet(IntegrationConstants.BALANCE_SHEET).gateway()), IntegrationConstants.GATEWAY);
-        assertEq(
-            address(BalanceSheet(IntegrationConstants.BALANCE_SHEET).poolEscrowProvider()),
-            IntegrationConstants.POOL_ESCROW_FACTORY
-        );
+        assertEq(address(BalanceSheet(balanceSheet).spoke()), spoke);
+        assertEq(address(BalanceSheet(balanceSheet).sender()), messageDispatcher);
+        assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway);
+        assertEq(address(BalanceSheet(balanceSheet).poolEscrowProvider()), poolEscrowFactory);
 
-        assertEq(
-            PoolEscrowFactory(IntegrationConstants.POOL_ESCROW_FACTORY).balanceSheet(),
-            IntegrationConstants.BALANCE_SHEET
-        );
+        assertEq(PoolEscrowFactory(poolEscrowFactory).balanceSheet(), balanceSheet);
 
-        TokenFactory factory = TokenFactory(IntegrationConstants.TOKEN_FACTORY);
-        assertEq(factory.tokenWards(0), IntegrationConstants.SPOKE);
-        assertEq(factory.tokenWards(1), IntegrationConstants.BALANCE_SHEET);
+        TokenFactory factory = TokenFactory(tokenFactory);
+        assertEq(factory.tokenWards(0), spoke);
+        assertEq(factory.tokenWards(1), balanceSheet);
 
         // VaultsDeployer configs
-        assertEq(
-            address(AsyncRequestManager(IntegrationConstants.ASYNC_REQUEST_MANAGER).spoke()), IntegrationConstants.SPOKE
-        );
-        assertEq(
-            address(AsyncRequestManager(IntegrationConstants.ASYNC_REQUEST_MANAGER).balanceSheet()),
-            IntegrationConstants.BALANCE_SHEET
-        );
+        assertEq(address(AsyncRequestManager(asyncRequestManager).spoke()), spoke);
+        assertEq(address(AsyncRequestManager(asyncRequestManager).balanceSheet()), balanceSheet);
 
-        assertEq(address(SyncManager(IntegrationConstants.SYNC_MANAGER).spoke()), IntegrationConstants.SPOKE);
-        assertEq(
-            address(SyncManager(IntegrationConstants.SYNC_MANAGER).balanceSheet()), IntegrationConstants.BALANCE_SHEET
-        );
+        assertEq(address(SyncManager(syncManager).spoke()), spoke);
+        assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet);
     }
 
     /// @notice Validates endorsements from Root
     function _validateEndorsements() internal view {
         // From VaultsDeployer
-        assertEq(
-            IRoot(IntegrationConstants.ROOT).endorsements(IntegrationConstants.ASYNC_REQUEST_MANAGER),
-            1,
-            "AsyncRequestManager not endorsed by Root"
-        );
-        assertEq(
-            IRoot(IntegrationConstants.ROOT).endorsements(IntegrationConstants.GLOBAL_ESCROW),
-            1,
-            "GlobalEscrow not endorsed by Root"
-        );
-        assertEq(
-            IRoot(IntegrationConstants.ROOT).endorsements(IntegrationConstants.ROUTER),
-            1,
-            "VaultRouter not endorsed by Root"
-        );
+        assertEq(IRoot(root).endorsements(asyncRequestManager), 1, "AsyncRequestManager not endorsed by Root");
+        assertEq(IRoot(root).endorsements(globalEscrow), 1, "GlobalEscrow not endorsed by Root");
+        assertEq(IRoot(root).endorsements(router), 1, "VaultRouter not endorsed by Root");
 
         // From SpokeDeployer
-        assertEq(
-            IRoot(IntegrationConstants.ROOT).endorsements(IntegrationConstants.BALANCE_SHEET),
-            1,
-            "BalanceSheet not endorsed by Root"
-        );
+        assertEq(IRoot(root).endorsements(balanceSheet), 1, "BalanceSheet not endorsed by Root");
     }
 
     /// @notice Validates Guardian adapter configurations for all connected chains
     function _validateGuardianAdapterConfigurations() internal view {
-        MultiAdapter multiAdapter = MultiAdapter(IntegrationConstants.MULTI_ADAPTER);
+        MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
 
-        _validateMultiAdapterConfiguration(multiAdapter, IntegrationConstants.BASE_CENTRIFUGE_ID);
+        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.BASE_CENTRIFUGE_ID);
 
-        _validateMultiAdapterConfiguration(multiAdapter, IntegrationConstants.ARBITRUM_CENTRIFUGE_ID);
+        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.ARBITRUM_CENTRIFUGE_ID);
 
-        _validateMultiAdapterConfiguration(multiAdapter, IntegrationConstants.PLUME_CENTRIFUGE_ID);
+        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.PLUME_CENTRIFUGE_ID);
 
-        _validateMultiAdapterConfiguration(multiAdapter, IntegrationConstants.AVALANCHE_CENTRIFUGE_ID);
+        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.AVALANCHE_CENTRIFUGE_ID);
 
-        _validateMultiAdapterConfiguration(multiAdapter, IntegrationConstants.BNB_CENTRIFUGE_ID);
+        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.BNB_CENTRIFUGE_ID);
     }
 
     /// @notice Validates adapter source and destination mappings
     function _validateAdapterSourceDestinationMappings() internal view {
-        WormholeAdapter wormholeAdapter = WormholeAdapter(IntegrationConstants.WORMHOLE_ADAPTER);
-        AxelarAdapter axelarAdapter = AxelarAdapter(IntegrationConstants.AXELAR_ADAPTER);
+        WormholeAdapter wormholeAdapterContract = WormholeAdapter(wormholeAdapter);
+        AxelarAdapter axelarAdapterContract = AxelarAdapter(axelarAdapter);
 
         _validateWormholeMapping(
-            wormholeAdapter, IntegrationConstants.BASE_WORMHOLE_ID, IntegrationConstants.BASE_CENTRIFUGE_ID, "Base"
+            wormholeAdapterContract,
+            IntegrationConstants.BASE_WORMHOLE_ID,
+            IntegrationConstants.BASE_CENTRIFUGE_ID,
+            "Base"
         );
 
         _validateWormholeMapping(
-            wormholeAdapter,
+            wormholeAdapterContract,
             IntegrationConstants.ARBITRUM_WORMHOLE_ID,
             IntegrationConstants.ARBITRUM_CENTRIFUGE_ID,
             "Arbitrum"
         );
 
         _validateWormholeMapping(
-            wormholeAdapter, IntegrationConstants.PLUME_WORMHOLE_ID, IntegrationConstants.PLUME_CENTRIFUGE_ID, "Plume"
+            wormholeAdapterContract,
+            IntegrationConstants.PLUME_WORMHOLE_ID,
+            IntegrationConstants.PLUME_CENTRIFUGE_ID,
+            "Plume"
         );
 
         _validateWormholeMapping(
-            wormholeAdapter,
+            wormholeAdapterContract,
             IntegrationConstants.AVALANCHE_WORMHOLE_ID,
             IntegrationConstants.AVALANCHE_CENTRIFUGE_ID,
             "Avalanche"
         );
 
         _validateWormholeMapping(
-            wormholeAdapter, IntegrationConstants.BNB_WORMHOLE_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
+            wormholeAdapterContract, IntegrationConstants.BNB_WORMHOLE_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
         );
 
         _validateAxelarMapping(
-            axelarAdapter, IntegrationConstants.BASE_AXELAR_ID, IntegrationConstants.BASE_CENTRIFUGE_ID, "Base"
+            axelarAdapterContract, IntegrationConstants.BASE_AXELAR_ID, IntegrationConstants.BASE_CENTRIFUGE_ID, "Base"
         );
 
         _validateAxelarMapping(
-            axelarAdapter,
+            axelarAdapterContract,
             IntegrationConstants.ARBITRUM_AXELAR_ID,
             IntegrationConstants.ARBITRUM_CENTRIFUGE_ID,
             "Arbitrum"
         );
 
         _validateAxelarMapping(
-            axelarAdapter,
+            axelarAdapterContract,
             IntegrationConstants.AVALANCHE_AXELAR_ID,
             IntegrationConstants.AVALANCHE_CENTRIFUGE_ID,
             "Avalanche"
         );
 
         _validateAxelarMapping(
-            axelarAdapter, IntegrationConstants.BNB_AXELAR_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
+            axelarAdapterContract, IntegrationConstants.BNB_AXELAR_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
         );
     }
 
     /// @notice Helper function to validate MultiAdapter configuration for a specific chain
-    function _validateMultiAdapterConfiguration(MultiAdapter multiAdapter, uint16 centrifugeId) internal view {
+    function _validateMultiAdapterConfiguration(MultiAdapter multiAdapterContract, uint16 centrifugeId) internal view {
         // Determine expected adapter count based on chain (only Plume doesn't have Axelar)
         bool hasAxelar = centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         uint8 expectedQuorum = hasAxelar ? 2 : 1;
 
         // Verify quorum matches expected adapter count
-        uint8 actualQuorum = multiAdapter.quorum(centrifugeId);
+        uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId);
         assertEq(actualQuorum, expectedQuorum);
 
         // Verify first adapter is always Wormhole (primary)
-        IAdapter primaryAdapter = multiAdapter.adapters(centrifugeId, 0);
-        assertEq(address(primaryAdapter), IntegrationConstants.WORMHOLE_ADAPTER);
+        IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, 0);
+        assertEq(address(primaryAdapter), wormholeAdapter);
 
         if (hasAxelar) {
             // Verify second adapter is Axelar
-            IAdapter secondaryAdapter = multiAdapter.adapters(centrifugeId, 1);
-            assertEq(address(secondaryAdapter), IntegrationConstants.AXELAR_ADAPTER);
+            IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, 1);
+            assertEq(address(secondaryAdapter), axelarAdapter);
         }
     }
 
     /// @notice Helper function to validate Wormhole adapter source/destination mappings
     function _validateWormholeMapping(
-        WormholeAdapter wormholeAdapter,
+        WormholeAdapter wormholeAdapterContract,
         uint16 wormholeId,
         uint16 centrifugeId,
         string memory chainName
     ) internal view {
         // Validate source mapping (incoming from remote chain)
-        (uint16 sourceCentrifugeId, address sourceAddr) = wormholeAdapter.sources(wormholeId);
+        (uint16 sourceCentrifugeId, address sourceAddr) = wormholeAdapterContract.sources(wormholeId);
         assertEq(
             sourceCentrifugeId,
             centrifugeId,
@@ -393,12 +490,12 @@ contract ForkTestLiveValidation is ForkTestBase {
         );
         assertEq(
             sourceAddr,
-            IntegrationConstants.WORMHOLE_ADAPTER,
+            wormholeAdapter,
             string(abi.encodePacked("WormholeAdapter source address mismatch for ", chainName))
         );
 
         // Validate destination mapping (outgoing to remote chain)
-        (uint16 destWormholeId, address destAddr) = wormholeAdapter.destinations(centrifugeId);
+        (uint16 destWormholeId, address destAddr) = wormholeAdapterContract.destinations(centrifugeId);
         assertEq(
             destWormholeId,
             wormholeId,
@@ -406,27 +503,27 @@ contract ForkTestLiveValidation is ForkTestBase {
         );
         assertEq(
             destAddr,
-            IntegrationConstants.WORMHOLE_ADAPTER,
+            wormholeAdapter,
             string(abi.encodePacked("WormholeAdapter destination address mismatch for ", chainName))
         );
     }
 
     /// @notice Helper function to validate Axelar adapter source/destination mappings
     function _validateAxelarMapping(
-        AxelarAdapter axelarAdapter,
+        AxelarAdapter axelarAdapterContract,
         string memory axelarId,
         uint16 centrifugeId,
         string memory chainName
     ) internal view {
         // Validate source mapping (incoming from remote chain)
-        (uint16 sourceCentrifugeId, bytes32 sourceAddressHash) = axelarAdapter.sources(axelarId);
+        (uint16 sourceCentrifugeId, bytes32 sourceAddressHash) = axelarAdapterContract.sources(axelarId);
         assertEq(
             sourceCentrifugeId,
             centrifugeId,
             string(abi.encodePacked("AxelarAdapter source centrifugeId mismatch for ", chainName))
         );
         // Note: addressHash is keccak256 of the remote adapter address string
-        bytes32 expectedAddressHash = keccak256(abi.encodePacked(vm.toString(IntegrationConstants.AXELAR_ADAPTER)));
+        bytes32 expectedAddressHash = keccak256(abi.encodePacked(vm.toString(axelarAdapter)));
         assertEq(
             sourceAddressHash,
             expectedAddressHash,
@@ -434,7 +531,7 @@ contract ForkTestLiveValidation is ForkTestBase {
         );
 
         // Validate destination mapping (outgoing to remote chain)
-        (string memory destAxelarId, string memory destAddr) = axelarAdapter.destinations(centrifugeId);
+        (string memory destAxelarId, string memory destAddr) = axelarAdapterContract.destinations(centrifugeId);
         assertEq(
             keccak256(bytes(destAxelarId)),
             keccak256(bytes(axelarId)),
@@ -442,7 +539,7 @@ contract ForkTestLiveValidation is ForkTestBase {
         );
         assertEq(
             keccak256(bytes(destAddr)),
-            keccak256(abi.encodePacked(vm.toString(IntegrationConstants.AXELAR_ADAPTER))),
+            keccak256(abi.encodePacked(vm.toString(axelarAdapter))),
             string(abi.encodePacked("AxelarAdapter destination address mismatch for ", chainName))
         );
     }

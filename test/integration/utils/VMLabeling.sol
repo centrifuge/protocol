@@ -47,13 +47,24 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.ADMIN_SAFE, "AdminSafe");
 
         // Vault and share token addresses
-        vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJaaaVault");
-        vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJtrsyVault");
-        vm.label(IntegrationConstants.ETH_DEJAAA_VAULT, "EthDeJaaaVault");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_VAULT, "EthDeJtrsyVault");
-        vm.label(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, "EthJaaaShareToken");
-        vm.label(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, "EthJtrsyShareToken");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN, "EthDeJtrsyShareToken");
-        vm.label(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN, "EthDeJaaaShareToken");
+        vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJAAAVault");
+        vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJTRSYVault");
+        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "EthDeJAAAVault");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "EthDeJTRSYVault");
+        vm.label(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, "EthJAAAShareToken");
+        vm.label(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, "EthJTRSYShareToken");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN, "EthDeJTRSYShareToken");
+        vm.label(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN, "EthDeJAAAShareToken");
+
+        // Additional important addresses
+        vm.label(IntegrationConstants.ETH_DEFAULT_POOL_ADMIN, "EthDefaultPoolAdmin");
+        vm.label(IntegrationConstants.ETH_USDC, "EthUSDC");
+        vm.label(IntegrationConstants.JTRSY_POOL_ESCROW, "PoolEscrow_JTRSY");
+
+        // Old vault addresses (pre-migration)
+        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "OldEthDeJAAAVault_USDC");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "OldEthDeJTRSYVault_USDC");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_JTRSY_VAULT, "OldEthDeJTRSYVault_JTRSY");
+        vm.label(IntegrationConstants.ETH_DEJAA_JAAA_VAULT, "OldEthDeJAA_JAA");
     }
 }

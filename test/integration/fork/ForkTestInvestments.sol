@@ -43,7 +43,7 @@ import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 /// @notice Fork tests for async investment flows on Ethereum mainnet
 contract ForkTestAsyncInvestments is ForkTestBase {
     // TODO(later): After v2 disable, switch to JAAA
-    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAAA_VAULT);
+    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAA_USDC_VAULT);
 
     uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -56,7 +56,14 @@ contract ForkTestAsyncInvestments is ForkTestBase {
     }
 
     function _completeAsyncDeposit(IBaseVault vault, address investor, uint128 amount) internal {
-        deal(vault.asset(), investor, amount);
+        if (isShareToken(vault.asset())) {
+            vm.startPrank(IntegrationConstants.V2_ROOT);
+            ERC20(vault.asset()).mint(investor, amount);
+            vm.stopPrank();
+        } else {
+            // NOTE: Does not work for share tokens: [Revert] panic: arithmetic underflow or overflow (0x11)
+            deal(vault.asset(), investor, amount, true);
+        }
         _addPoolMember(vault, investor);
 
         _asyncDepositFlow(
@@ -64,7 +71,7 @@ contract ForkTestAsyncInvestments is ForkTestBase {
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(vault.asset(), 0),
             _poolAdmin(),
             investor,
             amount,
@@ -77,12 +84,12 @@ contract ForkTestAsyncInvestments is ForkTestBase {
     function _completeAsyncRedeem(IBaseVault vault, address investor, uint128 amount) internal {
         _completeAsyncDeposit(vault, investor, amount);
 
-        _syncRedeemFlow(
+        _asyncRedeemFlow(
             forkHub,
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(vault.asset(), 0),
             _poolAdmin(),
             investor,
             true,
@@ -197,7 +204,7 @@ contract ForkTestSyncInvestments is ForkTestBase {
     function _completeSyncDepositAsyncRedeem(address investor, uint128 amount) internal {
         _completeSyncDeposit(investor, amount);
 
-        _syncRedeemFlow(
+        _asyncRedeemFlow(
             forkHub,
             forkSpoke,
             VAULT.poolId(),
