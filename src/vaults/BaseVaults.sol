@@ -21,9 +21,9 @@ import {PoolId} from "../common/types/PoolId.sol";
 import {IRoot} from "../common/interfaces/IRoot.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IVault} from "../spoke/interfaces/IVaultManager.sol";
+import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "../spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "../spoke/interfaces/legacy/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0

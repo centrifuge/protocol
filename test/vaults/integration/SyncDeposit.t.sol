@@ -18,7 +18,7 @@ import {ITransferHook} from "../../../src/common/interfaces/ITransferHook.sol";
 import "../../spoke/integration/BaseTest.sol";
 
 import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {IVault} from "../../../src/spoke/interfaces/IVaultManager.sol";
+import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
 import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";

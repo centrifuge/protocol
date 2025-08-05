@@ -32,7 +32,7 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultManager} from "../spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "../spoke/interfaces/legacy/IVaultManager.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for

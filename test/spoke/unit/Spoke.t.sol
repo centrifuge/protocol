@@ -21,7 +21,7 @@ import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPool
 import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
-import {IVaultManager} from "../../../src/spoke/interfaces/IVaultManager.sol";
+import {IVaultManager} from "../../../src/spoke/interfaces/legacy/IVaultManager.sol";
 import {ITokenFactory} from "../../../src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
