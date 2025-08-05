@@ -34,7 +34,9 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address[] calldata wards_
     ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequestManager);
+
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
+        AsyncVault vault = new AsyncVault{salt: salt}(poolId, scId, asset, token, root, asyncRequestManager);
 
         vault.rely(root);
         vault.rely(address(asyncRequestManager));

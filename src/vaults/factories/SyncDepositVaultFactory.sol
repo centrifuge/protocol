@@ -43,8 +43,10 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         address[] calldata wards_
     ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
+
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
         SyncDepositVault vault =
-            new SyncDepositVault(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
+            new SyncDepositVault{salt: salt}(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
 
         vault.rely(root);
         vault.rely(address(syncDepositManager));
