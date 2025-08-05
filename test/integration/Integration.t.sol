@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {IntegrationConstants} from "./IntegrationConstants.sol";
+import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 

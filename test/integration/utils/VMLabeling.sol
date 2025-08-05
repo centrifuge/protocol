@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IntegrationConstants} from "./IntegrationConstants.sol";
+
 import "forge-std/Test.sol";
 
 /// @title VMLabeling
@@ -44,7 +45,7 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.MULTI_ADAPTER, "MultiAdapter");
         vm.label(IntegrationConstants.POOL_ESCROW_FACTORY, "PoolEscrowFactory");
         vm.label(IntegrationConstants.ADMIN_SAFE, "AdminSafe");
-        
+
         // Vault and share token addresses
         vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJaaaVault");
         vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJtrsyVault");

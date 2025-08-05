@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {VMLabeling} from "./utils/VMLabeling.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
-import {IntegrationConstants} from "./IntegrationConstants.sol";
-import {VMLabeling} from "./VMLabeling.sol";
+import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
@@ -174,7 +174,7 @@ contract EndToEndDeployment is Test, VMLabeling {
 
     function setUp() public virtual {
         _setupVMLabels();
-        
+
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 

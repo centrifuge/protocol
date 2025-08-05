@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "../../src/misc/types/D18.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
 
-import {AccountId} from "../../src/common/types/AccountId.sol";
-import {MAX_MESSAGE_COST} from "../../src/common/interfaces/IGasService.sol";
+import {AccountId} from "../../../src/common/types/AccountId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
 /// @title IntegrationConstants
 /// @notice Centralized constants for integration tests
@@ -103,7 +103,7 @@ library IntegrationConstants {
     uint128 constant V2_USDC_ASSET_ID = 242333941209166991950178742833476896417;
 
     // ======== Cross-Chain Adapter IDs ========
-    
+
     // Centrifuge Chain IDs
     uint16 constant ETH_CENTRIFUGE_ID = 1;
     uint16 constant BASE_CENTRIFUGE_ID = 2;
@@ -111,7 +111,7 @@ library IntegrationConstants {
     uint16 constant PLUME_CENTRIFUGE_ID = 4;
     uint16 constant AVALANCHE_CENTRIFUGE_ID = 5;
     uint16 constant BNB_CENTRIFUGE_ID = 6;
-    
+
     // Wormhole Chain IDs
     uint16 constant ETH_WORMHOLE_ID = 2;
     uint16 constant BASE_WORMHOLE_ID = 30;
@@ -119,7 +119,7 @@ library IntegrationConstants {
     uint16 constant PLUME_WORMHOLE_ID = 55;
     uint16 constant AVALANCHE_WORMHOLE_ID = 6;
     uint16 constant BNB_WORMHOLE_ID = 4;
-    
+
     // Axelar Chain IDs (strings)
     string constant ETH_AXELAR_ID = "Ethereum";
     string constant BASE_AXELAR_ID = "base";
