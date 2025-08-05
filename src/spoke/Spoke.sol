@@ -348,11 +348,24 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
         (address asset, uint256 tokenId) = idToAsset(assetId);
         IVault vault = factory.newVault(poolId, scId, asset, tokenId, shareClass_.shareToken, new address[](0));
-
-        _vaultDetails[vault] = VaultDetails(assetId, asset, tokenId, false);
-        emit DeployVault(poolId, scId, asset, tokenId, factory, vault, vault.vaultKind());
+        registerVault(poolId, scId, assetId, asset, tokenId, factory, vault);
 
         return vault;
+    }
+
+    /// @inheritdoc ISpoke
+    /// @dev Extracted from deployVault to be used in migrations
+    function registerVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        IVaultFactory factory,
+        IVault vault
+    ) public auth {
+        _vaultDetails[vault] = VaultDetails(assetId, asset, tokenId, false);
+        emit DeployVault(poolId, scId, asset, tokenId, factory, vault, vault.vaultKind());
     }
 
     /// @inheritdoc ISpoke

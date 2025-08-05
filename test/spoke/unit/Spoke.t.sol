@@ -983,6 +983,16 @@ contract SpokeTestDeployVault is SpokeTest {
     }
 }
 
+contract SpokeTestRegisterVault is SpokeTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        spoke.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+    }
+
+    // Sucessfull case tested under SpokeTestDeployVault
+}
+
 contract SpokeTestLinkVault is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
