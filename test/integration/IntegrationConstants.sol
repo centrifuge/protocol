@@ -66,6 +66,11 @@ library IntegrationConstants {
     address constant REDEMPTION_RESTRICTIONS_HOOK = 0xf0C36EFD5F6465D18B9679ee1407a3FC9A2955dD;
     address constant WORMHOLE_ADAPTER = 0x6b98679eEC5b5DE3A803Dc801B2f12aDdDCD39Ec;
     address constant AXELAR_ADAPTER = 0x52271c9A29D0f97c350BBE32b3377CdD26026d0a;
+    address constant MESSAGE_PROCESSOR = 0xE994149c6D00Fe8708f843dc73973D1E7205530d;
+    address constant MESSAGE_DISPATCHER = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
+    address constant MULTI_ADAPTER = 0x457C91384C984b1659157160e8543adb12BC5317;
+    address constant POOL_ESCROW_FACTORY = 0xD166B3210edBeEdEa73c7b2e8aB64BDd30c980E9;
+    address constant ADMIN_SAFE = 0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD;
 
     // Token addresses
     address constant ETH_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
@@ -97,9 +102,30 @@ library IntegrationConstants {
     uint256 constant V2_REQUEST_ID = 0;
     uint128 constant V2_USDC_ASSET_ID = 242333941209166991950178742833476896417;
 
-    // ======== Centrifuge Chain IDs ========
+    // ======== Cross-Chain Adapter IDs ========
+    
+    // Centrifuge Chain IDs
     uint16 constant ETH_CENTRIFUGE_ID = 1;
+    uint16 constant BASE_CENTRIFUGE_ID = 2;
+    uint16 constant ARBITRUM_CENTRIFUGE_ID = 3;
     uint16 constant PLUME_CENTRIFUGE_ID = 4;
+    uint16 constant AVALANCHE_CENTRIFUGE_ID = 5;
+    uint16 constant BNB_CENTRIFUGE_ID = 6;
+    
+    // Wormhole Chain IDs
+    uint16 constant ETH_WORMHOLE_ID = 2;
+    uint16 constant BASE_WORMHOLE_ID = 30;
+    uint16 constant ARBITRUM_WORMHOLE_ID = 23;
+    uint16 constant PLUME_WORMHOLE_ID = 55;
+    uint16 constant AVALANCHE_WORMHOLE_ID = 6;
+    uint16 constant BNB_WORMHOLE_ID = 4;
+    
+    // Axelar Chain IDs (strings)
+    string constant ETH_AXELAR_ID = "Ethereum";
+    string constant BASE_AXELAR_ID = "base";
+    string constant ARBITRUM_AXELAR_ID = "arbitrum";
+    string constant AVALANCHE_AXELAR_ID = "Avalanche";
+    string constant BNB_AXELAR_ID = "binance";
 
     // ======== RPC Endpoints ========
     string constant RPC_ETHEREUM = "https://ethereum-rpc.publicnode.com";

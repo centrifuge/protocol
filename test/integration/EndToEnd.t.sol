@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./IntegrationConstants.sol";
+import {VMLabeling} from "./VMLabeling.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
@@ -74,7 +75,7 @@ import "forge-std/Test.sol";
 ///   2. It significantly increases the amount of calls shown by the debugger.
 ///
 /// By using these structs we avoid both "issues".
-contract EndToEndDeployment is Test {
+contract EndToEndDeployment is Test, VMLabeling {
     using MathLib for *;
     using CastLib for *;
     using PricingLib for *;
@@ -172,6 +173,8 @@ contract EndToEndDeployment is Test {
     //----------------------------------------------------------------------------------------------
 
     function setUp() public virtual {
+        _setupVMLabels();
+        
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
