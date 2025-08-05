@@ -44,9 +44,9 @@ contract ForkTestBase is Test {
 
     // V3.0.0 contracts (before spell is applied)
     IAsyncRequestManager public constant newAsyncRequestManager =
-        IAsyncRequestManager(0x58d57896EBbF000c293327ADf33689D0a7Fd3d9A);
-    address public constant ASYNC_VAULT_FACTORY = 0xE01Ce2e604CCe985A06FA4F4bCD17f1F08417BF3;
-    address public constant SYNC_DEPOSIT_VAULT_FACTORY = 0x3568184784E8ACCaacF51A7F710a3DE0144E4f29;
+        IAsyncRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
+    address public constant ASYNC_VAULT_FACTORY = 0xed9D489BB79c7CB58c522f36Fc6944eAA95Ce385;
+    address public constant SYNC_DEPOSIT_VAULT_FACTORY = 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773;
 
     function setUp() public virtual {
         vm.createSelectFork(_getRpcEndpoint());
