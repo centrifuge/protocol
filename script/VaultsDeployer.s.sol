@@ -129,7 +129,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory-2"),
+                generateSalt("asyncVaultFactory-3"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -138,7 +138,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory-2"),
+                generateSalt("syncDepositVaultFactory-3"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)
