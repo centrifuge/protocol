@@ -225,7 +225,6 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         batcher.engageCommon(_commonReport());
 
         register("root", address(root));
-        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
@@ -233,6 +232,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
+        register("tokenRecoverer", address(tokenRecoverer));
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {
