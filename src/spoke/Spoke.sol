@@ -191,9 +191,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
         require(address(shareClass[poolId][scId].shareToken) == address(0), ShareClassAlreadyRegistered());
 
-        // Hook can be address zero if the share token is fully permissionless and has no custom logic
-        require(hook == address(0) || _isValidHook(hook), InvalidHook());
-
         IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt);
         if (hook != address(0)) shareToken_.file("hook", hook);
         linkToken(poolId, scId, shareToken_);
@@ -519,13 +516,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(success && data.length >= 32, AssetMissingDecimals());
 
         return abi.decode(data, (uint8));
-    }
-
-    function _isValidHook(address hook) internal view returns (bool) {
-        (bool success, bytes memory data) =
-            hook.staticcall(abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId));
-
-        return success && data.length == 32 && abi.decode(data, (bool));
     }
 
     function _shareClass(PoolId poolId, ShareClassId scId)

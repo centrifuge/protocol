@@ -152,11 +152,6 @@ contract SpokeTest is Test {
 
     function _mockValidShareHook(address hook) internal {
         vm.mockCall(
-            hook,
-            abi.encodeWithSelector(IERC165.supportsInterface.selector, type(ITransferHook).interfaceId),
-            abi.encode(true)
-        );
-        vm.mockCall(
             address(share), abi.encodeWithSignature("file(bytes32,address)", bytes32("hook"), hook), abi.encode()
         );
         vm.mockCall(
@@ -587,15 +582,6 @@ contract SpokeTestAddShareClass is SpokeTest {
         spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
 
         assertEq(address(spoke.shareToken(POOL_A, SC_1)), address(share));
-    }
-
-    function testErrInvalidHook() public {
-        vm.prank(AUTH);
-        spoke.addPool(POOL_A);
-
-        vm.prank(AUTH);
-        vm.expectRevert(ISpoke.InvalidHook.selector);
-        spoke.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, HOOK);
     }
 
     function testAddShareClassWithHook() public {
