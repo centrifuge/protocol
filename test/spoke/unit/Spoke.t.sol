@@ -249,6 +249,9 @@ contract SpokeTest is Test {
         _mockVaultFactory(asset, tokenId);
 
         vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+
+        vm.prank(AUTH);
         spoke.deployVault(POOL_A, SC_1, assetId, vaultFactory);
     }
 
@@ -964,11 +967,25 @@ contract SpokeTestDeployVault is SpokeTest {
         spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
     }
 
+    function testErrInvalidRequestManager() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockVaultFactory(erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidRequestManager.selector);
+        spoke.deployVault(POOL_A, SC_1, ASSET_ID_6909_1, vaultFactory);
+    }
+
     function testDeployVault() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
 
         _mockVaultFactory(erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -1190,6 +1207,9 @@ contract SpokeTestUpdateVault is SpokeTest {
 
         _mockVaultFactory(erc6909, TOKEN_1);
         _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
+
+        vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
 
         vm.prank(AUTH);
         spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);

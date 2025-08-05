@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Price} from "./types/Price.sol";
-import {IVault} from "./interfaces/IVault.sol";
+import {IVault, VaultKind} from "./interfaces/IVault.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVaultManager} from "./interfaces/IVaultManager.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
@@ -348,6 +348,12 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
         (address asset, uint256 tokenId) = idToAsset(assetId);
         IVault vault = factory.newVault(poolId, scId, asset, tokenId, shareClass_.shareToken, new address[](0));
+
+        require(
+            vault.vaultKind() == VaultKind.Sync || address(assetInfo[poolId][scId][assetId].manager) != address(0),
+            InvalidRequestManager()
+        );
+
         registerVault(poolId, scId, assetId, asset, tokenId, factory, vault);
 
         return vault;
