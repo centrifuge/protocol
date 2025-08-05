@@ -1065,6 +1065,7 @@ contract SpokeTestLinkVault is SpokeTest {
         (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
         assertEq(numVaults, 1);
         assertEq(spoke.isLinked(vault), true);
+        assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
     }
 
     function testLinkVaultERC20() public {
@@ -1143,6 +1144,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
         (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
         assertEq(numVaults, 0);
         assertEq(spoke.isLinked(vault), false);
+        assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
     }
 
     function testUnlinkVaultERC20() public {
