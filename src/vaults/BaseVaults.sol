@@ -23,7 +23,6 @@ import {ShareClassId} from "../common/types/ShareClassId.sol";
 
 import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "../spoke/interfaces/legacy/IVaultManager.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -186,11 +185,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IVault
-    function manager() public view returns (IVaultManager) {
-        return baseManager;
-    }
 
     /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
     function pricePerShare() external view returns (uint256) {

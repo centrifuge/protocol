@@ -32,7 +32,6 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultManager} from "../spoke/interfaces/legacy/IVaultManager.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
@@ -50,7 +49,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
 
     constructor(IEscrow globalEscrow_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
@@ -65,34 +63,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc IVaultManager
-    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
-        public
-        virtual
-        auth
-    {
-        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
-
-        vault[poolId][scId][assetId] = IBaseVault(address(vault_));
-
-        emit AddVault(poolId, scId, assetId, vault_);
-    }
-
-    /// @inheritdoc IVaultManager
-    function removeVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
-        public
-        virtual
-        auth
-    {
-        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(vault_), VaultDoesNotExist());
-
-        delete vault[poolId][scId][assetId];
-
-        emit RemoveVault(poolId, scId, assetId, vault_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -282,7 +252,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledAssets
     ) public auth {
-        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
+        IAsyncVault vault_ = IAsyncVault(address(spoke.vault(poolId, scId, assetId, this)));
         AsyncInvestmentState storage state = investments[vault_][user];
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -315,7 +285,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledShares
     ) public auth {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(spoke.vault(poolId, scId, assetId, this)));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -618,11 +588,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
         return balanceSheet.escrow(poolId);
-    }
-
-    /// @inheritdoc IVaultManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IVault) {
-        return vault[poolId][scId][assetId];
     }
 
     //----------------------------------------------------------------------------------------------

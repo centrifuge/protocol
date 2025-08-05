@@ -132,7 +132,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             AsyncVault vault = AsyncVault(vault_);
-            assertEq(address(vault.manager()), address(asyncRequestManager), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId().raw(), poolId.raw(), "poolId mismatch");
             assertEq(vault.scId().raw(), scId.raw(), "scId mismatch");

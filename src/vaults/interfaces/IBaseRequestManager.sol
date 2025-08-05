@@ -10,9 +10,8 @@ import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 
 import {ISpoke} from "../../spoke/interfaces/ISpoke.sol";
-import {IVaultManager} from "../../spoke/interfaces/legacy/IVaultManager.sol";
 
-interface IBaseRequestManager is IVaultManager, IRequestManager {
+interface IBaseRequestManager is IRequestManager {
     event File(bytes32 indexed what, address data);
 
     error FileUnrecognizedParam();
