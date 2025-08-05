@@ -17,7 +17,13 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
-    mapping(ShareClassId scId => ShareClassDetails) shareClasses;
+}
+
+/// @dev Each Centrifuge pool is associated to 1 or more shar classes
+struct ShareClassDetails {
+    IShareToken shareToken;
+    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
+    Price pricePoolPerShare;
 }
 
 struct ShareClassAsset {
@@ -27,13 +33,6 @@ struct ShareClassAsset {
     uint32 numVaults;
     /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     Price pricePoolPerAsset;
-}
-
-/// @dev Each Centrifuge pool is associated to 1 or more shar classes
-struct ShareClassDetails {
-    IShareToken shareToken;
-    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
-    Price pricePoolPerShare;
 }
 
 struct VaultDetails {

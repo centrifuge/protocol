@@ -52,6 +52,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     uint64 internal _assetCounter;
 
     mapping(PoolId => Pool) public pools;
+    mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClasses;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ShareClassAsset))) public assetInfo;
 
     mapping(IVault => VaultDetails) internal _vaultDetails;
@@ -188,7 +189,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(isPoolActive(poolId), InvalidPool());
         require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
-        require(address(pools[poolId].shareClasses[scId].shareToken) == address(0), ShareClassAlreadyRegistered());
+        require(address(shareClasses[poolId][scId].shareToken) == address(0), ShareClassAlreadyRegistered());
 
         // Hook can be address zero if the share token is fully permissionless and has no custom logic
         require(hook == address(0) || _isValidHook(hook), InvalidHook());
@@ -200,7 +201,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken_) public auth {
-        pools[poolId].shareClasses[scId].shareToken = shareToken_;
+        shareClasses[poolId][scId].shareToken = shareToken_;
         emit AddShareClass(poolId, scId, shareToken_);
     }
 
@@ -532,7 +533,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (ShareClassDetails storage shareClass)
     {
-        shareClass = pools[poolId].shareClasses[scId];
+        shareClass = shareClasses[poolId][scId];
         require(address(shareClass.shareToken) != address(0), ShareTokenDoesNotExist());
     }
 }
