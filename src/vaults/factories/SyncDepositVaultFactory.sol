@@ -44,7 +44,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
 
-        bytes32 salt = _generateSalt(poolId, scId, asset);
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
         SyncDepositVault vault =
             new SyncDepositVault{salt: salt}(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
 
@@ -62,13 +62,5 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
 
         vault.deny(address(this));
         return vault;
-    }
-
-    /// @notice Generate deterministic salt for CREATE2 deployment
-    /// @dev Uses keccak256 hash of encoded poolId, scId, and asset address to ensure
-    ///      deterministic vault addresses across all chains. Same inputs will always
-    ///      produce the same salt, enabling predictable cross-chain vault addresses.
-    function _generateSalt(PoolId poolId, ShareClassId scId, address asset) internal pure returns (bytes32 salt) {
-        salt = keccak256(abi.encode(poolId, scId, asset));
     }
 }
