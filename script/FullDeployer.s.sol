@@ -88,7 +88,7 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             maxBatchGasLimit: uint128(maxBatchGasLimit),
-            version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
+            version: keccak256(bytes("3"))
         });
 
         AdaptersInput memory adaptersInput = AdaptersInput({
