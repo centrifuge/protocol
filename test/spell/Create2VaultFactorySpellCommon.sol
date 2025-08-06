@@ -7,21 +7,19 @@ import {PoolId} from "../../src/common/types/PoolId.sol";
 import {AssetId} from "../../src/common/types/AssetId.sol";
 import {IRoot} from "../../src/common/interfaces/IRoot.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
 import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
 
-import {ISpoke, VaultDetails} from "../../src/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
-import {IVaultFactory} from "../../src/spoke/factories/interfaces/IVaultFactory.sol";
+import {ISpoke, VaultDetails} from "../../src/spoke/interfaces/ISpoke.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
+import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 /**
- * @title VaultMigrationSpellCommon
+ * @title Create2VaultFactorySpellCommon
  * @notice Base governance spell to update vault factories to CREATE2 and migrate vaults
  *
  * This spell handles:
@@ -33,7 +31,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
  * Network-specific spells inherit from this base and override _getVaults() to include their vaults.
  * All 5 vaults specified are async vaults and will use AsyncVaultFactory for migration.
  */
-contract VaultMigrationSpellCommon {
+contract Create2VaultFactorySpellCommon {
     bool public done;
     string public constant description = "Update vault factories to CREATE2 and migrate vaults";
 
@@ -71,7 +69,6 @@ contract VaultMigrationSpellCommon {
         _migrateVaults();
         _finalCleanup();
     }
-
 
     /// @dev Set up all required permissions for new factories based on VaultsDeployer
     function _setupFactoryPermissions() internal {
@@ -115,7 +112,7 @@ contract VaultMigrationSpellCommon {
         address factory = newAsyncVaultFactory;
 
         SPOKE.unlinkVault(poolId, scId, assetId, IVault(oldVault));
-        
+
         // Deploy and link new vault in a single call - this automatically handles AsyncRequestManager registration
         ISpokeGatewayHandler(address(SPOKE)).updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
     }

@@ -21,7 +21,7 @@ import {IAsyncRequestManager, ISyncDepositManager} from "../../../src/vaults/int
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {VaultMigrationSpellCommon} from "../../../env/spell/VaultMigrationSpellCommon.sol";
+import {Create2VaultFactorySpellCommon} from "../../spell/Create2VaultFactorySpellCommon.sol";
 
 interface RestrictionManagerLike {
     function updateMember(address token, address user, uint64 validUntil) external;
@@ -35,11 +35,11 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
     address public constant INVESTOR = address(0x123456789);
     uint128 public constant TEST_AMOUNT = 1000e6;
 
-    VaultMigrationSpellCommon public spell;
+    Create2VaultFactorySpellCommon public spell;
     bool public spellExecuted;
     address[] public newVaults; // Vault addresses post-migration
 
-    function _getSpell() internal view virtual returns (VaultMigrationSpellCommon);
+    function _getSpell() internal view virtual returns (Create2VaultFactorySpellCommon);
 
     function _getOldVaults() internal view virtual returns (address[] memory);
 

@@ -4,21 +4,21 @@ pragma solidity 0.8.28;
 import {ForkTestVaultMigrationCommon} from "./ForkTestVaultMigrationCommon.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {VaultMigrationSpellCommon} from "../../../env/spell/VaultMigrationSpellCommon.sol";
-import {VaultMigrationSpellAvalanche} from "../../../env/spell/VaultMigrationSpellAvalanche.sol";
+import {Create2VaultFactorySpellCommon} from "../../spell/Create2VaultFactorySpellCommon.sol";
+import {Create2VaultFactorySpellAvalanche} from "../../spell/Create2VaultFactorySpellAvalanche.sol";
 
-/// @notice Fork test for VaultMigrationSpellAvalanche spell execution
+/// @notice Fork test for Create2VaultFactorySpellAvalanche spell execution
 /// @dev Avalanche vaults have their hub on Ethereum, so async investment flows cannot work
 ///      with current infrastructure (assumes same-chain). Skips async flows for Avalanche.
-contract ForkTestAvalancheVaultMigration is ForkTestVaultMigrationCommon {
-    VaultMigrationSpellAvalanche public avalancheSpell;
+contract ForkTestCreate2VaultFactoryAvalanche is ForkTestVaultMigrationCommon {
+    Create2VaultFactorySpellAvalanche public avalancheSpell;
 
     function _rpcEndpoint() internal pure override returns (string memory) {
         return IntegrationConstants.RPC_AVALANCHE;
     }
 
-    function _getSpell() internal view override returns (VaultMigrationSpellCommon) {
-        return VaultMigrationSpellCommon(address(avalancheSpell));
+    function _getSpell() internal view override returns (Create2VaultFactorySpellCommon) {
+        return Create2VaultFactorySpellCommon(address(avalancheSpell));
     }
 
     function _getOldVaults() internal view override returns (address[] memory) {
@@ -40,8 +40,8 @@ contract ForkTestAvalancheVaultMigration is ForkTestVaultMigrationCommon {
     function setUp() public override {
         super.setUp();
 
-        avalancheSpell = new VaultMigrationSpellAvalanche(asyncVaultFactory, syncDepositVaultFactory);
-        spell = VaultMigrationSpellCommon(address(avalancheSpell));
+        avalancheSpell = new Create2VaultFactorySpellAvalanche(asyncVaultFactory, syncDepositVaultFactory);
+        spell = Create2VaultFactorySpellCommon(address(avalancheSpell));
 
         _configureChain(IntegrationConstants.AVAX_CENTRIFUGE_ID, IntegrationConstants.AVAX_ADMIN_SAFE);
     }
