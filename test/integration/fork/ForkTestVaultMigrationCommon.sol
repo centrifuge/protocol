@@ -21,7 +21,7 @@ import {IAsyncRequestManager, ISyncDepositManager} from "../../../src/vaults/int
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {Create2VaultFactorySpellCommon} from "../../spell/Create2VaultFactorySpellCommon.sol";
+import {Create2VaultFactorySpellWithMigration} from "../../spell/Create2VaultFactorySpellWithMigration.sol";
 
 interface RestrictionManagerLike {
     function updateMember(address token, address user, uint64 validUntil) external;
@@ -35,11 +35,11 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
     address public constant INVESTOR = address(0x123456789);
     uint128 public constant TEST_AMOUNT = 1000e6;
 
-    Create2VaultFactorySpellCommon public spell;
+    Create2VaultFactorySpellWithMigration public spell;
     bool public spellExecuted;
     address[] public newVaults; // Vault addresses post-migration
 
-    function _getSpell() internal view virtual returns (Create2VaultFactorySpellCommon);
+    function _getSpell() internal view virtual returns (Create2VaultFactorySpellWithMigration);
 
     function _getOldVaults() internal view virtual returns (address[] memory);
 
@@ -205,14 +205,12 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
     function _validateVaultMigrations() internal view {
         address[] memory oldVaults = _getOldVaults();
 
-        // Validate old vaults are disabled
         for (uint256 i = 0; i < oldVaults.length; i++) {
             address oldVault = oldVaults[i];
+            // Validate old vault is disabled
             assertFalse(spell.SPOKE().isLinked(IVault(oldVault)), "Old vault should be unlinked");
-        }
 
-        // Validate new vaults are working
-        for (uint256 i = 0; i < oldVaults.length; i++) {
+            // Validate new vault is working
             _validateVaultConfiguration(oldVaults[i], newVaults[i]);
         }
     }
@@ -266,7 +264,7 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
     // UTILITY FUNCTIONS
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Enable share token investments by updating restriction manager permissions
+    /// @notice Enable share token investments by updating v2 restriction manager permissions
     function _enableShareTokenInvestments(IBaseVault vault, address investor) internal {
         address poolEscrow =
             address(IPoolEscrowFactory(IntegrationConstants.POOL_ESCROW_FACTORY).escrow(vault.poolId()));

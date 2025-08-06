@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import {ForkTestVaultMigrationCommon} from "./ForkTestVaultMigrationCommon.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {Create2VaultFactorySpellCommon} from "../../spell/Create2VaultFactorySpellCommon.sol";
 import {Create2VaultFactorySpellEthereum} from "../../spell/Create2VaultFactorySpellEthereum.sol";
+import {Create2VaultFactorySpellWithMigration} from "../../spell/Create2VaultFactorySpellWithMigration.sol";
 
 /// @notice Fork test for Create2VaultFactorySpellEthereum spell execution
 contract ForkTestCreate2VaultFactoryEthereum is ForkTestVaultMigrationCommon {
@@ -17,8 +17,8 @@ contract ForkTestCreate2VaultFactoryEthereum is ForkTestVaultMigrationCommon {
     }
 
     /// @notice Get the spell instance for Ethereum
-    function _getSpell() internal view override returns (Create2VaultFactorySpellCommon) {
-        return Create2VaultFactorySpellCommon(address(ethereumSpell));
+    function _getSpell() internal view override returns (Create2VaultFactorySpellWithMigration) {
+        return Create2VaultFactorySpellWithMigration(address(ethereumSpell));
     }
 
     /// @notice Get old vault addresses from spell (single source of truth)
@@ -45,7 +45,7 @@ contract ForkTestCreate2VaultFactoryEthereum is ForkTestVaultMigrationCommon {
 
         // Create Ethereum-specific spell with factory addresses
         ethereumSpell = new Create2VaultFactorySpellEthereum(asyncVaultFactory, syncDepositVaultFactory);
-        spell = Create2VaultFactorySpellCommon(address(ethereumSpell));
+        spell = Create2VaultFactorySpellWithMigration(address(ethereumSpell));
 
         _configureChain(IntegrationConstants.ETH_CENTRIFUGE_ID, IntegrationConstants.ETH_ADMIN_SAFE);
     }

@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Create2VaultFactorySpellCommon} from "./Create2VaultFactorySpellCommon.sol";
+import {Create2VaultFactorySpellWithMigration} from "./Create2VaultFactorySpellWithMigration.sol";
 
 /**
  * @title Create2VaultFactorySpellEthereum
- * @notice Ethereum-specific governance spell to migrate 3 vaults to CREATE2 deployment
- * @dev Extends Create2VaultFactorySpellCommon to handle Ethereum collision resolution vaults
+ * @notice Ethereum-specific governance spell to migrate 4 vaults to CREATE2 deployment
+ * @dev Extends Create2VaultFactorySpellWithMigration to handle Ethereum collision resolution vaults
  */
-contract Create2VaultFactorySpellEthereum is Create2VaultFactorySpellCommon {
+contract Create2VaultFactorySpellEthereum is Create2VaultFactorySpellWithMigration {
     // deJAAA ETH USDC Vault
     address public constant VAULT_1 = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
     // deJTRSY ETH USDC Vault
@@ -20,7 +20,7 @@ contract Create2VaultFactorySpellEthereum is Create2VaultFactorySpellCommon {
     address public constant VAULT_4 = 0x2D38c58Cc7d4DdD6B4DaF7b3539902a7667F4519;
 
     constructor(address asyncVaultFactory, address syncDepositVaultFactory)
-        Create2VaultFactorySpellCommon(asyncVaultFactory, syncDepositVaultFactory)
+        Create2VaultFactorySpellWithMigration(asyncVaultFactory, syncDepositVaultFactory)
     {}
 
     function _getVaults() internal pure override returns (address[] memory) {

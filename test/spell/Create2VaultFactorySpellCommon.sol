@@ -3,28 +3,21 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {AssetId} from "../../src/common/types/AssetId.sol";
 import {IRoot} from "../../src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
-import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
 
-import {IVault} from "../../src/spoke/interfaces/IVault.sol";
-import {ISpoke, VaultDetails} from "../../src/spoke/interfaces/ISpoke.sol";
+import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
 
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
 import {IAsyncRequestManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
-import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 /**
  * @title Create2VaultFactorySpellCommon
- * @notice Base governance spell to update vault factories to CREATE2
+ * @notice Base governance spell to update vault factories to CREATE2 (optimized for chains without migrations)
+ * @dev This contract only handles factory permission setup. For chains that need vault migrations,
+ *      use Create2VaultFactorySpellWithMigration as the parent class instead.
  */
 contract Create2VaultFactorySpellCommon {
     bool public done;
-    string public constant description = "Update vault factories to CREATE2 and migrate vaults";
+    string public constant description = "Update vault factories to CREATE2";
 
     // System contracts
     IRoot public constant ROOT = IRoot(0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
@@ -32,10 +25,6 @@ contract Create2VaultFactorySpellCommon {
     IAsyncRequestManager public constant ASYNC_REQUEST_MANAGER =
         IAsyncRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
     address public constant SYNC_MANAGER = 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773;
-
-    // Old factories (to be replaced)
-    address public constant OLD_ASYNC_VAULT_FACTORY = 0xed9D489BB79c7CB58c522f36Fc6944eAA95Ce385;
-    address public constant OLD_SYNC_DEPOSIT_VAULT_FACTORY = 0x21BF2544b5A0B03c8566a16592ba1b3B192B50Bc;
 
     address public immutable newAsyncVaultFactory;
     address public immutable newSyncDepositVaultFactory;
@@ -55,7 +44,6 @@ contract Create2VaultFactorySpellCommon {
 
     function execute() internal virtual {
         _setupFactoryPermissions();
-        _migrateVaults();
         _finalCleanup();
     }
 
@@ -74,37 +62,6 @@ contract Create2VaultFactorySpellCommon {
         IAuth(newSyncDepositVaultFactory).rely(address(ROOT));
         IAuth(newSyncDepositVaultFactory).rely(address(SPOKE));
         ROOT.denyContract(newSyncDepositVaultFactory, address(this));
-    }
-
-    function _migrateVaults() internal virtual {
-        address[] memory vaults = _getVaults();
-        if (vaults.length == 0) return;
-
-        ROOT.relyContract(address(SPOKE), address(this));
-
-        for (uint256 i = 0; i < vaults.length; i++) {
-            _migrateVault(vaults[i]);
-        }
-
-        ROOT.denyContract(address(SPOKE), address(this));
-    }
-
-    function _migrateVault(address oldVault) internal {
-        IBaseVault vault = IBaseVault(oldVault);
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        VaultDetails memory details = SPOKE.vaultDetails(IVault(oldVault));
-        AssetId assetId = details.assetId;
-
-        address factory = newAsyncVaultFactory;
-
-        SPOKE.unlinkVault(poolId, scId, assetId, IVault(oldVault));
-
-        ISpokeGatewayHandler(address(SPOKE)).updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
-    }
-
-    function _getVaults() internal pure virtual returns (address[] memory) {
-        return new address[](0);
     }
 
     function _finalCleanup() internal virtual {
