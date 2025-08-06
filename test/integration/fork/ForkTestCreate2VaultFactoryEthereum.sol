@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ForkTestVaultMigrationCommon} from "./ForkTestVaultMigrationCommon.sol";
+import {ForkTestCreate2VaultFactoryCommon} from "./ForkTestCreate2VaultFactoryCommon.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {Create2VaultFactorySpellEthereum} from "../../spell/Create2VaultFactorySpellEthereum.sol";
 import {Create2VaultFactorySpellWithMigration} from "../../spell/Create2VaultFactorySpellWithMigration.sol";
 
 /// @notice Fork test for Create2VaultFactorySpellEthereum spell execution
-contract ForkTestCreate2VaultFactoryEthereum is ForkTestVaultMigrationCommon {
+contract ForkTestCreate2VaultFactoryEthereum is ForkTestCreate2VaultFactoryCommon {
     Create2VaultFactorySpellEthereum public ethereumSpell;
 
     /// @notice Get the RPC URL for Ethereum

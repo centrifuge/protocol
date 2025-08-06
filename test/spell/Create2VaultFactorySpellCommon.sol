@@ -26,12 +26,13 @@ contract Create2VaultFactorySpellCommon {
         IAsyncRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
     address public constant SYNC_MANAGER = 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773;
 
+    address public constant OLD_ASYNC_VAULT_FACTORY = 0xed9D489BB79c7CB58c522f36Fc6944eAA95Ce385;
+    address public constant OLD_SYNC_DEPOSIT_VAULT_FACTORY = 0x21BF2544b5A0B03c8566a16592ba1b3B192B50Bc;
+
     address public immutable newAsyncVaultFactory;
     address public immutable newSyncDepositVaultFactory;
 
     constructor(address asyncVaultFactory, address syncDepositVaultFactory) {
-        require(asyncVaultFactory != address(0), "Invalid async vault factory");
-        require(syncDepositVaultFactory != address(0), "Invalid sync deposit vault factory");
         newAsyncVaultFactory = asyncVaultFactory;
         newSyncDepositVaultFactory = syncDepositVaultFactory;
     }
@@ -49,9 +50,21 @@ contract Create2VaultFactorySpellCommon {
 
     function _setupFactoryPermissions() internal {
         ROOT.relyContract(address(ASYNC_REQUEST_MANAGER), address(this));
+        IAuth(address(ASYNC_REQUEST_MANAGER)).deny(OLD_ASYNC_VAULT_FACTORY);
+        IAuth(address(ASYNC_REQUEST_MANAGER)).deny(OLD_SYNC_DEPOSIT_VAULT_FACTORY);
+
         IAuth(address(ASYNC_REQUEST_MANAGER)).rely(newAsyncVaultFactory);
         IAuth(address(ASYNC_REQUEST_MANAGER)).rely(newSyncDepositVaultFactory);
         ROOT.denyContract(address(ASYNC_REQUEST_MANAGER), address(this));
+
+        // Revoke old factory permissions on Spoke
+        ROOT.relyContract(OLD_ASYNC_VAULT_FACTORY, address(this));
+        IAuth(OLD_ASYNC_VAULT_FACTORY).deny(address(SPOKE));
+        ROOT.denyContract(OLD_ASYNC_VAULT_FACTORY, address(this));
+
+        ROOT.relyContract(OLD_SYNC_DEPOSIT_VAULT_FACTORY, address(this));
+        IAuth(OLD_SYNC_DEPOSIT_VAULT_FACTORY).deny(address(SPOKE));
+        ROOT.denyContract(OLD_SYNC_DEPOSIT_VAULT_FACTORY, address(this));
 
         ROOT.relyContract(newAsyncVaultFactory, address(this));
         IAuth(newAsyncVaultFactory).rely(address(ROOT));

@@ -27,9 +27,9 @@ interface RestrictionManagerLike {
     function updateMember(address token, address user, uint64 validUntil) external;
 }
 
-/// @notice Base contract for vault migration fork tests
+/// @notice Base contract for Create2 vault factory fork tests
 /// @dev Provides common functionality for all networks without code duplication
-abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
+abstract contract ForkTestCreate2VaultFactoryCommon is ForkTestLiveValidation {
     using CastLib for *;
 
     address public constant INVESTOR = address(0x123456789);
@@ -115,6 +115,73 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
         super.test_validateCompleteDeployment();
     }
 
+    function test_oldFactoriesLosePermissions() public {
+        _executeSpell();
+
+        assertEq(
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(spell.OLD_ASYNC_VAULT_FACTORY()),
+            0,
+            "Old async factory should lose AsyncRequestManager permission"
+        );
+        assertEq(
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(spell.OLD_SYNC_DEPOSIT_VAULT_FACTORY()),
+            0,
+            "Old sync factory should lose AsyncRequestManager permission"
+        );
+
+        assertEq(
+            IAuth(spell.OLD_ASYNC_VAULT_FACTORY()).wards(address(spell.SPOKE())),
+            0,
+            "Old async factory should lose ward permission to Spoke"
+        );
+        assertEq(
+            IAuth(spell.OLD_SYNC_DEPOSIT_VAULT_FACTORY()).wards(address(spell.SPOKE())),
+            0,
+            "Old sync factory should lose ward permission to Spoke"
+        );
+    }
+
+    function test_newFactoriesGainPermissions() public {
+        // Execute spell
+        _executeSpell();
+
+        // Get new factory addresses from spell
+        address newAsyncFactory = spell.newAsyncVaultFactory();
+        address newSyncFactory = spell.newSyncDepositVaultFactory();
+
+        // Verify new factories gained permissions after spell
+        assertEq(
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(newAsyncFactory),
+            1,
+            "New async factory should have AsyncRequestManager permission after spell"
+        );
+        assertEq(
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(newSyncFactory),
+            1,
+            "New sync factory should have AsyncRequestManager permission after spell"
+        );
+        assertEq(
+            IAuth(newAsyncFactory).wards(address(spell.ROOT())),
+            1,
+            "New async factory should have ROOT permission after spell"
+        );
+        assertEq(
+            IAuth(newAsyncFactory).wards(address(spell.SPOKE())),
+            1,
+            "New async factory should have SPOKE permission after spell"
+        );
+        assertEq(
+            IAuth(newSyncFactory).wards(address(spell.ROOT())),
+            1,
+            "New sync factory should have ROOT permission after spell"
+        );
+        assertEq(
+            IAuth(newSyncFactory).wards(address(spell.SPOKE())),
+            1,
+            "New sync factory should have SPOKE permission after spell"
+        );
+    }
+
     //----------------------------------------------------------------------------------------------
     // SPELL EXECUTION
     //----------------------------------------------------------------------------------------------
@@ -127,7 +194,11 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
         spell.cast();
 
         assertTrue(spell.done(), "Spell execution should complete successfully");
-        assertEq(IAuth(address(spell.ROOT())).wards(address(spell)), 0, "Spell should not have ROOT permissions post execution");
+        assertEq(
+            IAuth(address(spell.ROOT())).wards(address(spell)),
+            0,
+            "Spell should not have ROOT permissions post execution"
+        );
     }
 
     function _grantSpellPermissions() internal {
