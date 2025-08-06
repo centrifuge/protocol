@@ -12,10 +12,6 @@ import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../.
 
 import "forge-std/Test.sol";
 
-import {AxelarAddressToString} from "../../adapters/unit/AxelarAdapter.t.sol";
-import {IAxelarAdapter} from "../../../src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../../../src/adapters/interfaces/IWormholeAdapter.sol";
-
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
