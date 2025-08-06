@@ -127,6 +127,7 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
         spell.cast();
 
         assertTrue(spell.done(), "Spell execution should complete successfully");
+        assertEq(IAuth(address(spell.ROOT())).wards(address(spell)), 0, "Spell should not have ROOT permissions post execution");
     }
 
     function _grantSpellPermissions() internal {
