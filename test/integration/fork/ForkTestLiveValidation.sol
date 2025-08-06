@@ -96,6 +96,7 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     address public ethJtrsyVault;
     address public ethDejaaaVault;
     address public ethDejtrsyVault;
+    address public avaxJaaaVault;
 
     //----------------------------------------------------------------------------------------------
     // SHARE TOKEN CONTRACTS
@@ -105,16 +106,25 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     address public ethJtrsyShareToken;
     address public ethDejtrsyShareToken;
     address public ethDejaaaShareToken;
+    address public avaxJaaaShareToken;
+    address public avaxJtrsyShareToken;
 
     //----------------------------------------------------------------------------------------------
     // SETUP
     //----------------------------------------------------------------------------------------------
+
+    uint16 internal localCentrifugeId;
 
     function setUp() public virtual override {
         super.setUp();
         _initializeContractAddresses();
         // Setup VM labels for improved test output readability
         _setupVMLabels();
+    }
+
+    function _configureChain(uint16 localCentrifugeId_, address adminSafe_) internal {
+        localCentrifugeId = localCentrifugeId_;
+        adminSafe = adminSafe_;
     }
 
     /// @notice Initialize all contract addresses from IntegrationConstants
@@ -148,7 +158,7 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         messageDispatcher = IntegrationConstants.MESSAGE_DISPATCHER;
         multiAdapter = IntegrationConstants.MULTI_ADAPTER;
         poolEscrowFactory = IntegrationConstants.POOL_ESCROW_FACTORY;
-        adminSafe = IntegrationConstants.ADMIN_SAFE;
+        adminSafe = IntegrationConstants.ETH_ADMIN_SAFE;
 
         // Factory contracts
         asyncVaultFactory = IntegrationConstants.ASYNC_VAULT_FACTORY;
@@ -165,12 +175,15 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         ethJtrsyVault = IntegrationConstants.ETH_JTRSY_VAULT;
         ethDejaaaVault = IntegrationConstants.ETH_DEJAA_USDC_VAULT;
         ethDejtrsyVault = IntegrationConstants.ETH_DEJTRSY_USDC_VAULT;
+        avaxJaaaVault = IntegrationConstants.AVAX_JAAA_USDC_VAULT;
 
         // Share token contracts
         ethJaaaShareToken = IntegrationConstants.ETH_JAAA_SHARE_TOKEN;
         ethJtrsyShareToken = IntegrationConstants.ETH_JTRSY_SHARE_TOKEN;
         ethDejtrsyShareToken = IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN;
         ethDejaaaShareToken = IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN;
+        avaxJaaaShareToken = IntegrationConstants.AVAX_JAAA_SHARE_TOKEN;
+        avaxJtrsyShareToken = IntegrationConstants.AVAX_JTRSY_SHARE_TOKEN;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -187,7 +200,11 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         _validateFileConfigurations();
         _validateEndorsements();
         _validateGuardianAdapterConfigurations();
-        _validateAdapterSourceDestinationMappings();
+
+        // TODO: Solve in follow-up PR for all chains, right now only ETH -> x support
+        if (localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
+            _validateAdapterSourceDestinationMappings();
+        }
     }
 
     /// @notice Validates that root has ward permissions on all core protocol contracts, vaults, and share tokens
@@ -231,20 +248,29 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         _validateRootWard(wormholeAdapter);
         _validateRootWard(axelarAdapter);
 
-        _validateRootWard(ethJaaaVault);
-        _validateRootWard(ethJtrsyVault);
-        _validateRootWard(ethDejaaaVault);
-        _validateRootWard(ethDejtrsyVault);
+        // TODO: In later PR, move to helper for network-dependent checks
+        if (localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
+            _validateRootWard(ethJaaaVault);
+            _validateRootWard(ethJtrsyVault);
+            _validateRootWard(ethDejaaaVault);
+            _validateRootWard(ethDejtrsyVault);
 
-        _validateRootWard(ethJaaaShareToken);
-        _validateRootWard(ethJtrsyShareToken);
-        _validateRootWard(ethDejtrsyShareToken);
-        _validateRootWard(ethDejaaaShareToken);
+            _validateRootWard(ethJaaaShareToken);
+            _validateRootWard(ethJtrsyShareToken);
+            _validateRootWard(ethDejtrsyShareToken);
+            _validateRootWard(ethDejaaaShareToken);
+        } else if (localCentrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
+            _validateRootWard(ethJtrsyVault); // same address
+            _validateRootWard(avaxJaaaVault);
+
+            _validateRootWard(avaxJaaaShareToken);
+            _validateRootWard(avaxJtrsyShareToken);
+        }
     }
 
     /// @notice Optimized ROOT ward validation using VM labels
     function _validateRootWard(address contractAddr) internal view {
-        require(contractAddr.code.length > 0, "Contract has no code");
+        require(contractAddr.code.length > 0, string(abi.encodePacked("Contract has no code: ", contractAddr)));
         assertEq(IAuth(contractAddr).wards(root), 1);
     }
 
@@ -322,49 +348,77 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     /// @notice Validates file configurations set during deployment
     function _validateFileConfigurations() internal view {
         // CommonDeployer configs
-        assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor);
-        assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter);
-        assertEq(PoolEscrowFactory(poolEscrowFactory).gateway(), gateway);
-        assertEq(address(Guardian(guardian).safe()), adminSafe);
+        assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor, "messageProcessor mismatch");
+        assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter, "multiAdapter mismatch");
+        assertEq(PoolEscrowFactory(poolEscrowFactory).gateway(), gateway, "gateway mismatch");
+        assertEq(address(Guardian(guardian).safe()), adminSafe, "adminSafe mismatch");
 
         // HubDeployer Configs
-        assertEq(address(MessageProcessor(messageProcessor).hub()), hub);
-        assertEq(address(MessageDispatcher(messageDispatcher).hub()), hub);
-        assertEq(address(Hub(hub).sender()), messageDispatcher);
-        assertEq(address(Hub(hub).poolEscrowFactory()), poolEscrowFactory);
-        assertEq(address(Guardian(guardian).hub()), hub);
-        assertEq(address(HubHelpers(hubHelpers).hub()), hub);
+        assertEq(address(MessageProcessor(messageProcessor).hub()), hub, "messageProcessor.hub mismatch");
+        assertEq(address(MessageDispatcher(messageDispatcher).hub()), hub, "messageDispatcher.hub mismatch");
+        assertEq(address(Hub(hub).sender()), messageDispatcher, "hub.sender mismatch");
+        assertEq(address(Hub(hub).poolEscrowFactory()), poolEscrowFactory, "hub.poolEscrowFactory mismatch");
+        assertEq(address(Guardian(guardian).hub()), hub, "guardian.hub mismatch");
+        assertEq(address(HubHelpers(hubHelpers).hub()), hub, "hubhelpers.hub mismatch");
 
         // SpokeDeployer configs
-        assertEq(address(MessageDispatcher(messageDispatcher).spoke()), spoke);
-        assertEq(address(MessageDispatcher(messageDispatcher).balanceSheet()), balanceSheet);
-        assertEq(address(MessageDispatcher(messageDispatcher).contractUpdater()), contractUpdater);
+        assertEq(address(MessageDispatcher(messageDispatcher).spoke()), spoke, "messageDispatcher.spoke mismatch");
+        assertEq(
+            address(MessageDispatcher(messageDispatcher).balanceSheet()),
+            balanceSheet,
+            "messageDispatcher.balanceSheet mismatch"
+        );
+        assertEq(
+            address(MessageDispatcher(messageDispatcher).contractUpdater()),
+            contractUpdater,
+            "messageDispatcher.contractUpdater mismatch"
+        );
 
-        assertEq(address(MessageProcessor(messageProcessor).spoke()), spoke);
-        assertEq(address(MessageProcessor(messageProcessor).balanceSheet()), balanceSheet);
-        assertEq(address(MessageProcessor(messageProcessor).contractUpdater()), contractUpdater);
+        assertEq(address(MessageProcessor(messageProcessor).spoke()), spoke, "messageProcessor.spoke mismatch");
+        assertEq(
+            address(MessageProcessor(messageProcessor).balanceSheet()),
+            balanceSheet,
+            "messageProcessor.balanceSheet mismatch"
+        );
+        assertEq(
+            address(MessageProcessor(messageProcessor).contractUpdater()),
+            contractUpdater,
+            "messageProcessor.contractUpdater mismatch"
+        );
 
-        assertEq(address(Spoke(spoke).gateway()), gateway);
-        assertEq(address(Spoke(spoke).sender()), messageDispatcher);
-        assertEq(address(Spoke(spoke).poolEscrowFactory()), poolEscrowFactory);
+        assertEq(address(Spoke(spoke).gateway()), gateway, "spoke.gateway mismatch");
+        assertEq(address(Spoke(spoke).sender()), messageDispatcher, "spoke.messageDispatcher mismatch");
+        assertEq(address(Spoke(spoke).poolEscrowFactory()), poolEscrowFactory, "spoke.poolEscrowFactory mismatch");
 
-        assertEq(address(BalanceSheet(balanceSheet).spoke()), spoke);
-        assertEq(address(BalanceSheet(balanceSheet).sender()), messageDispatcher);
-        assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway);
-        assertEq(address(BalanceSheet(balanceSheet).poolEscrowProvider()), poolEscrowFactory);
+        assertEq(address(BalanceSheet(balanceSheet).spoke()), spoke, "balanceSheet.spoke mismatch");
+        assertEq(
+            address(BalanceSheet(balanceSheet).sender()), messageDispatcher, "balanceSheet.messageDispatcher mismatch"
+        );
+        assertEq(address(BalanceSheet(balanceSheet).gateway()), gateway, "balanceSheet.gateway mismatch");
+        assertEq(
+            address(BalanceSheet(balanceSheet).poolEscrowProvider()),
+            poolEscrowFactory,
+            "balanceSheet.poolEscrowFactory mismatch"
+        );
 
-        assertEq(PoolEscrowFactory(poolEscrowFactory).balanceSheet(), balanceSheet);
+        assertEq(
+            PoolEscrowFactory(poolEscrowFactory).balanceSheet(), balanceSheet, "poolEscrowFactory.balanceSheet mismatch"
+        );
 
         TokenFactory factory = TokenFactory(tokenFactory);
-        assertEq(factory.tokenWards(0), spoke);
-        assertEq(factory.tokenWards(1), balanceSheet);
+        assertEq(factory.tokenWards(0), spoke, "tokenfactory.spoke ward mismatch");
+        assertEq(factory.tokenWards(1), balanceSheet, "TokenFactory.balanceSheet ward mismatch");
 
         // VaultsDeployer configs
-        assertEq(address(AsyncRequestManager(asyncRequestManager).spoke()), spoke);
-        assertEq(address(AsyncRequestManager(asyncRequestManager).balanceSheet()), balanceSheet);
+        assertEq(address(AsyncRequestManager(asyncRequestManager).spoke()), spoke, "asyncRequestManager.spoke mismatch");
+        assertEq(
+            address(AsyncRequestManager(asyncRequestManager).balanceSheet()),
+            balanceSheet,
+            "asyncRequestManager.balanceSheet mismatch"
+        );
 
-        assertEq(address(SyncManager(syncManager).spoke()), spoke);
-        assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet);
+        assertEq(address(SyncManager(syncManager).spoke()), spoke, "syncManager.spoke mismatch");
+        assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet, "syncManager.balanceSheet mismatch");
     }
 
     /// @notice Validates endorsements from Root
@@ -382,15 +436,9 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     function _validateGuardianAdapterConfigurations() internal view {
         MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
 
-        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.BASE_CENTRIFUGE_ID);
-
-        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.ARBITRUM_CENTRIFUGE_ID);
-
-        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.PLUME_CENTRIFUGE_ID);
-
-        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.AVALANCHE_CENTRIFUGE_ID);
-
-        _validateMultiAdapterConfiguration(multiAdapterContract, IntegrationConstants.BNB_CENTRIFUGE_ID);
+        for (uint16 centrifugeId = 1; centrifugeId <= IntegrationConstants.BNB_CENTRIFUGE_ID; centrifugeId++) {
+            _validateMultiAdapterConfiguration(multiAdapterContract, centrifugeId);
+        }
     }
 
     /// @notice Validates adapter source and destination mappings
@@ -421,8 +469,8 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
         _validateWormholeMapping(
             wormholeAdapterContract,
-            IntegrationConstants.AVALANCHE_WORMHOLE_ID,
-            IntegrationConstants.AVALANCHE_CENTRIFUGE_ID,
+            IntegrationConstants.AVAX_WORMHOLE_ID,
+            IntegrationConstants.AVAX_CENTRIFUGE_ID,
             "Avalanche"
         );
 
@@ -443,8 +491,8 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
         _validateAxelarMapping(
             axelarAdapterContract,
-            IntegrationConstants.AVALANCHE_AXELAR_ID,
-            IntegrationConstants.AVALANCHE_CENTRIFUGE_ID,
+            IntegrationConstants.AVAX_AXELAR_ID,
+            IntegrationConstants.AVAX_CENTRIFUGE_ID,
             "Avalanche"
         );
 
@@ -455,6 +503,14 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
     /// @notice Helper function to validate MultiAdapter configuration for a specific chain
     function _validateMultiAdapterConfiguration(MultiAdapter multiAdapterContract, uint16 centrifugeId) internal view {
+        if (
+            localCentrifugeId == centrifugeId
+                || localCentrifugeId != IntegrationConstants.ETH_CENTRIFUGE_ID
+                    && centrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID
+        ) {
+            return;
+        }
+
         // Determine expected adapter count based on chain (only Plume doesn't have Axelar)
         bool hasAxelar = centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         uint8 expectedQuorum = hasAxelar ? 2 : 1;

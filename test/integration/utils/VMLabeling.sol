@@ -44,17 +44,25 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.MESSAGE_DISPATCHER, "MessageDispatcher");
         vm.label(IntegrationConstants.MULTI_ADAPTER, "MultiAdapter");
         vm.label(IntegrationConstants.POOL_ESCROW_FACTORY, "PoolEscrowFactory");
-        vm.label(IntegrationConstants.ADMIN_SAFE, "AdminSafe");
+        vm.label(IntegrationConstants.ETH_ADMIN_SAFE, "EthAdminSafe");
+        vm.label(IntegrationConstants.AVAX_ADMIN_SAFE, "AvaxAdminSafe");
 
         // Vault and share token addresses
         vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJAAAVault");
         vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJTRSYVault");
         vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "EthDeJAAAVault");
         vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "EthDeJTRSYVault");
+
+        vm.label(IntegrationConstants.AVAX_JAAA_USDC_VAULT, "AvaxJAAAVault");
+        vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "AvaxJTRSYVault");
+
         vm.label(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, "EthJAAAShareToken");
         vm.label(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, "EthJTRSYShareToken");
         vm.label(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN, "EthDeJTRSYShareToken");
         vm.label(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN, "EthDeJAAAShareToken");
+
+        vm.label(IntegrationConstants.AVAX_JAAA_SHARE_TOKEN, "AvaxJAAAShareToken");
+        vm.label(IntegrationConstants.AVAX_JTRSY_SHARE_TOKEN, "AvaxJTRSYShareToken");
 
         // Additional important addresses
         vm.label(IntegrationConstants.ETH_DEFAULT_POOL_ADMIN, "EthDefaultPoolAdmin");

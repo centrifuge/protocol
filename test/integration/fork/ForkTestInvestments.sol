@@ -47,11 +47,11 @@ contract ForkTestAsyncInvestments is ForkTestBase {
 
     uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
-    function test_completeAsyncDepositFlow() public {
+    function test_completeAsyncDepositFlow() public virtual {
         _completeAsyncDeposit(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
-    function test_completeAsyncRedeemFlow() public {
+    function test_completeAsyncRedeemFlow() public virtual {
         _completeAsyncRedeem(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
@@ -116,7 +116,7 @@ contract ForkTestSyncInvestments is ForkTestBase {
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             IntegrationConstants.identityPrice(),
             IntegrationConstants.identityPrice()
@@ -186,13 +186,13 @@ contract ForkTestSyncInvestments is ForkTestBase {
     function _completeSyncDeposit(address investor, uint128 amount) internal {
         _addPoolMember(VAULT, investor);
 
-        deal(address(forkSpoke.usdc), investor, amount);
+        deal(VAULT.asset(), investor, amount);
         _syncDepositFlow(
             forkHub,
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
             amount,
@@ -209,7 +209,7 @@ contract ForkTestSyncInvestments is ForkTestBase {
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
             true,

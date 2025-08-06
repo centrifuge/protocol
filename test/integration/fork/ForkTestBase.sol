@@ -11,9 +11,9 @@ import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
 import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {GasService} from "../../../src/common/GasService.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 
 import {Hub} from "../../../src/hub/Hub.sol";
 import {Holdings} from "../../../src/hub/Holdings.sol";
@@ -95,8 +95,8 @@ contract ForkTestBase is EndToEndFlows {
             freezeOnlyHook: FreezeOnly(IntegrationConstants.FREEZE_ONLY_HOOK),
             fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
             redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
-            usdc: ERC20(IntegrationConstants.ETH_USDC),
-            usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.ETH_USDC, 0)
+            usdc: ERC20(address(0)), // NOTE: Unused in fork tests in order to be chain agnostic
+            usdcId: newAssetId(0) // NOTE: Unused in fork tests in order to be chain agnostic
         });
 
         // Initialize pricing state

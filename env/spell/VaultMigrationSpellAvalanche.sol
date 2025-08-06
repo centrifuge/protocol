@@ -18,6 +18,11 @@ contract VaultMigrationSpellAvalanche is VaultMigrationSpellCommon {
     // deJAAA Avalanche USDC Vault (COLLISION with deJTRSY ETH USDC)
     address public constant VAULT_2 = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
 
+
+    constructor(address asyncVaultFactory, address syncDepositVaultFactory) 
+        VaultMigrationSpellCommon(asyncVaultFactory, syncDepositVaultFactory) 
+    {}
+
     function _getVaults() internal pure override returns (address[] memory) {
         address[] memory vaults = new address[](2);
         vaults[0] = VAULT_1;  // deJTRSY Avalanche USDC (collision)

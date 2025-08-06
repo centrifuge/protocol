@@ -5,8 +5,8 @@ import {IAdapter} from "./IAdapter.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {IAxelarAdapter} from "../../adapters/interfaces/IAxelarAdapter.sol"; // TODO: extract from guardian
-import {IWormholeAdapter} from "../../adapters/interfaces/IWormholeAdapter.sol"; // TODO: extract from guardian
+import {IAxelarAdapter} from "../../adapters/interfaces/IAxelarAdapter.sol";
+import {IWormholeAdapter} from "../../adapters/interfaces/IWormholeAdapter.sol";
 
 interface ISafe {
     function isOwner(address signer) external view returns (bool);

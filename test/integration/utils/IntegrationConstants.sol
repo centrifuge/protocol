@@ -70,10 +70,12 @@ library IntegrationConstants {
     address constant MESSAGE_DISPATCHER = 0x21AF0C29611CFAaFf9271C8a3F84F2bC31d59132;
     address constant MULTI_ADAPTER = 0x457C91384C984b1659157160e8543adb12BC5317;
     address constant POOL_ESCROW_FACTORY = 0xD166B3210edBeEdEa73c7b2e8aB64BDd30c980E9;
-    address constant ADMIN_SAFE = 0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD;
+    address constant ETH_ADMIN_SAFE = 0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD;
+    address constant AVAX_ADMIN_SAFE = 0xb6642fEd2221e177dD29581BB6d1959Bd1c54185;
 
     // Token addresses
     address constant ETH_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant AVA_USDC = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
     address constant PLUME_PUSD = 0xdddD73F5Df1F0DC31373357beAC77545dC5A6f3F;
 
     // Pool admins
@@ -92,12 +94,15 @@ library IntegrationConstants {
     address constant ETH_DEJTRSY_USDC_VAULT = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
     address constant ETH_DEJTRSY_JTRSY_VAULT = 0x04157759a9fe406d82a16BdEB20F9BeB9bBEb958;
     address constant PLUME_SYNC_DEPOSIT_VAULT = 0x374Bc3D556fBc9feC0b9537c259DCB7935f7E5bf;
+    address constant AVAX_JAAA_USDC_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
 
     // Share token addresses
     address constant ETH_JAAA_SHARE_TOKEN = 0x5a0F93D040De44e78F251b03c43be9CF317Dcf64;
     address constant ETH_JTRSY_SHARE_TOKEN = 0x8c213ee79581Ff4984583C6a801e5263418C4b86;
     address constant ETH_DEJTRSY_SHARE_TOKEN = 0xA6233014B9b7aaa74f38fa1977ffC7A89642dC72;
     address constant ETH_DEJAAA_SHARE_TOKEN = 0xAAA0008C8CF3A7Dca931adaF04336A5D808C82Cc;
+    address constant AVAX_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
+    address constant AVAX_JAAA_SHARE_TOKEN = 0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b;
 
     // ======== V2 Constants (Legacy) ========
     address constant V2_ROOT = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
@@ -117,7 +122,7 @@ library IntegrationConstants {
     uint16 constant BASE_CENTRIFUGE_ID = 2;
     uint16 constant ARBITRUM_CENTRIFUGE_ID = 3;
     uint16 constant PLUME_CENTRIFUGE_ID = 4;
-    uint16 constant AVALANCHE_CENTRIFUGE_ID = 5;
+    uint16 constant AVAX_CENTRIFUGE_ID = 5;
     uint16 constant BNB_CENTRIFUGE_ID = 6;
 
     // Wormhole Chain IDs
@@ -125,18 +130,19 @@ library IntegrationConstants {
     uint16 constant BASE_WORMHOLE_ID = 30;
     uint16 constant ARBITRUM_WORMHOLE_ID = 23;
     uint16 constant PLUME_WORMHOLE_ID = 55;
-    uint16 constant AVALANCHE_WORMHOLE_ID = 6;
+    uint16 constant AVAX_WORMHOLE_ID = 6;
     uint16 constant BNB_WORMHOLE_ID = 4;
 
     // Axelar Chain IDs (strings)
     string constant ETH_AXELAR_ID = "Ethereum";
     string constant BASE_AXELAR_ID = "base";
     string constant ARBITRUM_AXELAR_ID = "arbitrum";
-    string constant AVALANCHE_AXELAR_ID = "Avalanche";
+    string constant AVAX_AXELAR_ID = "Avalanche";
     string constant BNB_AXELAR_ID = "binance";
 
     // ======== RPC Endpoints ========
     string constant RPC_ETHEREUM = "https://ethereum-rpc.publicnode.com";
+    string constant RPC_AVALANCHE = "https://avalanche-c-chain-rpc.publicnode.com";
     string constant RPC_PLUME = "https://rpc.plume.org";
 
     // ======== Misc Constants ========

@@ -507,7 +507,7 @@ contract EndToEndFlows is EndToEndUtils {
             _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
 
         // Execute deposit request
-        _executeAsyncDepositRequest(spoke, vault, investor, amount);
+        _executeAsyncDepositRequest(vault, investor, amount);
 
         // Process deposit approval and share issuance
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
@@ -583,9 +583,7 @@ contract EndToEndFlows is EndToEndUtils {
         assertNotEq(address(vault), address(0));
     }
 
-    function _executeAsyncDepositRequest(CSpoke memory spoke, IAsyncVault vault, address investor, uint128 amount)
-        internal
-    {
+    function _executeAsyncDepositRequest(IAsyncVault vault, address investor, uint128 amount) internal {
         vm.startPrank(investor);
         ERC20(vault.asset()).approve(address(vault), amount);
         vault.requestDeposit(amount, investor, investor);
