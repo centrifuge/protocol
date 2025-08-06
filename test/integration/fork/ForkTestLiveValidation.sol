@@ -519,8 +519,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         uint8 expectedQuorum = hasAxelar ? 2 : 1;
 
         // Verify quorum matches expected adapter count
-        console.log("Centrifuge id", centrifugeId);
-        console.log("Local Centrifuge id", localCentrifugeId);
         uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId);
         assertEq(actualQuorum, expectedQuorum);
 
