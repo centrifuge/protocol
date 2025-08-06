@@ -142,41 +142,37 @@ abstract contract ForkTestCreate2VaultFactoryCommon is ForkTestLiveValidation {
     }
 
     function test_newFactoriesGainPermissions() public {
-        // Execute spell
         _executeSpell();
 
-        // Get new factory addresses from spell
-        address newAsyncFactory = spell.newAsyncVaultFactory();
-        address newSyncFactory = spell.newSyncDepositVaultFactory();
-
-        // Verify new factories gained permissions after spell
         assertEq(
-            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(newAsyncFactory),
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(spell.newAsyncVaultFactory()),
             1,
             "New async factory should have AsyncRequestManager permission after spell"
         );
         assertEq(
-            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(newSyncFactory),
+            IAuth(address(spell.ASYNC_REQUEST_MANAGER())).wards(spell.newSyncDepositVaultFactory()),
             1,
             "New sync factory should have AsyncRequestManager permission after spell"
         );
+
         assertEq(
-            IAuth(newAsyncFactory).wards(address(spell.ROOT())),
+            IAuth(spell.newAsyncVaultFactory()).wards(address(spell.ROOT())),
             1,
             "New async factory should have ROOT permission after spell"
         );
         assertEq(
-            IAuth(newAsyncFactory).wards(address(spell.SPOKE())),
+            IAuth(spell.newAsyncVaultFactory()).wards(address(spell.SPOKE())),
             1,
             "New async factory should have SPOKE permission after spell"
         );
+
         assertEq(
-            IAuth(newSyncFactory).wards(address(spell.ROOT())),
+            IAuth(spell.newSyncDepositVaultFactory()).wards(address(spell.ROOT())),
             1,
             "New sync factory should have ROOT permission after spell"
         );
         assertEq(
-            IAuth(newSyncFactory).wards(address(spell.SPOKE())),
+            IAuth(spell.newSyncDepositVaultFactory()).wards(address(spell.SPOKE())),
             1,
             "New sync factory should have SPOKE permission after spell"
         );
