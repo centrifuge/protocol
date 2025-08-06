@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Guardian} from "../src/common/Guardian.sol";
+import {IGuardian} from "../src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Script.sol";
 
+import {IAdapterWirer} from "../src/adapters/interfaces/IAdapterWirer.sol";
 import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
 
@@ -66,14 +67,15 @@ contract WireAdapters is Script {
             uint16 remoteCentrifugeId = uint16(vm.parseJsonUint(remoteConfig, "$.network.centrifugeId"));
 
             // Register ALL adapters for this destination chain
-            Guardian guardian = Guardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
-            guardian.wireAdapters(remoteCentrifugeId, adapters);
+            IGuardian guardian = IGuardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
+            IAdapterWirer wirer = IAdapterWirer(vm.parseJsonAddress(localConfig, "$.contracts.adapterWirer"));
+            guardian.setAdapters(remoteCentrifugeId, adapters, address(wirer));
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
                 try vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter") {
-                    guardian.wireWormholeAdapter(
+                    wirer.wireWormholeAdapter(
                         IWormholeAdapter(localWormholeAddr),
                         remoteCentrifugeId,
                         uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
@@ -93,7 +95,7 @@ contract WireAdapters is Script {
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
                 try vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter") {
-                    guardian.wireAxelarAdapter(
+                    wirer.wireAxelarAdapter(
                         IAxelarAdapter(localAxelarAddr),
                         remoteCentrifugeId,
                         vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
