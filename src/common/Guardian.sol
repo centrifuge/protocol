@@ -22,13 +22,7 @@ contract Guardian is IGuardian {
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(
-        ISafe safe_,
-        IMultiAdapter multiAdapter_,
-        IRoot root_,
-        IRootMessageSender messageDispatcher_,
-        address adapterWirer_
-    ) {
+    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
         root = root_;
         multiAdapter = multiAdapter_;
         safe = safe_;
@@ -122,13 +116,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, address manager) external onlySafe {
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
         multiAdapter.file("adapters", centrifugeId, adapters);
-
-        // Enable adapter configuration through the an external contract. i.e: the AdapterWirer
-        for (uint256 i; i < adapters.length; i++) {
-            adapters[i].rely(manager);
-        }
     }
 
     //----------------------------------------------------------------------------------------------

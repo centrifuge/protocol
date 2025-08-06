@@ -6,7 +6,6 @@ import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Script.sol";
 
-import {IAdapterWirer} from "../src/adapters/interfaces/IAdapterWirer.sol";
 import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
 
@@ -68,48 +67,29 @@ contract WireAdapters is Script {
 
             // Register ALL adapters for this destination chain
             IGuardian guardian = IGuardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
-            IAdapterWirer wirer = IAdapterWirer(vm.parseJsonAddress(localConfig, "$.contracts.adapterWirer"));
-            guardian.setAdapters(remoteCentrifugeId, adapters, address(wirer));
+            guardian.setAdapters(remoteCentrifugeId, adapters);
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter
             if (localWormholeAddr != address(0)) {
-                try vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter") {
-                    wirer.wireWormholeAdapter(
-                        IWormholeAdapter(localWormholeAddr),
-                        remoteCentrifugeId,
-                        uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
-                        vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
-                    );
+                IWormholeAdapter(localWormholeAddr).wire(
+                    remoteCentrifugeId,
+                    uint16(vm.parseJsonUint(remoteConfig, "$.adapters.wormhole.wormholeId")),
+                    vm.parseJsonAddress(remoteConfig, "$.contracts.wormholeAdapter")
+                );
 
-                    console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
-                } catch {
-                    console.log(
-                        "Failed to wire Wormhole.",
-                        "No WormholeAdapter contract found in config (not deployed yet?) for network ",
-                        remoteNetwork
-                    );
-                }
+                console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
             }
 
             // Wire AxelarAdapter
             if (localAxelarAddr != address(0)) {
-                try vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter") {
-                    wirer.wireAxelarAdapter(
-                        IAxelarAdapter(localAxelarAddr),
-                        remoteCentrifugeId,
-                        vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                        vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
-                    );
+                IAxelarAdapter(localAxelarAddr).wire(
+                    remoteCentrifugeId,
+                    vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
+                    vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
+                );
 
-                    console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
-                } catch {
-                    console.log(
-                        "Failed to wire Axelar.",
-                        "No AxelarAdapter contract found (not deployed yet?) in config for network ",
-                        remoteNetwork
-                    );
-                }
+                console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }
         }
         vm.stopBroadcast();

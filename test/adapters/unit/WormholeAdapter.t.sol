@@ -58,11 +58,66 @@ contract WormholeAdapterTestBase is Test {
 
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     uint16 constant WORMHOLE_CHAIN_ID = 2;
+    address immutable REMOTE_WORMHOLE_ADDR = makeAddr("remoteAddress");
+
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
         relayer = new MockWormholeRelayer();
         adapter = new WormholeAdapter(GATEWAY, address(relayer), address(this));
+    }
+}
+
+contract WormholeAdapterTestFile is WormholeAdapterTestBase {
+    function testFileErrNotAuthorized() public {
+        vm.prank(makeAddr("NotAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileErrFileUnrecognizedParam() public {
+        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
+        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileDestination() public {
+        vm.expectEmit();
+        emit IWormholeAdapter.File("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 wormholeId, address remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        assertEq(wormholeId, WORMHOLE_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testFileSources() public {
+        vm.expectEmit();
+        emit IWormholeAdapter.File("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 centrifugeId, address remoteAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
+        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
+    }
+}
+
+contract WormholeAdapterTestWire is WormholeAdapterTestBase {
+    function testFileErrNotAuthorized() public {
+        vm.prank(makeAddr("NotAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+    }
+
+    function testWire() public {
+        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 wormholeId, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        assertEq(wormholeId, WORMHOLE_CHAIN_ID);
+        assertEq(remoteDestAddress, REMOTE_WORMHOLE_ADDR);
+
+        (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
+        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
+        assertEq(remoteSourceAddress, REMOTE_WORMHOLE_ADDR);
     }
 }
 
@@ -80,18 +135,6 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
     function testEstimate(uint64 gasLimit) public view {
         bytes memory payload = "irrelevant";
         assertEq(adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit), uint128(gasLimit) * 2);
-    }
-
-    function testFiling(address validAddress) public {
-        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
-
-        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
-        adapter.file("random", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
-
-        vm.prank(makeAddr("unauthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
     }
 
     function testIncomingCalls(

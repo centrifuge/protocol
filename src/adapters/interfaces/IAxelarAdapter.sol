@@ -87,6 +87,12 @@ interface IAxelarAdapter is IAdapter, IAxelarExecutable {
     function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external;
     function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination) external;
 
+    /// @notice Wire the adapter to a remote one.
+    /// @param centrifugeId The remote chain's chain ID
+    /// @param axelarId The remote chain's Axelar ID
+    /// @param adapter The remote chain's Axelar adapter address
+    function wire(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external;
+
     /// @notice Returns the source configuration for a given axelar chain id
     /// @param axelarId The Axelar ID of the remote chain
     /// @return centrifugeId The remote chain id
