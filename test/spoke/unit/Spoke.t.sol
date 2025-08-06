@@ -1006,7 +1006,7 @@ contract SpokeTestRegisterVault is SpokeTest {
         spoke.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
     }
 
-    // Sucessful case tested under SpokeTestDeployVault
+    // Successful case tested under SpokeTestDeployVault
 }
 
 contract SpokeTestLinkVault is SpokeTest {
