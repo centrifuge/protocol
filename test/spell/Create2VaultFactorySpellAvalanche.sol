@@ -7,9 +7,7 @@ import {Create2VaultFactorySpellCommon} from "./Create2VaultFactorySpellCommon.s
 /**
  * @title Create2VaultFactorySpellAvalanche
  * @notice Avalanche-specific governance spell to migrate 2 collision vaults to CREATE2 deployment
- * @dev Extends Create2VaultFactorySpellCommon to resolve cross-chain address collisions:
- *      - VAULT_1 (0x04157...958) collides with deJTRSY ETH JTRSY vault
- *      - VAULT_2 (0xCF4C6...Ccf9) collides with deJTRSY ETH USDC vault
+ * @dev Extends Create2VaultFactorySpellCommon to resolve cross-chain address collisions
  */
 contract Create2VaultFactorySpellAvalanche is Create2VaultFactorySpellCommon {
     // deJTRSY Avalanche USDC Vault (COLLISION with deJTRSY ETH JTRSY)
@@ -24,8 +22,8 @@ contract Create2VaultFactorySpellAvalanche is Create2VaultFactorySpellCommon {
 
     function _getVaults() internal pure override returns (address[] memory) {
         address[] memory vaults = new address[](2);
-        vaults[0] = VAULT_1; // deJTRSY Avalanche USDC (collision)
-        vaults[1] = VAULT_2; // deJAAA Avalanche USDC (collision)
+        vaults[0] = VAULT_1;
+        vaults[1] = VAULT_2;
         return vaults;
     }
 }

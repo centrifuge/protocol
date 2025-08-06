@@ -79,7 +79,6 @@ abstract contract ForkTestVaultMigrationCommon is ForkTestLiveValidation {
         vm.label(asyncVaultFactory, "NewAsyncVaultFactory");
         vm.label(syncDepositVaultFactory, "NewSyncDepositVaultFactory");
 
-        // Create spell with factory addresses - delegated to derived contracts
         spell = _getSpell();
     }
 

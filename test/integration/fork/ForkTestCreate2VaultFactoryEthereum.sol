@@ -23,10 +23,11 @@ contract ForkTestCreate2VaultFactoryEthereum is ForkTestVaultMigrationCommon {
 
     /// @notice Get old vault addresses from spell (single source of truth)
     function _getOldVaults() internal view override returns (address[] memory) {
-        address[] memory vaults = new address[](3);
+        address[] memory vaults = new address[](4);
         vaults[0] = ethereumSpell.VAULT_1();
         vaults[1] = ethereumSpell.VAULT_2();
         vaults[2] = ethereumSpell.VAULT_3();
+        vaults[3] = ethereumSpell.VAULT_4();
         return vaults;
     }
 
