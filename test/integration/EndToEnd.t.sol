@@ -509,6 +509,9 @@ contract EndToEndFlows is EndToEndUtils {
         // Execute deposit request
         _executeAsyncDepositRequest(vault, investor, amount);
 
+        // Ensure deposit/issue epochs are aligned before proceeding (handles live chain state)
+        _ensureDepositEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
+
         // Process deposit approval and share issuance
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
 
@@ -804,10 +807,63 @@ contract EndToEndFlows is EndToEndUtils {
 
         vault.requestRedeem(shares, investor, investor);
 
+        // Ensure epochs are aligned before proceeding (handles live chain state)
+        _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
+
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
         _processAsyncRedeemClaim(
             hub, spoke, poolId, shareClassId, assetId, investor, vault, shares, skipPreciseAssertion
         );
+    }
+
+    function _ensureRedeemEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if redemptions have been approved but not revoked,
+        // we need to revoke outstanding epochs before we can approve new ones
+        if (nowRedeemEpoch != nowRevokeEpoch) {
+            vm.startPrank(poolManager);
+            while (nowRevokeEpoch < nowRedeemEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.revokeShares{value: GAS}(
+                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
+                );
+                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
+    }
+
+    function _ensureDepositEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if deposits have been approved but not yet issued,
+        // we need to issue outstanding epochs before we can approve new ones
+        if (nowDepositEpoch != nowIssueEpoch) {
+            vm.startPrank(poolManager);
+            while (nowIssueEpoch < nowDepositEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.issueShares{value: GAS}(
+                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
+                );
+                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
     }
 
     function _configureAsyncRedeemRestriction(
