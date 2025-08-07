@@ -45,34 +45,48 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.MULTI_ADAPTER, "MultiAdapter");
         vm.label(IntegrationConstants.POOL_ESCROW_FACTORY, "PoolEscrowFactory");
         vm.label(IntegrationConstants.ETH_ADMIN_SAFE, "EthAdminSafe");
+        vm.label(IntegrationConstants.BASE_ADMIN_SAFE, "BaseAdminSafe");
         vm.label(IntegrationConstants.AVAX_ADMIN_SAFE, "AvaxAdminSafe");
 
-        // Vault and share token addresses
+        // Vault addresses
         vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJAAAVault");
         vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJTRSYVault");
-        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "EthDeJAAAVault");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "EthDeJTRSYVault");
+        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "Old_EthDeJAAAUsdcVault");
+        vm.label(IntegrationConstants.ETH_DEJAA_JAAA_VAULT, "Old_EthDeJAAAJAAAVault");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "Old_EthDeJTRSYUsdcVault");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_JTRSY_VAULT, "Old_EthDeJTRSYJTRSYVault");
+        vm.label(IntegrationConstants.BASE_DEJAA_USDC_VAULT, "Old_BaseDeJAAAUsdcVault");
+        vm.label(IntegrationConstants.AVAX_JAAA_USDC_VAULT, "Old_AvaxJAAAUsdcVault");
+        vm.label(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT, "PlumeSyncDepositVault");
 
-        vm.label(IntegrationConstants.AVAX_JAAA_USDC_VAULT, "AvaxJAAAVault");
-        vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "AvaxJTRSYVault");
-
+        // Share token addresses
         vm.label(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, "EthJAAAShareToken");
         vm.label(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, "EthJTRSYShareToken");
         vm.label(IntegrationConstants.ETH_DEJTRSY_SHARE_TOKEN, "EthDeJTRSYShareToken");
         vm.label(IntegrationConstants.ETH_DEJAAA_SHARE_TOKEN, "EthDeJAAAShareToken");
-
         vm.label(IntegrationConstants.AVAX_JAAA_SHARE_TOKEN, "AvaxJAAAShareToken");
         vm.label(IntegrationConstants.AVAX_JTRSY_SHARE_TOKEN, "AvaxJTRSYShareToken");
 
-        // Additional important addresses
-        vm.label(IntegrationConstants.ETH_DEFAULT_POOL_ADMIN, "EthDefaultPoolAdmin");
+        // Token addresses
         vm.label(IntegrationConstants.ETH_USDC, "EthUSDC");
-        vm.label(IntegrationConstants.JTRSY_POOL_ESCROW, "PoolEscrow_JTRSY");
+        vm.label(IntegrationConstants.AVA_USDC, "AvaUSDC");
+        vm.label(IntegrationConstants.PLUME_PUSD, "PlumePUSD");
 
-        // Old vault addresses (pre-migration)
-        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "OldEthDeJAAAVault_USDC");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "OldEthDeJTRSYVault_USDC");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_JTRSY_VAULT, "OldEthDeJTRSYVault_JTRSY");
-        vm.label(IntegrationConstants.ETH_DEJAA_JAAA_VAULT, "OldEthDeJAA_JAA");
+        // Pool admin addresses
+        vm.label(IntegrationConstants.ETH_DEFAULT_POOL_ADMIN, "EthDefaultPoolAdmin");
+        vm.label(IntegrationConstants.PLUME_POOL_ADMIN, "PlumePoolAdmin");
+
+        // Pool escrow addresses
+        vm.label(IntegrationConstants.JTRSY_POOL_ESCROW, "JTRSYPoolEscrow");
+        vm.label(IntegrationConstants.JAAA_POOL_ESCROW, "JAAAPoolEscrow");
+
+        // V2 Legacy contracts
+        vm.label(IntegrationConstants.V2_ROOT, "V2Root");
+        vm.label(IntegrationConstants.V2_GUARDIAN, "V2Guardian");
+        vm.label(IntegrationConstants.V2_INVESTOR, "V2Investor");
+        vm.label(IntegrationConstants.V2_INVESTMENT_MANAGER, "V2InvestmentManager");
+        vm.label(IntegrationConstants.V2_RESTRICTION_MANAGER, "V2RestrictionManager");
+        vm.label(IntegrationConstants.V2_JTRSY_VAULT, "V2JTRSYVault");
+        vm.label(IntegrationConstants.V2_JAAA_VAULT, "V2JAAAVault");
     }
 }
