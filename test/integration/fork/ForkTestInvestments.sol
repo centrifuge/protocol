@@ -43,20 +43,27 @@ import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 /// @notice Fork tests for async investment flows on Ethereum mainnet
 contract ForkTestAsyncInvestments is ForkTestBase {
     // TODO(later): After v2 disable, switch to JAAA
-    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAAA_VAULT);
+    IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAA_USDC_VAULT);
 
     uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
-    function test_completeAsyncDepositFlow() public {
+    function test_completeAsyncDepositFlow() public virtual {
         _completeAsyncDeposit(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
-    function test_completeAsyncRedeemFlow() public {
+    function test_completeAsyncRedeemFlow() public virtual {
         _completeAsyncRedeem(VAULT, makeAddr("INVESTOR_A"), depositAmount);
     }
 
     function _completeAsyncDeposit(IBaseVault vault, address investor, uint128 amount) internal {
-        deal(vault.asset(), investor, amount);
+        if (isShareToken(vault.asset())) {
+            vm.startPrank(IntegrationConstants.V2_ROOT);
+            ERC20(vault.asset()).mint(investor, amount);
+            vm.stopPrank();
+        } else {
+            // NOTE: Does not work for share tokens: [Revert] panic: arithmetic underflow or overflow (0x11)
+            deal(vault.asset(), investor, amount, true);
+        }
         _addPoolMember(vault, investor);
 
         _asyncDepositFlow(
@@ -64,7 +71,7 @@ contract ForkTestAsyncInvestments is ForkTestBase {
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(vault.asset(), 0),
             _poolAdmin(),
             investor,
             amount,
@@ -77,12 +84,12 @@ contract ForkTestAsyncInvestments is ForkTestBase {
     function _completeAsyncRedeem(IBaseVault vault, address investor, uint128 amount) internal {
         _completeAsyncDeposit(vault, investor, amount);
 
-        _syncRedeemFlow(
+        _asyncRedeemFlow(
             forkHub,
             forkSpoke,
             vault.poolId(),
             vault.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(vault.asset(), 0),
             _poolAdmin(),
             investor,
             true,
@@ -109,7 +116,7 @@ contract ForkTestSyncInvestments is ForkTestBase {
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             IntegrationConstants.identityPrice(),
             IntegrationConstants.identityPrice()
@@ -179,13 +186,13 @@ contract ForkTestSyncInvestments is ForkTestBase {
     function _completeSyncDeposit(address investor, uint128 amount) internal {
         _addPoolMember(VAULT, investor);
 
-        deal(address(forkSpoke.usdc), investor, amount);
+        deal(VAULT.asset(), investor, amount);
         _syncDepositFlow(
             forkHub,
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
             amount,
@@ -197,12 +204,12 @@ contract ForkTestSyncInvestments is ForkTestBase {
     function _completeSyncDepositAsyncRedeem(address investor, uint128 amount) internal {
         _completeSyncDeposit(investor, amount);
 
-        _syncRedeemFlow(
+        _asyncRedeemFlow(
             forkHub,
             forkSpoke,
             VAULT.poolId(),
             VAULT.scId(),
-            forkSpoke.usdcId,
+            forkSpoke.spoke.assetToId(VAULT.asset(), 0),
             _poolAdmin(),
             investor,
             true,

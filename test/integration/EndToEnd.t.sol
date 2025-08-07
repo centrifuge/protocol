@@ -12,6 +12,7 @@ import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
+import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
 
@@ -320,6 +321,14 @@ contract EndToEndUtils is EndToEndDeployment {
         assertEq(accountValue, value);
         assertEq(accountIsPositive, isPositive);
     }
+
+    function isShareToken(address token) internal view returns (bool) {
+        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
+            return supported;
+        } catch {
+            return false;
+        }
+    }
 }
 
 /// Base investment flows that can be shared between EndToEnd and Fork tests
@@ -498,7 +507,10 @@ contract EndToEndFlows is EndToEndUtils {
             _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
 
         // Execute deposit request
-        _executeAsyncDepositRequest(spoke, vault, investor, amount);
+        _executeAsyncDepositRequest(vault, investor, amount);
+
+        // Ensure deposit/issue epochs are aligned before proceeding (handles live chain state)
+        _ensureDepositEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
 
         // Process deposit approval and share issuance
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
@@ -574,11 +586,9 @@ contract EndToEndFlows is EndToEndUtils {
         assertNotEq(address(vault), address(0));
     }
 
-    function _executeAsyncDepositRequest(CSpoke memory spoke, IAsyncVault vault, address investor, uint128 amount)
-        internal
-    {
+    function _executeAsyncDepositRequest(IAsyncVault vault, address investor, uint128 amount) internal {
         vm.startPrank(investor);
-        spoke.usdc.approve(address(vault), amount);
+        ERC20(vault.asset()).approve(address(vault), amount);
         vault.requestDeposit(amount, investor, investor);
     }
 
@@ -770,7 +780,7 @@ contract EndToEndFlows is EndToEndUtils {
     // Async Redeem Flows
     //----------------------------------------------------------------------------------------------
 
-    function _syncRedeemFlow(
+    function _asyncRedeemFlow(
         CHub memory hub,
         CSpoke memory spoke,
         PoolId poolId,
@@ -794,12 +804,66 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
+
         vault.requestRedeem(shares, investor, investor);
+
+        // Ensure epochs are aligned before proceeding (handles live chain state)
+        _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
         _processAsyncRedeemClaim(
             hub, spoke, poolId, shareClassId, assetId, investor, vault, shares, skipPreciseAssertion
         );
+    }
+
+    function _ensureRedeemEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if redemptions have been approved but not revoked,
+        // we need to revoke outstanding epochs before we can approve new ones
+        if (nowRedeemEpoch != nowRevokeEpoch) {
+            vm.startPrank(poolManager);
+            while (nowRevokeEpoch < nowRedeemEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.revokeShares{value: GAS}(
+                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
+                );
+                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
+    }
+
+    function _ensureDepositEpochsAligned(
+        CHub memory hub,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address poolManager
+    ) internal {
+        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+
+        // Handle live chain state: if deposits have been approved but not yet issued,
+        // we need to issue outstanding epochs before we can approve new ones
+        if (nowDepositEpoch != nowIssueEpoch) {
+            vm.startPrank(poolManager);
+            while (nowIssueEpoch < nowDepositEpoch) {
+                (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
+                hub.hub.issueShares{value: GAS}(
+                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
+                );
+                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+            }
+            vm.stopPrank();
+        }
     }
 
     function _configureAsyncRedeemRestriction(
@@ -877,7 +941,7 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _syncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
+        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
     }
 
     //----------------------------------------------------------------------------------------------
