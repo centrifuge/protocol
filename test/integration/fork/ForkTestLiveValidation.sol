@@ -268,6 +268,12 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
             _validateRootWard(avaxJaaaShareToken);
             _validateRootWard(avaxJtrsyShareToken);
+        } else if (localCentrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
+            // Base uses deterministic addresses, so same as ETH_DEJAA_JAAA_VAULT
+            _validateRootWard(IntegrationConstants.ETH_DEJAA_JAAA_VAULT);
+
+            // Validate corresponding share token (deterministic deployment)
+            _validateRootWard(ethDejaaaShareToken);
         }
     }
 

@@ -71,6 +71,7 @@ library IntegrationConstants {
     address constant MULTI_ADAPTER = 0x457C91384C984b1659157160e8543adb12BC5317;
     address constant POOL_ESCROW_FACTORY = 0xD166B3210edBeEdEa73c7b2e8aB64BDd30c980E9;
     address constant ETH_ADMIN_SAFE = 0xD9D30ab47c0f096b0AA67e9B8B1624504a63e7FD;
+    address constant BASE_ADMIN_SAFE = 0x8b83962fB9dB346a20c95D98d4E312f17f4C0d9b;
     address constant AVAX_ADMIN_SAFE = 0xb6642fEd2221e177dD29581BB6d1959Bd1c54185;
 
     // Token addresses
@@ -93,6 +94,7 @@ library IntegrationConstants {
     address constant ETH_DEJAA_JAAA_VAULT = 0x2D38c58Cc7d4DdD6B4DaF7b3539902a7667F4519;
     address constant ETH_DEJTRSY_USDC_VAULT = 0xCF4C60066aAB54b3f750F94c2a06046d5466Ccf9;
     address constant ETH_DEJTRSY_JTRSY_VAULT = 0x04157759a9fe406d82a16BdEB20F9BeB9bBEb958;
+    address constant BASE_DEJAA_USDC_VAULT = 0x2D38c58Cc7d4DdD6B4DaF7b3539902a7667F4519;
     address constant PLUME_SYNC_DEPOSIT_VAULT = 0x374Bc3D556fBc9feC0b9537c259DCB7935f7E5bf;
     address constant AVAX_JAAA_USDC_VAULT = 0x1121F4e21eD8B9BC1BB9A2952cDD8639aC897784;
 
@@ -142,6 +144,7 @@ library IntegrationConstants {
 
     // ======== RPC Endpoints ========
     string constant RPC_ETHEREUM = "https://ethereum-rpc.publicnode.com";
+    string constant RPC_BASE = "https://base-rpc.publicnode.com";
     string constant RPC_AVALANCHE = "https://avalanche-c-chain-rpc.publicnode.com";
     string constant RPC_PLUME = "https://rpc.plume.org";
 
