@@ -40,7 +40,7 @@ contract Deploy301 is Script, CreateXScript {
 
         AsyncVaultFactory asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory-2"),
+                generateSalt("asyncVaultFactory-3"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, root)
                 )
@@ -49,7 +49,7 @@ contract Deploy301 is Script, CreateXScript {
 
         SyncDepositVaultFactory syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory-2"),
+                generateSalt("syncDepositVaultFactory-3"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, root)
