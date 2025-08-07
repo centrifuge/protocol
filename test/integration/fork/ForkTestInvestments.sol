@@ -37,15 +37,21 @@ import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Test.sol";
 
+import {VMLabeling} from "../utils/VMLabeling.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
 /// @title ForkTestAsyncInvestments
 /// @notice Fork tests for async investment flows on Ethereum mainnet
-contract ForkTestAsyncInvestments is ForkTestBase {
+contract ForkTestAsyncInvestments is ForkTestBase, VMLabeling {
     // TODO(later): After v2 disable, switch to JAAA
     IBaseVault constant VAULT = IBaseVault(IntegrationConstants.ETH_DEJAA_USDC_VAULT);
 
     uint128 constant depositAmount = IntegrationConstants.DEFAULT_USDC_AMOUNT;
+
+    function setUp() public virtual override {
+        super.setUp();
+        _setupVMLabels();
+    }
 
     function test_completeAsyncDepositFlow() public virtual {
         _completeAsyncDeposit(VAULT, makeAddr("INVESTOR_A"), depositAmount);
@@ -101,7 +107,7 @@ contract ForkTestAsyncInvestments is ForkTestBase {
 
 /// @title ForkTestSyncInvestments
 /// @notice Fork tests for sync investment flows on Plume network
-contract ForkTestSyncInvestments is ForkTestBase {
+contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
     using CastLib for *;
 
     IBaseVault constant VAULT = IBaseVault(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT);
@@ -110,6 +116,7 @@ contract ForkTestSyncInvestments is ForkTestBase {
         vm.createSelectFork(IntegrationConstants.RPC_PLUME);
 
         _loadContracts();
+        _setupVMLabels();
 
         _baseConfigurePrices(
             forkHub,

@@ -76,7 +76,7 @@ import "forge-std/Test.sol";
 ///   2. It significantly increases the amount of calls shown by the debugger.
 ///
 /// By using these structs we avoid both "issues".
-contract EndToEndDeployment is Test, VMLabeling {
+contract EndToEndDeployment is Test {
     using MathLib for *;
     using CastLib for *;
     using PricingLib for *;
@@ -174,8 +174,6 @@ contract EndToEndDeployment is Test, VMLabeling {
     //----------------------------------------------------------------------------------------------
 
     function setUp() public virtual {
-        _setupVMLabels();
-
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
@@ -1011,9 +1009,14 @@ contract EndToEndFlows is EndToEndUtils {
 }
 
 /// Common and generic flows ready to be used in different tests
-contract EndToEndUseCases is EndToEndFlows {
+contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
+
+    function setUp() public virtual override {
+        super.setUp();
+        _setupVMLabels();
+    }
 
     /// forge-config: default.isolate = true
     function testWardUpgrade(bool sameChain) public {

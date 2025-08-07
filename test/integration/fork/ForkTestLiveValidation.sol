@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ForkTestBase} from "./ForkTestBase.sol";
 import {ForkTestAsyncInvestments} from "./ForkTestInvestments.sol";
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -33,10 +32,8 @@ import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 
 /// @title ForkTestLiveValidation
 /// @notice Contract for validating live contract permissions and state
-/// @dev Currently inherits from ForkTestBase for basic fork setup.
-///      For future spell validation tests that require investment flows,
-///      consider inheriting from ForkTestAsyncInvestments or ForkTestSyncInvestments instead.
-///      VMLabeling functionality is inherited through the EndToEndDeployment -> EndToEndUtils chain.
+/// @dev Currently inherits from ForkTestAsyncInvestments for investment flows and VM labeling.
+///      VMLabeling functionality is inherited through ForkTestAsyncInvestments for improved debugging.
 contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     //----------------------------------------------------------------------------------------------
     // CORE PROTOCOL CONTRACTS
