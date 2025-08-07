@@ -69,52 +69,6 @@ contract AxelarAdapterTestBase is Test {
     }
 }
 
-contract AxelarAdapterTestFileDestinations is AxelarAdapterTestBase {
-    function testFileErrNotAuthorized() public {
-        vm.prank(makeAddr("NotAuthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("any", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-    }
-
-    function testFileErrFileUnrecognizedParam() public {
-        vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
-        adapter.file("sources", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-    }
-
-    function testFile() public {
-        vm.expectEmit();
-        emit IAxelarAdapter.File("destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
-
-        (string memory axelarId, string memory remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
-        assertEq(axelarId, AXELAR_CHAIN_ID);
-        assertEq(remoteAddress, REMOTE_AXELAR_ADDR);
-    }
-}
-
-contract AxelarAdapterTestFileSources is AxelarAdapterTestBase {
-    function testFileErrNotAuthorized() public {
-        vm.prank(makeAddr("NotAuthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("any", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_ADDR);
-    }
-
-    function testFileErrFileUnrecognizedParam() public {
-        vm.expectRevert(IAxelarAdapter.FileUnrecognizedParam.selector);
-        adapter.file("destinations", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_ADDR);
-    }
-
-    function testFile() public {
-        vm.expectEmit();
-        emit IAxelarAdapter.File("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_ADDR);
-        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_ADDR);
-
-        (uint16 centrifugeId, bytes32 remoteAddressHash) = adapter.sources(AXELAR_CHAIN_ID);
-        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
-        assertEq(remoteAddressHash, keccak256(bytes(REMOTE_AXELAR_ADDR)));
-    }
-}
-
 contract AxelarAdapterTestWire is AxelarAdapterTestBase {
     function testFileErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
@@ -186,7 +140,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.prank(address(relayer));
         adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
 
-        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress.toAxelarString());
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, validAddress.toAxelarString());
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -229,9 +183,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.file(
-            "destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString()
-        );
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString());
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

@@ -68,39 +68,6 @@ contract WormholeAdapterTestBase is Test {
     }
 }
 
-contract WormholeAdapterTestFile is WormholeAdapterTestBase {
-    function testFileErrNotAuthorized() public {
-        vm.prank(makeAddr("NotAuthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-    }
-
-    function testFileErrFileUnrecognizedParam() public {
-        vm.expectRevert(IWormholeAdapter.FileUnrecognizedParam.selector);
-        adapter.file("any", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-    }
-
-    function testFileDestination() public {
-        vm.expectEmit();
-        emit IWormholeAdapter.File("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-
-        (uint16 wormholeId, address remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
-        assertEq(wormholeId, WORMHOLE_CHAIN_ID);
-        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
-    }
-
-    function testFileSources() public {
-        vm.expectEmit();
-        emit IWormholeAdapter.File("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
-
-        (uint16 centrifugeId, address remoteAddress) = adapter.sources(WORMHOLE_CHAIN_ID);
-        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
-        assertEq(remoteAddress, REMOTE_WORMHOLE_ADDR);
-    }
-}
-
 contract WormholeAdapterTestWire is WormholeAdapterTestBase {
     function testFileErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
@@ -165,7 +132,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
         );
 
-        adapter.file("sources", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, validAddress);
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -206,7 +173,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.file("destinations", CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, makeAddr("DestinationAdapter"));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

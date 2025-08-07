@@ -79,14 +79,6 @@ struct AxelarDestination {
 }
 
 interface IAxelarAdapter is IAdapter, IAxelarExecutable {
-    event File(bytes32 indexed what, string axelarId, uint16 centrifugeId, string source);
-    event File(bytes32 indexed what, uint16 centrifugeId, string axelarId, string destination);
-
-    error FileUnrecognizedParam();
-
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external;
-    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination) external;
-
     /// @notice Wire the adapter to a remote one.
     /// @param centrifugeId The remote chain's chain ID
     /// @param axelarId The remote chain's Axelar ID
