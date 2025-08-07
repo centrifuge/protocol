@@ -10,7 +10,7 @@ import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.so
 
 import "forge-std/Test.sol";
 
-import {AxelarAdapter, IAdapter, IAxelarExecutable, IAxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
+import {AxelarAdapter, IAdapter, IAxelarExecutable} from "../../../src/adapters/AxelarAdapter.sol";
 
 contract MockAxelarGateway is Mock {
     function validateContractCall(bytes32, string calldata, string calldata, bytes32) public view returns (bool) {
