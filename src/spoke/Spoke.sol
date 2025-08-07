@@ -151,7 +151,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
-        require(msg.sender == address(assetInfo[poolId][scId][assetId].manager), NotAuthorized());
+        IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
+        require(address(manager) != address(0), InvalidRequestManager());
+        require(msg.sender == address(manager), NotAuthorized());
 
         sender.sendRequest(poolId, scId, assetId, payload);
     }

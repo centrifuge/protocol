@@ -481,7 +481,18 @@ contract SpokeTestRegisterAsset is SpokeTest {
 }
 
 contract SpokeTestRequest is SpokeTest {
+    function testErrInvalidRequestManager() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.InvalidRequestManager.selector);
+        spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
+    }
+
     function testErrNotAuthorized() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+
         vm.prank(AUTH);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.request(POOL_A, SC_1, ASSET_ID_20, PAYLOAD);
