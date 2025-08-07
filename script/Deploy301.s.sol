@@ -5,9 +5,9 @@ import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {Create2VaultFactorySpellEthereum} from "../test/spell/Create2VaultFactorySpellEthereum.sol";
-
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
+
+import {Create2VaultFactorySpellEthereum} from "../test/spell/Create2VaultFactorySpellEthereum.sol";
 
 import "forge-std/Script.sol";
 
@@ -63,7 +63,8 @@ contract Deploy301 is Script, CreateXScript {
         create3(
             generateSalt("spell-004"),
             abi.encodePacked(
-                type(Create2VaultFactorySpellEthereum).creationCode, abi.encode(address(asyncVaultFactory), address(syncDepositVaultFactory))
+                type(Create2VaultFactorySpellEthereum).creationCode,
+                abi.encode(address(asyncVaultFactory), address(syncDepositVaultFactory))
             )
         );
 
