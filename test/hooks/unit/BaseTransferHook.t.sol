@@ -11,10 +11,7 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/common/inter
 import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
 import {BaseTransferHook} from "../../../src/hooks/BaseTransferHook.sol";
 import {IMemberlist} from "../../../src/hooks/interfaces/IMemberlist.sol";
-import {
-    UpdateRestrictionType,
-    UpdateRestrictionMessageLib
-} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 
