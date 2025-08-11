@@ -218,6 +218,13 @@ contract BalanceSheetTestFile is BalanceSheetTest {
 }
 
 contract BalanceSheetTestMulticall is BalanceSheetTest {
+    function testErrNotPayable() public {
+        vm.deal(AUTH, 1);
+        vm.startPrank(AUTH);
+        vm.expectRevert(IBalanceSheet.NotPayable.selector);
+        balanceSheet.multicall{value: 1}(new bytes[](0));
+    }
+
     function testMulticall() public {
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
