@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {EndToEndUseCases} from "./EndToEnd.t.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
-import {IntegrationConstants} from "./IntegrationConstants.sol";
+import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
