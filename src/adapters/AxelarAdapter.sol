@@ -41,20 +41,9 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, string calldata axelarId, uint16 centrifugeId, string calldata source) external auth {
-        if (what == "sources") sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(source)));
-        else revert FileUnrecognizedParam();
-        emit File(what, axelarId, centrifugeId, source);
-    }
-
-    /// @inheritdoc IAxelarAdapter
-    function file(bytes32 what, uint16 centrifugeId, string calldata axelarId, string calldata destination)
-        external
-        auth
-    {
-        if (what == "destinations") destinations[centrifugeId] = AxelarDestination(axelarId, destination);
-        else revert FileUnrecognizedParam();
-        emit File(what, centrifugeId, axelarId, destination);
+    function wire(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external auth {
+        sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
+        destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

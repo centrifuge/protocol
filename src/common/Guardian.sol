@@ -12,9 +12,6 @@ import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {IAxelarAdapter} from "../adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../adapters/interfaces/IWormholeAdapter.sol";
-
 contract Guardian is IGuardian {
     using CastLib for address;
 
@@ -119,28 +116,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function wireAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
         multiAdapter.file("adapters", centrifugeId, adapters);
-    }
-
-    /// @inheritdoc IGuardian
-    function wireWormholeAdapter(IWormholeAdapter localAdapter, uint16 centrifugeId, uint16 wormholeId, address adapter)
-        external
-        onlySafe
-    {
-        localAdapter.file("sources", centrifugeId, wormholeId, adapter);
-        localAdapter.file("destinations", centrifugeId, wormholeId, adapter);
-    }
-
-    /// @inheritdoc IGuardian
-    function wireAxelarAdapter(
-        IAxelarAdapter localAdapter,
-        uint16 centrifugeId,
-        string calldata axelarId,
-        string calldata adapter
-    ) external onlySafe {
-        localAdapter.file("sources", axelarId, centrifugeId, adapter);
-        localAdapter.file("destinations", centrifugeId, axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
