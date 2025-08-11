@@ -512,7 +512,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        assets = uint256(_maxDeposit(vault_, user));
+        assets = _maxDeposit(vault_, user);
         if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, investments[vault_][user].maxMint)) return 0;
     }
 
