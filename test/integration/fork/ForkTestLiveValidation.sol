@@ -172,7 +172,7 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         ethJtrsyVault = IntegrationConstants.ETH_JTRSY_VAULT;
         ethDejaaaVault = IntegrationConstants.ETH_DEJAA_USDC_VAULT;
         ethDejtrsyVault = IntegrationConstants.ETH_DEJTRSY_USDC_VAULT;
-        avaxJaaaVault = IntegrationConstants.AVAX_JAAA_USDC_VAULT;
+        avaxJaaaVault = IntegrationConstants.AVAX_JAAA_VAULT;
 
         // Share token contracts
         ethJaaaShareToken = IntegrationConstants.ETH_JAAA_SHARE_TOKEN;

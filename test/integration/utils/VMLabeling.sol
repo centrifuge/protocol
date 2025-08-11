@@ -51,12 +51,14 @@ abstract contract VMLabeling is Test {
         // Vault addresses
         vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJAAAVault");
         vm.label(IntegrationConstants.ETH_JTRSY_VAULT, "EthJTRSYVault");
-        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "Old_EthDeJAAAUsdcVault");
-        vm.label(IntegrationConstants.ETH_DEJAA_JAAA_VAULT, "Old_EthDeJAAAJAAAVault");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "Old_EthDeJTRSYUsdcVault");
-        vm.label(IntegrationConstants.ETH_DEJTRSY_JTRSY_VAULT, "Old_EthDeJTRSYJTRSYVault");
-        vm.label(IntegrationConstants.BASE_DEJAA_USDC_VAULT, "Old_BaseDeJAAAUsdcVault");
-        vm.label(IntegrationConstants.AVAX_JAAA_USDC_VAULT, "Old_AvaxJAAAUsdcVault");
+        vm.label(IntegrationConstants.AVAX_JAAA_VAULT, "AvaxJAAAVault");
+        vm.label(IntegrationConstants.ETH_DEJAA_USDC_VAULT, "EthDeJAAAUsdcVault");
+        vm.label(IntegrationConstants.ETH_DEJAA_JAAA_VAULT, "EthDeJAAAJAAAVault");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_USDC_VAULT, "EthDeJTRSYUsdcVault");
+        vm.label(IntegrationConstants.ETH_DEJTRSY_JTRSY_VAULT, "EthDeJTRSYJTRSYVault");
+        vm.label(IntegrationConstants.AVAX_DEJTRSY_USDC_VAULT, "AvaxDeJTRSYUsdcVault");
+        vm.label(IntegrationConstants.BASE_DEJAAA_USDC_VAULT, "BaseDeJAAAUsdcVault");
+        vm.label(IntegrationConstants.AVAX_DEJAAA_USDC_VAULT, "AvaxDeJAAAUsdcVault");
         vm.label(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT, "PlumeSyncDepositVault");
 
         // Share token addresses
