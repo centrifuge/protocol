@@ -1,9 +1,4 @@
 {
-<<<<<<< HEAD
   "fulfillDepositRequest": "924111",
-  "requestDeposit": "530771"
-=======
-  "fulfillDepositRequest": "924234",
-  "requestDeposit": "530649"
->>>>>>> c3bbdc47 (finding 13: uint96(...) truncates)
+  "requestDeposit": "530843"
 }

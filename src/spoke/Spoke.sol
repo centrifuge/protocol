@@ -527,9 +527,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes memory callData;
 
         if (tokenId == 0) {
-            callData = abi.encodeWithSignature("decimals()");
+            callData = abi.encodeCall(IERC20Metadata.decimals, ());
         } else {
-            callData = abi.encodeWithSignature("decimals(uint256)", tokenId);
+            callData = abi.encodeCall(IERC6909MetadataExt.decimals, tokenId);
         }
 
         (bool success, bytes memory data) = asset.staticcall(callData);

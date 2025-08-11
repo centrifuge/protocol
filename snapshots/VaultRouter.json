@@ -1,13 +1,7 @@
 {
   "claimDeposit": "1089805",
   "enable": "60931",
-<<<<<<< HEAD
   "lockDepositRequest": "95560",
-  "requestDeposit": "569686",
-  "requestRedeem": "2114845"
-=======
-  "lockDepositRequest": "95516",
-  "requestDeposit": "569520",
-  "requestRedeem": "2114739"
->>>>>>> c3bbdc47 (finding 13: uint96(...) truncates)
+  "requestDeposit": "569758",
+  "requestRedeem": "2114989"
 }
