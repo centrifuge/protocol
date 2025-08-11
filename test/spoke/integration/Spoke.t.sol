@@ -182,6 +182,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         // Check event except for vault address which cannot be known
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
@@ -199,6 +200,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         address asset = address(erc20);
 
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         spoke.linkVault(poolId, scId, assetId, vault);
