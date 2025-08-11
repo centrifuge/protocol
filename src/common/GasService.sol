@@ -45,7 +45,7 @@ contract GasService is IGasService {
     constructor(uint128 maxBatchGasLimit_) {
         _maxBatchGasLimit = maxBatchGasLimit_;
 
-        // NOTE: The hardcoded values are take from the EndToEnd tests. This should be automated in the future.
+        // NOTE: The hardcoded values are taken from the EndToEnd tests. This should be automated in the future.
         scheduleUpgrade = BASE_COST + 28514;
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
