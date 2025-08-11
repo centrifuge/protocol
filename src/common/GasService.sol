@@ -82,64 +82,35 @@ contract GasService is IGasService {
     function messageGasLimit(uint16, bytes calldata message) public view returns (uint128) {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.ScheduleUpgrade) {
-            return scheduleUpgrade;
-        } else if (kind == MessageType.CancelUpgrade) {
-            return cancelUpgrade;
-        } else if (kind == MessageType.RecoverTokens) {
-            return recoverTokens;
-        } else if (kind == MessageType.RegisterAsset) {
-            return registerAsset;
-        } else if (kind == MessageType.Request) {
-            return request;
-        } else if (kind == MessageType.NotifyPool) {
-            return notifyPool;
-        } else if (kind == MessageType.NotifyShareClass) {
-            return notifyShareClass;
-        } else if (kind == MessageType.NotifyPricePoolPerShare) {
-            return notifyPricePoolPerShare;
-        } else if (kind == MessageType.NotifyPricePoolPerAsset) {
-            return notifyPricePoolPerAsset;
-        } else if (kind == MessageType.NotifyShareMetadata) {
-            return notifyShareMetadata;
-        } else if (kind == MessageType.UpdateShareHook) {
-            return updateShareHook;
-        } else if (kind == MessageType.InitiateTransferShares) {
-            return initiateTransferShares;
-        } else if (kind == MessageType.ExecuteTransferShares) {
-            return executeTransferShares;
-        } else if (kind == MessageType.UpdateRestriction) {
-            return updateRestriction;
-        } else if (kind == MessageType.UpdateContract) {
-            return updateContract;
-        } else if (kind == MessageType.RequestCallback) {
-            return requestCallback;
-        } else if (kind == MessageType.UpdateVault) {
+        if (kind == MessageType.ScheduleUpgrade) return scheduleUpgrade;
+        if (kind == MessageType.CancelUpgrade) return cancelUpgrade;
+        if (kind == MessageType.RecoverTokens) return recoverTokens;
+        if (kind == MessageType.RegisterAsset) return registerAsset;
+        if (kind == MessageType.Request) return request;
+        if (kind == MessageType.NotifyPool) return notifyPool;
+        if (kind == MessageType.NotifyShareClass) return notifyShareClass;
+        if (kind == MessageType.NotifyPricePoolPerShare) return notifyPricePoolPerShare;
+        if (kind == MessageType.NotifyPricePoolPerAsset) return notifyPricePoolPerAsset;
+        if (kind == MessageType.NotifyShareMetadata) return notifyShareMetadata;
+        if (kind == MessageType.UpdateShareHook) return updateShareHook;
+        if (kind == MessageType.InitiateTransferShares) return initiateTransferShares;
+        if (kind == MessageType.ExecuteTransferShares) return executeTransferShares;
+        if (kind == MessageType.UpdateRestriction) return updateRestriction;
+        if (kind == MessageType.UpdateContract) return updateContract;
+        if (kind == MessageType.RequestCallback) return requestCallback;
+        if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
-
-            if (vaultKind == VaultUpdateKind.DeployAndLink) {
-                return updateVaultDeployAndLink;
-            } else if (vaultKind == VaultUpdateKind.Link) {
-                return updateVaultLink;
-            } else if (vaultKind == VaultUpdateKind.Unlink) {
-                return updateVaultUnlink;
-            } else {
-                revert InvalidMessageType(); // Unreachable
-            }
-        } else if (kind == MessageType.SetRequestManager) {
-            return setRequestManager;
-        } else if (kind == MessageType.UpdateBalanceSheetManager) {
-            return updateBalanceSheetManager;
-        } else if (kind == MessageType.UpdateHoldingAmount) {
-            return updateHoldingAmount;
-        } else if (kind == MessageType.UpdateShares) {
-            return updateShares;
-        } else if (kind == MessageType.MaxAssetPriceAge) {
-            return maxAssetPriceAge;
-        } else if (kind == MessageType.MaxSharePriceAge) {
-            return maxSharePriceAge;
-        } else {
+            if (vaultKind == VaultUpdateKind.DeployAndLink) return updateVaultDeployAndLink;
+            if (vaultKind == VaultUpdateKind.Link) return updateVaultLink;
+            if (vaultKind == VaultUpdateKind.Unlink) return updateVaultUnlink;
             revert InvalidMessageType(); // Unreachable
         }
+        if (kind == MessageType.SetRequestManager) return setRequestManager;
+        if (kind == MessageType.UpdateBalanceSheetManager) return updateBalanceSheetManager;
+        if (kind == MessageType.UpdateHoldingAmount) return updateHoldingAmount;
+        if (kind == MessageType.UpdateShares) return updateShares;
+        if (kind == MessageType.MaxAssetPriceAge) return maxAssetPriceAge;
+        if (kind == MessageType.MaxSharePriceAge) return maxSharePriceAge;
+        revert InvalidMessageType(); // Unreachable
     }
 }
