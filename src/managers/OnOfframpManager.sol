@@ -129,7 +129,7 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        balanceSheet.spoke().shareToken(poolId, scId); // Check for existance
+        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
             poolId, scId, contractUpdater, balanceSheet
