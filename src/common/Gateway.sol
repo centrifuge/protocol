@@ -216,6 +216,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _requestPoolFunding(PoolId poolId) internal {
+        // NOTE: refund will never be shared accross pools
         IRecoverable refund = subsidy[poolId].refund;
         if (!poolId.isNull() && address(refund) != address(0)) {
             uint256 refundBalance = address(refund).balance;
