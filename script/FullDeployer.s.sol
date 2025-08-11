@@ -179,8 +179,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         require(address(globalEscrow) == 0x43d51be0B6dE2199A2396bA604114d24383F91E9);
         require(address(asyncRequestManager) == 0xf06f89A1b6C601235729A689595571B7455Dd433);
         require(address(syncManager) == 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773);
-        require(address(asyncVaultFactory) == 0xed9D489BB79c7CB58c522f36Fc6944eAA95Ce385);
-        require(address(syncDepositVaultFactory) == 0x21BF2544b5A0B03c8566a16592ba1b3B192B50Bc);
+        require(address(asyncVaultFactory) == 0xb47E57b4D477FF80c42dB8B02CB5cb1a74b5D20a);
+        require(address(syncDepositVaultFactory) == 0x00E3c7EE9Bbc98B9Cb4Cc2c06fb211c1Bb199Ee5);
         require(address(vaultRouter) == 0xdbCcee499563D4AC2D3788DeD3acb14FB92B175D);
         require(address(freezeOnlyHook) == 0xBb7ABFB0E62dfb36e02CeeCDA59ADFD71f50c88e);
         require(address(fullRestrictionsHook) == 0xa2C98F0F76Da0C97039688CA6280d082942d0b48);
