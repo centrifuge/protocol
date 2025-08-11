@@ -216,7 +216,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
             netAmount: (assetQueue.deposits >= assetQueue.withdrawals)
                 ? assetQueue.deposits - assetQueue.withdrawals
                 : assetQueue.withdrawals - assetQueue.deposits,
-            isIncrease: assetQueue.deposits >= assetQueue.withdrawals,
+            isIncrease: assetQueue.deposits > assetQueue.withdrawals,
             isSnapshot: shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter,
             nonce: shareQueue.nonce
         });
