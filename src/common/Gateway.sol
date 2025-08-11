@@ -210,6 +210,8 @@ contract Gateway is Auth, Recoverable, IGateway {
         underpaid_.counter--;
         require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
+        if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
+
         emit RepayBatch(centrifugeId, batch);
     }
 
