@@ -31,7 +31,7 @@ import {ISpokeGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {VaultUpdateKind, MessageLib} from "../common/libraries/MessageLib.sol";
 import {IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
 
-IRequestManager constant REQUEST_MANAGER_V3_0 = IRequestManager(0x58d57896EBbF000c293327ADf33689D0a7Fd3d9A);
+IRequestManager constant REQUEST_MANAGER_V3_0 = IRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,
