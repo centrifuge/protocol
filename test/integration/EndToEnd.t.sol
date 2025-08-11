@@ -222,7 +222,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().wireAdapters(remoteCentrifugeId, adapters);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
         vm.stopPrank();
     }
 

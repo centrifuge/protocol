@@ -57,9 +57,11 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adminSafe));
 
         assertEq(wormholeAdapter.wards(address(root)), 1);
         assertEq(wormholeAdapter.wards(address(guardian)), 1);
+        assertEq(wormholeAdapter.wards(address(adminSafe)), 1);
         assertEq(wormholeAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -72,9 +74,11 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adminSafe));
 
         assertEq(axelarAdapter.wards(address(root)), 1);
         assertEq(axelarAdapter.wards(address(guardian)), 1);
+        assertEq(axelarAdapter.wards(address(adminSafe)), 1);
         assertEq(axelarAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
