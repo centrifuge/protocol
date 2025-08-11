@@ -17,7 +17,13 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
-    mapping(ShareClassId scId => ShareClassDetails) shareClasses;
+}
+
+/// @dev Each Centrifuge pool is associated to 1 or more shar classes
+struct ShareClassDetails {
+    IShareToken shareToken;
+    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
+    Price pricePoolPerShare;
 }
 
 struct ShareClassAsset {
@@ -27,14 +33,6 @@ struct ShareClassAsset {
     uint32 numVaults;
     /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     Price pricePoolPerAsset;
-}
-
-/// @dev Each Centrifuge pool is associated to 1 or more shar classes
-struct ShareClassDetails {
-    IShareToken shareToken;
-    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
-    Price pricePoolPerShare;
-    mapping(AssetId assetId => ShareClassAsset) asset;
 }
 
 struct VaultDetails {
@@ -212,6 +210,17 @@ interface ISpoke {
     function deployVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVaultFactory factory)
         external
         returns (IVault);
+
+    /// @dev Used only for migrations
+    function registerVault(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        address asset,
+        uint256 tokenId,
+        IVaultFactory factory,
+        IVault vault
+    ) external;
 
     /// @notice Links a deployed vault to the given pool, share class and asset.
     ///
