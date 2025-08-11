@@ -21,7 +21,7 @@ jobs:
           version: nightly
 
       - name: Run tests
-        run: forge test --no-match-path "test/spoke/fuzzing/**/*.sol" --no-match-path "test/integration/fork/**/*.sol" --deny-warnings
+        run: forge test --no-match-path "test/spoke/fuzzing/**/*.sol,test/integration/fork/**/*.sol" --deny-warnings
         env:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: false
