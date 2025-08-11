@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
-
 // Network: Plume (Chain ID: 161221135)
 // Deployed Address: 0x37271F54911A22156B39ab08E9f9738Cc9bf55e4
 // Source Branch: spell/004-create2-factories
 // CREATE3 Deterministic Deployment
+
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
