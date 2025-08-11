@@ -18,7 +18,7 @@ interface IOnOfframpManager is IDepositManager, IWithdrawManager, IUpdateContrac
     error InvalidOfframpDestination();
     error InvalidPoolId();
     error InvalidShareClassId();
-    error NotSpoke();
+    error NotContractUpdater();
     error NotRelayer();
     error ERC6909NotSupported();
     error UnknownUpdateContractKind();
