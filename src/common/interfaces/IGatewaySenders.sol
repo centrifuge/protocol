@@ -6,6 +6,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IAdapter} from "../interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
@@ -127,6 +128,9 @@ interface IHubMessageSender is ILocalCentrifugeId {
         bytes calldata payload,
         uint128 extraGasLimit
     ) external;
+
+    /// @notice Creates and send the message
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external;
 }
 
 /// @notice Interface for dispatch-only gateway

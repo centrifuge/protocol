@@ -9,6 +9,7 @@ import {ShareClassId} from "./types/ShareClassId.sol";
 import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {ISpokeMessageSender, IHubMessageSender, IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {
@@ -519,6 +520,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     payload: payload
                 }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
+        if (centrifugeId == localCentrifugeId) {
+            multiAdapter.file("adapters", centrifugeId, poolId, adapters);
+        } else {
+            gateway.send(
+                centrifugeId,
+                MessageLib.SetPoolAdapters({centrifugeId: centrifugeId, poolId: poolId.raw(), adapters: adapters})
+                    .serialize()
             );
         }
     }

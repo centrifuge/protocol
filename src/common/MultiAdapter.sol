@@ -2,9 +2,11 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {PoolId} from "./types/PoolId.sol";
 import {MessageProofLib} from "./libraries/MessageProofLib.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
+import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -24,16 +26,24 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     uint16 public immutable localCentrifugeId;
     IMessageHandler public gateway;
+    IMessageProperties public messageProperties;
 
-    mapping(uint16 centrifugeId => IAdapter[]) public adapters;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => Adapter)) internal _adapterDetails;
+    mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
+    mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
-    mapping(uint16 centrifugeId => mapping(IAdapter adapter => mapping(bytes32 payloadHash => uint256 timestamp)))
-        public recoveries;
+    mapping(
+        uint16 centrifugeId => mapping(PoolId => mapping(IAdapter => mapping(bytes32 payloadHash => uint256 timestamp)))
+    ) public recoveries;
 
-    constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
+    constructor(
+        uint16 localCentrifugeId_,
+        IMessageHandler gateway_,
+        IMessageProperties messageProperties_,
+        address deployer
+    ) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
         gateway = gateway_;
+        messageProperties = messageProperties_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -49,36 +59,37 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata addresses) external auth {
+    function file(bytes32 what, uint16 centrifugeId, PoolId poolId, IAdapter[] calldata addresses) external auth {
         if (what == "adapters") {
             uint8 quorum_ = addresses.length.toUint8();
             require(quorum_ != 0, EmptyAdapterSet());
             require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
 
             // Increment session id to reset pending votes
-            uint256 numAdapters = adapters[centrifugeId].length;
-            uint64 sessionId =
-                numAdapters > 0 ? _adapterDetails[centrifugeId][adapters[centrifugeId][0]].activeSessionId + 1 : 0;
+            uint256 numAdapters = adapters[centrifugeId][poolId].length;
+            uint64 sessionId = numAdapters > 0
+                ? _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]].activeSessionId + 1
+                : 0;
 
             // Disable old adapters
             for (uint8 i; i < numAdapters; i++) {
-                delete _adapterDetails[centrifugeId][adapters[centrifugeId][i]];
+                delete _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][i]];
             }
 
             // Enable new adapters, setting quorum to number of adapters
             for (uint8 j; j < quorum_; j++) {
-                require(_adapterDetails[centrifugeId][addresses[j]].id == 0, NoDuplicatesAllowed());
+                require(_adapterDetails[centrifugeId][poolId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
                 // Ids are assigned sequentially starting at 1
-                _adapterDetails[centrifugeId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+                _adapterDetails[centrifugeId][poolId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
             }
 
-            adapters[centrifugeId] = addresses;
+            adapters[centrifugeId][poolId] = addresses;
         } else {
             revert FileUnrecognizedParam();
         }
 
-        emit File(what, centrifugeId, addresses);
+        emit File(what, centrifugeId, poolId, addresses);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -91,7 +102,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
-        Adapter memory adapter = _adapterDetails[centrifugeId][adapter_];
+        PoolId poolId = messageProperties.messagePoolId(payload);
+        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
@@ -148,28 +160,31 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
-        require(_adapterDetails[centrifugeId][adapter].id != 0, InvalidAdapter());
-        recoveries[centrifugeId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
+    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash)
+        external
+        auth
+    {
+        require(_adapterDetails[centrifugeId][poolId][adapter].id != 0, InvalidAdapter());
+        recoveries[centrifugeId][poolId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
         emit InitiateRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IMultiAdapter
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external auth {
-        require(recoveries[centrifugeId][adapter][payloadHash] != 0, RecoveryNotInitiated());
-        delete recoveries[centrifugeId][adapter][payloadHash];
+    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external auth {
+        require(recoveries[centrifugeId][poolId][adapter][payloadHash] != 0, RecoveryNotInitiated());
+        delete recoveries[centrifugeId][poolId][adapter][payloadHash];
         emit DisputeRecovery(centrifugeId, payloadHash, adapter);
     }
 
     /// @inheritdoc IMultiAdapter
-    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata payload) external {
+    function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
         bytes32 payloadHash = keccak256(payload);
-        uint256 recovery = recoveries[centrifugeId][adapter][payloadHash];
+        uint256 recovery = recoveries[centrifugeId][poolId][adapter][payloadHash];
 
         require(recovery != 0, RecoveryNotInitiated());
         require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
 
-        delete recoveries[centrifugeId][adapter][payloadHash];
+        delete recoveries[centrifugeId][poolId][adapter][payloadHash];
         _handle(centrifugeId, payload, adapter);
         emit ExecuteRecovery(centrifugeId, payload, adapter);
     }
@@ -185,7 +200,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         auth
         returns (bytes32)
     {
-        IAdapter[] memory adapters_ = adapters[centrifugeId];
+        PoolId poolId = messageProperties.messagePoolId(payload);
+        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
         require(adapters_.length != 0, EmptyAdapterSet());
 
         bytes32 payloadHash = keccak256(payload);
@@ -211,7 +227,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         view
         returns (uint256 total)
     {
-        IAdapter[] memory adapters_ = adapters[centrifugeId];
+        PoolId poolId = messageProperties.messagePoolId(payload);
+        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
         bytes memory proof = keccak256(payload).serializeMessageProof();
 
         for (uint256 i; i < adapters_.length; i++) {
@@ -220,14 +237,14 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function quorum(uint16 centrifugeId) external view returns (uint8) {
-        Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
+    function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
+        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]];
         return adapter.quorum;
     }
 
     /// @inheritdoc IMultiAdapter
-    function activeSessionId(uint16 centrifugeId) external view returns (uint64) {
-        Adapter memory adapter = _adapterDetails[centrifugeId][adapters[centrifugeId][0]];
+    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
+        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]];
         return adapter.activeSessionId;
     }
 

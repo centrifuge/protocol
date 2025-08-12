@@ -32,6 +32,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
+    IMultiAdapter public multiAdapter;
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IBalanceSheetGatewayHandler public balanceSheet;
@@ -187,6 +188,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.MaxSharePriceAge) {
             MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
+        } else if (kind == MessageType.SetPoolAdapters) {
+            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
+            multiAdapter.file("adapters", m.centrifugeId, PoolId.wrap(m.poolId), adapters);
         } else {
             revert InvalidMessage(uint8(kind));
         }

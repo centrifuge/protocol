@@ -17,6 +17,7 @@ import {IValuation} from "../../common/interfaces/IValuation.sol";
 import {VaultUpdateKind} from "../../common/libraries/MessageLib.sol";
 import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 import {IHubMessageSender} from "../../common/interfaces/IGatewaySenders.sol";
+import {IAdapter} from "../../common/interfaces/IAdapter.sol";
 
 /// @notice Account types used by Hub
 enum AccountType {
@@ -361,4 +362,12 @@ interface IHub {
 
     /// @notice Perform an accounting entries update.
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+
+    function setPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external;
+
+    /// @notice Initiate recovery of a payload.
+    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
+
+    /// @notice Dispute recovery of a payload.
+    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
 }

@@ -26,6 +26,7 @@ import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {IHubGuardianActions} from "../common/interfaces/IGuardianActions.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 import {IPoolEscrow, IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
+import {IAdapter} from "../common/interfaces/IAdapter.sol";
 
 /// @title  Hub
 /// @notice Central pool management contract, that brings together all functions in one place.
@@ -644,6 +645,29 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         accounting.unlock(poolId);
         accounting.addJournal(debits, credits);
         accounting.lock();
+    }
+
+    /// @inheritdoc IHub
+    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
+        _isManager(poolId);
+
+        // Should we send a message to recover message from remote chains?
+        multiAdapter.initiateRecovery(centrifugeId, poolId, adapter, payloadHash);
+    }
+
+    /// @inheritdoc IHub
+    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
+        _isManager(poolId);
+
+        // Should we send a message to recover message from remote chains?
+        multiAdapter.disputeRecovery(centrifugeId, PoolId.wrap(0), adapter, payloadHash);
+    }
+
+    /// @inheritdoc IHub
+    function setPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
+        _isManager(poolId);
+
+        sender.sendSetPoolAdapters(centrifugeId, poolId, adapters);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+import {PoolId} from "../types/PoolId.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
@@ -30,7 +31,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     }
 
     event File(bytes32 indexed what, address addr);
-    event File(bytes32 indexed what, uint16 centrifugeId, IAdapter[] adapters);
+    event File(bytes32 indexed what, uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
@@ -95,13 +96,13 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param  what The name of the variable to be updated.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  value New addresses.
-    function file(bytes32 what, uint16 centrifugeId, IAdapter[] calldata value) external;
+    function file(bytes32 what, uint16 centrifugeId, PoolId poolId, IAdapter[] calldata value) external;
 
     /// @notice Initiate recovery of a payload.
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
+    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
 
     /// @notice Dispute recovery of a payload.
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash) external;
+    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
 
     /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
     ///         If a malign adapter initiates message recovery,
@@ -112,14 +113,14 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeRecovery(uint16 centrifugeId, IAdapter adapter, bytes calldata message) external;
+    function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata message) external;
 
     /// @notice A view method of the current quorum.abi
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
     ///         The quorum is taken from the first adapter which is always the length of active adapters.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// return  Needed amount
-    function quorum(uint16 centrifugeId) external view returns (uint8);
+    function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
     /// @dev    When the adapters are updated with new ones,
@@ -128,7 +129,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     ///         increments it by 1. The idea of an activeSessionId is
     ///         to invalidate any incoming messages from previously used adapters.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function activeSessionId(uint16 centrifugeId) external view returns (uint64);
+    function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be
@@ -140,11 +141,11 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
+    function adapters(uint16 centrifugeId, PoolId poolId, uint256 id) external view returns (IAdapter);
 
     /// @notice Returns the timestamp when the given recovery can be executed.
     /// @param  centrifugeId Chain where the adapter is configured for
-    function recoveries(uint16 centrifugeId, IAdapter adapter, bytes32 payloadHash)
+    function recoveries(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash)
         external
         view
         returns (uint256 timestamp);
