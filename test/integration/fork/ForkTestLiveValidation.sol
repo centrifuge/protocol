@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ChainConfigs} from "./ChainConfigs.sol";
 import {ForkTestAsyncInvestments} from "./ForkTestInvestments.sol";
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -24,20 +25,19 @@ import {TokenFactory} from "../../../src/spoke/factories/TokenFactory.sol";
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 
-import "forge-std/Test.sol";
-
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 
 /// @title ForkTestLiveValidation
 /// @notice Contract for validating live contract permissions and state
-/// @dev Currently inherits from ForkTestAsyncInvestments for investment flows and VM labeling.
+/// @dev Inherits from ForkTestAsyncInvestments for investment flows and VM labeling.
 ///      VMLabeling functionality is inherited through ForkTestAsyncInvestments for improved debugging.
+///      Combines spell support (storage variables) with multichain network topology validation.
 contract ForkTestLiveValidation is ForkTestAsyncInvestments {
-    //----------------------------------------------------------------------------------------------
-    // CORE PROTOCOL CONTRACTS
-    //----------------------------------------------------------------------------------------------
+    uint8 constant PLUME_QUORUM = 1;
+    uint8 constant STANDARD_QUORUM = 2;
+    uint256 constant SUPPORTED_CHAINS_COUNT = 6;
 
     // Core system contracts
     address public root;
@@ -94,6 +94,11 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     address public ethDejaaaVault;
     address public ethDejtrsyVault;
     address public avaxJaaaVault;
+    address public avaxDejtrsyUsdcVault;
+    address public avaxDejaaaUsdcVault;
+    address public avaxJaaaUsdcVault;
+    address public baseDejaaaUsdcVault;
+    address public plumeSyncDepositVault;
 
     //----------------------------------------------------------------------------------------------
     // SHARE TOKEN CONTRACTS
@@ -107,26 +112,34 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     address public avaxJtrsyShareToken;
 
     //----------------------------------------------------------------------------------------------
-    // SETUP
+    // MULTICHAIN CONFIG
     //----------------------------------------------------------------------------------------------
 
     uint16 internal localCentrifugeId;
 
+    //----------------------------------------------------------------------------------------------
+    // SETUP
+    //----------------------------------------------------------------------------------------------
+
     function setUp() public virtual override {
         super.setUp();
         _initializeContractAddresses();
-        // Setup VM labels for improved test output readability
         _setupVMLabels();
     }
 
-    function _configureChain(uint16 localCentrifugeId_, address adminSafe_) internal {
-        localCentrifugeId = localCentrifugeId_;
+    function _configureChain(address adminSafe_, uint16 centrifugeId_) public {
+        localCentrifugeId = centrifugeId_;
         adminSafe = adminSafe_;
+    }
+
+    /// @notice Helper function to determine if current chain is Ethereum
+    function isEthereum() internal view returns (bool) {
+        return localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID;
     }
 
     /// @notice Initialize all contract addresses from IntegrationConstants
     /// @dev Virtual function to allow child contracts to override specific addresses
-    function _initializeContractAddresses() internal virtual {
+    function _initializeContractAddresses() public virtual {
         // Core system contracts
         root = IntegrationConstants.ROOT;
         guardian = IntegrationConstants.GUARDIAN;
@@ -155,7 +168,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         messageDispatcher = IntegrationConstants.MESSAGE_DISPATCHER;
         multiAdapter = IntegrationConstants.MULTI_ADAPTER;
         poolEscrowFactory = IntegrationConstants.POOL_ESCROW_FACTORY;
-        adminSafe = IntegrationConstants.ETH_ADMIN_SAFE;
 
         // Factory contracts
         asyncVaultFactory = IntegrationConstants.ASYNC_VAULT_FACTORY;
@@ -173,6 +185,11 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         ethDejaaaVault = IntegrationConstants.ETH_DEJAA_USDC_VAULT;
         ethDejtrsyVault = IntegrationConstants.ETH_DEJTRSY_USDC_VAULT;
         avaxJaaaVault = IntegrationConstants.AVAX_JAAA_VAULT;
+        avaxDejtrsyUsdcVault = IntegrationConstants.AVAX_DEJTRSY_USDC_VAULT;
+        avaxDejaaaUsdcVault = IntegrationConstants.AVAX_DEJAAA_USDC_VAULT;
+        avaxJaaaUsdcVault = IntegrationConstants.AVAX_JAAA_USDC_VAULT;
+        baseDejaaaUsdcVault = IntegrationConstants.BASE_DEJAAA_USDC_VAULT;
+        plumeSyncDepositVault = IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT;
 
         // Share token contracts
         ethJaaaShareToken = IntegrationConstants.ETH_JAAA_SHARE_TOKEN;
@@ -184,28 +201,34 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
         // Multichain config
         localCentrifugeId = IntegrationConstants.ETH_CENTRIFUGE_ID;
+        adminSafe = IntegrationConstants.ETH_ADMIN_SAFE; // Default for standalone tests
     }
 
     //----------------------------------------------------------------------------------------------
-    // VALIDATION FUNCTIONS
+    // VALIDATION ENTRY POINTS
     //----------------------------------------------------------------------------------------------
+
     function test_validateCompleteDeployment() public virtual {
+        // Auto-configure for Ethereum if not already configured
+        if (localCentrifugeId == 0) {
+            _configureChain(IntegrationConstants.ETH_ADMIN_SAFE, IntegrationConstants.ETH_CENTRIFUGE_ID);
+        }
         validateDeployment();
     }
 
     /// @notice Validates wards and filings of core protocol contracts, vaults and share tokens
-    function validateDeployment() public view {
+    function validateDeployment() public view virtual {
         _validateV3RootPermissions();
         _validateContractWardRelationships();
         _validateFileConfigurations();
         _validateEndorsements();
         _validateGuardianAdapterConfigurations();
-
-        // TODO: Solve in follow-up PR for all chains, right now only ETH -> x support
-        if (localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
-            _validateAdapterSourceDestinationMappings();
-        }
+        _validateAdapterSourceDestinationMappings();
     }
+
+    //----------------------------------------------------------------------------------------------
+    // ROOT PERMISSIONS VALIDATION
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Validates that root has ward permissions on all core protocol contracts, vaults, and share tokens
     function _validateV3RootPermissions() internal view virtual {
@@ -244,12 +267,15 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         _validateRootWard(freelyTransferableHook);
         _validateRootWard(redemptionRestrictionsHook);
 
-        // From VaultsDeployer
+        // From VaultsDeployer - adapters
         _validateRootWard(wormholeAdapter);
-        _validateRootWard(axelarAdapter);
+        // Only validate Axelar adapter on chains that support it (not Plume)
+        if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            _validateRootWard(axelarAdapter);
+        }
 
-        // TODO: In later PR, move to helper for network-dependent checks
-        if (localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID) {
+        // Validate vault contracts based on chain
+        if (isEthereum()) {
             _validateRootWard(ethJaaaVault);
             _validateRootWard(ethJtrsyVault);
             _validateRootWard(ethDejaaaVault);
@@ -260,25 +286,31 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
             _validateRootWard(ethDejtrsyShareToken);
             _validateRootWard(ethDejaaaShareToken);
         } else if (localCentrifugeId == IntegrationConstants.AVAX_CENTRIFUGE_ID) {
-            _validateRootWard(ethJtrsyVault); // same address
             _validateRootWard(avaxJaaaVault);
+            _validateRootWard(avaxDejtrsyUsdcVault);
+            _validateRootWard(avaxDejaaaUsdcVault);
+            _validateRootWard(avaxJaaaUsdcVault);
 
             _validateRootWard(avaxJaaaShareToken);
             _validateRootWard(avaxJtrsyShareToken);
         } else if (localCentrifugeId == IntegrationConstants.BASE_CENTRIFUGE_ID) {
-            // Base uses deterministic addresses, so same as ETH_DEJAA_JAAA_VAULT
-            _validateRootWard(IntegrationConstants.ETH_DEJAA_JAAA_VAULT);
-
-            // Validate corresponding share token (deterministic deployment)
-            _validateRootWard(ethDejaaaShareToken);
+            _validateRootWard(baseDejaaaUsdcVault);
+        } else if (localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            _validateRootWard(plumeSyncDepositVault);
         }
     }
 
-    /// @notice Optimized ROOT ward validation using VM labels
+    /// @notice Validates ROOT ward permissions
     function _validateRootWard(address contractAddr) internal view {
-        require(contractAddr.code.length > 0, string(abi.encodePacked("Contract has no code: ", contractAddr)));
+        require(
+            contractAddr.code.length > 0, string(abi.encodePacked("Contract has no code: ", vm.toString(contractAddr)))
+        );
         assertEq(IAuth(contractAddr).wards(root), 1);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // CONTRACT RELATIONSHIPS VALIDATION
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Validates all contract-to-contract ward relationships based on deployment scripts
     function _validateContractWardRelationships() internal view {
@@ -351,8 +383,12 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         _validateWard(redemptionRestrictionsHook, spoke);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // FILE CONFIGURATIONS VALIDATION
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Validates file configurations set during deployment
-    function _validateFileConfigurations() internal view {
+    function _validateFileConfigurations() internal view virtual {
         // CommonDeployer configs
         assertEq(address(Gateway(payable(gateway)).processor()), messageProcessor, "messageProcessor mismatch");
         assertEq(address(Gateway(payable(gateway)).adapter()), multiAdapter, "multiAdapter mismatch");
@@ -427,6 +463,10 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         assertEq(address(SyncManager(syncManager).balanceSheet()), balanceSheet, "syncManager.balanceSheet mismatch");
     }
 
+    //----------------------------------------------------------------------------------------------
+    // ENDORSEMENTS VALIDATION
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Validates endorsements from Root
     function _validateEndorsements() internal view {
         // From VaultsDeployer
@@ -438,88 +478,91 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         assertEq(IRoot(root).endorsements(balanceSheet), 1, "BalanceSheet not endorsed by Root");
     }
 
-    /// @notice Validates Guardian adapter configurations for all connected chains
-    function _validateGuardianAdapterConfigurations() internal view {
-        MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
+    //----------------------------------------------------------------------------------------------
+    // ADAPTER VALIDATION
+    //----------------------------------------------------------------------------------------------
 
-        for (uint16 centrifugeId = 1; centrifugeId <= IntegrationConstants.BNB_CENTRIFUGE_ID; centrifugeId++) {
-            _validateMultiAdapterConfiguration(multiAdapterContract, centrifugeId);
+    /// @notice Validates Guardian adapter configurations for all connected chains
+    function _validateGuardianAdapterConfigurations() internal view virtual {
+        MultiAdapter multiAdapterContract = MultiAdapter(multiAdapter);
+        ChainConfigs.ChainConfig[SUPPORTED_CHAINS_COUNT] memory chains = ChainConfigs.getAllChains();
+
+        // Validate MultiAdapter configuration for all connected chains based on network topology
+        for (uint256 i = 0; i < chains.length; i++) {
+            if (_shouldValidateChain(chains[i].centrifugeId)) {
+                _validateMultiAdapterConfiguration(multiAdapterContract, chains[i].centrifugeId);
+            }
         }
     }
 
-    /// @notice Validates adapter source and destination mappings
-    function _validateAdapterSourceDestinationMappings() internal view {
+    /// @notice Validates adapter source and destination mappings based on network topology
+    /// @dev Network topology: Every chain is connected to each other chain
+    /// @dev Quorum settings: Plume connections = 1 (Wormhole only), Others = 2 (Wormhole + Axelar)
+    function _validateAdapterSourceDestinationMappings() internal view virtual {
         WormholeAdapter wormholeAdapterContract = WormholeAdapter(wormholeAdapter);
-        AxelarAdapter axelarAdapterContract = AxelarAdapter(axelarAdapter);
 
-        _validateWormholeMapping(
-            wormholeAdapterContract,
-            IntegrationConstants.BASE_WORMHOLE_ID,
-            IntegrationConstants.BASE_CENTRIFUGE_ID,
-            "Base"
-        );
+        // Only validate Axelar if not on Plume (Plume doesn't have Axelar deployed)
+        AxelarAdapter axelarAdapterContract;
+        if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            axelarAdapterContract = AxelarAdapter(axelarAdapter);
+        }
 
-        _validateWormholeMapping(
-            wormholeAdapterContract,
-            IntegrationConstants.ARBITRUM_WORMHOLE_ID,
-            IntegrationConstants.ARBITRUM_CENTRIFUGE_ID,
-            "Arbitrum"
-        );
+        ChainConfigs.ChainConfig[SUPPORTED_CHAINS_COUNT] memory chains = ChainConfigs.getAllChains();
 
-        _validateWormholeMapping(
-            wormholeAdapterContract,
-            IntegrationConstants.PLUME_WORMHOLE_ID,
-            IntegrationConstants.PLUME_CENTRIFUGE_ID,
-            "Plume"
-        );
+        for (uint256 i = 0; i < chains.length; i++) {
+            if (_shouldValidateChain(chains[i].centrifugeId)) {
+                // Always validate Wormhole mapping
+                _validateWormholeMapping(
+                    wormholeAdapterContract, chains[i].wormholeId, chains[i].centrifugeId, chains[i].name
+                );
 
-        _validateWormholeMapping(
-            wormholeAdapterContract,
-            IntegrationConstants.AVAX_WORMHOLE_ID,
-            IntegrationConstants.AVAX_CENTRIFUGE_ID,
-            "Avalanche"
-        );
+                // Validate Axelar mapping if both current chain and target chain support it
+                if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID && chains[i].hasAxelar) {
+                    _validateAxelarMapping(
+                        axelarAdapterContract, chains[i].axelarId, chains[i].centrifugeId, chains[i].name
+                    );
+                }
+            }
+        }
+    }
 
-        _validateWormholeMapping(
-            wormholeAdapterContract, IntegrationConstants.BNB_WORMHOLE_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
-        );
+    //----------------------------------------------------------------------------------------------
+    // HELPER FUNCTIONS
+    //----------------------------------------------------------------------------------------------
 
-        _validateAxelarMapping(
-            axelarAdapterContract, IntegrationConstants.BASE_AXELAR_ID, IntegrationConstants.BASE_CENTRIFUGE_ID, "Base"
-        );
+    /// @notice Determines if a chain should be validated based on network topology
+    /// @param targetChainId The Centrifuge ID of the target chain
+    /// @return true if the chain should be validated from the current chain
+    function _shouldValidateChain(uint16 targetChainId) internal view returns (bool) {
+        // Don't validate self-connections
+        if (targetChainId == localCentrifugeId) return false;
 
-        _validateAxelarMapping(
-            axelarAdapterContract,
-            IntegrationConstants.ARBITRUM_AXELAR_ID,
-            IntegrationConstants.ARBITRUM_CENTRIFUGE_ID,
-            "Arbitrum"
-        );
+        // Plume only connects to Ethereum
+        if (localCentrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            return targetChainId == IntegrationConstants.ETH_CENTRIFUGE_ID;
+        }
 
-        _validateAxelarMapping(
-            axelarAdapterContract,
-            IntegrationConstants.AVAX_AXELAR_ID,
-            IntegrationConstants.AVAX_CENTRIFUGE_ID,
-            "Avalanche"
-        );
+        // Other chains don't connect to Plume (except Ethereum)
+        if (targetChainId == IntegrationConstants.PLUME_CENTRIFUGE_ID) {
+            return localCentrifugeId == IntegrationConstants.ETH_CENTRIFUGE_ID;
+        }
 
-        _validateAxelarMapping(
-            axelarAdapterContract, IntegrationConstants.BNB_AXELAR_ID, IntegrationConstants.BNB_CENTRIFUGE_ID, "BNB"
-        );
+        // All other combinations are connected
+        return true;
     }
 
     /// @notice Helper function to validate MultiAdapter configuration for a specific chain
     function _validateMultiAdapterConfiguration(MultiAdapter multiAdapterContract, uint16 centrifugeId) internal view {
-        if (
-            localCentrifugeId == centrifugeId
-                || localCentrifugeId != IntegrationConstants.ETH_CENTRIFUGE_ID
-                    && centrifugeId == IntegrationConstants.PLUME_CENTRIFUGE_ID
-        ) {
+        // Skip self-connections
+        if (localCentrifugeId == centrifugeId) {
             return;
         }
 
-        // Determine expected adapter count based on chain (only Plume doesn't have Axelar)
-        bool hasAxelar = centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
-        uint8 expectedQuorum = hasAxelar ? 2 : 1;
+        // Determine expected adapter count based on BOTH source and target chain capabilities
+        // Quorum = 1 if either source OR target doesn't support Axelar
+        bool sourceSupportsAxelar = localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
+        bool targetSupportsAxelar = centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
+        uint8 expectedQuorum = (sourceSupportsAxelar && targetSupportsAxelar) ? 2 : 1;
 
         // Verify quorum matches expected adapter count
         uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId);
@@ -529,7 +572,7 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, 0);
         assertEq(address(primaryAdapter), wormholeAdapter);
 
-        if (hasAxelar) {
+        if (expectedQuorum == STANDARD_QUORUM) {
             // Verify second adapter is Axelar
             IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, 1);
             assertEq(address(secondaryAdapter), axelarAdapter);
@@ -546,28 +589,16 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         // Validate source mapping (incoming from remote chain)
         (uint16 sourceCentrifugeId, address sourceAddr) = wormholeAdapterContract.sources(wormholeId);
         assertEq(
-            sourceCentrifugeId,
-            centrifugeId,
-            string(abi.encodePacked("WormholeAdapter source centrifugeId mismatch for ", chainName))
+            sourceCentrifugeId, centrifugeId, _formatAdapterError("WormholeAdapter", "source centrifugeId", chainName)
         );
-        assertEq(
-            sourceAddr,
-            wormholeAdapter,
-            string(abi.encodePacked("WormholeAdapter source address mismatch for ", chainName))
-        );
+        assertEq(sourceAddr, wormholeAdapter, _formatAdapterError("WormholeAdapter", "source address", chainName));
 
         // Validate destination mapping (outgoing to remote chain)
         (uint16 destWormholeId, address destAddr) = wormholeAdapterContract.destinations(centrifugeId);
         assertEq(
-            destWormholeId,
-            wormholeId,
-            string(abi.encodePacked("WormholeAdapter destination wormholeId mismatch for ", chainName))
+            destWormholeId, wormholeId, _formatAdapterError("WormholeAdapter", "destination wormholeId", chainName)
         );
-        assertEq(
-            destAddr,
-            wormholeAdapter,
-            string(abi.encodePacked("WormholeAdapter destination address mismatch for ", chainName))
-        );
+        assertEq(destAddr, wormholeAdapter, _formatAdapterError("WormholeAdapter", "destination address", chainName));
     }
 
     /// @notice Helper function to validate Axelar adapter source/destination mappings
@@ -589,7 +620,7 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         assertEq(
             sourceAddressHash,
             expectedAddressHash,
-            string(abi.encodePacked("AxelarAdapter source addressHash mismatch for ", chainName))
+            _formatAdapterError("AxelarAdapter", "source addressHash", chainName)
         );
 
         // Validate destination mapping (outgoing to remote chain)
@@ -597,15 +628,31 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         assertEq(
             keccak256(bytes(destAxelarId)),
             keccak256(bytes(axelarId)),
-            string(abi.encodePacked("AxelarAdapter destination axelarId mismatch for ", chainName))
+            _formatAdapterError("AxelarAdapter", "destination axelarId", chainName)
         );
         assertEq(
             keccak256(bytes(destAddr)),
             keccak256(abi.encodePacked(vm.toString(axelarAdapter))),
-            string(abi.encodePacked("AxelarAdapter destination address mismatch for ", chainName))
+            _formatAdapterError("AxelarAdapter", "destination address", chainName)
         );
     }
 
+    /// @notice Formats standardized adapter error messages
+    /// @param adapterType The type of adapter (e.g., "WormholeAdapter", "AxelarAdapter")
+    /// @param field The field that has a mismatch (e.g., "source centrifugeId", "destination address")
+    /// @param chainName The name of the chain being validated
+    /// @return Formatted error message string
+    function _formatAdapterError(string memory adapterType, string memory field, string memory chainName)
+        private
+        pure
+        returns (string memory)
+    {
+        return string(abi.encodePacked(adapterType, " ", field, " mismatch for ", chainName));
+    }
+
+    /// @notice Validates that one address has ward permissions on another contract
+    /// @param wardedContract The contract that should grant ward permissions
+    /// @param wardHolder The address that should have ward permissions
     function _validateWard(address wardedContract, address wardHolder) internal view {
         assertEq(IAuth(wardedContract).wards(wardHolder), 1);
     }
