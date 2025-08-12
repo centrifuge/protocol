@@ -597,6 +597,7 @@ contract EndToEndFlows is EndToEndUtils {
             vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
         }
 
+        vm.stopPrank();
         assertNotEq(address(vault), address(0));
     }
 
