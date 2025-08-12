@@ -330,10 +330,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         } else {
             IVault vault = IVault(vaultOrFactory);
 
-            // Needed as safeguard against non-validated vaults
-            // I.e. we only accept vaults that have been deployed by the pool manager
-            require(_vaultDetails[vault].asset != address(0), UnknownVault());
-
             if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
             else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
             else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
@@ -383,6 +379,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(vaultDetails_.asset != address(0), UnknownVault());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
         IVaultManager manager = vault.manager();
@@ -406,6 +403,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
         VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
         IVaultManager manager = vault.manager();
