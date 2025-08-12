@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import {Price} from "./types/Price.sol";
 import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "./interfaces/IVault.sol";
-import {IVaultManager} from "./interfaces/legacy/IVaultManager.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
+import {IVaultManager, REQUEST_MANAGER_V3_0} from "./interfaces/legacy/IVaultManager.sol";
 import {AssetIdKey, Pool, ShareClassDetails, ShareClassAsset, VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -30,8 +30,6 @@ import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {ISpokeGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {VaultUpdateKind, MessageLib} from "../common/libraries/MessageLib.sol";
 import {IPoolEscrowFactory} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
-
-IRequestManager constant REQUEST_MANAGER_V3_0 = IRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
 
 /// @title  Spoke
 /// @notice This contract manages which pools & share classes exist, controlling allowed pool currencies,

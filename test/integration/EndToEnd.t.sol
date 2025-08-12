@@ -39,6 +39,7 @@ import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IVaultManager, REQUEST_MANAGER_V3_0} from "../../src/spoke/interfaces/legacy/IVaultManager.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
@@ -327,6 +328,21 @@ contract EndToEndUtils is EndToEndDeployment {
             return false;
         }
     }
+
+    function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
+        internal
+        view
+        returns (address vaultAddr)
+    {
+        if (spoke.asyncRequestManager == REQUEST_MANAGER_V3_0) {
+            // Fallback to legacy V3.0 lookup if not found in new system
+            return
+                address(IVaultManager(address(spoke.asyncRequestManager)).vaultByAssetId(poolId, shareClassId, assetId));
+        } else {
+            // Try new system first
+            return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        }
+    }
 }
 
 /// Base investment flows that can be shared between EndToEnd and Fork tests
@@ -565,8 +581,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
 
         // Check if vault already exists (for fork tests)
-        address existingVault = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
-        if (existingVault == address(0)) {
+        vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        if (address(vault) == address(0)) {
             // If we have a fallback vault (for fork tests), use it
             if (fallbackVault != address(0)) {
                 vault = IAsyncVault(fallbackVault);
@@ -578,9 +594,9 @@ contract EndToEndFlows is EndToEndUtils {
             hub.hub.updateVault{value: GAS}(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
+            vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
         }
 
-        vault = IAsyncVault(address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager)));
         assertNotEq(address(vault), address(0));
     }
 
@@ -715,7 +731,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         // Check if vault already exists (for fork tests)
-        address existingVault = address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
             hub.hub.updateVault{value: GAS}(
                 poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
@@ -741,8 +757,7 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount,
         bool skipPreciseAssertion
     ) internal {
-        IBaseVault vault =
-            IBaseVault(address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager)));
+        IBaseVault vault = IBaseVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         // Store initial share balance for fork tests
         uint256 initialShares;
@@ -799,7 +814,7 @@ contract EndToEndFlows is EndToEndUtils {
         // Resolve vault - use existing if provided, otherwise get from manager
         IAsyncRedeemVault vault = existingVault != address(0)
             ? IAsyncRedeemVault(existingVault)
-            : IAsyncRedeemVault(address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager)));
+            : IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));

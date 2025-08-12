@@ -4,8 +4,11 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../../common/types/PoolId.sol";
 import {AssetId} from "../../../common/types/AssetId.sol";
 import {ShareClassId} from "../../../common/types/ShareClassId.sol";
+import {IRequestManager} from "../../../common/interfaces/IRequestManager.sol";
 
 import {IVault} from "../IVault.sol";
+
+IRequestManager constant REQUEST_MANAGER_V3_0 = IRequestManager(0xf06f89A1b6C601235729A689595571B7455Dd433);
 
 interface IVaultManager {
     error VaultAlreadyExists();
