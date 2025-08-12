@@ -39,6 +39,7 @@ import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../src/spoke/BalanceSheet.sol";
 import {UpdateContractMessageLib} from "../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IVaultManager, REQUEST_MANAGER_V3_0} from "../../src/spoke/interfaces/legacy/IVaultManager.sol";
 
 import {SyncManager} from "../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
@@ -327,6 +328,21 @@ contract EndToEndUtils is EndToEndDeployment {
             return false;
         }
     }
+
+    function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
+        internal
+        view
+        returns (address vaultAddr)
+    {
+        if (spoke.asyncRequestManager == REQUEST_MANAGER_V3_0) {
+            // Fallback to legacy V3.0 lookup if not found in new system
+            return
+                address(IVaultManager(address(spoke.asyncRequestManager)).vaultByAssetId(poolId, shareClassId, assetId));
+        } else {
+            // Try new system first
+            return address(spoke.spoke.vault(poolId, shareClassId, assetId, spoke.asyncRequestManager));
+        }
+    }
 }
 
 /// Base investment flows that can be shared between EndToEnd and Fork tests
@@ -565,8 +581,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
 
         // Check if vault already exists (for fork tests)
-        address existingVault = address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId));
-        if (existingVault == address(0)) {
+        vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        if (address(vault) == address(0)) {
             // If we have a fallback vault (for fork tests), use it
             if (fallbackVault != address(0)) {
                 vault = IAsyncVault(fallbackVault);
@@ -578,9 +594,10 @@ contract EndToEndFlows is EndToEndUtils {
             hub.hub.updateVault{value: GAS}(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
+            vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
         }
 
-        vault = IAsyncVault(address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId)));
+        vm.stopPrank();
         assertNotEq(address(vault), address(0));
     }
 
@@ -715,7 +732,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         // Check if vault already exists (for fork tests)
-        address existingVault = address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId));
+        address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
             hub.hub.updateVault{value: GAS}(
                 poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
@@ -741,7 +758,7 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount,
         bool skipPreciseAssertion
     ) internal {
-        IBaseVault vault = IBaseVault(address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId)));
+        IBaseVault vault = IBaseVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         // Store initial share balance for fork tests
         uint256 initialShares;
@@ -798,7 +815,7 @@ contract EndToEndFlows is EndToEndUtils {
         // Resolve vault - use existing if provided, otherwise get from manager
         IAsyncRedeemVault vault = existingVault != address(0)
             ? IAsyncRedeemVault(existingVault)
-            : IAsyncRedeemVault(address(spoke.asyncRequestManager.vaultByAssetId(poolId, shareClassId, assetId)));
+            : IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
@@ -960,7 +977,7 @@ contract EndToEndFlows is EndToEndUtils {
         );
 
         IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
+            IAsyncRedeemVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(s.spoke.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
@@ -1176,7 +1193,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
         );
 
-        address vault = address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId));
+        address vault = address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
 
         h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
 
@@ -1209,7 +1226,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
         );
 
-        IAsyncVault vault = IAsyncVault(address(s.asyncRequestManager.vaultByAssetId(POOL_A, SC_1, s.usdcId)));
+        IAsyncVault vault = IAsyncVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);

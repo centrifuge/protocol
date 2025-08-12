@@ -21,7 +21,6 @@ import {IPoolEscrowFactory} from "../../../src/common/factories/interfaces/IPool
 import {Spoke, ISpoke} from "../../../src/spoke/Spoke.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../src/spoke/interfaces/IVault.sol";
-import {IVaultManager} from "../../../src/spoke/interfaces/IVaultManager.sol";
 import {ITokenFactory} from "../../../src/spoke/factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
@@ -54,7 +53,6 @@ contract SpokeTest is Test {
     IShareToken share = IShareToken(address(new IsContract()));
     IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
     IRequestManager requestManager = IRequestManager(address(new IsContract()));
-    IVaultManager vaultManager = IVaultManager(address(new IsContract()));
     IVault vault = IVault(address(new IsContract()));
 
     address HOOK = makeAddr("hook");
@@ -137,7 +135,6 @@ contract SpokeTest is Test {
 
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_1));
-        vm.mockCall(address(vault), abi.encodeWithSelector(vault.manager.selector), abi.encode(vaultManager));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.vaultKind.selector), abi.encode(VaultKind.Async));
     }
 
@@ -184,20 +181,6 @@ contract SpokeTest is Test {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
-            abi.encode()
-        );
-    }
-
-    function _mockVaultManager(AssetId assetId, address asset, uint256 tokenId) internal {
-        vm.mockCall(
-            address(vaultManager),
-            abi.encodeWithSelector(vaultManager.addVault.selector, POOL_A, SC_1, assetId, vault, asset, tokenId),
-            abi.encode()
-        );
-
-        vm.mockCall(
-            address(vaultManager),
-            abi.encodeWithSelector(vaultManager.removeVault.selector, POOL_A, SC_1, assetId, vault, asset, tokenId),
             abi.encode()
         );
     }
@@ -643,8 +626,6 @@ contract SpokeTestSetRequestManager is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc6909);
 
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
-
         vm.prank(AUTH);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
@@ -1062,8 +1043,6 @@ contract SpokeTestLinkVault is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc6909);
 
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
-
         vm.prank(AUTH);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
@@ -1077,8 +1056,6 @@ contract SpokeTestLinkVault is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc6909);
 
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
-
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpoke.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
@@ -1087,14 +1064,13 @@ contract SpokeTestLinkVault is SpokeTest {
         (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
         assertEq(numVaults, 1);
         assertEq(spoke.isLinked(vault), true);
+        assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
     }
 
     function testLinkVaultERC20() public {
         _utilRegisterAsset(erc20);
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
-
-        _mockVaultManager(ASSET_ID_20, erc20, 0);
 
         vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
 
@@ -1146,8 +1122,6 @@ contract SpokeTestUnlinkVault is SpokeTest {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
 
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
-
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.AlreadyUnlinkedVault.selector);
         spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
@@ -1157,8 +1131,6 @@ contract SpokeTestUnlinkVault is SpokeTest {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc6909);
-
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
         vm.prank(AUTH);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
@@ -1171,14 +1143,13 @@ contract SpokeTestUnlinkVault is SpokeTest {
         (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
         assertEq(numVaults, 0);
         assertEq(spoke.isLinked(vault), false);
+        assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
     }
 
     function testUnlinkVaultERC20() public {
         _utilRegisterAsset(erc20);
         _utilAddPoolAndShareClass(NO_HOOK);
         _utilDeployVault(erc20);
-
-        _mockVaultManager(ASSET_ID_20, erc20, 0);
 
         vm.mockCall(address(share), abi.encodeWithSelector(share.updateVault.selector, erc20, vault), abi.encode());
 
@@ -1216,7 +1187,6 @@ contract SpokeTestUpdateVault is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         _mockVaultFactory(erc6909, TOKEN_1);
-        _mockVaultManager(ASSET_ID_6909_1, erc6909, TOKEN_1);
 
         vm.prank(AUTH);
         spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
