@@ -118,6 +118,11 @@ library IntegrationConstants {
     address constant AVAX_JTRSY_SHARE_TOKEN = 0xa5d465251fBCc907f5Dd6bB2145488DFC6a2627b;
     address constant AVAX_JAAA_SHARE_TOKEN = 0x58F93d6b1EF2F44eC379Cb975657C132CBeD3B6b;
 
+    // ======== CFG Token Contracts ========
+    address constant CFG = 0xcccCCCcCCC33D538DBC2EE4fEab0a7A1FF4e8A94;
+    address constant WCFG = 0xc221b7E65FfC80DE234bbB6667aBDd46593D34F0;
+    address constant IOU_CFG = 0xACF3c07BeBd65d5f7d86bc0bc716026A0C523069;
+
     // ======== V2 Constants (Legacy) ========
     address constant V2_ROOT = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;
     address constant V2_GUARDIAN = 0x09ab10a9c3E6Eac1d18270a2322B6113F4C7f5E8;
@@ -127,7 +132,6 @@ library IntegrationConstants {
     address constant V2_JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
     address constant V2_JAAA_VAULT = 0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01;
     uint256 constant V2_REQUEST_ID = 0;
-    uint128 constant V2_USDC_ASSET_ID = 242333941209166991950178742833476896417;
 
     // ======== Cross-Chain Adapter IDs ========
 

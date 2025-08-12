@@ -86,6 +86,11 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.JTRSY_POOL_ESCROW, "JTRSYPoolEscrow");
         vm.label(IntegrationConstants.JAAA_POOL_ESCROW, "JAAAPoolEscrow");
 
+        // CFG Governance contracts
+        vm.label(IntegrationConstants.CFG, "CFG");
+        vm.label(IntegrationConstants.WCFG, "WCFG");
+        vm.label(IntegrationConstants.IOU_CFG, "IouCFG");
+
         // V2 Legacy contracts
         vm.label(IntegrationConstants.V2_ROOT, "V2Root");
         vm.label(IntegrationConstants.V2_GUARDIAN, "V2Guardian");
