@@ -134,18 +134,14 @@ struct WormholeDestination {
 }
 
 interface IWormholeAdapter is IAdapter, IWormholeReceiver {
-    /// @dev see file() method
-    event File(bytes32 indexed what, uint16 fromChainId, uint16 toChainId, address addr);
-
-    error FileUnrecognizedParam();
     error NotWormholeRelayer();
     error InvalidSource();
 
-    /// @notice Configures the adapter
-    /// @param what Can be "sources" or "destinations".
-    /// @param addr if what == "sources", it represents the source
-    /// @param addr if what == "destinations", it represents the destination
-    function file(bytes32 what, uint16 centrifugeId, uint16 wormholeId, address addr) external;
+    /// @notice Wire the adapter to a remote one.
+    /// @param centrifugeId The remote chain's chain ID
+    /// @param wormholeId The remote chain's Wormhole ID
+    /// @param adapter The remote chain's Wormhole adapter address
+    function wire(uint16 centrifugeId, uint16 wormholeId, address adapter) external;
 
     /// @notice Returns the source configuration for a given wormhole chain id
     /// @param wormholeId The remote wormhole id

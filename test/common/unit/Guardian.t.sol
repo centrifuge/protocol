@@ -12,10 +12,6 @@ import {Guardian, ISafe, IMultiAdapter, IRoot, IRootMessageSender} from "../../.
 
 import "forge-std/Test.sol";
 
-import {AxelarAddressToString} from "../../adapters/unit/AxelarAdapter.t.sol";
-import {IAxelarAdapter} from "../../../src/adapters/interfaces/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "../../../src/adapters/interfaces/IWormholeAdapter.sol";
-
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
 
@@ -25,7 +21,7 @@ contract GuardianTest is Test {
     IRootMessageSender sender = IRootMessageSender(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("multiAdapter"));
 
-    ISafe immutable SAFE = ISafe(makeAddr("adminSafe"));
+    ISafe immutable SAFE = ISafe(address(new IsContract()));
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
 
@@ -276,8 +272,8 @@ contract GuardianTestDisputeRecovery is GuardianTest {
     }
 }
 
-contract GuardianTestWireAdapter is GuardianTest {
-    function testWireAdapters() public {
+contract GuardianTestSetAdapter is GuardianTest {
+    function testSetAdapters() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
 
@@ -288,149 +284,15 @@ contract GuardianTestWireAdapter is GuardianTest {
         );
 
         vm.prank(address(SAFE));
-        guardian.wireAdapters(CENTRIFUGE_ID, adapters);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters);
     }
 
-    function testWireAdaptersOnlySafe() public {
+    function testSetAdaptersOnlySafe() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.wireAdapters(CENTRIFUGE_ID, adapters);
-    }
-}
-
-contract GuardianTestWireWormholeAdapter is GuardianTest {
-    uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 3;
-    uint16 constant REMOTE_WORMHOLE_CHAIN_ID = 4;
-    address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
-
-    IWormholeAdapter localAdapter = IWormholeAdapter(makeAddr("localAdapter"));
-
-    function _mockWormholeFileCalls(uint16 centrifugeId, uint16 wormholeId, address adapter) internal {
-        vm.mockCall(
-            address(localAdapter),
-            abi.encodeWithSelector(IWormholeAdapter.file.selector, "sources", centrifugeId, wormholeId, adapter),
-            abi.encode()
-        );
-        vm.mockCall(
-            address(localAdapter),
-            abi.encodeWithSelector(IWormholeAdapter.file.selector, "destinations", centrifugeId, wormholeId, adapter),
-            abi.encode()
-        );
-    }
-
-    function testWireWormholeAdapter() public {
-        _mockWormholeFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
-
-        vm.prank(address(SAFE));
-        guardian.wireWormholeAdapter(
-            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
-        );
-    }
-
-    function testWireWormholeAdapterOnlySafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.wireWormholeAdapter(
-            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
-        );
-    }
-
-    function testWireWormholeAdapterWithDifferentChainIds() public {
-        uint16 anotherCentrifugeId = 5;
-        uint16 anotherWormholeId = 6;
-
-        // First configuration
-        _mockWormholeFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS);
-        vm.prank(address(SAFE));
-        guardian.wireWormholeAdapter(
-            localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_WORMHOLE_CHAIN_ID, REMOTE_ADAPTER_ADDRESS
-        );
-
-        // Second configuration
-        _mockWormholeFileCalls(anotherCentrifugeId, anotherWormholeId, REMOTE_ADAPTER_ADDRESS);
-        vm.prank(address(SAFE));
-        guardian.wireWormholeAdapter(localAdapter, anotherCentrifugeId, anotherWormholeId, REMOTE_ADAPTER_ADDRESS);
-    }
-
-    function testWireWormholeAdapterFuzz(uint16 centrifugeId, uint16 wormholeId, address adapterAddr) public {
-        vm.assume(centrifugeId != 0);
-        vm.assume(wormholeId != 0);
-        vm.assume(adapterAddr != address(0));
-
-        _mockWormholeFileCalls(centrifugeId, wormholeId, adapterAddr);
-
-        vm.prank(address(SAFE));
-        guardian.wireWormholeAdapter(localAdapter, centrifugeId, wormholeId, adapterAddr);
-    }
-}
-
-contract GuardianTestWireAxelarAdapter is GuardianTest {
-    using AxelarAddressToString for address;
-
-    uint16 constant REMOTE_CENTRIFUGE_CHAIN_ID = 2;
-    string constant REMOTE_AXELAR_CHAIN_ID = "base";
-    address constant REMOTE_ADAPTER_ADDRESS = address(0x123);
-
-    IAxelarAdapter localAdapter = IAxelarAdapter(makeAddr("localAdapter"));
-
-    function _remoteAdapter() internal pure returns (string memory) {
-        return REMOTE_ADAPTER_ADDRESS.toAxelarString();
-    }
-
-    function _mockAxelarFileCalls(uint16 centrifugeId, string memory axelarId, string memory adapter) internal {
-        vm.mockCall(
-            address(localAdapter),
-            abi.encodeWithSignature("file(bytes32,string,uint16,string)", "sources", axelarId, centrifugeId, adapter),
-            abi.encode()
-        );
-        vm.mockCall(
-            address(localAdapter),
-            abi.encodeWithSignature(
-                "file(bytes32,uint16,string,string)", "destinations", centrifugeId, axelarId, adapter
-            ),
-            abi.encode()
-        );
-    }
-
-    function testWireAxelarAdapter() public {
-        _mockAxelarFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-
-        vm.prank(address(SAFE));
-        guardian.wireAxelarAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-    }
-
-    function testWireAxelarAdapterOnlySafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.wireAxelarAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-    }
-
-    function testWireAxelarAdapterWithDifferentChainIds() public {
-        uint16 anotherCentrifugeId = 3;
-        string memory anotherAxelarId = "otherEvmChain";
-
-        _mockAxelarFileCalls(REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-        vm.prank(address(SAFE));
-        guardian.wireAxelarAdapter(localAdapter, REMOTE_CENTRIFUGE_CHAIN_ID, REMOTE_AXELAR_CHAIN_ID, _remoteAdapter());
-
-        _mockAxelarFileCalls(anotherCentrifugeId, anotherAxelarId, _remoteAdapter());
-        vm.prank(address(SAFE));
-        guardian.wireAxelarAdapter(localAdapter, anotherCentrifugeId, anotherAxelarId, _remoteAdapter());
-    }
-
-    function testWireAxelarAdapterFuzzed(uint16 centrifugeId, string calldata axelarId, string calldata adapterStr)
-        public
-    {
-        vm.assume(centrifugeId != 0);
-        vm.assume(bytes(axelarId).length > 0);
-        vm.assume(bytes(adapterStr).length > 0);
-
-        _mockAxelarFileCalls(centrifugeId, axelarId, adapterStr);
-
-        vm.prank(address(SAFE));
-        guardian.wireAxelarAdapter(localAdapter, centrifugeId, axelarId, adapterStr);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters);
     }
 }

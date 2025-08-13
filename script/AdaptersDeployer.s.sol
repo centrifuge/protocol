@@ -35,10 +35,12 @@ contract AdaptersActionBatcher is CommonActionBatcher {
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.common.root));
             report.wormholeAdapter.rely(address(report.common.guardian));
+            report.wormholeAdapter.rely(address(report.common.adminSafe));
         }
         if (address(report.axelarAdapter) != address(0)) {
             report.axelarAdapter.rely(address(report.common.root));
             report.axelarAdapter.rely(address(report.common.guardian));
+            report.axelarAdapter.rely(address(report.common.adminSafe));
         }
     }
 

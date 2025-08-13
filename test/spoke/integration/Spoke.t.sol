@@ -12,8 +12,8 @@ import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import {ShareToken} from "../../../src/spoke/ShareToken.sol";
+import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
 import {VaultDetails} from "../../../src/spoke/interfaces/ISpoke.sol";
-import {IVault} from "../../../src/spoke/interfaces/IVaultManager.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
@@ -132,7 +132,6 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
             // check vault state
             assertEq(vaultAddress, vault_, "vault address mismatch");
             AsyncVault vault = AsyncVault(vault_);
-            assertEq(address(vault.manager()), address(asyncRequestManager), "investment manager mismatch");
             assertEq(vault.asset(), asset, "asset mismatch");
             assertEq(vault.poolId().raw(), poolId.raw(), "poolId mismatch");
             assertEq(vault.scId().raw(), scId.raw(), "scId mismatch");
@@ -182,6 +181,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
 
         // Check event except for vault address which cannot be known
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         _assertDeployedVault(address(vault), assetId, asset, erc20TokenId, false);
@@ -199,6 +199,7 @@ contract SpokeDeployVaultTest is BaseTest, SpokeTestHelper {
         address asset = address(erc20);
 
         AssetId assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, erc20TokenId);
+        spoke.setRequestManager(poolId, scId, assetId, asyncRequestManager);
         IVault vault = spoke.deployVault(poolId, scId, assetId, asyncVaultFactory);
 
         spoke.linkVault(poolId, scId, assetId, vault);

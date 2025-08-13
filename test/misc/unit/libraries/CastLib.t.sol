@@ -15,7 +15,7 @@ contract CastLibTest is Test {
 
         bytes32 input = bytes32(bytes.concat(bytes20(addr), nonZero));
 
-        vm.expectRevert(bytes("Input should be 20 bytes"));
+        vm.expectRevert(CastLib.PrefixNotZero.selector);
         this.toAddress(input);
     }
 

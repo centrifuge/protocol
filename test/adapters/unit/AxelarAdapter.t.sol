@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Mock} from "../../common/mocks/Mock.sol";
@@ -53,6 +54,7 @@ contract MockAxelarGasService is Mock {
 contract AxelarAdapterTestBase is Test {
     uint16 constant CENTRIFUGE_CHAIN_ID = 1;
     string constant AXELAR_CHAIN_ID = "mainnet";
+    string constant REMOTE_AXELAR_ADDR = "remoteAddress";
 
     MockAxelarGateway axelarGateway;
     MockAxelarGasService axelarGasService;
@@ -64,6 +66,26 @@ contract AxelarAdapterTestBase is Test {
         axelarGateway = new MockAxelarGateway();
         axelarGasService = new MockAxelarGasService();
         adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService), address(this));
+    }
+}
+
+contract AxelarAdapterTestWire is AxelarAdapterTestBase {
+    function testFileErrNotAuthorized() public {
+        vm.prank(makeAddr("NotAuthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
+    }
+
+    function testWire() public {
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
+
+        (string memory axelarId, string memory remoteAddress) = adapter.destinations(CENTRIFUGE_CHAIN_ID);
+        assertEq(axelarId, AXELAR_CHAIN_ID);
+        assertEq(remoteAddress, REMOTE_AXELAR_ADDR);
+
+        (uint16 centrifugeId, bytes32 remoteAddressHash) = adapter.sources(AXELAR_CHAIN_ID);
+        assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
+        assertEq(remoteAddressHash, keccak256(bytes(REMOTE_AXELAR_ADDR)));
     }
 }
 
@@ -118,7 +140,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.prank(address(relayer));
         adapter.execute(commandId, AXELAR_CHAIN_ID, validAddress.toAxelarString(), payload);
 
-        adapter.file("sources", AXELAR_CHAIN_ID, CENTRIFUGE_CHAIN_ID, validAddress.toAxelarString());
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, validAddress.toAxelarString());
 
         // Incorrect address
         vm.prank(address(relayer));
@@ -161,9 +183,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_CHAIN_ID, payload, gasLimit, refund);
 
-        adapter.file(
-            "destinations", CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString()
-        );
+        adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, makeAddr("DestinationAdapter").toAxelarString());
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

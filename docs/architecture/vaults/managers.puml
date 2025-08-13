@@ -10,7 +10,6 @@ package spoke {
     class Spoke
     class BalanceSheet
     interface IUpdateContract
-    interface IVaultManager
     interface IRequestManager
 }
 
@@ -20,7 +19,6 @@ interface IAsyncRequestManager
 interface ISyncManager
 
 IBaseRequestManager -up-|> IRequestManager
-IBaseRequestManager -up-|> IVaultManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
 ISyncManager -up-|> IUpdateContract

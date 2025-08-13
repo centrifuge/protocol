@@ -7,6 +7,8 @@ import {MathLib} from "../libraries/MathLib.sol";
 
 type D18 is uint128;
 
+error D18_DivisionByZero();
+
 using MathLib for uint256;
 
 /// @dev add two D18 types
@@ -39,7 +41,7 @@ function mulD18(D18 d1, D18 d2) pure returns (D18) {
 ///      Example: if d = 2.0 (2e18 internally), reciprocal(d) = 0.5 (5e17 internally).
 function reciprocal(D18 d) pure returns (D18) {
     uint128 val = D18.unwrap(d);
-    require(val != 0, "D18/division-by-zero");
+    require(val != 0, D18_DivisionByZero());
     return d18(1e18, val);
 }
 
