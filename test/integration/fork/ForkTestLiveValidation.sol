@@ -661,39 +661,15 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     /// @notice Validates CFG token ward permissions (Ethereum only for now)
     function _validateCFGToken() internal view {
         _validateWard(IntegrationConstants.CFG, IntegrationConstants.V2_ROOT);
-
         _validateWard(IntegrationConstants.CFG, IntegrationConstants.IOU_CFG);
         // TODO(later): ROOT ward on CFG not yet implemented, WIP
         // _validateWard(IntegrationConstants.CFG, root);
 
+        _validateWard(IntegrationConstants.WCFG, IntegrationConstants.V2_ROOT);
         _validateWard(IntegrationConstants.WCFG, IntegrationConstants.IOU_CFG);
-
-        _validateOnlyExpectedWards(IntegrationConstants.CFG, _getExpectedCFGWards());
-
-        _validateOnlyExpectedWards(IntegrationConstants.WCFG, _getExpectedWCFGWards());
-    }
-
-    /// @notice Returns the expected wards for CFG token: V2_ROOT, IOU_CFG, (later also ROOT)
-    function _getExpectedCFGWards() private pure returns (address[] memory) {
-        address[] memory expectedWards = new address[](2); // Will be 3 when ROOT is added
-        expectedWards[0] = IntegrationConstants.V2_ROOT;
-        expectedWards[1] = IntegrationConstants.IOU_CFG;
-        // expectedWards[2] = root; // Future: when ROOT is added as ward on CFG
-        return expectedWards;
-    }
-
-    /// @notice Returns the expected wards for WCFG token
-    function _getExpectedWCFGWards() private pure returns (address[] memory) {
-        address[] memory expectedWards = new address[](1);
-        expectedWards[0] = IntegrationConstants.IOU_CFG;
-        return expectedWards;
-    }
-
-    /// @notice Validates that a contract only has the expected wards
-    function _validateOnlyExpectedWards(address contractAddr, address[] memory expectedWards) internal view {
-        for (uint256 i = 0; i < expectedWards.length; i++) {
-            _validateWard(contractAddr, expectedWards[i]);
-        }
+        // NOTE: Need to be removed soon
+        _validateWard(IntegrationConstants.WCFG, IntegrationConstants.WCFG_MULTISIG);
+        _validateWard(IntegrationConstants.WCFG, IntegrationConstants.CHAINBRIDGE_ERC20_HANDLER);
     }
 
     /// @notice Validates that one address has ward permissions on another contract
