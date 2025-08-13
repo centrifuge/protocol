@@ -13,7 +13,6 @@ import {MessageProcessor} from "../src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
-import {CREATEX_ADDRESS} from "createx-forge/script/CreateX.d.sol";
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
@@ -143,9 +142,8 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             baseHash = keccak256(abi.encodePacked(contractName));
         }
 
-        // NOTE: To avoid CreateX InvalidSalt issues, need to hash instead of bytes32(abi.encodePacked(..))
-        bytes32 senderHash = keccak256(abi.encodePacked(msg.sender));
-        return keccak256(abi.encodePacked(senderHash, baseHash));
+        // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
+        return bytes32(abi.encodePacked(bytes20(msg.sender), bytes1(0x0), bytes11(baseHash)));
     }
 
     function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
