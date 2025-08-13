@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {IntegrationConstants} from "./IntegrationConstants.sol";
-import {ForkTestLiveValidation} from "./ForkTestInvestments.sol";
+import {ForkTestLiveValidation} from "./ForkTestLiveValidation.sol";
 
-import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
-import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
-import {CastLib} from "../../src/misc/libraries/CastLib.sol";
-import {IERC7540Deposit} from "../../src/misc/interfaces/IERC7540.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
+import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import "forge-std/Test.sol";
 
-import {DisableV2Eth} from "../spell/DisableV2Eth.sol";
+import {DisableV2Eth} from "../../spell/DisableV2Eth.sol";
+import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
 /// @notice Interface for V2 investment managers
 interface IV2InvestmentManager {
@@ -33,14 +31,13 @@ interface IVaultV2Like {
 
 /// @notice Fork test validating DisableV2Eth spell execution and post-spell V2/V3 state
 contract ForkTestPostSpellV2Disable is ForkTestLiveValidation {
-    using CastLib for *;
-    // Test configuration constants
-
     uint256 constant TEST_DEPOSIT_AMOUNT = 100_000e6; // 100k USDC
     uint256 constant TEST_REDEEM_AMOUNT = 50_000e18; // 50k shares
 
     DisableV2Eth public spell;
     bool public spellExecuted;
+
+    address investor = makeAddr("INVESTOR");
 
     function setUp() public override {
         vm.createSelectFork(IntegrationConstants.RPC_ETHEREUM);
@@ -50,6 +47,8 @@ contract ForkTestPostSpellV2Disable is ForkTestLiveValidation {
         spell = new DisableV2Eth();
 
         _validateContractAddresses();
+
+        _executeSpell();
     }
 
     /// @notice Validates that all contract addresses have deployed code
@@ -69,80 +68,44 @@ contract ForkTestPostSpellV2Disable is ForkTestLiveValidation {
     // MAIN TEST FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
-    function test_postSpellCompleteValidation() public {
-        _executeSpell();
-
-        _validateV2OperationsDisabled();
-        _validateV3AsyncFlowsContinue();
-        _validatePostSpellPermissions();
-        _validateSpellCleanup();
-    }
-
     function test_v3AsyncFlowsContinuePostSpell() public {
-        _executeSpell();
-        _validateV3AsyncFlowsContinue();
+        _completeAsyncDeposit(VAULT, investor, depositAmount);
+        _completeAsyncRedeem(VAULT, investor, depositAmount);
     }
 
     function test_jtrsy_vaultAsyncFlowsPostSpell() public {
-        _executeSpell();
-
-        // Test that JTRSY V3 vault now supports V3 async flows
-        address jtrsy_investor = makeAddr("JTRSY_V3_INVESTOR");
-        _testVaultAsyncFlows(spell.V3_JTRSY_VAULT(), jtrsy_investor, "JTRSY_V3");
+        _completeAsyncDeposit(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
+        _completeAsyncRedeem(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
     }
 
     function test_jaaa_vaultAsyncFlowsPostSpell() public {
-        _executeSpell();
-
-        // Test that JAAA V3 vault now supports V3 async flows
-        address jaaa_investor = makeAddr("JAAA_V3_INVESTOR");
-        _testVaultAsyncFlows(spell.V3_JAAA_VAULT(), jaaa_investor, "JAAA_V3");
+        _completeAsyncDeposit(IBaseVault(spell.V3_JAAA_VAULT()), investor, depositAmount);
+        _completeAsyncRedeem(IBaseVault(spell.V3_JAAA_VAULT()), investor, depositAmount);
     }
 
     function test_v2OperationsDisabledPostSpell() public {
-        _executeSpell();
         _validateV2OperationsDisabled();
     }
 
-    function test_postSpellPermissionValidation() public {
-        _executeSpell();
+    function test_postSpellPermissionValidation() public view {
         _validatePostSpellPermissions();
     }
 
-    function test_spellExecutionAndCleanup() public {
-        _executeSpell();
+    function test_spellExecutionAndCleanup() public view {
         _validateSpellCleanup();
     }
 
     function test_v3RootHasPermissionsOnAllContracts() public view {
-        _validateV3RootPermissions(spell.V3_ROOT());
+        super._validateV3RootPermissions();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════
     // INTERNAL VALIDATION FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
-    function _validateV3AsyncFlowsContinue() internal {
-        address v3Investor = makeAddr("V3_INVESTOR");
-
-        // Test existing V3 vault continues to work
-        _completeAsyncDeposit(VAULT, v3Investor, depositAmount);
-        _completeAsyncRedeem(VAULT, v3Investor, depositAmount);
-
-        // Test newly enabled JTRSY V3 vault async flows
-        address jtrsy_investor = makeAddr("JTRSY_V3_INVESTOR");
-        _testVaultAsyncFlows(spell.V3_JTRSY_VAULT(), jtrsy_investor, "JTRSY_V3");
-
-        // Test newly enabled JAAA V3 vault async flows
-        address jaaa_investor = makeAddr("JAAA_V3_INVESTOR");
-        _testVaultAsyncFlows(spell.V3_JAAA_VAULT(), jaaa_investor, "JAAA_V3");
-    }
-
     function _validateV2OperationsDisabled() internal {
-        address testInvestor = makeAddr("TEST_V2_INVESTOR");
-
-        _validateV2VaultOperationsFail(spell.V2_JTRSY_VAULT_ADDRESS(), testInvestor);
-        _validateV2VaultOperationsFail(spell.V2_JAAA_VAULT_ADDRESS(), testInvestor);
+        _validateV2VaultOperationsFail(spell.V2_JTRSY_VAULT_ADDRESS());
+        _validateV2VaultOperationsFail(spell.V2_JAAA_VAULT_ADDRESS());
     }
 
     function _validatePostSpellPermissions() internal view {
@@ -191,7 +154,7 @@ contract ForkTestPostSpellV2Disable is ForkTestLiveValidation {
     // V2 VALIDATION HELPERS
     // ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
-    function _validateV2VaultOperationsFail(address vaultAddress, address investor) internal {
+    function _validateV2VaultOperationsFail(address vaultAddress) internal {
         IVaultV2Like vault = IVaultV2Like(vaultAddress);
         address asset = vault.asset();
         IShareToken shareToken = IShareToken(vault.share());
@@ -272,26 +235,6 @@ contract ForkTestPostSpellV2Disable is ForkTestLiveValidation {
         // Verify roots are still functional (not paused)
         assertFalse(spell.V2_ROOT().paused(), "V2 root should not be paused");
         assertFalse(spell.V3_ROOT().paused(), "V3 root should not be paused");
-    }
-
-    function _testVaultAsyncFlows(address vaultAddress, address investor, string memory vaultName) internal {
-        IERC7540Deposit v3Vault = IERC7540Deposit(vaultAddress);
-        IBaseVault baseVault = IBaseVault(vaultAddress);
-        address assetAddress = baseVault.asset();
-
-        deal(assetAddress, investor, TEST_DEPOSIT_AMOUNT);
-        _addPoolMember(baseVault, investor);
-
-        vm.startPrank(investor);
-        IERC20(assetAddress).approve(vaultAddress, TEST_DEPOSIT_AMOUNT);
-
-        uint256 requestId = v3Vault.requestDeposit(TEST_DEPOSIT_AMOUNT, investor, investor);
-        // Verify pending request exists in V3 system (requestId 0 is valid)
-        assertTrue(
-            v3Vault.pendingDepositRequest(requestId, investor) > 0,
-            string(abi.encodePacked(vaultName, " should have pending deposit request"))
-        );
-        vm.stopPrank();
     }
 
     function _validateSpellPermissionsRevoked() internal view {
