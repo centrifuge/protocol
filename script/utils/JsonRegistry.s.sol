@@ -18,7 +18,7 @@ contract JsonRegistry is Script {
         registeredContracts += 1;
 
         if (shouldLabelAddresses) {
-            vm.label(address(target), string(abi.encodePacked(addressLabelPrefix, name)));
+            vm.label(target, string(abi.encodePacked(addressLabelPrefix, name)));
         }
     }
 
