@@ -43,7 +43,7 @@ contract JsonRegistry is Script {
                 dir,
                 vm.toString(block.chainid),
                 "_block",
-                vm.toString(block.chainid),
+                vm.toString(block.number),
                 "_nonce",
                 vm.toString(vm.getNonce(msg.sender)),
                 ".json"
