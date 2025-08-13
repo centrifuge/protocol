@@ -218,6 +218,13 @@ contract BalanceSheetTestFile is BalanceSheetTest {
 }
 
 contract BalanceSheetTestMulticall is BalanceSheetTest {
+    function testErrNotPayable() public {
+        vm.deal(AUTH, 1);
+        vm.startPrank(AUTH);
+        vm.expectRevert(IBalanceSheet.NotPayable.selector);
+        balanceSheet.multicall{value: 1}(new bytes[](0));
+    }
+
     function testMulticall() public {
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
         vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.startBatching.selector), abi.encode());
@@ -650,7 +657,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssets(bool managerOrAuth) public {
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
@@ -660,14 +667,14 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     }
 
     function testSubmitQueuedAssetsOverridingPrice() public {
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, IDENTITY_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, IDENTITY_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
         balanceSheet.overridePricePoolPerAsset(POOL_A, SC_1, ASSET_20, IDENTITY_PRICE);
 
         vm.expectEmit();
         emit IBalanceSheet.SubmitQueuedAssets(
-            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, IS_DEPOSIT, IS_SNAPSHOT, 0), IDENTITY_PRICE
+            POOL_A, SC_1, ASSET_20, ISpokeMessageSender.UpdateData(0, !IS_DEPOSIT, IS_SNAPSHOT, 0), IDENTITY_PRICE
         );
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
     }
@@ -718,7 +725,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
     function testSubmitQueuedAssetsWithSameAmount() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT);
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(AUTH);
         balanceSheet.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT);
@@ -755,10 +762,10 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
 
     function testSubmitQueuedAssetsTwice() public {
         vm.startPrank(AUTH);
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
 
-        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, IS_DEPOSIT, IS_SNAPSHOT, 1);
+        _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 1);
         balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);

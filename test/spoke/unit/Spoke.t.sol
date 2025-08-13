@@ -1038,6 +1038,15 @@ contract SpokeTestLinkVault is SpokeTest {
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
+    function testErrUnknownVault() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
     function testErrAlreadyLinkedVault() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
@@ -1118,9 +1127,19 @@ contract SpokeTestUnlinkVault is SpokeTest {
         spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
+    function testErrUnknownVault() public {
+        _utilRegisterAsset(erc6909);
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpoke.UnknownVault.selector);
+        spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
     function testErrAlreadyUnlinkedVault() public {
         _utilRegisterAsset(erc6909);
         _utilAddPoolAndShareClass(NO_HOOK);
+        _utilDeployVault(erc6909);
 
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.AlreadyUnlinkedVault.selector);
@@ -1170,16 +1189,6 @@ contract SpokeTestUpdateVault is SpokeTest {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);
-    }
-
-    function testErrUnknownAsset() public {
-        vm.prank(AUTH);
-        vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.Link);
-
-        vm.prank(AUTH);
-        vm.expectRevert(ISpoke.UnknownVault.selector);
-        spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.Unlink);
     }
 
     function testDeployAndLinkAndUnlinkAndLink() public {

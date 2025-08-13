@@ -41,6 +41,7 @@ contract JsonRegistry is Script {
         string memory timestampedPath = string(
             abi.encodePacked(
                 dir,
+                "_chain",
                 vm.toString(block.chainid),
                 "_block",
                 vm.toString(block.number),
