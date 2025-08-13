@@ -131,8 +131,16 @@ library IntegrationConstants {
     address constant V2_INVESTOR = 0x491EDFB0B8b608044e227225C715981a30F3A44E;
     address constant V2_INVESTMENT_MANAGER = 0x427A1ce127b1775e4Cbd4F58ad468B9F832eA7e9;
     address constant V2_RESTRICTION_MANAGER = 0x4737C3f62Cc265e786b280153fC666cEA2fBc0c0;
-    address constant V2_JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
-    address constant V2_JAAA_VAULT = 0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01;
+
+    // V2 Vault addresses per network
+    address constant ETH_V2_JTRSY_VAULT = 0x36036fFd9B1C6966ab23209E073c68Eb9A992f50;
+    address constant ETH_V2_JAAA_VAULT = 0xE9d1f733F406D4bbbDFac6D4CfCD2e13A6ee1d01;
+    address constant ARB_V2_JTRSY_VAULT = 0x16C796208c6E2d397Ec49D69D207a9cB7d072f04;
+    address constant BASE_V2_JTRSY_VAULT = 0xF9a6768034280745d7F303D3d8B7f2bF3Cc079eF;
+
+    // Legacy (backward compatibility)
+    address constant V2_JTRSY_VAULT = ETH_V2_JTRSY_VAULT;
+    address constant V2_JAAA_VAULT = ETH_V2_JAAA_VAULT;
     uint256 constant V2_REQUEST_ID = 0;
 
     // ======== Cross-Chain Adapter IDs ========
