@@ -809,6 +809,10 @@ contract GatewayTestRepay is GatewayTest {
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+
+        (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, keccak256(batch));
+        assertEq(counter, 0);
+        assertEq(gasLimit, 0);
     }
 
     function testErrInsufficientFundsForRepaymentWithBatches() public {

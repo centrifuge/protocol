@@ -122,6 +122,8 @@ library IntegrationConstants {
     address constant CFG = 0xcccCCCcCCC33D538DBC2EE4fEab0a7A1FF4e8A94;
     address constant WCFG = 0xc221b7E65FfC80DE234bbB6667aBDd46593D34F0;
     address constant IOU_CFG = 0xACF3c07BeBd65d5f7d86bc0bc716026A0C523069;
+    address constant WCFG_MULTISIG = 0x3C9D25F2C76BFE63485AE25D524F7f02f2C03372;
+    address constant CHAINBRIDGE_ERC20_HANDLER = 0x84D1e77F472a4aA697359168C4aF4ADD4D2a71fa;
 
     // ======== V2 Constants (Legacy) ========
     address constant V2_ROOT = 0x0C1fDfd6a1331a875EA013F3897fc8a76ada5DfC;

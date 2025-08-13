@@ -11,6 +11,7 @@ import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {TransientArrayLib} from "../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../misc/libraries/TransientBytesLib.sol";
@@ -26,6 +27,7 @@ import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 ///         Supports processing multiple duplicate messages in parallel by storing counts of messages
 ///         and proofs that have been received. Also implements a retry method for failed messages.
 contract Gateway is Auth, Recoverable, IGateway {
+    using MathLib for *;
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
@@ -166,7 +168,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             }
 
             if (cost <= subsidy[poolId].value) {
-                subsidy[poolId].value -= uint96(cost);
+                subsidy[poolId].value -= cost.toUint96();
             } else {
                 _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
                 return false;
@@ -210,12 +212,15 @@ contract Gateway is Auth, Recoverable, IGateway {
         underpaid_.counter--;
         require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
+        if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
+
         emit RepayBatch(centrifugeId, batch);
     }
 
     function _requestPoolFunding(PoolId poolId) internal {
+        // NOTE: refund will never be shared across pools
         IRecoverable refund = subsidy[poolId].refund;
-        if (!poolId.isNull() && address(refund) != address(0)) {
+        if (!poolId.isNull()) {
             uint256 refundBalance = address(refund).balance;
             if (refundBalance == 0) return;
 
@@ -223,7 +228,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             refund.recoverTokens(ETH_ADDRESS, address(this), refundBalance);
 
             // Extract from the GLOBAL_POT
-            subsidy[GLOBAL_POT].value -= uint96(refundBalance);
+            subsidy[GLOBAL_POT].value -= refundBalance.toUint96();
             _subsidizePool(poolId, address(refund), refundBalance);
         }
     }
@@ -246,7 +251,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _subsidizePool(PoolId poolId, address who, uint256 value) internal {
-        subsidy[poolId].value += uint96(value);
+        subsidy[poolId].value += value.toUint96();
         emit SubsidizePool(poolId, who, value);
     }
 

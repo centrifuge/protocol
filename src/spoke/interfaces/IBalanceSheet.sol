@@ -71,6 +71,7 @@ interface IBalanceSheet {
     );
 
     // --- Errors ---
+    error NotPayable();
     error FileUnrecognizedParam();
     error CannotTransferFromEndorsedContract();
 

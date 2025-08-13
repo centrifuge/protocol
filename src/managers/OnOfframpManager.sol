@@ -35,10 +35,10 @@ contract OnOfframpManager is IOnOfframpManager {
     mapping(address relayer => bool) public relayer;
     mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(PoolId poolId_, ShareClassId scId_, address contractUpdater_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
         scId = scId_;
-        contractUpdater = spoke_;
+        contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
     }
 
@@ -50,7 +50,7 @@ contract OnOfframpManager is IOnOfframpManager {
     function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == contractUpdater, NotSpoke());
+        require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
@@ -129,7 +129,7 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        require(address(balanceSheet.spoke().shareToken(poolId, scId)) != address(0), InvalidIds());
+        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
             poolId, scId, contractUpdater, balanceSheet
