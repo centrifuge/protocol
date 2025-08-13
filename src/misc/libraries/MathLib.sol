@@ -13,6 +13,7 @@ library MathLib {
     error Uint8_Overflow();
     error Uint32_Overflow();
     error Uint64_Overflow();
+    error Uint96_Overflow();
     error Uint128_Overflow();
     error Int128_Overflow();
 
@@ -168,6 +169,11 @@ library MathLib {
     function toUint64(uint256 value) internal pure returns (uint64) {
         require(value <= type(uint64).max, Uint64_Overflow());
         return uint64(value);
+    }
+
+    function toUint96(uint256 value) internal pure returns (uint96) {
+        require(value <= type(uint96).max, Uint96_Overflow());
+        return uint96(value);
     }
 
     /// @notice Safe type conversion from uint256 to uint128.
