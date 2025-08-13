@@ -81,7 +81,7 @@ library IntegrationConstants {
     address constant ETH_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     address constant ARBITRUM_USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
-    address constant AVA_USDC = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
+    address constant AVAX_USDC = 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E;
     address constant BNB_USDC = 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d;
     address constant PLUME_PUSD = 0xdddD73F5Df1F0DC31373357beAC77545dC5A6f3F;
 

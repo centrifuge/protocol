@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {IntegrationConstants} from "./IntegrationConstants.sol";
 
 /// @title ChainConfigs
 /// @notice Centralized configuration for multi-chain fork testing
@@ -89,7 +89,7 @@ library ChainConfigs {
                 centrifugeId: IntegrationConstants.PLUME_CENTRIFUGE_ID,
                 wormholeId: IntegrationConstants.PLUME_WORMHOLE_ID,
                 axelarId: "", // Plume doesn't support Axelar
-                usdc: IntegrationConstants.PLUME_PUSD, // pUSD instead of USDC until USDC exists
+                usdc: IntegrationConstants.PLUME_PUSD, // pUSD instead of USDC
                 poolAdmin: IntegrationConstants.PLUME_POOL_ADMIN,
                 adminSafe: IntegrationConstants.PLUME_ADMIN_SAFE,
                 hasAxelar: false
