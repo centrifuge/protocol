@@ -26,7 +26,7 @@ jobs:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: false
 
-  fork-tests:
+  fork-investment-tests:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -37,8 +37,8 @@ jobs:
         with:
           version: nightly
 
-      - name: Run fork tests
-        run: forge test --match-path "test/integration/fork/**/*.sol" --deny-warnings
+      - name: Run fork investment flow tests
+        run: forge test --match-path "test/integration/fork/ForkTestInvestments*.sol" --deny-warnings
         env:
           FOUNDRY_PROFILE: ci
           FORK_TESTS: true

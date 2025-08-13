@@ -59,7 +59,7 @@ contract ForkTestBase is EndToEndFlows {
         return IntegrationConstants.RPC_ETHEREUM;
     }
 
-    function _poolAdmin() internal pure virtual returns (address) {
+    function _poolAdmin() internal view virtual returns (address) {
         return IntegrationConstants.ETH_DEFAULT_POOL_ADMIN;
     }
 
