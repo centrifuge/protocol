@@ -79,7 +79,9 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
 
         console.log("Network:", network);
         console.log("Environment:", environment);
-        console.log("Version:", vm.envOr("VERSION", string("")));
+
+        string memory versionString = vm.envOr("VERSION", string(""));
+        console.log("Version:", versionString);
         console.log("\n\n---------\n\nStarting deployment for chain ID: %s\n\n", vm.toString(block.chainid));
 
         startDeploymentOutput();
@@ -88,7 +90,8 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             centrifugeId: centrifugeId,
             adminSafe: ISafe(vm.envAddress("ADMIN")),
             maxBatchGasLimit: uint128(maxBatchGasLimit),
-            version: keccak256(abi.encodePacked(vm.envOr("VERSION", string(""))))
+            // Default to bytes32(0) version to be consistent with CommonDeployer
+            version: bytes(versionString).length > 0 ? keccak256(abi.encodePacked(versionString)) : bytes32(0)
         });
 
         AdaptersInput memory adaptersInput = AdaptersInput({
@@ -105,7 +108,9 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
 
         FullActionBatcher batcher = new FullActionBatcher();
 
-        if (commonInput.version == keccak256(abi.encodePacked(("3")))) _verifyAdmin(commonInput);
+        // Cache version hash to avoid redundant hash recalculation
+        bytes32 version3Hash = keccak256(abi.encodePacked("3"));
+        if (commonInput.version == version3Hash) _verifyAdmin(commonInput);
 
         deployFull(commonInput, adaptersInput, batcher);
 
@@ -113,7 +118,7 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
 
         batcher.lock();
 
-        if (commonInput.version == keccak256(abi.encodePacked(("3")))) _verifyMainnetAddresses();
+        if (commonInput.version == version3Hash) _verifyMainnetAddresses();
 
         saveDeploymentOutput();
 
