@@ -333,8 +333,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         } else {
             IVault vault_ = IVault(vaultOrFactory);
 
-            if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
-            else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
+            if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault_);
+            else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault_);
             else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
         }
     }
@@ -381,7 +381,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
@@ -408,7 +408,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
