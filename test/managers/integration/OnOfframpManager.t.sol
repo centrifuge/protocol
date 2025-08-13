@@ -90,7 +90,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest 
     function testInvalidSource(address notContractUpdater) public {
         vm.assume(notContractUpdater != address(contractUpdater));
 
-        vm.expectRevert(IOnOfframpManager.NotSpoke.selector);
+        vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
         vm.prank(notContractUpdater);
         manager.update(
             POOL_A,

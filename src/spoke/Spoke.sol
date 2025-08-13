@@ -333,12 +333,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         } else {
             IVault vault_ = IVault(vaultOrFactory);
 
-            // Needed as safeguard against non-validated vaults
-            // I.e. we only accept vaults that have been deployed by the pool manager
-            require(_vaultDetails[vault_].asset != address(0), UnknownVault());
-
-            if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault_);
-            else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault_);
+            if (kind == VaultUpdateKind.Link) linkVault(poolId, scId, assetId, vault);
+            else if (kind == VaultUpdateKind.Unlink) unlinkVault(poolId, scId, assetId, vault);
             else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
         }
     }
@@ -385,7 +381,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(vaultDetails_.asset != address(0), UnknownVault());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
         IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
@@ -411,7 +408,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         (address asset, uint256 tokenId) = idToAsset(assetId);
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
+        VaultDetails storage vaultDetails_ = _vaultDetails[vault];
+        require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
         IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
@@ -536,9 +534,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes memory callData;
 
         if (tokenId == 0) {
-            callData = abi.encodeWithSignature("decimals()");
+            callData = abi.encodeCall(IERC20Metadata.decimals, ());
         } else {
-            callData = abi.encodeWithSignature("decimals(uint256)", tokenId);
+            callData = abi.encodeCall(IERC6909MetadataExt.decimals, tokenId);
         }
 
         (bool success, bytes memory data) = asset.staticcall(callData);
