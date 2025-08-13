@@ -122,6 +122,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      * @return salt A deterministic salt based on contract name and optional VERSION
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
+        bytes32 baseHash;
         if (version != bytes32(0)) {
             bytes32 contractNameHash = keccak256(bytes(contractName));
             // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
@@ -133,11 +134,15 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
                             || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
                     )
             ) {
-                return keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+                baseHash = keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+            } else {
+                baseHash = keccak256(abi.encodePacked(contractName, version));
             }
-            return keccak256(abi.encodePacked(contractName, version));
+        } else {
+            baseHash = keccak256(abi.encodePacked(contractName));
         }
-        return keccak256(abi.encodePacked(contractName));
+
+        return bytes32(abi.encodePacked(bytes20(msg.sender), bytes12(baseHash)));
     }
 
     function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
@@ -218,7 +223,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
