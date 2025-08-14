@@ -69,6 +69,9 @@ contract AdaptersDeployer is CommonDeployer {
         _preDeployCommon(input, batcher);
 
         if (adaptersInput.wormhole.shouldDeploy) {
+            require(adaptersInput.wormhole.relayer != address(0), "Wormhole relayer address cannot be zero");
+            require(adaptersInput.wormhole.relayer.code.length > 0, "Wormhole relayer must be a deployed contract");
+
             wormholeAdapter = WormholeAdapter(
                 create3(
                     generateSalt("wormholeAdapter"),
@@ -81,6 +84,11 @@ contract AdaptersDeployer is CommonDeployer {
         }
 
         if (adaptersInput.axelar.shouldDeploy) {
+            require(adaptersInput.axelar.gateway != address(0), "Axelar gateway address cannot be zero");
+            require(adaptersInput.axelar.gasService != address(0), "Axelar gas service address cannot be zero");
+            require(adaptersInput.axelar.gateway.code.length > 0, "Axelar gateway must be a deployed contract");
+            require(adaptersInput.axelar.gasService.code.length > 0, "Axelar gas service must be a deployed contract");
+
             axelarAdapter = AxelarAdapter(
                 create3(
                     generateSalt("axelarAdapter"),
