@@ -75,7 +75,7 @@ abstract contract VMLabeling is Test {
 
         // Token addresses
         vm.label(IntegrationConstants.ETH_USDC, "EthUSDC");
-        vm.label(IntegrationConstants.AVA_USDC, "AvaUSDC");
+        vm.label(IntegrationConstants.AVAX_USDC, "AvaxUSDC");
         vm.label(IntegrationConstants.PLUME_PUSD, "PlumePUSD");
 
         // Pool admin addresses
