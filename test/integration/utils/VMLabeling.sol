@@ -46,7 +46,10 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.POOL_ESCROW_FACTORY, "PoolEscrowFactory");
         vm.label(IntegrationConstants.ETH_ADMIN_SAFE, "EthAdminSafe");
         vm.label(IntegrationConstants.BASE_ADMIN_SAFE, "BaseAdminSafe");
+        vm.label(IntegrationConstants.ARBITRUM_ADMIN_SAFE, "ArbitrumAdminSafe");
         vm.label(IntegrationConstants.AVAX_ADMIN_SAFE, "AvaxAdminSafe");
+        vm.label(IntegrationConstants.BNB_ADMIN_SAFE, "BnbAdminSafe");
+        vm.label(IntegrationConstants.PLUME_ADMIN_SAFE, "PlumeAdminSafe");
 
         // Vault addresses
         vm.label(IntegrationConstants.ETH_JAAA_VAULT, "EthJAAAVault");
@@ -59,6 +62,7 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.AVAX_DEJTRSY_USDC_VAULT, "AvaxDeJTRSYUsdcVault");
         vm.label(IntegrationConstants.BASE_DEJAAA_USDC_VAULT, "BaseDeJAAAUsdcVault");
         vm.label(IntegrationConstants.AVAX_DEJAAA_USDC_VAULT, "AvaxDeJAAAUsdcVault");
+        vm.label(IntegrationConstants.AVAX_JAAA_USDC_VAULT, "AvaxJAAAUsdcVault");
         vm.label(IntegrationConstants.PLUME_SYNC_DEPOSIT_VAULT, "PlumeSyncDepositVault");
 
         // Share token addresses
@@ -71,7 +75,7 @@ abstract contract VMLabeling is Test {
 
         // Token addresses
         vm.label(IntegrationConstants.ETH_USDC, "EthUSDC");
-        vm.label(IntegrationConstants.AVA_USDC, "AvaUSDC");
+        vm.label(IntegrationConstants.AVAX_USDC, "AvaxUSDC");
         vm.label(IntegrationConstants.PLUME_PUSD, "PlumePUSD");
 
         // Pool admin addresses
@@ -81,6 +85,11 @@ abstract contract VMLabeling is Test {
         // Pool escrow addresses
         vm.label(IntegrationConstants.JTRSY_POOL_ESCROW, "JTRSYPoolEscrow");
         vm.label(IntegrationConstants.JAAA_POOL_ESCROW, "JAAAPoolEscrow");
+
+        // CFG Governance contracts
+        vm.label(IntegrationConstants.CFG, "CFG");
+        vm.label(IntegrationConstants.WCFG, "WCFG");
+        vm.label(IntegrationConstants.IOU_CFG, "IouCFG");
 
         // V2 Legacy contracts
         vm.label(IntegrationConstants.V2_ROOT, "V2Root");
