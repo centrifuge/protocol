@@ -28,6 +28,8 @@ interface AsyncRequestManagerV3_0_1Like {
 /// @dev Validates both JTRSY and JAAA V2 vault permissions are properly disabled
 /// @dev Also tests V3 JAAA vault deployment on Base spoke
 contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
+    // Expected V3 JAAA vault address (moved from spell for testing verification)
+    address constant V3_JAAA_USDC_VAULT = 0x2AEf271F00A9d1b0DA8065D396f4E601dBD0Ef0b;
     function _rpcEndpoint() internal pure override returns (string memory) {
         return IntegrationConstants.RPC_BASE;
     }
@@ -109,7 +111,7 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
             AsyncRequestManagerV3_0_1Like(baseSpell.V3_ASYNC_REQUEST_MANAGER()).vault(
                 baseSpell.JAAA_POOL_ID(), baseSpell.JAAA_SHARE_CLASS_ID(), baseSpell.V3_BASE_USDC_ASSET_ID()
             ),
-            baseSpell.V3_JAAA_USDC_VAULT(),
+            V3_JAAA_USDC_VAULT,
             "AsyncRequestManager vault mapping should point to correct V3 JAAA vault"
         );
 
@@ -154,7 +156,7 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
         assertTrue(spoke.isPoolActive(poolId), "JAAA pool should be active on spoke");
 
         assertTrue(
-            spoke.isLinked(IVault(baseSpell.V3_JAAA_USDC_VAULT())),
+            spoke.isLinked(IVault(V3_JAAA_USDC_VAULT)),
             "Deployed V3 JAAA vault should be marked as linked in spoke"
         );
     }

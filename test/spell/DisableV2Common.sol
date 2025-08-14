@@ -41,6 +41,11 @@ abstract contract DisableV2Common {
     IShareToken public constant JTRSY_SHARE_TOKEN = IShareToken(0x8c213ee79581Ff4984583C6a801e5263418C4b86);
     ShareClassId public constant JTRSY_SHARE_CLASS_ID = ShareClassId.wrap(0x00010000000000060000000000000001);
 
+    // JAAA constants (shared between Base and Ethereum)
+    IShareToken public constant JAAA_SHARE_TOKEN = IShareToken(0x5a0F93D040De44e78F251b03c43be9CF317Dcf64);
+    PoolId public constant JAAA_POOL_ID = PoolId.wrap(281474976710663);
+    ShareClassId public constant JAAA_SHARE_CLASS_ID = ShareClassId.wrap(0x00010000000000070000000000000001);
+
     function cast() external {
         require(!done, "spell-already-cast");
         done = true;

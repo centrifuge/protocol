@@ -3,11 +3,6 @@ pragma solidity ^0.8.28;
 
 import {DisableV2Common} from "./DisableV2Common.sol";
 
-import {PoolId} from "../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
-
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
-
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
 
 /// @notice Ethereum-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
@@ -16,11 +11,8 @@ contract DisableV2Eth is DisableV2Common {
     address public constant V2_JTRSY_VAULT_ADDRESS = IntegrationConstants.ETH_V2_JTRSY_VAULT;
     address public constant V2_JAAA_VAULT_ADDRESS = IntegrationConstants.ETH_V2_JAAA_VAULT;
 
-    // JAAA V3 constants (Ethereum)
+    // JAAA V3 constants (Ethereum-only)
     address public constant V3_JAAA_VAULT = 0x4880799eE5200fC58DA299e965df644fBf46780B;
-    IShareToken public constant JAAA_SHARE_TOKEN = IShareToken(0x5a0F93D040De44e78F251b03c43be9CF317Dcf64);
-    PoolId public constant JAAA_POOL_ID = PoolId.wrap(281474976710663);
-    ShareClassId public constant JAAA_SHARE_CLASS_ID = ShareClassId.wrap(0x00010000000000070000000000000001);
 
     function getJTRSYVaultV2Address() internal pure override returns (address) {
         return V2_JTRSY_VAULT_ADDRESS;
