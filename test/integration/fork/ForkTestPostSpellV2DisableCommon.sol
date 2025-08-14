@@ -11,6 +11,7 @@ import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {DisableV2Common} from "../../spell/DisableV2Common.sol";
+import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
 /// @notice Interface for V2 investment managers
 interface IV2InvestmentManager {
@@ -33,10 +34,6 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
     DisableV2Common public spell;
     bool public spellExecuted;
     address investor = makeAddr("INVESTOR");
-
-    // Test configuration constants
-    uint256 internal constant TEST_DEPOSIT_AMOUNT = 100_000e6; // 100k USDC
-    uint256 internal constant TEST_REDEEM_AMOUNT = 50_000e18; // 50k shares
 
     function setUp() public virtual override {
         super.setUp();
@@ -180,6 +177,17 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
             0,
             "Spell should not have V2 root permissions after execution"
         );
+
+        assertEq(
+            IAuth(IntegrationConstants.SPOKE).wards(address(spell)),
+            0,
+            "Spell should not have V3 spoke permissions after execution"
+        );
+        assertEq(
+            IAuth(address(spell.JTRSY_SHARE_TOKEN())).wards(address(spell)),
+            0,
+            "Spell should not have JTRSY permissions after execution"
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -224,20 +232,22 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
         IShareToken shareToken = IShareToken(vault.share());
 
         // Test V2 deposit failure
-        deal(asset, investor, TEST_DEPOSIT_AMOUNT);
+        uint256 testDepositAmount = 100_000e6; // 100k USDC
+        deal(asset, investor, testDepositAmount);
         vm.startPrank(investor);
-        IERC20(asset).approve(vaultAddress, TEST_DEPOSIT_AMOUNT);
+        IERC20(asset).approve(vaultAddress, testDepositAmount);
 
         vm.expectRevert();
-        vault.requestDeposit(TEST_DEPOSIT_AMOUNT, investor, investor);
+        vault.requestDeposit(testDepositAmount, investor, investor);
         vm.stopPrank();
 
         // Test V2 redeem failure
-        deal(address(shareToken), investor, TEST_REDEEM_AMOUNT);
+        uint256 testRedeemAmount = 50_000e18; // 50k shares
+        deal(address(shareToken), investor, testRedeemAmount);
         vm.startPrank(investor);
 
         vm.expectRevert();
-        vault.requestRedeem(TEST_REDEEM_AMOUNT, investor, investor);
+        vault.requestRedeem(testRedeemAmount, investor, investor);
         vm.stopPrank();
     }
 

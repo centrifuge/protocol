@@ -16,7 +16,7 @@ contract DisableV2Eth is DisableV2Common {
     address public constant V2_JTRSY_VAULT_ADDRESS = IntegrationConstants.ETH_V2_JTRSY_VAULT;
     address public constant V2_JAAA_VAULT_ADDRESS = IntegrationConstants.ETH_V2_JAAA_VAULT;
 
-    // JAAA V3 constants (Ethereum-only)
+    // JAAA V3 constants (Ethereum)
     address public constant V3_JAAA_VAULT = 0x4880799eE5200fC58DA299e965df644fBf46780B;
     IShareToken public constant JAAA_SHARE_TOKEN = IShareToken(0x5a0F93D040De44e78F251b03c43be9CF317Dcf64);
     PoolId public constant JAAA_POOL_ID = PoolId.wrap(281474976710663);

@@ -14,6 +14,9 @@ import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 interface VaultLike {
     function root() external view returns (address);
     function manager() external view returns (address);
+    function poolId() external view returns (uint64);
+    function share() external view returns (address);
+    function trancheId() external view returns (bytes16);
 }
 
 /// @notice Interface for interacting with V2 investment managers
