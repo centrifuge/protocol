@@ -6,9 +6,7 @@ import {DisableV2Common} from "./DisableV2Common.sol";
 import {AssetId} from "../../src/common/types/AssetId.sol";
 import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
 import {IRequestManager} from "../../src/common/interfaces/IRequestManager.sol";
-import {ISpokeGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
-
-import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
+import {ISpokeGatewayHandler, IBalanceSheetGatewayHandler} from "../../src/common/interfaces/IGatewayHandlers.sol";
 
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
 
@@ -73,5 +71,10 @@ contract DisableV2Base is DisableV2Common {
         );
 
         V3_ROOT.denyContract(address(V3_SPOKE), address(this));
+
+        // Update balance sheet manager for JAAA pool to use async request manager
+        V3_ROOT.relyContract(V3_BALANCE_SHEET, address(this));
+        IBalanceSheetGatewayHandler(V3_BALANCE_SHEET).updateManager(JAAA_POOL_ID, V3_ASYNC_REQUEST_MANAGER, true);
+        V3_ROOT.denyContract(V3_BALANCE_SHEET, address(this));
     }
 }

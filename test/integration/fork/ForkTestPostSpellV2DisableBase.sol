@@ -13,6 +13,7 @@ import {ISpokeGatewayHandler} from "../../../src/common/interfaces/IGatewayHandl
 import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
+import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
@@ -30,6 +31,7 @@ interface AsyncRequestManagerV3_0_1Like {
 contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
     // Expected V3 JAAA vault address (moved from spell for testing verification)
     address constant V3_JAAA_USDC_VAULT = 0x2AEf271F00A9d1b0DA8065D396f4E601dBD0Ef0b;
+
     function _rpcEndpoint() internal pure override returns (string memory) {
         return IntegrationConstants.RPC_BASE;
     }
@@ -117,6 +119,9 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
 
         _validateShareTokenVaultMapping(baseSpell);
         _validateDeployedV3Vault(baseSpell);
+
+        // Validate balance sheet manager assignment
+        _validateBalanceSheetManager(baseSpell);
     }
 
     /// @notice Validate JAAA share token has correct ward permissions
@@ -156,8 +161,7 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
         assertTrue(spoke.isPoolActive(poolId), "JAAA pool should be active on spoke");
 
         assertTrue(
-            spoke.isLinked(IVault(V3_JAAA_USDC_VAULT)),
-            "Deployed V3 JAAA vault should be marked as linked in spoke"
+            spoke.isLinked(IVault(V3_JAAA_USDC_VAULT)), "Deployed V3 JAAA vault should be marked as linked in spoke"
         );
     }
 
@@ -199,6 +203,23 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
             ShareClassId.unwrap(v3Vault.scId()),
             ShareClassId.unwrap(baseSpell.JAAA_SHARE_CLASS_ID()),
             "V3 JAAA vault should have correct share class ID"
+        );
+    }
+
+    /// @notice Validate balance sheet manager was set for JAAA pool
+    function _validateBalanceSheetManager(DisableV2Base baseSpell) internal view {
+        IBalanceSheet balanceSheet = IBalanceSheet(baseSpell.V3_BALANCE_SHEET());
+
+        // Verify async request manager is set as a manager for JAAA pool
+        assertTrue(
+            balanceSheet.manager(baseSpell.JAAA_POOL_ID(), baseSpell.V3_ASYNC_REQUEST_MANAGER()),
+            "AsyncRequestManager should be set as manager for JAAA pool in balance sheet"
+        );
+
+        assertEq(
+            IAuth(address(baseSpell.V3_BALANCE_SHEET())).wards(address(baseSpell)),
+            0,
+            "V3_BALANCE_SHEET should not have spell as ward"
         );
     }
 }
