@@ -22,7 +22,10 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
-/// @dev    Sets a single immutable delegate on deployment. This controls the DVNs and executor used.
+/// @dev    Sets a single immutable delegate on deployment. Delegate should set the DVN and executor
+///         settings as well as the send/receive libraries.
+///
+///         Message ordering is not enforced.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
