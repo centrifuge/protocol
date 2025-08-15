@@ -53,6 +53,11 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         destinations[centrifugeId] = LayerZeroDestination(layerZeroId, adapter);
     }
 
+    /// @dev Update the LayerZero delegate.
+    function setDelegate(address newDelegate) external auth {
+        endpoint.setDelegate(newDelegate);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------
