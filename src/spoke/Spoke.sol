@@ -148,7 +148,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
             _assetToId[asset][tokenId] = assetId;
         }
 
-        emit RegisterAsset(assetId, asset, tokenId, name, symbol, decimals, isInitialization);
+        emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
         sender.sendRegisterAsset(centrifugeId, assetId, decimals);
     }
 

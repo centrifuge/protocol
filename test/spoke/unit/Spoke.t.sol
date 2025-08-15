@@ -405,7 +405,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectEmit();
-        emit ISpoke.RegisterAsset(ASSET_ID_20, erc20, 0, NAME, SYMBOL, DECIMALS, true);
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_20, erc20, 0, NAME, SYMBOL, DECIMALS, true);
         spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc20, 0);
 
         assertEq(spoke.assetCounter(), 1);
@@ -422,7 +422,7 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectEmit();
-        emit ISpoke.RegisterAsset(ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, true);
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, true);
         spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
 
         assertEq(spoke.assetCounter(), 1);
@@ -442,7 +442,9 @@ contract SpokeTestRegisterAsset is SpokeTest {
 
         vm.prank(ANY);
         vm.expectEmit();
-        emit ISpoke.RegisterAsset(ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, false);
+        emit ISpoke.RegisterAsset(
+            REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, DECIMALS, false
+        );
         spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
 
         assertEq(spoke.assetCounter(), 1);

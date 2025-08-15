@@ -56,6 +56,7 @@ struct AssetIdKey {
 interface ISpoke {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
+        uint16 centrifugeId,
         AssetId indexed assetId,
         address indexed asset,
         uint256 indexed tokenId,
