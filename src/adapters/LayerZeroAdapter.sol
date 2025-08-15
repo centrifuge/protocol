@@ -68,7 +68,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         payable
     {
         LayerZeroSource memory source = sources[origin.srcEid];
-        require(source.addr != address(0) && source.addr == origin.sender.toAddressLeftPadded(), InvalidSource());
+        require(source.addr != address(0) && source.addr == origin.sender.toAddress(), InvalidSource());
         require(msg.sender == address(endpoint), NotLayerZeroEndpoint());
 
         entrypoint.handle(source.centrifugeId, payload);
@@ -77,7 +77,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     /// @inheritdoc ILayerZeroReceiver
     function allowInitializePath(Origin calldata origin) external view override returns (bool) {
         LayerZeroSource memory source = sources[origin.srcEid];
-        return source.addr != address(0) && source.addr == origin.sender.toAddressLeftPadded();
+        return source.addr != address(0) && source.addr == origin.sender.toAddress();
     }
 
     /// @inheritdoc ILayerZeroReceiver
@@ -118,11 +118,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         returns (MessagingParams memory)
     {
         return MessagingParams(
-            destination.layerZeroId,
-            destination.addr.toBytes32LeftPadded(),
-            payload,
-            _options(gasLimit.toUint128()),
-            false
+            destination.layerZeroId, destination.addr.toBytes32(), payload, _options(gasLimit.toUint128()), false
         );
     }
 
