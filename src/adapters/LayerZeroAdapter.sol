@@ -103,6 +103,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         return fee.nativeFee;
     }
 
+    /// @dev Generate message parameters
     function _params(LayerZeroDestination memory destination, bytes calldata payload, uint256 gasLimit)
         internal
         pure
