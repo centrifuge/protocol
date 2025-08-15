@@ -16,6 +16,7 @@ import {
 
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
 
 import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
@@ -24,6 +25,7 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 /// @dev    Sets a single delegate on deployment. This controls the DVNs and executor used.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
+    using MathLib for *;
 
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
@@ -89,25 +91,30 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroId != 0, UnknownChainId());
 
-        MessagingParams memory params = MessagingParams(
-            destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, getEncodedOption(gasLimit), false
-        );
-
-        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(params, refund);
-
+        MessagingReceipt memory receipt =
+            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit), refund);
         adapterData = receipt.guid;
     }
 
     /// @inheritdoc IAdapter
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
-
-        MessagingParams memory params = MessagingParams(
-            destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, getEncodedOption(gasLimit), false
-        );
-
-        MessagingFee memory fee = endpoint.quote(params, address(this));
+        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit), address(this));
         return fee.nativeFee;
+    }
+
+    function _params(LayerZeroDestination memory destination, bytes calldata payload, uint256 gasLimit)
+        internal
+        pure
+        returns (MessagingParams memory)
+    {
+        return MessagingParams(
+            destination.layerZeroId,
+            destination.addr.toBytes32LeftPadded(),
+            payload,
+            _options(gasLimit.toUint128()),
+            false
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -120,7 +127,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
 
     // Based on
     // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/oapp/contracts/oapp/libs/OptionsBuilder.sol#L42
-    function getEncodedOption(uint128 gasLimit) internal pure returns (bytes memory) {
+    function _options(uint128 gasLimit) internal pure returns (bytes memory) {
         bytes memory option = abi.encodePacked(gasLimit);
         return abi.encodePacked(
             TYPE_3,
