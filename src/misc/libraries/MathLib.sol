@@ -164,7 +164,7 @@ library MathLib {
 
     /// @notice Safe type conversion from uint256 to uint16.
     function toUint16(uint256 value) internal pure returns (uint16) {
-        require(value <= type(uint8).max, Uint16_Overflow());
+        require(value <= type(uint16).max, Uint16_Overflow());
         return uint16(value);
     }
 
