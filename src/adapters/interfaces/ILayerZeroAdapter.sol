@@ -37,11 +37,22 @@ interface ILayerZeroEndpointV2 {
         external
         payable
         returns (MessagingReceipt memory);
+
+    function setDelegate(address _delegate) external;
 }
 
 // From
 // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/protocol/contracts/interfaces/ILayerZeroReceiver.sol
 interface ILayerZeroReceiver {
+    /// @dev The path nonce starts from 1.
+    ///      If 0 is returned it means that there is NO nonce ordered enforcement.
+    ///      This function is required by the off-chain executor to determine
+    ///      the OApp expects msg execution is ordered.
+    function allowInitializePath(Origin calldata _origin) external view returns (bool);
+
+    /// @dev Checks if the path initialization is allowed based on the provided origin.
+    function nextNonce(uint32 _eid, bytes32 _sender) external view returns (uint64);
+
     function lzReceive(
         Origin calldata _origin,
         bytes32 _guid,

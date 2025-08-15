@@ -21,6 +21,7 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with the LayerZero Relayer service
+/// @dev    Sets a single delegate on deployment. This controls the DVNs and executor used.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
 
@@ -30,9 +31,11 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     mapping(uint32 layerZeroId => LayerZeroSource) public sources;
     mapping(uint16 centrifugeId => LayerZeroDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address endpoint_, address deployer) Auth(deployer) {
+    constructor(IMessageHandler entrypoint_, address endpoint_, address delegate, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         endpoint = ILayerZeroEndpointV2(endpoint_);
+
+        endpoint.setDelegate(delegate);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -61,12 +64,23 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         entrypoint.handle(source.centrifugeId, payload);
     }
 
+    /// @inheritdoc ILayerZeroReceiver
+    function allowInitializePath(Origin calldata origin) external view override returns (bool) {
+        LayerZeroSource memory source = sources[origin.srcEid];
+        return source.addr != address(0) && source.addr == origin.sender.toAddressLeftPadded();
+    }
+
+    /// @inheritdoc ILayerZeroReceiver
+    function nextNonce(uint32, bytes32) external pure override returns (uint64 nonce) {
+        return 0;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Outgoing
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
         external
         payable
         returns (bytes32 adapterData)
@@ -75,9 +89,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroId != 0, UnknownChainId());
 
-        // TODO: encode gasLimit and DVNs into options
-        MessagingParams memory params =
-            MessagingParams(destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, bytes(""), false);
+        MessagingParams memory params = MessagingParams(
+            destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, getEncodedOption(gasLimit), false
+        );
 
         MessagingReceipt memory receipt = endpoint.send{value: msg.value}(params, refund);
 
@@ -85,14 +99,35 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256) external view returns (uint256) {
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256) {
         LayerZeroDestination memory destination = destinations[centrifugeId];
 
-        // TODO: encode gasLimit and DVNs into options
-        MessagingParams memory params =
-            MessagingParams(destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, bytes(""), false);
+        MessagingParams memory params = MessagingParams(
+            destination.layerZeroId, destination.addr.toBytes32LeftPadded(), payload, getEncodedOption(gasLimit), false
+        );
 
         MessagingFee memory fee = endpoint.quote(params, address(this));
         return fee.nativeFee;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Options builder
+    //----------------------------------------------------------------------------------------------
+
+    uint16 internal constant TYPE_3 = 3;
+    uint8 internal constant WORKER_ID = 1;
+    uint8 internal constant OPTION_TYPE_LZRECEIVE = 1;
+
+    // Based on
+    // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/oapp/contracts/oapp/libs/OptionsBuilder.sol#L42
+    function getEncodedOption(uint128 gasLimit) internal pure returns (bytes memory) {
+        bytes memory option = abi.encodePacked(gasLimit);
+        return abi.encodePacked(
+            TYPE_3,
+            WORKER_ID,
+            option.length.toUint16() + 1, // +1 for optionType
+            OPTION_TYPE_LZRECEIVE,
+            option
+        );
     }
 }
