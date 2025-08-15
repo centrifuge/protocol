@@ -21,7 +21,7 @@ import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
 /// @title  LayerZero Adapter
-/// @notice Routing contract that integrates with the LayerZero V2 Endpoint.
+/// @notice Routing contract that integrates with LayerZero V2.
 /// @dev    Sets a single immutable delegate on deployment. This controls the DVNs and executor used.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
