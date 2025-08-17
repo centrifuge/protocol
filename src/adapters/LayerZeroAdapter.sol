@@ -33,7 +33,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
 
-    mapping(uint32 layerZeroId => LayerZeroSource) public sources;
+    mapping(uint32 layerZeroEid => LayerZeroSource) public sources;
     mapping(uint16 centrifugeId => LayerZeroDestination) public destinations;
 
     constructor(IMessageHandler entrypoint_, address endpoint_, address deployer) Auth(deployer) {
@@ -46,10 +46,10 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ILayerZeroAdapter
-    function wire(uint16 centrifugeId, uint32 layerZeroId, address adapter) external auth {
-        sources[layerZeroId] = LayerZeroSource(centrifugeId, adapter);
-        destinations[centrifugeId] = LayerZeroDestination(layerZeroId, adapter);
-        emit Wire(centrifugeId, layerZeroId, adapter);
+    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external auth {
+        sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
+        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
+        emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
     /// @dev Update the LayerZero delegate.
@@ -97,7 +97,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     {
         require(msg.sender == address(entrypoint), NotEntrypoint());
         LayerZeroDestination memory destination = destinations[centrifugeId];
-        require(destination.layerZeroId != 0, UnknownChainId());
+        require(destination.layerZeroEid != 0, UnknownChainId());
 
         MessagingReceipt memory receipt =
             endpoint.send{value: msg.value}(_params(destination, payload, gasLimit), refund);
@@ -118,7 +118,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         returns (MessagingParams memory)
     {
         return MessagingParams(
-            destination.layerZeroId,
+            destination.layerZeroEid,
             destination.addr.toBytes32LeftPadded(),
             payload,
             _options(gasLimit.toUint128()),
