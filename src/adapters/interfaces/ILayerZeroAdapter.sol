@@ -73,24 +73,27 @@ struct LayerZeroDestination {
 }
 
 interface ILayerZeroAdapter is IAdapter, ILayerZeroReceiver {
+    event Wire(uint16 indexed centrifugeId, uint32 indexed layerZeroId, address adapter);
+    event SetDelegate(address indexed newDelegate);
+
     error NotLayerZeroEndpoint();
     error InvalidSource();
 
     /// @notice Wire the adapter to a remote one.
     /// @param centrifugeId The remote chain's chain ID
-    /// @param layerZeroId The remote chain's LayerZero ID
+    /// @param layerZeroId The remote chain's LayerZero Endpoint ID
     /// @param adapter The remote chain's LayerZero adapter address
     function wire(uint16 centrifugeId, uint32 layerZeroId, address adapter) external;
 
     /// @notice Returns the source configuration for a given layerzero endpoint id
-    /// @param layerZeroId The remote layerzero id
+    /// @param layerZeroId The remote LayerZero Endpoint ID
     /// @return centrifugeId The remote chain id
     /// @return addr The address of the remote layerzero adapter
     function sources(uint32 layerZeroId) external view returns (uint16 centrifugeId, address addr);
 
     /// @notice Returns the destination configuration for a given chain id
     /// @param centrifugeId The remote chain id
-    /// @return layerZeroId The remote layerzero id
+    /// @return layerZeroId The remote LayerZero Endpoint ID
     /// @return addr The address of the remote layerzero adapter
     function destinations(uint16 centrifugeId) external view returns (uint32 layerZeroId, address addr);
 }

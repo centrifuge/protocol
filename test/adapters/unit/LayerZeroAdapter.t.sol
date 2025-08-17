@@ -64,7 +64,7 @@ contract LayerZeroAdapterTestBase is Test {
 
     function setUp() public {
         endpoint = new MockLayerZeroEndpoint();
-        adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), address(this), address(this));
+        adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), address(this));
     }
 }
 

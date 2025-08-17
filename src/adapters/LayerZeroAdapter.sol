@@ -22,7 +22,7 @@ import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
-/// @dev    Sets the delegate on deployment. Delegate should set the DVN and executor
+/// @dev    A delegate should be set, to configure the DVN and executor
 ///         settings as well as the send/receive libraries.
 ///
 ///         Message ordering is not enforced.
@@ -36,11 +36,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     mapping(uint32 layerZeroId => LayerZeroSource) public sources;
     mapping(uint16 centrifugeId => LayerZeroDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address endpoint_, address delegate, address deployer) Auth(deployer) {
+    constructor(IMessageHandler entrypoint_, address endpoint_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         endpoint = ILayerZeroEndpointV2(endpoint_);
-
-        endpoint.setDelegate(delegate);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -51,11 +49,13 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     function wire(uint16 centrifugeId, uint32 layerZeroId, address adapter) external auth {
         sources[layerZeroId] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroId, adapter);
+        emit Wire(centrifugeId, layerZeroId, adapter);
     }
 
     /// @dev Update the LayerZero delegate.
     function setDelegate(address newDelegate) external auth {
         endpoint.setDelegate(newDelegate);
+        emit SetDelegate(newDelegate);
     }
 
     //----------------------------------------------------------------------------------------------
