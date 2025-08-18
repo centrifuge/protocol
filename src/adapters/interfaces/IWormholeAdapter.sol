@@ -134,6 +134,8 @@ struct WormholeDestination {
 }
 
 interface IWormholeAdapter is IAdapter, IWormholeReceiver {
+    event Wire(uint16 indexed centrifugeId, uint16 indexed wormholeId, address adapter);
+
     error NotWormholeRelayer();
     error InvalidSource();
 

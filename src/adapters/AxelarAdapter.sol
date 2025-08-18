@@ -44,6 +44,7 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     function wire(uint16 centrifugeId, string calldata axelarId, string calldata adapter) external auth {
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
+        emit Wire(centrifugeId, axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
