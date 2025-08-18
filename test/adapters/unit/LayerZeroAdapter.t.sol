@@ -46,7 +46,7 @@ contract MockLayerZeroEndpoint is Mock {
         values_address["delegate"] = newDelegate;
     }
 
-    function quote(MessagingParams calldata params, address sender) external view returns (MessagingFee memory) {
+    function quote(MessagingParams calldata, address) external pure returns (MessagingFee memory) {
         // TODO: decode gas limit from params.options
         return MessagingFee(200_000, 0);
     }
