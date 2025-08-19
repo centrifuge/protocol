@@ -37,6 +37,8 @@ contract ERC7540Valuation is IERC7540Valuation {
     }
 
     /// @inheritdoc IValuation
+    /// TODO: pending requests don't work if there is some on non hub chains
+    /// should we use scm state?
     function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {
         require(base == shareId, InvalidBase());
         require(quote == assetId, InvalidQuote());
