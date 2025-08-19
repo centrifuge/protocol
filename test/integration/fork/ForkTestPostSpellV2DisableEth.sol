@@ -19,7 +19,7 @@ contract ForkTestPostSpellV2DisableEth is ForkTestPostSpellV2DisableCommon {
         return new DisableV2Eth();
     }
 
-    function _canTestAsyncFlow() internal pure override returns (bool) {
+    function _canTestLocalAsyncFlow() internal pure override returns (bool) {
         return true;
     }
 
@@ -54,8 +54,8 @@ contract ForkTestPostSpellV2DisableEth is ForkTestPostSpellV2DisableCommon {
     function test_jaaa_vaultAsyncFlowsPostSpell() public {
         DisableV2Eth ethSpell = _ethSpell();
 
-        _completeAsyncDeposit(IBaseVault(ethSpell.V3_JAAA_VAULT()), investor, depositAmount);
-        _completeAsyncRedeem(IBaseVault(ethSpell.V3_JAAA_VAULT()), investor, depositAmount);
+        completeAsyncDepositLocal(IBaseVault(ethSpell.V3_JAAA_VAULT()), investor, depositAmount);
+        completeAsyncRedeemLocal(IBaseVault(ethSpell.V3_JAAA_VAULT()), investor, depositAmount);
     }
 
     function _validateV2OperationsDisabled() internal override {

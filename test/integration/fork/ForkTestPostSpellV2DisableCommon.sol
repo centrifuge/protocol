@@ -6,7 +6,14 @@ import {ForkTestLiveValidation} from "./ForkTestLiveValidation.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+
+import {ISpoke} from "../../../src/spoke/interfaces/ISpoke.sol";
+import {IVault} from "../../../src/spoke/interfaces/IVault.sol";
 import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
+import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
@@ -16,6 +23,11 @@ import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 /// @notice Interface for V2 investment managers
 interface IV2InvestmentManager {
     function poolManager() external view returns (address);
+}
+
+/// @notice Interface for AsyncRequestManager V3.0.1
+interface AsyncRequestManagerV3_0_1Like {
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (address vault);
 }
 
 /// @notice Interface for V2 vaults
@@ -53,8 +65,8 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
     function test_v3AsyncFlowsContinue() public virtual {
         address networkVault = _getNetworkVault();
         if (networkVault != address(0)) {
-            _completeAsyncDeposit(IBaseVault(networkVault), investor, depositAmount);
-            _completeAsyncRedeem(IBaseVault(networkVault), investor, depositAmount);
+            completeAsyncDepositLocal(IBaseVault(networkVault), investor, depositAmount);
+            completeAsyncRedeemLocal(IBaseVault(networkVault), investor, depositAmount);
         }
     }
 
@@ -80,21 +92,21 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
     }
 
     function test_jtrsy_vaultAsyncFlowsPostSpell() public virtual {
-        if (_canTestAsyncFlow()) {
-            _completeAsyncDeposit(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
-            _completeAsyncRedeem(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
+        if (_canTestLocalAsyncFlow()) {
+            completeAsyncDepositLocal(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
+            completeAsyncRedeemLocal(IBaseVault(spell.V3_JTRSY_VAULT()), investor, depositAmount);
         }
     }
 
-    function test_completeAsyncDepositFlow() public virtual override {
-        if (_canTestAsyncFlow()) {
-            super.test_completeAsyncDepositFlow();
+    function test_completeAsyncDepositLocalFlow() public virtual override {
+        if (_canTestLocalAsyncFlow()) {
+            super.test_completeAsyncDepositLocalFlow();
         }
     }
 
-    function test_completeAsyncRedeemFlow() public virtual override {
-        if (_canTestAsyncFlow()) {
-            super.test_completeAsyncRedeemFlow();
+    function test_completeAsyncRedeemLocalFlow() public virtual override {
+        if (_canTestLocalAsyncFlow()) {
+            super.test_completeAsyncRedeemLocalFlow();
         }
     }
 
@@ -147,7 +159,7 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
         assertTrue(address(spell.V3_ROOT()).code.length > 0, "V3 Root should have code");
         assertTrue(spell.V3_FULL_RESTRICTIONS_HOOK().code.length > 0, "V3 Hook should have code");
 
-        if (_canTestAsyncFlow()) {
+        if (_canTestLocalAsyncFlow()) {
             assertTrue(spell.V3_JTRSY_VAULT().code.length > 0, "JTRSY V3 Vault should have code");
             assertTrue(address(spell.JTRSY_SHARE_TOKEN()).code.length > 0, "JTRSY Share Token should have code");
         }
@@ -212,15 +224,15 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
         return address(0);
     }
 
-    function _getNetworkVault() internal view returns (address) {
+    function _getNetworkVault() internal view virtual returns (address) {
         // Only set for Ethereum due to hub == spoke chain
-        if (_canTestAsyncFlow()) {
+        if (_canTestLocalAsyncFlow()) {
             return spell.V3_JTRSY_VAULT();
         }
         return address(0);
     }
 
-    function _canTestAsyncFlow() internal pure virtual returns (bool);
+    function _canTestLocalAsyncFlow() internal pure virtual returns (bool);
 
     function _validateV2OperationsDisabled() internal virtual {
         // Override in child contracts to validate V2 operations are disabled
@@ -304,5 +316,192 @@ abstract contract ForkTestPostSpellV2DisableCommon is ForkTestLiveValidation {
             spell.V3_FULL_RESTRICTIONS_HOOK(),
             string(abi.encodePacked(tokenName, " share token should have V3 hook set"))
         );
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // V3 SHARE TOKEN DEPLOYMENT VALIDATION (Generalized)
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Validates V3 share token ward permissions
+    /// @dev Generalized version that works for both JTRSY and JAAA tokens across all networks
+    function _validateShareTokenWards(
+        IShareToken shareToken,
+        address balanceSheetAddress,
+        address spokeAddress,
+        string memory tokenName
+    ) internal view {
+        assertEq(
+            IAuth(address(shareToken)).wards(address(spell.V3_ROOT())),
+            1,
+            string(abi.encodePacked(tokenName, " share token should have V3_ROOT as ward"))
+        );
+        assertEq(
+            IAuth(address(shareToken)).wards(balanceSheetAddress),
+            1,
+            string(abi.encodePacked(tokenName, " share token should have V3_BALANCE_SHEET as ward"))
+        );
+        assertEq(
+            IAuth(address(shareToken)).wards(spokeAddress),
+            1,
+            string(abi.encodePacked(tokenName, " share token should have V3_SPOKE as ward"))
+        );
+    }
+
+    /// @notice Validates spoke storage changes from V3 token deployment
+    /// @dev Generalized version that works for both JTRSY and JAAA tokens across all networks
+    function _validateSpokeDeploymentChanges(
+        PoolId poolId,
+        ShareClassId shareClassId,
+        IShareToken shareToken,
+        address vaultAddress,
+        string memory tokenName
+    ) internal view {
+        ISpoke spoke = ISpoke(IntegrationConstants.SPOKE);
+
+        // Validate share token is linked to pool/share class
+        IShareToken linkedShareToken = spoke.shareToken(poolId, shareClassId);
+        assertEq(
+            address(linkedShareToken),
+            address(shareToken),
+            string(abi.encodePacked(tokenName, " share token should be linked to pool/share class in spoke"))
+        );
+
+        // Validate pool is active
+        assertTrue(spoke.isPoolActive(poolId), string(abi.encodePacked(tokenName, " pool should be active on spoke")));
+
+        // Validate vault is linked (if vault address is provided)
+        if (vaultAddress != address(0)) {
+            assertTrue(
+                spoke.isLinked(IVault(vaultAddress)),
+                string(abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in spoke"))
+            );
+        }
+    }
+
+    /// @notice Validates share token vault mapping points to deployed V3 vault
+    /// @dev Generalized version that works for both JTRSY and JAAA tokens across all networks
+    function _validateShareTokenVaultMapping(IShareToken shareToken, AssetId assetId, string memory tokenName)
+        internal
+        view
+    {
+        // Get asset address from asset ID
+        (address assetAddress,) = ISpoke(IntegrationConstants.SPOKE).idToAsset(assetId);
+
+        // Share token's vault(asset) should point to deployed V3 vault
+        address vaultFromShareToken = shareToken.vault(assetAddress);
+        assertTrue(
+            vaultFromShareToken != address(0),
+            string(abi.encodePacked(tokenName, " share token vault mapping should point to deployed V3 vault"))
+        );
+
+        // Verify vault has deployed code
+        assertTrue(
+            vaultFromShareToken.code.length > 0,
+            string(abi.encodePacked("V3 ", tokenName, " vault should have deployed code"))
+        );
+    }
+
+    /// @notice Validates deployed V3 vault has correct configuration
+    /// @dev Generalized version that works for both JTRSY and JAAA tokens across all networks
+    function _validateDeployedV3Vault(
+        IShareToken shareToken,
+        AssetId assetId,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        string memory tokenName
+    ) internal view {
+        // Get vault address from share token mapping
+        (address assetAddress,) = ISpoke(IntegrationConstants.SPOKE).idToAsset(assetId);
+        address v3VaultAddress = shareToken.vault(assetAddress);
+
+        assertTrue(v3VaultAddress != address(0), string(abi.encodePacked("V3 ", tokenName, " vault should exist")));
+
+        IBaseVault v3Vault = IBaseVault(v3VaultAddress);
+
+        // Validate vault configuration
+        assertEq(
+            v3Vault.share(),
+            address(shareToken),
+            string(abi.encodePacked("V3 ", tokenName, " vault should have ", tokenName, " share token as its share"))
+        );
+
+        assertEq(
+            PoolId.unwrap(v3Vault.poolId()),
+            PoolId.unwrap(poolId),
+            string(abi.encodePacked("V3 ", tokenName, " vault should have correct pool ID"))
+        );
+
+        assertEq(
+            ShareClassId.unwrap(v3Vault.scId()),
+            ShareClassId.unwrap(shareClassId),
+            string(abi.encodePacked("V3 ", tokenName, " vault should have correct share class ID"))
+        );
+    }
+
+    /// @notice Validates balance sheet manager assignment for a pool
+    /// @dev Generalized version that works for any pool/request manager combination
+    function _validateBalanceSheetManager(
+        PoolId poolId,
+        address requestManager,
+        address balanceSheetAddress,
+        string memory tokenName
+    ) internal view {
+        IBalanceSheet balanceSheet = IBalanceSheet(balanceSheetAddress);
+
+        // Verify request manager is set as manager for the pool
+        assertTrue(
+            balanceSheet.manager(poolId, requestManager),
+            string(
+                abi.encodePacked("RequestManager should be set as manager for ", tokenName, " pool in balance sheet")
+            )
+        );
+
+        // Verify spell no longer has permissions on balance sheet
+        assertEq(IAuth(balanceSheetAddress).wards(address(spell)), 0, "V3_BALANCE_SHEET should not have spell as ward");
+    }
+
+    /// @notice Bundled validation for complete V3 share token deployment
+    /// @dev Validates all aspects of V3 token deployment - use for networks that deploy V3 tokens
+    function _validateV3ShareTokenDeployment(
+        IShareToken shareToken,
+        PoolId poolId,
+        ShareClassId shareClassId,
+        AssetId assetId,
+        address vaultAddress,
+        address requestManager,
+        address balanceSheetAddress,
+        string memory tokenName
+    ) internal view virtual {
+        // Validate share token ward permissions
+        _validateShareTokenWards(shareToken, balanceSheetAddress, address(spell.V3_SPOKE()), tokenName);
+
+        // Validate spoke deployment changes
+        _validateSpokeDeploymentChanges(poolId, shareClassId, shareToken, vaultAddress, tokenName);
+
+        // Validate vault mapping in AsyncRequestManager
+        if (requestManager != address(0) && vaultAddress != address(0)) {
+            address vaultFromRequestManager =
+                AsyncRequestManagerV3_0_1Like(requestManager).vault(poolId, shareClassId, assetId);
+            assertEq(
+                vaultFromRequestManager,
+                vaultAddress,
+                string(
+                    abi.encodePacked(
+                        "AsyncRequestManager vault mapping should point to correct V3 ", tokenName, " vault"
+                    )
+                )
+            );
+        }
+
+        // Validate share token vault mapping
+        _validateShareTokenVaultMapping(shareToken, assetId, tokenName);
+
+        // Validate deployed V3 vault configuration
+        _validateDeployedV3Vault(shareToken, assetId, poolId, shareClassId, tokenName);
+
+        // Validate balance sheet manager assignment
+        if (requestManager != address(0)) {
+            _validateBalanceSheetManager(poolId, requestManager, balanceSheetAddress, tokenName);
+        }
     }
 }

@@ -23,7 +23,7 @@ contract ForkTestPostSpellV2DisableArb is ForkTestPostSpellV2DisableCommon {
     }
 
     // Non-Ethereum networks don't have hub == spoke chain vaults
-    function _canTestAsyncFlow() internal pure override returns (bool) {
+    function _canTestLocalAsyncFlow() internal pure override returns (bool) {
         return false;
     }
 
