@@ -98,6 +98,8 @@ contract LayerZeroAdapterTestSetDelegate is LayerZeroAdapterTestBase {
     }
 
     function testSetDelegate() public {
+        vm.expectEmit();
+        emit ILayerZeroAdapter.SetDelegate(newDelegate);
         adapter.setDelegate(newDelegate);
         assertEq(endpoint.values_address("delegate"), newDelegate);
     }
