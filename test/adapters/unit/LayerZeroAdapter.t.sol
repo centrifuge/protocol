@@ -200,7 +200,14 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         assertEq(endpoint.values_uint32("params.dstEid"), LAYERZERO_ID);
         assertEq(endpoint.values_bytes32("params.receiver"), makeAddr("DestinationAdapter").toBytes32LeftPadded());
         assertEq(endpoint.values_bytes("params.message"), payload);
-        // assertEq(endpoint.values_bytes("params.options"), ""); // TODO
+        bytes memory expectedOptions = abi.encodePacked(
+            uint16(3), // TYPE_3
+            uint8(1), // WORKER_ID
+            uint16(17), // uint128 gasLimit byte length + 1
+            uint8(1), // OPTION_TYPE_LZ
+            uint128(gasLimit)
+        );
+        assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);
         assertEq(endpoint.values_address("refundAddress"), refund);
     }
