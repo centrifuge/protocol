@@ -76,6 +76,8 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
     }
 
     function testWire() public {
+        vm.expectEmit();
+        emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
         adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
 
         (uint32 layerZeroid, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
