@@ -5,14 +5,12 @@ import {ChainConfigs} from "./ChainConfigs.sol";
 import {ForkTestAsyncInvestments} from "./ForkTestInvestments.sol";
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
 import {IRoot} from "../../../src/common/interfaces/IRoot.sol";
 import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
 import {MessageProcessor} from "../../../src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "../../../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../../../src/common/factories/PoolEscrowFactory.sol";
@@ -37,20 +35,9 @@ import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 ///      VMLabeling functionality is inherited through ForkTestAsyncInvestments for improved debugging.
 ///      Combines spell support (storage variables) with multichain network topology validation.
 contract ForkTestLiveValidation is ForkTestAsyncInvestments {
-    using CastLib for *;
-    using MessageLib for *;
-
     uint8 constant PLUME_QUORUM = 1;
     uint8 constant STANDARD_QUORUM = 2;
     uint256 constant SUPPORTED_CHAINS_COUNT = 6;
-
-    // Cross-chain fork management
-    struct ForkContext {
-        uint256 forkId;
-        string chainName;
-    }
-
-    mapping(string => ForkContext) public forkContexts;
 
     // Core system contracts
     address public root;
