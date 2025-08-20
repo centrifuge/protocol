@@ -58,13 +58,14 @@ contract LayerZeroAdapterTestBase is Test {
 
     uint16 constant CENTRIFUGE_ID = 1;
     uint32 constant LAYERZERO_ID = 2;
+    address immutable DELEGATE = makeAddr("delegate");
     address immutable REMOTE_LAYERZERO_ADDR = makeAddr("remoteAddress");
 
     IMessageHandler constant GATEWAY = IMessageHandler(address(1));
 
     function setUp() public {
         endpoint = new MockLayerZeroEndpoint();
-        adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), address(this));
+        adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), DELEGATE, address(this));
     }
 }
 
@@ -115,6 +116,8 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
     function testDeploy() public view {
         assertEq(address(adapter.entrypoint()), address(GATEWAY));
         assertEq(address(adapter.endpoint()), address(endpoint));
+
+        assertEq(endpoint.values_address("delegate"), DELEGATE);
 
         assertEq(adapter.wards(address(this)), 1);
     }
