@@ -93,14 +93,12 @@ contract ForkTestPostSpellV2DisableBase is ForkTestPostSpellV2DisableCommon {
         DisableV2Base baseSpell = DisableV2Base(address(spell));
 
         // Use generalized validation function from Common
-        _validateV3ShareTokenDeployment(
+        validateShareToken(
             baseSpell.JAAA_SHARE_TOKEN(),
             baseSpell.JAAA_POOL_ID(),
             baseSpell.JAAA_SHARE_CLASS_ID(),
             baseSpell.V3_BASE_USDC_ASSET_ID(),
             V3_JAAA_USDC_VAULT,
-            baseSpell.V3_ASYNC_REQUEST_MANAGER(),
-            baseSpell.V3_BALANCE_SHEET(),
             "JAAA"
         );
     }
