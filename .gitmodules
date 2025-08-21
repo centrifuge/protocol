@@ -7,3 +7,6 @@
 [submodule "lib/createx-forge"]
 	path = lib/createx-forge
 	url = https://github.com/radeksvarz/createx-forge
+[submodule "lib/pigeon"]
+	path = lib/pigeon
+	url = https://github.com/exp-table/pigeon
