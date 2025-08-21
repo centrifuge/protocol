@@ -23,6 +23,7 @@ import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 
 import {Spoke} from "../../../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
+import {QueueManager} from "../../../src/managers/QueueManager.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
@@ -96,7 +97,8 @@ contract ForkTestBase is EndToEndFlows {
             fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
             redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
             usdc: ERC20(address(0)), // NOTE: Unused in fork tests in order to be chain agnostic
-            usdcId: newAssetId(0) // NOTE: Unused in fork tests in order to be chain agnostic
+            usdcId: newAssetId(0), // NOTE: Unused in fork tests in order to be chain agnostic
+            queueManager: QueueManager(address(0))
         });
 
         // Initialize pricing state

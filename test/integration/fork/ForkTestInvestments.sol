@@ -21,6 +21,7 @@ import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 
 import {Spoke} from "../../../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
+import {QueueManager} from "../../../src/managers/QueueManager.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
@@ -171,7 +172,8 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
             redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
             usdc: ERC20(IntegrationConstants.PLUME_PUSD),
-            usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.PLUME_PUSD, 0)
+            usdcId: Spoke(IntegrationConstants.SPOKE).assetToId(IntegrationConstants.PLUME_PUSD, 0),
+            queueManager: QueueManager(address(0))
         });
 
         // Initialize pricing state
