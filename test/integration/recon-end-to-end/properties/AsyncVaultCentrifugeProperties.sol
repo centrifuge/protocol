@@ -130,10 +130,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         (uint256 pendingDepositBefore,) = shareClassManager.depositRequest(scId, assetId, _getActor().toBytes32());
 
         // === PoolEscrow State Analysis Before Deposit ===
-        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
-        address asset = address(IBaseVault(_getVault()).asset());
-        uint128 availableBalanceBefore = poolEscrow.availableBalanceOf(scId, asset, 0);
-        
+        PoolEscrowState memory escrowState = _analyzePoolEscrowState(poolId, scId);
 
         bool isAsyncVault = IBaseVault(_getVault()).vaultKind() == VaultKind.Async;
         uint256 maxMintBefore;
@@ -154,27 +151,14 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             uint256 difference = maxDepositBefore - depositAmount;
 
             // === Enhanced PoolEscrow-aware maxDeposit Property ===
-            // The key insight: when available balance is 0 (critical state), 
-            // maxDeposit behavior is non-linear due to PoolEscrow state transitions
-            if (availableBalanceBefore > 0 && poolEscrow.availableBalanceOf(scId, asset, 0) > 0) {
-                // Normal state: apply strict validation (GitHub issue partner expectation ≤1 wei)
-                t(maxDepositBefore >= maxDepositAfter, "maxDeposit should not increase");
-                t(maxDepositBefore - maxDepositAfter <= depositAmount + 1, "Normal: deviation <=1 wei");
-                t(maxDepositBefore - maxDepositAfter + 1 >= depositAmount, "Normal: deviation <=1 wei");
-            } else {
-                // Critical/transition state: allow bounded larger deviations
-                // This addresses the root cause of GitHub issue #422
-                console2.log("Critical state - applying relaxed bounds for legitimate state transitions");
-                
-                // Still validate that change is bounded to prevent unlimited deviations
-                if (maxDepositBefore >= maxDepositAfter) {
-                    t(maxDepositBefore - maxDepositAfter <= depositAmount * 5 + 500, "Critical: bounded deviation");
-                } else {
-                    t(maxDepositAfter - maxDepositBefore <= depositAmount * 5 + 500, "Critical: bounded deviation");
-                }
-            }
-            
-            console2.log("Available balance before/after: %d / %d", availableBalanceBefore, poolEscrow.availableBalanceOf(scId, asset, 0));
+            // Update escrow state after the deposit operation
+            _updatePoolEscrowStateAfter(escrowState);
+
+            // Validate maxDeposit change with PoolEscrow-aware logic
+            _validateMaxValueChange(maxDepositBefore, maxDepositAfter, depositAmount, "Deposit", escrowState);
+
+            // Log analysis for debugging
+            _logPoolEscrowAnalysis("Deposit", maxDepositBefore, maxDepositAfter, depositAmount, escrowState);
 
             if (depositAmount == maxDepositBefore) {
                 (uint256 pendingDeposit,) = shareClassManager.depositRequest(scId, assetId, _getActor().toBytes32());
@@ -212,42 +196,24 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
 
         // === PoolEscrow State Analysis Before Mint ===
-        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
-        address asset = address(IBaseVault(_getVault()).asset());
-        uint128 availableBalanceBefore = poolEscrow.availableBalanceOf(scId, asset, 0);
+        PoolEscrowState memory escrowState = _analyzePoolEscrowState(poolId, scId);
 
         vm.prank(_getActor());
         console2.log(" === Before asyncVault_maxMint mint === ");
         try IBaseVault(_getVault()).mint(mintAmount, _getActor()) returns (uint256 assets) {
             console2.log(" === After asyncVault_maxMint mint === ");
             uint256 maxMintAfter = IBaseVault(_getVault()).maxMint(_getActor());
-            
+
             // === Enhanced PoolEscrow-aware maxMint Property ===
-            // The key insight: maxMint behavior is non-linear due to PoolEscrow state transitions
-            // Same root causes as maxDeposit: availableBalanceOf() discontinuous behavior
-            if (availableBalanceBefore > 0 && poolEscrow.availableBalanceOf(scId, asset, 0) > 0) {
-                // Normal state: apply strict validation (<=1 wei expectation)
-                t(maxMintBefore >= maxMintAfter, "maxMint should not increase");
-                t(maxMintBefore - maxMintAfter <= mintAmount + 1, "Normal: maxMint deviation <=1 wei");
-                t(maxMintBefore - maxMintAfter + 1 >= mintAmount, "Normal: maxMint deviation <=1 wei");
-            } else {
-                // Critical/transition state: allow bounded larger deviations
-                // This addresses the same issue as maxDeposit - state transitions cause legitimate changes
-                console2.log("Critical state detected in maxMint - applying relaxed bounds");
-                
-                // Still validate that change is bounded to prevent unlimited deviations
-                if (maxMintBefore >= maxMintAfter) {
-                    t(maxMintBefore - maxMintAfter <= mintAmount * 5 + 500, "Critical: bounded maxMint deviation");
-                } else {
-                    t(maxMintAfter - maxMintBefore <= mintAmount * 5 + 500, "Critical: bounded maxMint deviation");
-                }
-            }
-            
-            console2.log("=== PoolEscrow Analysis (maxMint) ===");
-            console2.log("Available balance before/after: %d / %d", availableBalanceBefore, poolEscrow.availableBalanceOf(scId, asset, 0));
-            console2.log("MaxMint before/after: %d / %d", maxMintBefore, maxMintAfter);
-            console2.log("MintAmount: %d", mintAmount);
-            
+            // Update escrow state after the mint operation
+            _updatePoolEscrowStateAfter(escrowState);
+
+            // Validate maxMint change with PoolEscrow-aware logic
+            _validateMaxValueChange(maxMintBefore, maxMintAfter, mintAmount, "Mint", escrowState);
+
+            // Log analysis for debugging
+            _logPoolEscrowAnalysis("Mint", maxMintBefore, maxMintAfter, mintAmount, escrowState);
+
             uint256 shares = IBaseVault(_getVault()).convertToShares(assets);
 
             if (mintAmount == maxMintBefore) {
@@ -379,6 +345,157 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         }
     }
 
+    /// === Helper Functions === ///
+
+    /// @dev Captures PoolEscrow state for validation analysis
+    struct PoolEscrowState {
+        IPoolEscrow poolEscrow;
+        address asset;
+        ShareClassId scId;
+        uint256 tokenId;
+        // Raw PoolEscrow holding values
+        uint128 totalBefore;
+        uint128 totalAfter;
+        uint128 reservedBefore;
+        uint128 reservedAfter;
+        // Derived available balance values
+        uint128 availableBalanceBefore;
+        uint128 availableBalanceAfter;
+        // State classification
+        bool isNormalStateBefore;  // total > reserved before
+        bool isNormalStateAfter;   // total > reserved after
+    }
+
+    /// @dev Analyzes PoolEscrow state before operations
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @return state PoolEscrow state analysis results
+    function _analyzePoolEscrowState(PoolId poolId, ShareClassId scId)
+        internal
+        view
+        returns (PoolEscrowState memory state)
+    {
+        state.poolEscrow = poolEscrowFactory.escrow(poolId);
+        state.asset = address(IBaseVault(_getVault()).asset());
+        state.scId = scId;
+        state.tokenId = 0; // ERC20 tokens use tokenId 0
+        
+        // Capture raw holding values before operation
+        (state.totalBefore, state.reservedBefore) = PoolEscrow(payable(address(state.poolEscrow))).holding(scId, state.asset, state.tokenId);
+        
+        // Calculate derived values before operation
+        state.availableBalanceBefore = state.poolEscrow.availableBalanceOf(scId, state.asset, state.tokenId);
+        state.isNormalStateBefore = state.totalBefore > state.reservedBefore;
+        
+        // Initialize after values (will be updated later)
+        state.totalAfter = state.totalBefore;
+        state.reservedAfter = state.reservedBefore;
+        state.availableBalanceAfter = state.availableBalanceBefore;
+        state.isNormalStateAfter = state.isNormalStateBefore;
+    }
+
+    /// @dev Updates PoolEscrow state after operation for post-validation
+    /// @param state The state struct to update
+    function _updatePoolEscrowStateAfter(PoolEscrowState memory state) internal view {
+        // Capture raw holding values after operation
+        (state.totalAfter, state.reservedAfter) = PoolEscrow(payable(address(state.poolEscrow))).holding(state.scId, state.asset, state.tokenId);
+        
+        // Calculate derived values after operation
+        state.availableBalanceAfter = state.poolEscrow.availableBalanceOf(state.scId, state.asset, state.tokenId);
+        state.isNormalStateAfter = state.totalAfter > state.reservedAfter;
+    }
+
+    /// @dev Validates max operation value changes with exact PoolEscrow-aware logic
+    /// @param maxValueBefore The maximum operation value before the operation
+    /// @param maxValueAfter The maximum operation value after the operation
+    /// @param operationAmount The amount used in the operation (deposit/mint amount)
+    /// @param operationName The name of the operation for logging ("Deposit" or "Mint")
+    /// @param state The PoolEscrow state analysis
+    function _validateMaxValueChange(
+        uint256 maxValueBefore,
+        uint256 maxValueAfter,
+        uint256 operationAmount,
+        string memory operationName,
+        PoolEscrowState memory state
+    ) internal {
+        // === Enforce Core Invariants ===
+        // Invariant 1: Only total should change during deposits, not reserved
+        t(
+            state.reservedAfter == state.reservedBefore,
+            string.concat(operationName, ": reserved amount should not change")
+        );
+        
+        // Invariant 2: Total should increase by exactly the operation amount
+        t(
+            state.totalBefore + uint128(operationAmount) == state.totalAfter,
+            string.concat(operationName, ": total should increase by operation amount")
+        );
+        
+        // === Scenario-Based Validation ===
+        if (state.isNormalStateBefore && state.isNormalStateAfter) {
+            // Scenario 1: Normal -> Normal (total > reserved before and after)
+            t(
+                maxValueAfter == maxValueBefore - operationAmount,
+                string.concat("Normal->Normal: max", operationName, " should decrease by exact operation amount")
+            );
+            
+        } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
+            // Scenario 2: Critical -> Critical (total ≤ reserved before and after)
+            t(
+                maxValueBefore == 0,
+                string.concat("Critical->Critical: max", operationName, "Before should be 0")
+            );
+            t(
+                maxValueAfter == 0,
+                string.concat("Critical->Critical: max", operationName, "After should be 0")
+            );
+            
+        } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
+            // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
+            t(
+                maxValueBefore == 0,
+                string.concat("Critical->Normal: max", operationName, "Before should be 0")
+            );
+            
+            uint128 expectedMaxAfter = state.totalAfter - state.reservedBefore;
+            t(
+                maxValueAfter == expectedMaxAfter,
+                string.concat("Critical->Normal: max", operationName, "After should equal (totalAfter - reservedAfter)")
+            );
+            
+            t(
+                expectedMaxAfter < operationAmount,
+                string.concat("Critical->Normal: available balance should be less than operation amount")
+            );
+            
+        } else {
+            // Scenario 4: Normal -> Critical (total > reserved before, total ≤ reserved after)
+            // This should be theoretically impossible since we're only adding funds via deposits
+            t(false, string.concat("Invalid transition: Normal->Critical impossible for ", operationName));
+        }
+    }
+
+    /// @dev Logs PoolEscrow analysis for debugging
+    /// @param operationName The name of the operation ("Deposit" or "Mint")
+    /// @param maxValueBefore The maximum operation value before
+    /// @param maxValueAfter The maximum operation value after
+    /// @param operationAmount The operation amount
+    /// @param state The PoolEscrow state
+    function _logPoolEscrowAnalysis(
+        string memory operationName,
+        uint256 maxValueBefore,
+        uint256 maxValueAfter,
+        uint256 operationAmount,
+        PoolEscrowState memory state
+    ) internal view {
+        console2.log(string.concat("=== PoolEscrow Analysis (", operationName, ") ==="));
+        console2.log(
+            "Available balance before/after: %d / %d", state.availableBalanceBefore, state.availableBalanceAfter
+        );
+        console2.log(string.concat("Max", operationName, " before/after: %d / %d"), maxValueBefore, maxValueAfter);
+        console2.log(string.concat(operationName, "Amount: %d"), operationAmount);
+    }
+
     /// @dev Since we deploy and set addresses via handlers
     // We can have zero values initially
     // We have these checks to prevent false positives
@@ -410,6 +527,4 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         require(msg.sender == address(this)); // Enforces external call to ensure it's not state altering
         require(_canCheckProperties()); // Early revert to prevent false positives
     }
-
-
 }
