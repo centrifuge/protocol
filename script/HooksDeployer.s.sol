@@ -42,7 +42,7 @@ contract HooksActionBatcher is SpokeActionBatcher {
 }
 
 /// @dev These hook deployments assume `src/vaults` is used as the vaults logic for the pools.
-///      It sets `vaults.GlobalEscrow` as the deposit target, `vaults.AsyncRequestManager` as the redeem source,
+///      It sets `vaults.GlobalEscrow` as the deposit target, `spoke.BalanceSheet` as the redeem source,
 ///      and `spoke.Spoke` as the cross-chain transfer source.
 contract HooksDeployer is VaultsDeployer {
     FreezeOnly public freezeOnlyHook;
@@ -63,9 +63,7 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("freezeOnlyHook-2"),
                 abi.encodePacked(
                     type(FreezeOnly).creationCode,
-                    abi.encode(
-                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
-                    )
+                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
                 )
             )
         );
@@ -75,9 +73,7 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("fullRestrictionsHook-2"),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
-                    abi.encode(
-                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
-                    )
+                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
                 )
             )
         );
@@ -87,9 +83,7 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("freelyTransferableHook-2"),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
-                    abi.encode(
-                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
-                    )
+                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
                 )
             )
         );
@@ -99,9 +93,7 @@ contract HooksDeployer is VaultsDeployer {
                 generateSalt("redemptionRestrictionsHook-2"),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode,
-                    abi.encode(
-                        address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), batcher
-                    )
+                    abi.encode(address(root), address(balanceSheet), address(globalEscrow), address(spoke), batcher)
                 )
             )
         );
