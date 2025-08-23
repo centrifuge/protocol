@@ -21,14 +21,14 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 
 /// @notice Hook interface to customize share token behaviour
 /// @dev    To detect specific system actions:
-///           Deposit request:                  address(0)      -> address(user)
-///           Deposit request fulfillment:       address(0)      -> Endorsed
+///           Deposit request:                  address(0)      -> address(user)               (view only)
+///           Deposit request fulfillment:       address(0)      -> Endorsed                    (view only)
 ///           Deposit or cancel redeem claim:   Endorsed        -> address(user)
 ///           Redeem request:                   address(user)   -> ESCROW_HOOK_ID
-///           Redeem request fulfillment:        Endorsed        -> address(0)
+///           Redeem request fulfillment:        Endorsed        -> address(0)                  (view only)
 ///           Redeem or cancel deposit claim:   address(user)   -> address(0)
 ///           Cross-chain transfer check:       address(user)   -> address(uint160(chainId))
-///           Cross-chain transfer execution:   address(spoke)  -> address(0)
+///           Cross-chain transfer execution:   address(spoke)  -> address(0)                  (view only)
 ///
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 interface ITransferHook is IERC165 {

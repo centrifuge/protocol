@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ILockup} from "./interfaces/ILockup.sol";
 import {IFreezable} from "./interfaces/IFreezable.sol";
 import {IMemberlist} from "./interfaces/IMemberlist.sol";
 import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
@@ -17,9 +18,17 @@ import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../common/interfaces/ITra
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
 /// @title  BaseTransferHook
-/// @dev    The first 8 bytes (uint64) of hookData is used for the memberlist valid until date,
-///         the last bit is used to denote whether the account is frozen.
-abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHook {
+/// @dev    Supports checking transfer types, storing memberlists for share tokens,
+///         freezing and unfreezing users, and storing the last deposit claim date (used for lockup periods).
+///
+///         Hook data storage layout:
+///          Bytes   Type     Description
+///          -------------------------------------------------------
+///          1-8     uint64   Memberlist valid until (unix timestamp)
+///          9-13    uint32   Last deposit claim (unix timestamp)
+///          14-15   -        -
+///          15-16   bool     Whether the account is frozen
+abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ILockup, ITransferHook {
     using BitmapLib for *;
     using UpdateRestrictionMessageLib for *;
     using BytesLib for bytes;
@@ -117,6 +126,14 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
             || (uint128(hookData.to).getBit(FREEZE_BIT) == true && !root.endorsed(to));
     }
 
+    function isSourceLocked(address from, HookData calldata hookData, uint32 lockupPeriod) public view returns (bool) {
+        return uint32(uint128(hookData.from) >> 32) >= block.timestamp + lockupPeriod || root.endorsed(from);
+    }
+
+    function isTargetLocked(address to, HookData calldata hookData, uint32 lockupPeriod) public view returns (bool) {
+        return uint32(uint128(hookData.to) >> 32) >= block.timestamp + lockupPeriod || root.endorsed(to);
+    }
+
     function isSourceMember(address from, HookData calldata hookData) public view returns (bool) {
         return uint128(hookData.from) >> 64 >= block.timestamp || root.endorsed(from);
     }
@@ -189,6 +206,17 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         validUntil = abi.encodePacked(IShareToken(token).hookDataOf(user)).toUint64(0);
         isValid = validUntil >= block.timestamp;
     }
+
+    /// @inheritdoc ILockup
+    function updateLastDepositClaim(address token, address user) public auth {
+        uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
+        hookData = hookData | (uint128(uint32(block.timestamp)) << 32);
+        IShareToken(token).setHookData(user, bytes16(hookData));
+
+        emit UpdateLastDepositClaim(token, user, uint32(block.timestamp));
+    }
+
+    // TODO: updateLockupPeriod, isLocked
 
     //----------------------------------------------------------------------------------------------
     // ERC-165
