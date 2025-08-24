@@ -8,11 +8,13 @@ import {
     AdaptersActionBatcher,
     AdaptersInput,
     WormholeInput,
-    AxelarInput
+    AxelarInput,
+    LayerZeroInput
 } from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
+import {ILayerZeroEndpointV2} from "../../src/adapters/interfaces/ILayerZeroAdapter.sol";
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/adapters/interfaces/IWormholeAdapter.sol";
 
 contract AdaptersDeploymentInputTest is Test {
@@ -20,13 +22,17 @@ contract AdaptersDeploymentInputTest is Test {
     address immutable WORMHOLE_DELIVERY_PROVIDER = makeAddr("WormholeRelayer");
     uint16 constant WORMHOLE_CHAIN_ID = 23;
 
+    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
+    address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegatet");
+
     address immutable AXELAR_GATEWAY = makeAddr("AxelarGateway");
     address immutable AXELAR_GAS_SERVICE = makeAddr("AxelarGasService");
 
     function _adaptersInput() internal view returns (AdaptersInput memory) {
         return AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE})
+            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE})
         });
     }
 }
@@ -38,6 +44,7 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function setUp() public {
         AdaptersActionBatcher batcher = new AdaptersActionBatcher();
         _mockRealWormholeContracts();
+        _mockRealLayerZeroContracts();
         _mockBridgeContracts();
         deployAdapters(_commonInput(), _adaptersInput(), batcher);
         removeAdaptersDeployerAccess(batcher);
@@ -54,6 +61,14 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
             WORMHOLE_DELIVERY_PROVIDER,
             abi.encodeWithSelector(IWormholeDeliveryProvider.chainId.selector),
             abi.encode(WORMHOLE_CHAIN_ID)
+        );
+    }
+
+    function _mockRealLayerZeroContracts() private {
+        vm.mockCall(
+            LAYERZERO_ENDPOINT,
+            abi.encodeWithSelector(ILayerZeroEndpointV2.setDelegate.selector),
+            abi.encode(LAYERZERO_ENDPOINT)
         );
     }
 
@@ -102,6 +117,22 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         assertEq(address(axelarAdapter.axelarGateway()), AXELAR_GATEWAY);
         assertEq(address(axelarAdapter.axelarGasService()), AXELAR_GAS_SERVICE);
     }
+
+    function testLayerZeroAdapter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adminSafe));
+
+        assertEq(layerZeroAdapter.wards(address(root)), 1);
+        assertEq(layerZeroAdapter.wards(address(guardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
+        assertEq(layerZeroAdapter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(layerZeroAdapter.entrypoint()), address(multiAdapter));
+        assertEq(address(layerZeroAdapter.endpoint()), LAYERZERO_ENDPOINT);
+    }
 }
 
 /// This tests adapter input validation requirements that were added in AdaptersDeployer
@@ -122,10 +153,19 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
         }
     }
 
+    function _validateLayerZeroInput(AdaptersInput memory adaptersInput) private view {
+        if (adaptersInput.layerZero.shouldDeploy) {
+            require(adaptersInput.layerZero.endpoint != address(0), "Wormhole endpoint address cannot be zero");
+            require(adaptersInput.layerZero.endpoint.code.length > 0, "Wormhole endpoint must be a deployed contract");
+            require(adaptersInput.layerZero.delegate != address(0), "Wormhole delegate address cannot be zero");
+        }
+    }
+
     function testWormholeRelayerZeroAddressFails() public {
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)})
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Wormhole relayer address cannot be zero");
@@ -136,7 +176,8 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
         address mockRelayer = makeAddr("MockRelayerNoCode");
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: mockRelayer}),
-            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)})
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Wormhole relayer must be a deployed contract");
@@ -149,7 +190,8 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: address(0), gasService: validGasService})
+            axelar: AxelarInput({shouldDeploy: true, gateway: address(0), gasService: validGasService}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Axelar gateway address cannot be zero");
@@ -162,7 +204,8 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: validGateway, gasService: address(0)})
+            axelar: AxelarInput({shouldDeploy: true, gateway: validGateway, gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Axelar gas service address cannot be zero");
@@ -178,7 +221,8 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService})
+            axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Axelar gateway must be a deployed contract");
@@ -194,12 +238,38 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
         AdaptersInput memory invalidInput = AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService})
+            axelar: AxelarInput({shouldDeploy: true, gateway: mockGateway, gasService: mockGasService}),
+            layerZero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
 
         vm.expectRevert("Axelar gas service must be a deployed contract");
         this._validateAxelarInputExternal(invalidInput);
     }
+
+    function testLayerZeroEndpointZeroAddressFails() public {
+        AdaptersInput memory invalidInput = AdaptersInput({
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: address(0), delegate: address(0)})
+        });
+
+        vm.expectRevert("LayerZero endpoint address cannot be zero");
+        this._validateLayerZeroInputExternal(invalidInput);
+    }
+
+    function testLayerZeroEndpointNoCodeFails() public {
+        address mockEndpoint = makeAddr("MockEndpointNoCode");
+        AdaptersInput memory invalidInput = AdaptersInput({
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: mockEndpoint, delegate: address(0)})
+        });
+
+        vm.expectRevert("LayerZero endpoint must be a deployed contract");
+        this._validateLayerZeroInputExternal(invalidInput);
+    }
+
+    // TODO: testLayerZeroDelegateZeroAddressFails
 
     // External wrapper functions to allow expectRevert to work properly (must be external)
     function _validateWormholeInputExternal(AdaptersInput memory adaptersInput) external view {
@@ -208,5 +278,9 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
     function _validateAxelarInputExternal(AdaptersInput memory adaptersInput) external view {
         _validateAxelarInput(adaptersInput);
+    }
+
+    function _validateLayerZeroInputExternal(AdaptersInput memory adaptersInput) external view {
+        _validateLayerZeroInput(adaptersInput);
     }
 }
