@@ -269,7 +269,19 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
         this._validateLayerZeroInputExternal(invalidInput);
     }
 
-    // TODO: testLayerZeroDelegateZeroAddressFails
+    function testLayerZeroDelegateZeroAddressFails() public {
+        // Etch some non-zero code to enable the endpoint test to pass
+        vm.etch(LAYERZERO_ENDPOINT, bytes("0x01"));
+
+        AdaptersInput memory invalidInput = AdaptersInput({
+            wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerZero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: address(0)})
+        });
+
+        vm.expectRevert("LayerZero delegate address cannot be zero");
+        this._validateLayerZeroInputExternal(invalidInput);
+    }
 
     // External wrapper functions to allow expectRevert to work properly (must be external)
     function _validateWormholeInputExternal(AdaptersInput memory adaptersInput) external view {
