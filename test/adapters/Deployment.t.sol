@@ -22,11 +22,11 @@ contract AdaptersDeploymentInputTest is Test {
     address immutable WORMHOLE_DELIVERY_PROVIDER = makeAddr("WormholeRelayer");
     uint16 constant WORMHOLE_CHAIN_ID = 23;
 
-    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
-    address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegatet");
-
     address immutable AXELAR_GATEWAY = makeAddr("AxelarGateway");
     address immutable AXELAR_GAS_SERVICE = makeAddr("AxelarGasService");
+
+    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroEndpoint");
+    address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
 
     function _adaptersInput() internal view returns (AdaptersInput memory) {
         return AdaptersInput({
@@ -155,9 +155,9 @@ contract AdaptersInputValidationTest is AdaptersDeploymentTest {
 
     function _validateLayerZeroInput(AdaptersInput memory adaptersInput) private view {
         if (adaptersInput.layerZero.shouldDeploy) {
-            require(adaptersInput.layerZero.endpoint != address(0), "Wormhole endpoint address cannot be zero");
-            require(adaptersInput.layerZero.endpoint.code.length > 0, "Wormhole endpoint must be a deployed contract");
-            require(adaptersInput.layerZero.delegate != address(0), "Wormhole delegate address cannot be zero");
+            require(adaptersInput.layerZero.endpoint != address(0), "LayerZero endpoint address cannot be zero");
+            require(adaptersInput.layerZero.endpoint.code.length > 0, "LayerZero endpoint must be a deployed contract");
+            require(adaptersInput.layerZero.delegate != address(0), "LayerZero delegate address cannot be zero");
         }
     }
 
