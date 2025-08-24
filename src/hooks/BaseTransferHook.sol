@@ -147,7 +147,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ILockup, IT
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ITransferHook
-    function updateRestriction(address token, bytes memory payload) external auth {
+    function updateRestriction(address token, bytes memory payload) external virtual auth {
         UpdateRestrictionType updateId = payload.updateRestrictionType();
 
         if (updateId == UpdateRestrictionType.Member) {
