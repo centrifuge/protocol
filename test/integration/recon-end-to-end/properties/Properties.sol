@@ -23,7 +23,7 @@ import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {BeforeAfter} from "test/integration/recon-end-to-end/BeforeAfter.sol";
 import {AsyncVaultCentrifugeProperties} from
     "test/integration/recon-end-to-end/properties/AsyncVaultCentrifugeProperties.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 
 import "forge-std/console2.sol";
 

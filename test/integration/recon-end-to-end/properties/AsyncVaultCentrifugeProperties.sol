@@ -16,7 +16,7 @@ import {D18} from "src/misc/types/D18.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 import {Setup} from "test/integration/recon-end-to-end/Setup.sol";
 import {AsyncVaultProperties} from "test/integration/recon-end-to-end/properties/AsyncVaultProperties.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {IPoolEscrow, Holding} from "src/common/interfaces/IPoolEscrow.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
 
@@ -684,5 +684,36 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         }
 
         t(false, "Async vault mint failed for unknown reason");
+    }
+
+    /// @dev Helper to validate async vault withdraw failures
+    function _validateAsyncWithdrawFailure(uint256 withdrawAmount) internal {
+        (,,, D18 redeemPrice,,,,,,) =
+            asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+
+        if (!redeemPrice.isZero()) {
+            // Calculate shares required for the withdraw using exact AsyncRequestManager logic
+            VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(_getVault()));
+            uint128 sharesRequired = PricingLib.assetToShareAmount(
+                IBaseVault(_getVault()).share(), vaultDetails.asset, vaultDetails.tokenId, 
+                withdrawAmount.toUint128(), redeemPrice, MathLib.Rounding.Up
+            );
+
+            // Check if shares would exceed maxRedeem
+            uint256 maxRedeemCurrent = IBaseVault(_getVault()).maxRedeem(_getActor());
+            if (sharesRequired > maxRedeemCurrent) {
+                console2.log("Withdraw failed - calculated shares exceed maxRedeem due to rounding");
+                return;
+            }
+        }
+
+        // Check pending cancellation
+        (,,,,,,,, bool pendingCancel,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        if (pendingCancel) {
+            console2.log("Withdraw failed - pending cancellation");
+            return;
+        }
+        
+        t(false, "Async vault withdraw failed for unknown reason");
     }
 }

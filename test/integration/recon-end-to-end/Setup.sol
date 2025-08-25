@@ -65,7 +65,7 @@ import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedSto
 import {MockMessageProcessor} from "test/integration/recon-end-to-end/mocks/MockMessageProcessor.sol";
 import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
-import {MockAccountValue} from "test/hub/fuzzing/recon-hub/mocks/MockAccountValue.sol";
+import {MockAccountValue} from "test/integration/recon-end-to-end/mocks/MockAccountValue.sol";
 import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/ReconPoolManager.sol";
 import {ReconShareClassManager} from "test/integration/recon-end-to-end/managers/ReconShareClassManager.sol";
 import {ReconAssetIdManager} from "test/integration/recon-end-to-end/managers/ReconAssetIdManager.sol";

@@ -19,7 +19,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Test Utils
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 

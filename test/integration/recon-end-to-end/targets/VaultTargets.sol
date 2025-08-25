@@ -20,7 +20,7 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
 // Test Utils
 import {OpType} from "test/integration/recon-end-to-end/BeforeAfter.sol";
-import {Helpers} from "test/hub/fuzzing/recon-hub/utils/Helpers.sol";
+import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
 import {Properties} from "../properties/Properties.sol";
 
 /**
