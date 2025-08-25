@@ -148,34 +148,15 @@ abstract contract TargetFunctions is
 
         // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
         {
-            if (isAsyncVault) {
-                // Set request manager for the pool's share class
-                hub_setRequestManager(_getPool(), _scId, _getAssetId(), address(asyncRequestManager));
-                
-                // Update balance sheet manager for async request manager
-                hub_updateBalanceSheetManager(
-                    CENTRIFUGE_CHAIN_ID,
-                    _getPool(),
-                    address(asyncRequestManager),
-                    true
-                );
-            } else {
-                // For sync vaults, register the sync manager
-                hub_updateBalanceSheetManager(
-                    CENTRIFUGE_CHAIN_ID,
-                    _getPool(),
-                    address(syncManager),
-                    true
-                );
-            }
+            hub_setRequestManager(_getPool(), _scId, _getAssetId(), address(asyncRequestManager));
+
+            // Update balance sheet manager for async request manager
+            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool(), address(asyncRequestManager), true);
         }
 
         // 5. Deploy new vault and register it
         {
             spoke_deployVault(isAsyncVault);
-
-            // must happen before linking vault (all vaults need request manager for redemptions)
-            spoke_setRequestManager(_getVault());
 
             spoke_linkVault(_getVault());
 
@@ -260,7 +241,7 @@ abstract contract TargetFunctions is
 
         uint32 depositEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_issue_shares(uint128(amount), depositEpoch, navPerShare);
+        shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
 
         hub_notifyDeposit(MAX_CLAIMS);
 
@@ -323,7 +304,7 @@ abstract contract TargetFunctions is
 
         uint32 redeemEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_revoke_shares(shares, redeemEpoch, navPerShare);
+        shortcut_approve_and_revoke_shares_safe(shares, redeemEpoch, navPerShare);
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
@@ -331,7 +312,7 @@ abstract contract TargetFunctions is
 
         uint32 redeemEpoch =
             shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
-        shortcut_approve_and_revoke_shares(uint128(shares), redeemEpoch, navPerShare);
+        shortcut_approve_and_revoke_shares_safe(uint128(shares), redeemEpoch, navPerShare);
     }
 
     function shortcut_claim_withdrawal(uint256 assets, uint256 toEntropy) public {
@@ -384,8 +365,16 @@ abstract contract TargetFunctions is
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
 
         vault_cancelRedeemRequest();
+
+        // After cancellation, check if there's still pending redeem to approve/revoke
         uint128 pendingRedeem =
             shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+
+        // Throw iff pending redeem == 0 to signal pruning
+        uint32 redeemEpoch =
+            shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        // Use safe approval function that will revert if pendingRedeem becomes 0
+        shortcut_approve_and_revoke_shares_safe(pendingRedeem, redeemEpoch, navPerShare);
     }
 
     function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
@@ -406,6 +395,29 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_approve_and_revoke_shares(uint128 maxApproval, uint32 epochId, uint128 navPerShare) public {
+        hub_approveRedeems(epochId, maxApproval);
+        hub_revokeShares(epochId, navPerShare);
+    }
+
+    /// === SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS) === ///
+    function shortcut_approve_and_issue_shares_safe(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
+        public
+    {
+        uint128 pendingDeposit =
+            shareClassManager.pendingDeposit(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        require(pendingDeposit > 0, "InsufficientPending: pendingDeposit is 0");
+        require(maxApproval <= pendingDeposit, "ExceedsPending: approval exceeds pending deposit");
+
+        hub_approveDeposits(nowDepositEpochId, maxApproval);
+        hub_issueShares(nowDepositEpochId, navPerShare);
+    }
+
+    function shortcut_approve_and_revoke_shares_safe(uint128 maxApproval, uint32 epochId, uint128 navPerShare) public {
+        uint128 pendingRedeem =
+            shareClassManager.pendingRedeem(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
+        require(pendingRedeem > 0, "InsufficientPending: pendingRedeem is 0");
+        require(maxApproval <= pendingRedeem, "ExceedsPending: approval exceeds pending redeem");
+
         hub_approveRedeems(epochId, maxApproval);
         hub_revokeShares(epochId, navPerShare);
     }
