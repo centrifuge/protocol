@@ -80,12 +80,12 @@ contract MockMessageDispatcher {
         external
     {
         uint64 timestamp = block.timestamp.toUint64();
-        spoke.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
+        spoke.updatePricePoolPerShare(poolId, scId, sharePrice, timestamp);
     }
 
     function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external {
         uint64 timestamp = block.timestamp.toUint64();
-        spoke.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
+        spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
     }
 
     function sendFulfilledDepositRequest(
@@ -124,15 +124,6 @@ contract MockMessageDispatcher {
         spoke.updateRestriction(poolId, scId, payload);
     }
 
-    function sendUpdateContract(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 target,
-        bytes calldata payload
-    ) external {
-        spoke.updateContract(poolId, scId, target.toAddress(), payload);
-    }
 
     function sendUpdateVault(
         PoolId poolId,
@@ -216,7 +207,7 @@ contract MockMessageDispatcher {
         bytes32 receiver,
         uint128 amount
     ) external {
-        hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount, 0);
     }
 
     function sendExecuteTransferShares(

@@ -214,8 +214,8 @@ abstract contract Setup is
         globalEscrow = new Escrow(address(this));
         root.endorse(address(globalEscrow));
 
-        fullRestrictions = new FullRestrictions(address(root), address(this));
         balanceSheet = new BalanceSheet(root, address(this));
+        fullRestrictions = new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this));
         asyncRequestManager = new AsyncRequestManager(globalEscrow, address(this));
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));

@@ -166,7 +166,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         (totalIssuanceBefore,) = shareClassManager.metrics(scId);
         (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
-        (uint128 issuedShareAmount,,) = hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare));
+        (uint128 issuedShareAmount,,) = hub.issueShares(poolId, scId, assetId, nowIssueEpochId, D18.wrap(navPerShare), 0);
 
         uint256 escrowSharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         (totalIssuanceAfter,) = shareClassManager.metrics(scId);
@@ -238,7 +238,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         (uint128 balanceSheetSharesBefore,,,) = balanceSheet.queuedShares(poolId, scId);
 
         (uint128 revokedShareAmount,,) =
-            hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare));
+            hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, D18.wrap(navPerShare), 0);
 
         uint256 sharesAfter = IShareToken(_getShareToken()).balanceOf(address(globalEscrow));
         uint256 burnedShares = sharesBefore - sharesAfter;
