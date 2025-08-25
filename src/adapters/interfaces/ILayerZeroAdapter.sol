@@ -5,54 +5,75 @@ import {IAdapter} from "../../common/interfaces/IAdapter.sol";
 
 // From
 // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol#L28C1-L34C1
+
+/// @notice The message is the raw, original content or instruction as defined by the application in bytes. It
+///         represents the core data that the sender intends to deliver to the recipient via the LayerZero Endpoint.
 struct MessagingParams {
-    uint32 dstEid;
-    bytes32 receiver;
-    bytes message;
-    bytes options;
-    bool payInLzToken;
+    uint32 dstEid; // destination chain endpoint id
+    bytes32 receiver; // receiver on destination chain
+    bytes message; // cross-chain message
+    bytes options; // settings for executor and dvn
+    bool payInLzToken; // whether to pay in ZRO token
 }
 
 struct MessagingReceipt {
-    bytes32 guid;
-    uint64 nonce;
-    MessagingFee fee;
+    bytes32 guid; // unique identifier for the message
+    uint64 nonce; // message nonce
+    MessagingFee fee; // the message fee paid
 }
 
 struct MessagingFee {
-    uint256 nativeFee;
-    uint256 lzTokenFee;
+    uint256 nativeFee; // fee in native token
+    uint256 lzTokenFee; // fee in ZRO token
 }
 
 struct Origin {
-    uint32 srcEid;
-    bytes32 sender;
-    uint64 nonce;
+    uint32 srcEid; // source chain endpoint id
+    bytes32 sender; // sender on source chain
+    uint64 nonce; // message nonce
 }
 
 interface ILayerZeroEndpointV2 {
+    /// @notice This view function gives the application built on top of LayerZero the ability to requests a quote
+    ///         with the same parameters as they would to send their message. Since the quotes are given on chain there
+    ///         is a race condition in which the prices could change between the time the user gets their quote and the
+    ///         time they submit their message. If the price moves up and the user doesn't send enough funds the
+    ///         transaction will revert, if the price goes down the _refundAddress provided by the app will be refunded
+    ///         the difference.
     function quote(MessagingParams calldata _params, address _sender) external view returns (MessagingFee memory);
 
+    /// @notice Send a LayerZero message to the specified address at a LayerZero endpoint specified by our chainId.
+    /// @param  _dstChainId                 the destination chain identifier
+    /// @param  _remoteAndLocalAddresses    remote address concated with local address packed into 40 bytes
+    /// @param  _payload                    a custom bytes payload to send to the destination contract
+    /// @param  _refundAddress              if the source transaction is cheaper than the amount of value passed, refund
+    ///                                     the additional amount to this address
+    /// @param  _zroPaymentAddress          the address of the ZRO token holder who would pay for the transaction
+    /// @param  _adapterParams              parameters for custom functionality. e.g. receive airdropped native gas from
+    ///                                     the relayer on destination
     function send(MessagingParams calldata _params, address _refundAddress)
         external
         payable
         returns (MessagingReceipt memory);
 
+    /// @notice Delegate is authorized by the oapp to configure anything in layerzero
     function setDelegate(address _delegate) external;
 }
 
 // From
 // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/protocol/contracts/interfaces/ILayerZeroReceiver.sol
+
 interface ILayerZeroReceiver {
-    /// @dev Checks if the path initialization is allowed based on the provided origin.
+    /// @notice Checks if the path initialization is allowed based on the provided origin.
     function allowInitializePath(Origin calldata _origin) external view returns (bool);
 
-    /// @dev The path nonce starts from 1.
-    ///      If 0 is returned it means that there is NO nonce ordered enforcement.
-    ///      This function is required by the off-chain executor to determine
-    ///      the OApp expects msg execution is ordered.
+    /// @notice The path nonce starts from 1.
+    ///         If 0 is returned it means that there is NO nonce ordered enforcement.
+    ///         This function is required by the off-chain executor to determine
+    ///         the OApp expects msg execution is ordered.
     function nextNonce(uint32 _eid, bytes32 _sender) external view returns (uint64);
 
+    /// @notice Execute a verified message to the designated receiver
     function lzReceive(
         Origin calldata _origin,
         bytes32 _guid,
