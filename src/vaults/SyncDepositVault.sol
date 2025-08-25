@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IERC165} from "src/misc/interfaces/IERC7575.sol";
+import {BaseVault} from "./BaseVaults.sol";
+import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
+import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "./BaseVaults.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {IERC165} from "../misc/interfaces/IERC7575.sol";
 
-import {BaseVault} from "src/vaults/BaseVaults.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
-import {BaseAsyncRedeemVault, BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {VaultKind} from "../spoke/interfaces/IVault.sol";
+import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits

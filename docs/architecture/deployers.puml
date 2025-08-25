@@ -1,28 +1,56 @@
 @startuml
 hide empty members
 
+note "Each deployer has associated its own ActionBatcher and Report\nfollowing the same shown pattern" as N1
+
 class JsonRegistry
+class CreateXScript
+
 class CommonDeployer
 class HubDeployer
 class SpokeDeployer
-class FullDeployer
+class AdaptersDeployer
 
-class Axelar
-class Wormhole
-class Localhost
+class ValuationsDeployer
+class ExtendedHubDeployer
+
+class ManagersDeployer
+class VaultsDeployer
+class HooksDeployer
+class ExtendedSpokeDeployer
+
+class FullDeployer {
+    + function run()
+}
+
+class CommonInput << (S,application) JsonConfig >>
+class AdaptersInput << (S,application) JsonConfig >>
 
 CommonDeployer -up-|> JsonRegistry
+CommonDeployer -up-|> CreateXScript
 HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
-FullDeployer -up-|> HubDeployer
-FullDeployer -up-|> SpokeDeployer
+AdaptersDeployer -up-|> CommonDeployer
 
-Axelar -up-|> FullDeployer
-Wormhole -up-|> FullDeployer
-Localhost -up-|> FullDeployer
+ValuationsDeployer -up-|> HubDeployer
+ExtendedHubDeployer -up-|> ValuationsDeployer
 
-note right of SpokeDeployer: Used in CV ITs
-note left of HubDeployer: Used in CP ITs
-note right of FullDeployer: Used in CP-CV ITs
-note bottom of Localhost: Used in Testnets
+ManagersDeployer -up-|> SpokeDeployer
+VaultsDeployer -up-|> SpokeDeployer
+HooksDeployer -up-|> SpokeDeployer
+
+ExtendedSpokeDeployer -up-|> ManagersDeployer
+ExtendedSpokeDeployer -up-|> VaultsDeployer
+ExtendedSpokeDeployer -up-|> HooksDeployer
+
+FullDeployer -up-|> ExtendedHubDeployer
+FullDeployer -up-|> ExtendedSpokeDeployer
+FullDeployer -up---|> AdaptersDeployer
+
+CommonDeployer -> CommonInput
+AdaptersDeployer -left> AdaptersInput
+
+note right of ExtendedSpokeDeployer: Used in spoke ITs
+note right of HubDeployer: Used in hub ITs
+note right of FullDeployer: Used in end-to-end ITs,\ntestnets and productions
 @enduml

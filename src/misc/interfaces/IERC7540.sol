@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
 interface IERC7540Operator {
@@ -94,7 +94,7 @@ interface IERC7540Deposit is IERC7540Operator {
 
 interface IERC7540Redeem is IERC7540Operator {
     event RedeemRequest(
-        address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets
+        address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 shares
     );
 
     /**
@@ -156,7 +156,7 @@ interface IERC7887Deposit {
     function cancelDepositRequest(uint256 requestId, address controller) external;
 
     /**
-     * @dev Returns whether the deposit Request is pending cancelation
+     * @dev Returns whether the deposit Request is pending cancellation
      *
      * - MUST NOT show any variations depending on the caller.
      */
@@ -176,7 +176,7 @@ interface IERC7887Deposit {
         returns (uint256 claimableAssets);
 
     /**
-     * @dev Claims the canceled deposit assets, and removes the pending cancelation Request
+     * @dev Claims the canceled deposit assets, and removes the pending cancellation Request
      *
      * - controller MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from controller to sender is NOT enough.
@@ -207,7 +207,7 @@ interface IERC7887Redeem {
     function cancelRedeemRequest(uint256 requestId, address controller) external;
 
     /**
-     * @dev Returns whether the redeem Request is pending cancelation
+     * @dev Returns whether the redeem Request is pending cancellation
      *
      * - MUST NOT show any variations depending on the caller.
      */
@@ -224,7 +224,7 @@ interface IERC7887Redeem {
         returns (uint256 claimableShares);
 
     /**
-     * @dev Claims the canceled redeem shares, and removes the pending cancelation Request
+     * @dev Claims the canceled redeem shares, and removes the pending cancellation Request
      *
      * - controller MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from controller to sender is NOT enough.

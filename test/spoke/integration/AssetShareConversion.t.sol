@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "test/spoke/BaseTest.sol";
+import "./BaseTest.sol";
 
 contract AssetShareConversionTest is BaseTest {
     function testAssetShareConversion(bytes16 scId) public {
@@ -9,8 +9,9 @@ contract AssetShareConversionTest is BaseTest {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
 
@@ -74,8 +75,9 @@ contract AssetShareConversionTest is BaseTest {
         uint8 SHARE_TOKEN_DECIMALS = 6; // Like USDC
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(AsyncVault(vault_).share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000, uint64(block.timestamp));
@@ -118,8 +120,9 @@ contract AssetShareConversionTest is BaseTest {
         uint8 SHARE_TOKEN_DECIMALS = 18; // Like DAI
 
         ERC20 asset = _newErc20("Asset", "A", INVESTMENT_CURRENCY_DECIMALS);
-        (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, fullRestrictionsHook, scId, address(asset), 0, 0);
+        (uint64 poolId, address vault_, uint128 assetId) = deployVault(
+            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0, 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         IShareToken(address(vault.share()));
 

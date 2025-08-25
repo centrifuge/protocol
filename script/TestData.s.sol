@@ -1,46 +1,49 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "src/misc/ERC20.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {FullDeployer} from "./FullDeployer.s.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {ERC20} from "../src/misc/ERC20.sol";
+import {D18, d18} from "../src/misc/types/D18.sol";
+import {CastLib} from "../src/misc/libraries/CastLib.sol";
 
-import {SyncManager} from "src/vaults/SyncManager.sol";
-import {SyncDepositVault} from "src/vaults/SyncDepositVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "src/vaults/AsyncRequestManager.sol";
-import {AsyncVaultFactory} from "src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "src/vaults/factories/SyncDepositVaultFactory.sol";
+import {Guardian} from "../src/common/Guardian.sol";
+import {PoolId} from "../src/common/types/PoolId.sol";
+import {AccountId} from "../src/common/types/AccountId.sol";
+import {ShareClassId} from "../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
+import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
+import {Hub} from "../src/hub/Hub.sol";
+import {HubRegistry} from "../src/hub/HubRegistry.sol";
+import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
-import {Spoke} from "src/spoke/Spoke.sol";
-import {BalanceSheet} from "src/spoke/BalanceSheet.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {Spoke} from "../src/spoke/Spoke.sol";
+import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
+import {IShareToken} from "../src/spoke/interfaces/IShareToken.sol";
+import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {SyncManager} from "../src/vaults/SyncManager.sol";
+import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
+import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
+import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
+import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
+import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
+import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
 
 // Script to deploy Hub and Vaults with a Localhost Adapter.
-contract LocalhostDeployer is FullDeployer {
+contract TestData is FullDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;
 
-    uint128 constant DEFAULT_EXTRA_GAS = uint128(0);
+    uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
 
     address public admin;
 
@@ -55,7 +58,8 @@ contract LocalhostDeployer is FullDeployer {
         spoke = Spoke(vm.parseJsonAddress(config, "$.contracts.spoke"));
         hub = Hub(vm.parseJsonAddress(config, "$.contracts.hub"));
         shareClassManager = ShareClassManager(vm.parseJsonAddress(config, "$.contracts.shareClassManager"));
-        redemptionRestrictionsHook = vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook");
+        redemptionRestrictionsHook =
+            RedemptionRestrictions(vm.parseJsonAddress(config, "$.contracts.redemptionRestrictionsHook"));
         identityValuation = IdentityValuation(vm.parseJsonAddress(config, "$.contracts.identityValuation"));
         asyncVaultFactory = AsyncVaultFactory(vm.parseJsonAddress(config, "$.contracts.asyncVaultFactory"));
         syncDepositVaultFactory =
@@ -64,6 +68,7 @@ contract LocalhostDeployer is FullDeployer {
         hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager = AsyncRequestManager(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
+        guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
 
         vm.startBroadcast();
         _configureTestData(centrifugeId);
@@ -85,7 +90,7 @@ contract LocalhostDeployer is FullDeployer {
 
     function _deployAsyncVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 1);
-        hub.createPool(poolId, msg.sender, USD_ID);
+        guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -94,10 +99,12 @@ contract LocalhostDeployer is FullDeployer {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "Tokenized MMF", "MMF", bytes32(bytes("1")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
+        // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
+        hub.updateBalanceSheetManager(centrifugeId, poolId, address(admin).toBytes32(), true);
 
         hub.createAccount(poolId, AccountId.wrap(0x01), true);
         hub.createAccount(poolId, AccountId.wrap(0x02), false);
@@ -136,7 +143,7 @@ contract LocalhostDeployer is FullDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Issue and claim
-        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1));
+        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
@@ -164,7 +171,7 @@ contract LocalhostDeployer is FullDeployer {
 
         // Fulfill redeem request
         hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
-        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10));
+        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
@@ -211,7 +218,7 @@ contract LocalhostDeployer is FullDeployer {
 
     function _deploySyncDepositVault(uint16 centrifugeId, ERC20 token, AssetId assetId) internal {
         PoolId poolId = hubRegistry.poolId(centrifugeId, 2);
-        hub.createPool(poolId, msg.sender, USD_ID);
+        guardian.createPool(poolId, msg.sender, USD_ID);
         hub.updateHubManager(poolId, admin, true);
         ShareClassId scId = shareClassManager.previewNextShareClassId(poolId);
 
@@ -220,7 +227,7 @@ contract LocalhostDeployer is FullDeployer {
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, "RWA Portfolio", "RWA", bytes32(bytes("2")));
         hub.notifyPool(poolId, centrifugeId);
-        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(bytes20(redemptionRestrictionsHook)));
+        hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
         hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC6909Decimals} from "src/misc/interfaces/IERC6909.sol";
+import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
+import {Auth} from "../misc/Auth.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {IERC6909Decimals} from "../misc/interfaces/IERC6909.sol";
 
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {PoolId, newPoolId} from "../common/types/PoolId.sol";
 
 /// @title  Hub Registry
 /// @notice Registry of all known pools, currencies, and assets.

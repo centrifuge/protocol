@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {EndToEndUseCases} from "./EndToEnd.t.sol";
+import {LocalAdapter} from "./adapters/LocalAdapter.sol";
+import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ISafe} from "src/common/interfaces/IGuardian.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IMultiAdapter} from "src/common/interfaces/adapters/IMultiAdapter.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
-import {IHub} from "src/hub/interfaces/IHub.sol";
+import {PoolId} from "../../src/common/types/PoolId.sol";
+import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
+import {IGateway} from "../../src/common/interfaces/IGateway.sol";
+import {MessageLib} from "../../src/common/libraries/MessageLib.sol";
+import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+import {IMultiAdapter} from "../../src/common/interfaces/IMultiAdapter.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IHub} from "../../src/hub/interfaces/IHub.sol";
 
-import {FullDeployer} from "script/FullDeployer.s.sol";
+import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
+import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
 
-import "test/integration/EndToEnd.t.sol";
-import {LocalAdapter} from "test/integration/adapters/LocalAdapter.sol";
+import {FullDeployer} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -34,11 +35,11 @@ enum CrossChainDirection {
 ///         Hub is on Chain A, with spokes on Chains B and C
 ///         C is considered the source chain, B the destination chain
 ///         Depending on the cross chain direction, the hub is either on A or B or C
-contract ThreeChainEndToEndDeployment is EndToEndFlows {
+contract ThreeChainEndToEndDeployment is EndToEndUseCases {
     using CastLib for *;
     using MessageLib for *;
 
-    uint16 constant CENTRIFUGE_ID_C = 7;
+    uint16 constant CENTRIFUGE_ID_C = IntegrationConstants.CENTRIFUGE_ID_C;
     ISafe immutable safeAdminC = ISafe(makeAddr("SafeAdminC"));
 
     FullDeployer deployC = new FullDeployer();
@@ -120,7 +121,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         // B: Initiate transfer of shares
         vm.expectEmit();
-        emit ISpoke.TransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
+        emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
         emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
@@ -133,7 +134,9 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         }
 
         vm.prank(INVESTOR_A);
-        sB.spoke.transferShares{value: GAS}(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
+        sB.spoke.crosschainTransferShares{value: GAS}(
+            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, SHARE_HOOK_GAS
+        );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
 
         // C: Transfer expected to be pending on A due to message being unpaid

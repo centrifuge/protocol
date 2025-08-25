@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
-import {HubDeployer, ISafe} from "script/HubDeployer.s.sol";
-import {MESSAGE_COST_ENV} from "script/CommonDeployer.s.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AccountId} from "../../../src/common/types/AccountId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
+import {MAX_MESSAGE_COST} from "../../../src/common/interfaces/IGasService.sol";
 
-import {MockVaults} from "test/hub/mocks/MockVaults.sol";
-import {MockValuation} from "test/common/mocks/MockValuation.sol";
+import {HubDeployer, HubActionBatcher, CommonInput} from "../../../script/HubDeployer.s.sol";
+
+import {MockVaults} from "../mocks/MockVaults.sol";
 
 import "forge-std/Test.sol";
 
@@ -49,16 +50,21 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant GAIN_ACCOUNT = AccountId.wrap(0x04);
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
-    uint64 constant GAS = 100 wei;
+    uint128 constant GAS = MAX_MESSAGE_COST;
+    uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
     MockValuation valuation;
 
-    function _mockStuff() private {
+    function _mockStuff(HubActionBatcher batcher) private {
+        vm.startPrank(address(batcher));
+
         cv = new MockVaults(CHAIN_CV, multiAdapter);
         _wire(CHAIN_CV, cv);
 
         valuation = new MockValuation(hubRegistry);
+
+        vm.stopPrank();
     }
 
     function _wire(uint16 centrifugeId, IAdapter adapter) internal {
@@ -72,28 +78,22 @@ contract BaseTest is HubDeployer, Test {
     }
 
     function setUp() public virtual {
-        // Pre deployment
-        vm.setEnv(MESSAGE_COST_ENV, vm.toString(GAS));
-
         // Deployment
-        deployHub(CHAIN_CP, ISafe(ADMIN), address(this), true);
-        _mockStuff();
-        removeHubDeployerAccess(address(this));
+        CommonInput memory input = CommonInput({
+            centrifugeId: CHAIN_CP,
+            adminSafe: adminSafe,
+            maxBatchGasLimit: uint128(GAS) * 100,
+            version: bytes32(0)
+        });
+
+        HubActionBatcher batcher = new HubActionBatcher();
+        labelAddresses("");
+        deployHub(input, batcher);
+        _mockStuff(batcher);
+        removeHubDeployerAccess(batcher);
 
         // Initialize accounts
         vm.deal(FM, 1 ether);
-
-        // Label contracts & actors (for debugging)
-        vm.label(address(identityValuation), "IdentityValuation");
-        vm.label(address(hubRegistry), "HubRegistry");
-        vm.label(address(accounting), "Accounting");
-        vm.label(address(holdings), "Holdings");
-        vm.label(address(shareClassManager), "ShareClassManager");
-        vm.label(address(hub), "Hub");
-        vm.label(address(gateway), "Gateway");
-        vm.label(address(messageProcessor), "MessageProcessor");
-        vm.label(address(messageDispatcher), "MessageDispatcher");
-        vm.label(address(cv), "CV");
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);

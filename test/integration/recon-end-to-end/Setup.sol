@@ -30,7 +30,7 @@ import {Gateway} from "src/common/Gateway.sol";
 import {Holdings} from "src/hub/Holdings.sol";
 import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
 import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";

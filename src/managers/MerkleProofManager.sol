@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MerkleProofLib} from "src/misc/libraries/MerkleProofLib.sol";
+import {IMerkleProofManagerFactory} from "./interfaces/IMerkleProofManagerFactory.sol";
+import {IMerkleProofManager, Call, PolicyLeaf} from "./interfaces/IMerkleProofManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MerkleProofLib} from "../misc/libraries/MerkleProofLib.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IMerkleProofManagerFactory} from "src/managers/interfaces/IMerkleProofManagerFactory.sol";
-import {IMerkleProofManager, Call, PolicyLeaf} from "src/managers/interfaces/IMerkleProofManager.sol";
+import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas
@@ -20,14 +20,16 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     using CastLib for *;
 
     PoolId public immutable poolId;
-    address public immutable spoke;
+    address public immutable contractUpdater;
 
     mapping(address strategist => bytes32 root) public policy;
 
-    constructor(PoolId poolId_, address spoke_) {
+    constructor(PoolId poolId_, address contractUpdater_) {
         poolId = poolId_;
-        spoke = spoke_;
+        contractUpdater = contractUpdater_;
     }
+
+    receive() external payable {}
 
     //----------------------------------------------------------------------------------------------
     // Owner actions
@@ -36,7 +38,7 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
     /// @inheritdoc IUpdateContract
     function update(PoolId poolId_, ShareClassId, /* scId */ bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
-        require(msg.sender == spoke, NotAuthorized());
+        require(msg.sender == contractUpdater, NotAuthorized());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
         if (kind == uint8(UpdateContractType.Policy)) {
@@ -116,18 +118,20 @@ contract MerkleProofManager is IMerkleProofManager, IUpdateContract {
 }
 
 contract MerkleProofManagerFactory is IMerkleProofManagerFactory {
-    ISpoke public immutable spoke;
+    address public immutable contractUpdater;
+    IBalanceSheet public immutable balanceSheet;
 
-    constructor(ISpoke spoke_) {
-        spoke = spoke_;
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+        contractUpdater = contractUpdater_;
+        balanceSheet = balanceSheet_;
     }
 
     /// @inheritdoc IMerkleProofManagerFactory
     function newManager(PoolId poolId) external returns (IMerkleProofManager) {
-        require(spoke.isPoolActive(poolId), InvalidPoolId());
+        require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
 
         MerkleProofManager manager =
-            new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, address(spoke));
+            new MerkleProofManager{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater);
 
         emit DeployMerkleProofManager(poolId, address(manager));
         return IMerkleProofManager(manager);

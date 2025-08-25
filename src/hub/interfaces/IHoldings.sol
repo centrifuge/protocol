@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {AccountId} from "../../common/types/AccountId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IValuation} from "../../common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 
 struct Holding {
     uint128 assetAmount;
@@ -71,6 +71,11 @@ interface IHoldings {
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IValuation valuation
     );
 
+    /// @notice Emitted when a holding is updated to a liability, or vice versa
+    event UpdateIsLiability(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bool isLiability
+    );
+
     /// @notice Emitted when an account is for a holding is set
     event SetAccountId(
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, uint8 kind, AccountId accountId
@@ -100,6 +105,8 @@ interface IHoldings {
     error AlreadyInitialized();
 
     error InvalidNonce(uint64 expected, uint64 actual);
+
+    error HoldingNotZero();
 
     /// @notice Initializes a new holding in a pool using a valuation
     /// @dev    `increase()` and `decrease()` can be called before initialize
@@ -133,6 +140,9 @@ interface IHoldings {
 
     /// @notice Updates the valuation method used for this holding.
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
+
+    /// @notice Updates whether the holding is a liability.
+    function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability) external;
 
     /// @notice Sets an account id for an specific kind
     function setAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)

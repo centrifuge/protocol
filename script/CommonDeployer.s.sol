@@ -1,30 +1,111 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Root} from "src/common/Root.sol";
-import {Gateway} from "src/common/Gateway.sol";
-import {GasService} from "src/common/GasService.sol";
-import {Guardian, ISafe} from "src/common/Guardian.sol";
-import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
-import {MessageProcessor} from "src/common/MessageProcessor.sol";
-import {MultiAdapter} from "src/common/adapters/MultiAdapter.sol";
-import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "src/common/factories/PoolEscrowFactory.sol";
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
-import {JsonRegistry} from "script/utils/JsonRegistry.s.sol";
+import {Root} from "../src/common/Root.sol";
+import {Gateway} from "../src/common/Gateway.sol";
+import {GasService} from "../src/common/GasService.sol";
+import {Guardian, ISafe} from "../src/common/Guardian.sol";
+import {MultiAdapter} from "../src/common/MultiAdapter.sol";
+import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
+import {MessageProcessor} from "../src/common/MessageProcessor.sol";
+import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
+import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
+
+import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
 import "forge-std/Script.sol";
 
-string constant MESSAGE_COST_ENV = "MESSAGE_COST";
-string constant MAX_BATCH_SIZE_ENV = "MAX_BATCH_SIZE";
+struct CommonInput {
+    uint16 centrifugeId;
+    ISafe adminSafe;
+    uint128 maxBatchGasLimit;
+    bytes32 version;
+}
 
-abstract contract CommonDeployer is Script, JsonRegistry {
-    uint256 constant DELAY = 48 hours;
-    bytes32 immutable SALT;
-    uint128 constant FALLBACK_MSG_COST = uint128(1_000_000); // in GAS
-    uint128 constant FALLBACK_MAX_BATCH_SIZE = uint128(10_000_000); // 10M in Weight
+struct CommonReport {
+    ISafe adminSafe;
+    Root root;
+    TokenRecoverer tokenRecoverer;
+    Guardian guardian;
+    GasService gasService;
+    Gateway gateway;
+    MultiAdapter multiAdapter;
+    MessageProcessor messageProcessor;
+    MessageDispatcher messageDispatcher;
+    PoolEscrowFactory poolEscrowFactory;
+}
 
+contract CommonActionBatcher {
+    error NotDeployer();
+
+    address deployer;
+
+    constructor() {
+        deployer = msg.sender;
+    }
+
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, NotDeployer());
+        _;
+    }
+
+    function setDeployer(address newDeployer) public onlyDeployer {
+        deployer = newDeployer;
+    }
+
+    function lock() public onlyDeployer {
+        deployer = address(0);
+    }
+
+    function engageCommon(CommonReport memory report) public onlyDeployer {
+        report.root.rely(address(report.guardian));
+        report.root.rely(address(report.tokenRecoverer));
+        report.root.rely(address(report.messageProcessor));
+        report.root.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.root));
+        report.gateway.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.multiAdapter));
+        report.multiAdapter.rely(address(report.root));
+        report.multiAdapter.rely(address(report.guardian));
+        report.multiAdapter.rely(address(report.gateway));
+        report.messageDispatcher.rely(address(report.root));
+        report.messageDispatcher.rely(address(report.guardian));
+        report.messageProcessor.rely(address(report.root));
+        report.messageProcessor.rely(address(report.gateway));
+        report.tokenRecoverer.rely(address(report.root));
+        report.tokenRecoverer.rely(address(report.messageDispatcher));
+        report.tokenRecoverer.rely(address(report.messageProcessor));
+        report.poolEscrowFactory.rely(address(report.root));
+
+        report.gateway.file("processor", address(report.messageProcessor));
+        report.gateway.file("adapter", address(report.multiAdapter));
+        report.poolEscrowFactory.file("gateway", address(report.gateway));
+    }
+
+    function postEngageCommon(CommonReport memory report) public onlyDeployer {
+        // We override the deployer with the correct admin once everything is deployed
+        report.guardian.file("safe", address(report.adminSafe));
+    }
+
+    function revokeCommon(CommonReport memory report) public onlyDeployer {
+        report.root.deny(address(this));
+        report.gateway.deny(address(this));
+        report.multiAdapter.deny(address(this));
+        report.tokenRecoverer.deny(address(this));
+        report.messageProcessor.deny(address(this));
+        report.messageDispatcher.deny(address(this));
+        report.poolEscrowFactory.deny(address(this));
+    }
+}
+
+abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
+    uint256 public constant DELAY = 48 hours;
+
+    bytes32 version;
     ISafe public adminSafe;
+
     Root public root;
     TokenRecoverer public tokenRecoverer;
     Guardian public guardian;
@@ -35,49 +116,121 @@ abstract contract CommonDeployer is Script, JsonRegistry {
     MessageDispatcher public messageDispatcher;
     PoolEscrowFactory public poolEscrowFactory;
 
-    constructor() {
-        // If no salt is provided, a pseudo-random salt is generated,
-        // thus effectively making the deployment non-deterministic
-        SALT = vm.envOr("DEPLOYMENT_SALT", keccak256(abi.encodePacked(string(abi.encodePacked(block.timestamp)))));
+    /**
+     * @dev Generates a salt for contract deployment
+     * @param contractName The name of the contract
+     * @return salt A deterministic salt based on contract name and optional VERSION
+     */
+    function generateSalt(string memory contractName) internal view returns (bytes32) {
+        bytes32 baseHash;
+        if (version != bytes32(0)) {
+            bytes32 contractNameHash = keccak256(bytes(contractName));
+            // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
+            if (
+                version == keccak256(abi.encodePacked("3"))
+                    && (
+                        contractNameHash == keccak256(bytes("asyncRequestManager-2"))
+                            || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
+                            || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
+                    )
+            ) {
+                baseHash = keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+            } else {
+                baseHash = keccak256(abi.encodePacked(contractName, version));
+            }
+        } else {
+            baseHash = keccak256(abi.encodePacked(contractName));
+        }
+
+        // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
+        return bytes32(abi.encodePacked(bytes20(msg.sender), bytes1(0x0), bytes11(baseHash)));
     }
 
-    function deployCommon(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
-        if (address(root) != address(0)) {
+    function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
+        _preDeployCommon(input, batcher);
+        _postDeployCommon(batcher);
+    }
+
+    function _preDeployCommon(CommonInput memory input, CommonActionBatcher batcher) internal {
+        if (address(gateway) != address(0)) {
             return; // Already deployed. Make this method idempotent.
         }
 
-        startDeploymentOutput(isTests);
+        setUpCreateXFactory();
 
-        uint128 messageGasLimit = uint128(vm.envOr(MESSAGE_COST_ENV, FALLBACK_MSG_COST));
-        uint128 maxBatchSize = uint128(vm.envOr(MAX_BATCH_SIZE_ENV, FALLBACK_MAX_BATCH_SIZE));
+        adminSafe = input.adminSafe;
+        version = input.version;
 
-        root = new Root(DELAY, deployer);
-        tokenRecoverer = new TokenRecoverer(root, deployer);
+        root =
+            Root(create3(generateSalt("root"), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
-        messageProcessor = new MessageProcessor(root, tokenRecoverer, deployer);
+        tokenRecoverer = TokenRecoverer(
+            create3(
+                generateSalt("tokenRecoverer"),
+                abi.encodePacked(type(TokenRecoverer).creationCode, abi.encode(root, batcher))
+            )
+        );
 
-        gasService = new GasService(maxBatchSize, messageGasLimit);
-        gateway = new Gateway(root, gasService, deployer);
-        multiAdapter = new MultiAdapter(centrifugeId_, gateway, deployer);
+        messageProcessor = MessageProcessor(
+            create3(
+                generateSalt("messageProcessor"),
+                abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, tokenRecoverer, batcher))
+            )
+        );
 
-        messageDispatcher = new MessageDispatcher(centrifugeId_, root, gateway, tokenRecoverer, deployer);
+        gasService = GasService(
+            create3(
+                generateSalt("gasService-2"),
+                abi.encodePacked(type(GasService).creationCode, abi.encode(input.maxBatchGasLimit))
+            )
+        );
 
-        adminSafe = adminSafe_;
+        gateway = Gateway(
+            payable(
+                create3(
+                    generateSalt("gateway"),
+                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, batcher))
+                )
+            )
+        );
 
-        // deployer is not actually an implementation of ISafe but for deployment this is not an issue
-        guardian = new Guardian(ISafe(deployer), multiAdapter, root, messageDispatcher);
+        multiAdapter = MultiAdapter(
+            create3(
+                generateSalt("multiAdapter"),
+                abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
+            )
+        );
 
-        poolEscrowFactory = new PoolEscrowFactory{salt: SALT}(address(root), deployer);
+        messageDispatcher = MessageDispatcher(
+            create3(
+                generateSalt("messageDispatcher"),
+                abi.encodePacked(
+                    type(MessageDispatcher).creationCode,
+                    abi.encode(input.centrifugeId, root, gateway, tokenRecoverer, batcher)
+                )
+            )
+        );
 
-        _commonRegister();
-        _commonRely();
-        _commonFile();
-    }
+        guardian = Guardian(
+            create3(
+                generateSalt("guardian"),
+                abi.encodePacked(
+                    type(Guardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), multiAdapter, root, messageDispatcher)
+                )
+            )
+        );
 
-    function _commonRegister() private {
+        poolEscrowFactory = PoolEscrowFactory(
+            create3(
+                generateSalt("poolEscrowFactory"),
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
+            )
+        );
+
+        batcher.engageCommon(_commonReport());
+
         register("root", address(root));
-        // Already present in load_vars.sh and not needed to be registered
-        // register("adminSafe", address(adminSafe));
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
@@ -85,47 +238,37 @@ abstract contract CommonDeployer is Script, JsonRegistry {
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
+        register("tokenRecoverer", address(tokenRecoverer));
     }
 
-    function _commonRely() private {
-        root.rely(address(guardian));
-        root.rely(address(messageProcessor));
-        root.rely(address(messageDispatcher));
-        gateway.rely(address(root));
-        gateway.rely(address(messageDispatcher));
-        gateway.rely(address(messageProcessor));
-        gateway.rely(address(multiAdapter));
-        multiAdapter.rely(address(root));
-        multiAdapter.rely(address(guardian));
-        multiAdapter.rely(address(gateway));
-        messageDispatcher.rely(address(root));
-        messageDispatcher.rely(address(guardian));
-        messageProcessor.rely(address(root));
-        messageProcessor.rely(address(gateway));
-        tokenRecoverer.rely(address(messageDispatcher));
-        tokenRecoverer.rely(address(messageProcessor));
-        poolEscrowFactory.rely(address(root));
+    function _postDeployCommon(CommonActionBatcher batcher) internal {
+        if (guardian.safe() == _commonReport().adminSafe) {
+            return; // Already configured. Make this method idempotent.
+        }
+
+        batcher.postEngageCommon(_commonReport());
     }
 
-    function _commonFile() private {
-        gateway.file("processor", address(messageProcessor));
-        gateway.file("adapter", address(multiAdapter));
-        poolEscrowFactory.file("gateway", address(gateway));
-    }
-
-    function removeCommonDeployerAccess(address deployer) public {
-        if (root.wards(deployer) == 0) {
+    function removeCommonDeployerAccess(CommonActionBatcher batcher) public {
+        if (gateway.wards(address(batcher)) == 0) {
             return; // Already removed. Make this method idempotent.
         }
 
-        guardian.file("safe", address(adminSafe));
+        batcher.revokeCommon(_commonReport());
+    }
 
-        root.deny(deployer);
-        gateway.deny(deployer);
-        multiAdapter.deny(deployer);
-        tokenRecoverer.deny(deployer);
-        messageProcessor.deny(deployer);
-        messageDispatcher.deny(deployer);
-        poolEscrowFactory.deny(deployer);
+    function _commonReport() internal view returns (CommonReport memory) {
+        return CommonReport(
+            adminSafe,
+            root,
+            tokenRecoverer,
+            guardian,
+            gasService,
+            gateway,
+            multiAdapter,
+            messageProcessor,
+            messageDispatcher,
+            poolEscrowFactory
+        );
     }
 }

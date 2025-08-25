@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import "./BaseTest.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {MessageLib} from "src/common/libraries/MessageLib.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import "test/hub/integration/BaseTest.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
+import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
+import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
 contract TestCases is BaseTest {
     using MathLib for *;
@@ -48,8 +48,9 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         if (withInitialization) {
+            valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
             hub.initializeHolding(
-                poolId, scId, USDC_C2, identityValuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+                poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
             );
             hub.initializeHolding(
                 poolId,
@@ -113,7 +114,7 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
         );
         hub.issueShares{value: GAS}(
-            poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE
+            poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -179,7 +180,7 @@ contract TestCases is BaseTest {
             poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
         );
         hub.revokeShares{value: GAS}(
-            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE
+            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -230,8 +231,6 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        MockValuation valuation = new MockValuation(hubRegistry);
-        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
         hub.initializeHolding(
             poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
         );

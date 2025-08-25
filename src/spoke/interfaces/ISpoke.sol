@@ -1,29 +1,22 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {IShareToken} from "./IShareToken.sol";
+import {IVault, VaultKind} from "./IVault.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {D18} from "../../misc/types/D18.sol";
 
-import {Price} from "src/spoke/types/Price.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVault, VaultKind} from "src/spoke/interfaces/IVault.sol";
-import {IRequestManager} from "src/spoke/interfaces/IRequestManager.sol";
-import {IVaultFactory} from "src/spoke/factories/interfaces/IVaultFactory.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
+
+import {Price} from "../types/Price.sol";
+import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
-    mapping(ShareClassId scId => ShareClassDetails) shareClasses;
-}
-
-struct ShareClassAsset {
-    /// @dev Manager that can send requests, and handles the request callbacks.
-    IRequestManager manager;
-    /// @dev Number of linked vaults.
-    uint32 numVaults;
 }
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
@@ -31,9 +24,15 @@ struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
-    mapping(AssetId assetId => ShareClassAsset) asset;
-    /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
+}
+
+struct ShareClassAsset {
+    /// @dev Manager that can send requests, and handles the request callbacks.
+    IRequestManager manager;
+    /// @dev Number of linked vaults.
+    uint32 numVaults;
+    /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
+    Price pricePoolPerAsset;
 }
 
 struct VaultDetails {
@@ -57,6 +56,7 @@ struct AssetIdKey {
 interface ISpoke {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
+        uint16 centrifugeId,
         AssetId indexed assetId,
         address indexed asset,
         uint256 indexed tokenId,
@@ -85,11 +85,11 @@ interface ISpoke {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        uint256 price,
+        D18 price,
         uint64 computedAt
     );
-    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
-    event TransferShares(
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
+    event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -100,7 +100,6 @@ interface ISpoke {
     event ExecuteTransferShares(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed receiver, uint128 amount
     );
-    event UpdateContract(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
     event LinkVault(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IVault vault
     );
@@ -125,7 +124,6 @@ interface ISpoke {
     error UnknownVault();
     error UnknownAsset();
     error MalformedVaultUpdateMessage();
-    error UnknownToken();
     error InvalidFactory();
     error InvalidPrice();
     error AssetMissingDecimals();
@@ -138,6 +136,9 @@ interface ISpoke {
     error MoreThanZeroLinkedVaults();
     error RequestManagerNotSet();
     error InvalidManager();
+    error InvalidVault();
+    error AlreadyLinkedVault();
+    error AlreadyUnlinkedVault();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -167,9 +168,16 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
-    function transferShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount)
-        external
-        payable;
+    /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
+    /// the transfer is executed.
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable;
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
@@ -204,7 +212,7 @@ interface ISpoke {
         external
         returns (IVault);
 
-    /// @notice Register a vault.
+    /// @dev Used only for migrations
     function registerVault(
         PoolId poolId,
         ShareClassId scId,
@@ -321,4 +329,11 @@ interface ISpoke {
         external
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+
+    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
+    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+        external
+        view
+        returns (IVault vault);
 }

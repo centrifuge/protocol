@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 enum VaultKind {
     /// @dev Refers to AsyncVault
@@ -15,8 +16,11 @@ enum VaultKind {
 /// @notice Interface for the all vault contracts
 /// @dev Must be implemented by all vaults
 interface IVault {
-    /// @notice Returns the associated manager.
-    function manager() external view returns (IVaultManager);
+    /// @notice Identifier of the Centrifuge pool
+    function poolId() external view returns (PoolId);
+
+    /// @notice Identifier of the share class of the Centrifuge pool
+    function scId() external view returns (ShareClassId);
 
     /// @notice Checks whether the vault is partially (a)synchronous.
     ///

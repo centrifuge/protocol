@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
-import {IERC7540Deposit} from "src/misc/interfaces/IERC7540.sol";
-import {IERC20, IERC20Permit} from "src/misc/interfaces/IERC20.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {BaseSyncDepositVault} from "./BaseVaults.sol";
+import {IBaseVault} from "./interfaces/IBaseVault.sol";
+import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
+import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {Auth} from "../misc/Auth.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {IEscrow} from "../misc/interfaces/IEscrow.sol";
+import {Multicall, IMulticall} from "../misc/Multicall.sol";
+import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
+import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {BaseSyncDepositVault} from "src/vaults/BaseVaults.sol";
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IVaultRouter} from "src/vaults/interfaces/IVaultRouter.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
+import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -123,7 +123,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault);
-        SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
         vault.deposit(assets, receiver);
@@ -187,6 +187,8 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
         _canClaim(vault, receiver, controller);
         uint256 maxMint = vault.maxMint(controller);
+
+        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.mint(maxMint, receiver, controller);
     }
 
@@ -230,7 +232,7 @@ contract VaultRouter is Auth, Multicall, Recoverable, IVaultRouter {
         _canClaim(vault, receiver, controller);
         uint256 maxWithdraw = vault.maxWithdraw(controller);
 
-        spoke.vaultDetails(vault);
+        spoke.vaultDetails(vault); // Ensure vault is valid
         vault.withdraw(maxWithdraw, receiver, controller);
     }
 

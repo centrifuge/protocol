@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import "src/misc/interfaces/IERC7540.sol";
-import "src/misc/interfaces/IERC7575.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {IERC7575} from "src/misc/interfaces/IERC7575.sol";
-import {EIP712Lib} from "src/misc/libraries/EIP712Lib.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
-import {SignatureLib} from "src/misc/libraries/SignatureLib.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IBaseVault} from "./interfaces/IBaseVault.sol";
+import {IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
+import {IAsyncRedeemManager} from "./interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
+import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {Auth} from "../misc/Auth.sol";
+import "../misc/interfaces/IERC7540.sol";
+import "../misc/interfaces/IERC7575.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {IERC7575} from "../misc/interfaces/IERC7575.sol";
+import {EIP712Lib} from "../misc/libraries/EIP712Lib.sol";
+import {IERC20Metadata} from "../misc/interfaces/IERC20.sol";
+import {SignatureLib} from "../misc/libraries/SignatureLib.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IAsyncRedeemVault} from "src/vaults/interfaces/IAsyncVault.sol";
-import {IAsyncRedeemManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {IBaseRequestManager} from "src/vaults/interfaces/IBaseRequestManager.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {IRoot} from "../common/interfaces/IRoot.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IVault} from "src/spoke/interfaces/IVaultManager.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IVaultManager} from "src/spoke/interfaces/IVaultManager.sol";
+import {IVault} from "../spoke/interfaces/IVault.sol";
+import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -32,9 +31,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     IBaseRequestManager public baseManager;
 
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     PoolId public immutable poolId;
-    /// @inheritdoc IBaseVault
+    /// @inheritdoc IVault
     ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
@@ -187,11 +186,6 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     // Helpers
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IVault
-    function manager() public view returns (IVaultManager) {
-        return baseManager;
-    }
-
     /// @notice Price of 1 unit of share, quoted in the decimals of the asset.
     function pricePerShare() external view returns (uint256) {
         return convertToAssets(10 ** _shareDecimals);
@@ -243,7 +237,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
         // the sender is the owner, to bypass the allowance check
         address sender = isOperator[owner][msg.sender] ? owner : msg.sender;
 
-        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender), RequestRedeemFailed());
+        require(asyncRedeemManager.requestRedeem(this, shares, controller, owner, sender, true), RequestRedeemFailed());
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -287,7 +281,7 @@ abstract contract BaseAsyncRedeemVault is BaseVault, IAsyncRedeemVault {
     {
         _validateController(controller);
         shares = asyncRedeemManager.claimCancelRedeemRequest(this, receiver, controller);
-        emit CancelRedeemClaim(receiver, controller, REQUEST_ID, msg.sender, shares);
+        emit CancelRedeemClaim(controller, receiver, REQUEST_ID, msg.sender, shares);
     }
 
     //----------------------------------------------------------------------------------------------

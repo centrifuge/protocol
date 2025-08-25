@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
+import {D18} from "../../misc/types/D18.sol";
 
 /// @dev Price struct that contains a price, the timestamp at which it was computed and the max age of the price.
 struct Price {
-    uint128 price;
+    D18 price;
     uint64 computedAt;
     uint64 maxAge;
 }
@@ -31,9 +31,4 @@ function validUntil(Price memory price) pure returns (uint64) {
     }
 }
 
-/// @dev Retrieves the price as an D18 from the struct
-function asPrice(Price memory price) pure returns (D18) {
-    return d18(price.price);
-}
-
-using {isValid, asPrice, validUntil} for Price global;
+using {isValid, validUntil} for Price global;

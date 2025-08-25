@@ -1,23 +1,92 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IdentityValuation} from "src/misc/IdentityValuation.sol";
+import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./CommonDeployer.s.sol";
 
-import {ISafe} from "src/common/Guardian.sol";
-import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
+import {AssetId, newAssetId} from "../src/common/types/AssetId.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {Holdings} from "src/hub/Holdings.sol";
-import {Accounting} from "src/hub/Accounting.sol";
-import {HubHelpers} from "src/hub/HubHelpers.sol";
-import {HubRegistry} from "src/hub/HubRegistry.sol";
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-
-import {CommonDeployer} from "script/CommonDeployer.s.sol";
+import {Hub} from "../src/hub/Hub.sol";
+import {Holdings} from "../src/hub/Holdings.sol";
+import {Accounting} from "../src/hub/Accounting.sol";
+import {HubHelpers} from "../src/hub/HubHelpers.sol";
+import {HubRegistry} from "../src/hub/HubRegistry.sol";
+import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
 import "forge-std/Script.sol";
 
-contract HubDeployer is CommonDeployer {
+abstract contract HubConstants {
+    uint8 constant ISO4217_DECIMALS = 18;
+    AssetId public immutable USD_ID = newAssetId(840);
+    AssetId public immutable EUR_ID = newAssetId(978);
+}
+
+struct HubReport {
+    CommonReport common;
+    HubRegistry hubRegistry;
+    Accounting accounting;
+    Holdings holdings;
+    ShareClassManager shareClassManager;
+    HubHelpers hubHelpers;
+    Hub hub;
+}
+
+contract HubActionBatcher is CommonActionBatcher, HubConstants {
+    function engageHub(HubReport memory report) public onlyDeployer {
+        // Rely hub
+        report.hubRegistry.rely(address(report.hub));
+        report.holdings.rely(address(report.hub));
+        report.accounting.rely(address(report.hub));
+        report.shareClassManager.rely(address(report.hub));
+        report.common.gateway.rely(address(report.hub));
+        report.common.messageDispatcher.rely(address(report.hub));
+        report.hubHelpers.rely(address(report.hub));
+        report.common.poolEscrowFactory.rely(address(report.hub));
+
+        // Rely hub helpers
+        report.accounting.rely(address(report.hubHelpers));
+        report.shareClassManager.rely(address(report.hubHelpers));
+        report.common.messageDispatcher.rely(address(report.hubHelpers));
+
+        // Rely others on hub
+        report.hub.rely(address(report.common.messageProcessor));
+        report.hub.rely(address(report.common.messageDispatcher));
+        report.hub.rely(address(report.common.guardian));
+
+        // Rely root
+        report.hubRegistry.rely(address(report.common.root));
+        report.accounting.rely(address(report.common.root));
+        report.holdings.rely(address(report.common.root));
+        report.shareClassManager.rely(address(report.common.root));
+        report.hub.rely(address(report.common.root));
+        report.hubHelpers.rely(address(report.common.root));
+
+        // File methods
+        report.common.messageProcessor.file("hub", address(report.hub));
+        report.common.messageDispatcher.file("hub", address(report.hub));
+
+        report.hub.file("sender", address(report.common.messageDispatcher));
+        report.hub.file("poolEscrowFactory", address(report.common.poolEscrowFactory));
+
+        report.common.guardian.file("hub", address(report.hub));
+
+        report.hubHelpers.file("hub", address(report.hub));
+
+        // Init configuration
+        report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
+        report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
+    }
+
+    function revokeHub(HubReport memory report) public onlyDeployer {
+        report.hubRegistry.deny(address(this));
+        report.accounting.deny(address(this));
+        report.holdings.deny(address(this));
+        report.shareClassManager.deny(address(this));
+        report.hub.deny(address(this));
+        report.hubHelpers.deny(address(this));
+    }
+}
+
+contract HubDeployer is CommonDeployer, HubConstants {
     // Main contracts
     HubRegistry public hubRegistry;
     Accounting public accounting;
@@ -26,97 +95,91 @@ contract HubDeployer is CommonDeployer {
     HubHelpers public hubHelpers;
     Hub public hub;
 
-    // Utilities
-    IdentityValuation public identityValuation;
-
-    // Data
-    uint8 constant ISO4217_DECIMALS = 18;
-    AssetId public immutable USD_ID = newAssetId(840);
-    AssetId public immutable EUR_ID = newAssetId(978);
-
-    function deployHub(uint16 centrifugeId_, ISafe adminSafe_, address deployer, bool isTests) public {
-        deployCommon(centrifugeId_, adminSafe_, deployer, isTests);
-
-        hubRegistry = new HubRegistry(deployer);
-        identityValuation = new IdentityValuation(hubRegistry, deployer);
-        accounting = new Accounting(deployer);
-        holdings = new Holdings(hubRegistry, deployer);
-        shareClassManager = new ShareClassManager(hubRegistry, deployer);
-        hubHelpers = new HubHelpers(holdings, accounting, hubRegistry, messageDispatcher, shareClassManager, deployer);
-        hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, shareClassManager, deployer);
-
-        _poolsRegister();
-        _poolsRely();
-        _poolsFile();
-        _poolsInitialConfig();
+    function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
+        _preDeployHub(input, batcher);
+        _postDeployHub(batcher);
     }
 
-    function _poolsRegister() private {
+    function _preDeployHub(CommonInput memory input, HubActionBatcher batcher) internal {
+        _preDeployCommon(input, batcher);
+
+        hubRegistry = HubRegistry(
+            create3(generateSalt("hubRegistry"), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher)))
+        );
+
+        accounting = Accounting(
+            create3(generateSalt("accounting"), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher)))
+        );
+
+        holdings = Holdings(
+            create3(
+                generateSalt("holdings"),
+                abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        shareClassManager = ShareClassManager(
+            create3(
+                generateSalt("shareClassManager"),
+                abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        hubHelpers = HubHelpers(
+            create3(
+                generateSalt("hubHelpers"),
+                abi.encodePacked(
+                    type(HubHelpers).creationCode,
+                    abi.encode(
+                        address(holdings),
+                        address(accounting),
+                        address(hubRegistry),
+                        address(messageDispatcher),
+                        address(shareClassManager),
+                        batcher
+                    )
+                )
+            )
+        );
+
+        hub = Hub(
+            create3(
+                generateSalt("hub"),
+                abi.encodePacked(
+                    type(Hub).creationCode,
+                    abi.encode(
+                        address(gateway),
+                        address(holdings),
+                        address(hubHelpers),
+                        address(accounting),
+                        address(hubRegistry),
+                        address(shareClassManager),
+                        batcher
+                    )
+                )
+            )
+        );
+
+        batcher.engageHub(_hubReport());
+
         register("hubRegistry", address(hubRegistry));
         register("accounting", address(accounting));
         register("holdings", address(holdings));
         register("shareClassManager", address(shareClassManager));
+        register("hubHelpers", address(hubHelpers));
         register("hub", address(hub));
-        register("identityValuation", address(identityValuation));
     }
 
-    function _poolsRely() private {
-        // Rely hub
-        hubRegistry.rely(address(hub));
-        holdings.rely(address(hub));
-        accounting.rely(address(hub));
-        shareClassManager.rely(address(hub));
-        gateway.rely(address(hub));
-        messageDispatcher.rely(address(hub));
-        hubHelpers.rely(address(hub));
-        poolEscrowFactory.rely(address(hub));
-
-        // Rely hub helpers
-        accounting.rely(address(hubHelpers));
-        shareClassManager.rely(address(hubHelpers));
-        messageDispatcher.rely(address(hubHelpers));
-
-        // Rely others on hub
-        hub.rely(address(messageProcessor));
-        hub.rely(address(messageDispatcher));
-        hub.rely(address(guardian));
-
-        // Rely root
-        hubRegistry.rely(address(root));
-        accounting.rely(address(root));
-        holdings.rely(address(root));
-        shareClassManager.rely(address(root));
-        hub.rely(address(root));
-        identityValuation.rely(address(root));
-        hubHelpers.rely(address(root));
+    function _postDeployHub(HubActionBatcher batcher) internal {
+        _postDeployCommon(batcher);
     }
 
-    function _poolsFile() private {
-        messageProcessor.file("hub", address(hub));
-        messageDispatcher.file("hub", address(hub));
-
-        hub.file("sender", address(messageDispatcher));
-        hub.file("poolEscrowFactory", address(poolEscrowFactory));
-
-        guardian.file("hub", address(hub));
-
-        hubHelpers.file("hub", address(hub));
+    function removeHubDeployerAccess(HubActionBatcher batcher) public {
+        removeCommonDeployerAccess(batcher);
+        batcher.revokeHub(_hubReport());
     }
 
-    function _poolsInitialConfig() private {
-        hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
-        hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
-    }
-
-    function removeHubDeployerAccess(address deployer) public {
-        removeCommonDeployerAccess(deployer);
-
-        hubRegistry.deny(deployer);
-        accounting.deny(deployer);
-        holdings.deny(deployer);
-        shareClassManager.deny(deployer);
-        hub.deny(deployer);
-        hubHelpers.deny(deployer);
-        identityValuation.deny(deployer);
+    function _hubReport() internal view returns (HubReport memory) {
+        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHelpers, hub);
     }
 }

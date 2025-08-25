@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC165.sol";
-import {IEscrow} from "src/misc/interfaces/IEscrow.sol";
-import {IERC7751} from "src/misc/interfaces/IERC7751.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
+import {IEscrow} from "../../../src/misc/interfaces/IEscrow.sol";
+import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import "../../spoke/integration/BaseTest.sol";
 
-import {UpdateRestrictionMessageLib} from "src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {OnOfframpManagerFactory} from "src/managers/OnOfframpManager.sol";
-import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
-import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import "test/spoke/BaseTest.sol";
+import {OnOfframpManagerFactory} from "../../../src/managers/OnOfframpManager.sol";
+import {IOnOfframpManager} from "../../../src/managers/interfaces/IOnOfframpManager.sol";
+import {IDepositManager, IWithdrawManager} from "../../../src/managers/interfaces/IBalanceSheetManager.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;
@@ -53,13 +53,13 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             "tsc",
             defaultDecimals,
             bytes32(""),
-            fullRestrictionsHook
+            address(fullRestrictionsHook)
         );
         spoke.updatePricePoolPerShare(
-            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updatePricePoolPerAsset(
-            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare.raw(), uint64(block.timestamp)
+            POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
         spoke.updateRestriction(
             POOL_A,
@@ -70,7 +70,7 @@ abstract contract OnOfframpManagerBaseTest is BaseTest {
             }).serialize()
         );
 
-        factory = new OnOfframpManagerFactory(spoke, balanceSheet);
+        factory = new OnOfframpManagerFactory(address(contractUpdater), balanceSheet);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
     }
 
@@ -87,11 +87,11 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest 
 
     PoolId public immutable POOL_B = newPoolId(OTHER_CHAIN_ID, 2);
 
-    function testInvalidSource(address notSpoke) public {
-        vm.assume(notSpoke != address(spoke));
+    function testInvalidSource(address notContractUpdater) public {
+        vm.assume(notContractUpdater != address(contractUpdater));
 
-        vm.expectRevert(IOnOfframpManager.NotSpoke.selector);
-        vm.prank(notSpoke);
+        vm.expectRevert(IOnOfframpManager.NotContractUpdater.selector);
+        vm.prank(notContractUpdater);
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -106,7 +106,7 @@ contract OnOfframpManagerUpdateContractFailureTests is OnOfframpManagerBaseTest 
 
     function testInvalidPool() public {
         vm.expectRevert(IOnOfframpManager.InvalidPoolId.selector);
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_B,
             defaultTypedShareClassId,
@@ -130,7 +130,7 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
     }
 
     function testNotBalanceSheetManager(uint128 amount) public {
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -149,7 +149,7 @@ contract OnOfframpManagerDepositFailureTests is OnOfframpManagerBaseTest {
     function testInsufficientBalance(uint128 amount) public {
         vm.assume(amount > 0);
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -175,7 +175,7 @@ contract OnOfframpManagerDepositSuccessTests is OnOfframpManagerBaseTest {
     function testDeposit(uint128 amount) public {
         vm.assume(amount > 0);
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -215,7 +215,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
     function testInvalidDestination(uint128 amount) public {
         vm.assume(amount > 0);
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -234,8 +234,10 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
         manager.withdraw(address(erc20), erc20TokenId, amount, receiver);
     }
 
-    function testNotBalanceSheetManager(uint128 amount) public {
-        vm.prank(address(spoke));
+    function testDisabledDestination(uint128 amount) public {
+        vm.assume(amount > 0);
+
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -247,7 +249,39 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
             }).serialize()
         );
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("offramp"),
+                assetId: defaultAssetId,
+                what: receiver.toBytes32(),
+                isEnabled: false
+            }).serialize()
+        );
+
+        balanceSheet.updateManager(POOL_A, address(manager), true);
+
+        vm.prank(relayer);
+        vm.expectRevert(IOnOfframpManager.InvalidOfframpDestination.selector);
+        manager.withdraw(address(erc20), erc20TokenId, amount, receiver);
+    }
+
+    function testNotBalanceSheetManager(uint128 amount) public {
+        vm.prank(address(contractUpdater));
+        manager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateAddress({
+                kind: bytes32("relayer"),
+                assetId: 0,
+                what: relayer.toBytes32(),
+                isEnabled: true
+            }).serialize()
+        );
+
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -267,7 +301,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
     function testInsufficientBalance(uint128 amount) public {
         vm.assume(amount > 0);
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -279,7 +313,7 @@ contract OnOfframpManagerWithdrawFailureTests is OnOfframpManagerBaseTest {
             }).serialize()
         );
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -306,7 +340,7 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerBaseTest {
     function testWithdraw(uint128 amount) public {
         vm.assume(amount > 0);
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,
@@ -318,7 +352,7 @@ contract OnOfframpManagerWithdrawSuccessTests is OnOfframpManagerBaseTest {
             }).serialize()
         );
 
-        vm.prank(address(spoke));
+        vm.prank(address(contractUpdater));
         manager.update(
             POOL_A,
             defaultTypedShareClassId,

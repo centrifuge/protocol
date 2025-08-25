@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {AssetId} from "src/common/types/AssetId.sol";
+import {AssetId} from "../types/AssetId.sol";
 
 /// Based on [ERC-7726](https://eips.ethereum.org/EIPS/eip-7726): Common Quote Oracle, but adapted for ERC6909.
 /// Interface for asset conversions.

@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC6909} from "src/misc/interfaces/IERC6909.sol";
-import {Multicall, IMulticall} from "src/misc/Multicall.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
-import {TransientStorageLib} from "src/misc/libraries/TransientStorageLib.sol";
+import {ISpoke} from "./interfaces/ISpoke.sol";
+import {IShareToken} from "./interfaces/IShareToken.sol";
+import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {IRoot} from "src/common/interfaces/IRoot.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IPoolEscrow} from "src/common/interfaces/IPoolEscrow.sol";
-import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {IBalanceSheetGatewayHandler} from "src/common/interfaces/IGatewayHandlers.sol";
-import {IPoolEscrowProvider} from "src/common/factories/interfaces/IPoolEscrowFactory.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18, d18} from "../misc/types/D18.sol";
+import {IAuth} from "../misc/interfaces/IAuth.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {IERC6909} from "../misc/interfaces/IERC6909.sol";
+import {Multicall, IMulticall} from "../misc/Multicall.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
+import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
-import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "src/spoke/interfaces/IBalanceSheet.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {IRoot} from "../common/interfaces/IRoot.sol";
+import {IGateway} from "../common/interfaces/IGateway.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
+import {ISpokeMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {IBalanceSheetGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
+import {IPoolEscrowProvider} from "../common/factories/interfaces/IPoolEscrowFactory.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:
@@ -78,6 +78,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     /// @inheritdoc IMulticall
     /// @notice performs a multicall but all messages sent in the process will be batched
     function multicall(bytes[] calldata data) public payable override {
+        require(msg.value == 0, NotPayable()); // Not payable by now
         bool wasBatching = gateway.isBatching();
         if (!wasBatching) {
             gateway.startBatching();
@@ -168,10 +169,7 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         if (shareQueue.isPositive || shareQueue.delta == 0) {
             shareQueue.delta += shares;
-            shareQueue.isPositive = true;
-            if (shareQueue.delta == 0) {
-                shareQueue.isPositive = false;
-            }
+            shareQueue.isPositive = shareQueue.delta != 0;
         } else if (shareQueue.delta >= shares) {
             shareQueue.delta -= shares;
             shareQueue.isPositive = false;
@@ -210,38 +208,26 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     {
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
 
+        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
 
-        emit SubmitQueuedAssets(
-            poolId,
-            scId,
-            assetId,
-            assetQueue.deposits,
-            assetQueue.withdrawals,
-            pricePoolPerAsset,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce
-        );
-        sender.sendUpdateHoldingAmount(
-            poolId,
-            scId,
-            assetId,
-            (assetQueue.deposits >= assetQueue.withdrawals)
+        ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
+            netAmount: (assetQueue.deposits >= assetQueue.withdrawals)
                 ? assetQueue.deposits - assetQueue.withdrawals
                 : assetQueue.withdrawals - assetQueue.deposits,
-            pricePoolPerAsset,
-            assetQueue.deposits >= assetQueue.withdrawals,
-            shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter, //isSnapshot
-            shareQueue.nonce,
-            extraGasLimit
-        );
+            isIncrease: assetQueue.deposits > assetQueue.withdrawals,
+            isSnapshot: shareQueue.delta == 0 && shareQueue.queuedAssetCounter == assetCounter,
+            nonce: shareQueue.nonce
+        });
 
         assetQueue.deposits = 0;
         assetQueue.withdrawals = 0;
         shareQueue.nonce++;
         shareQueue.queuedAssetCounter -= assetCounter;
+
+        emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
+        sender.sendUpdateHoldingAmount(poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -251,15 +237,19 @@ contract BalanceSheet is Auth, Multicall, Recoverable, IBalanceSheet, IBalanceSh
     {
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
-        bool isSnapshot = queuedShares[poolId][scId].queuedAssetCounter == 0;
-        emit SubmitQueuedShares(poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce);
-        sender.sendUpdateShares(
-            poolId, scId, shareQueue.delta, shareQueue.isPositive, isSnapshot, shareQueue.nonce, extraGasLimit
-        );
+        ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
+            netAmount: shareQueue.delta,
+            isIncrease: shareQueue.isPositive,
+            isSnapshot: queuedShares[poolId][scId].queuedAssetCounter == 0,
+            nonce: shareQueue.nonce
+        });
 
         shareQueue.delta = 0;
-        shareQueue.isPositive = true;
+        shareQueue.isPositive = false;
         shareQueue.nonce++;
+
+        emit SubmitQueuedShares(poolId, scId, data);
+        sender.sendUpdateShares(poolId, scId, data, extraGasLimit);
     }
 
     /// @inheritdoc IBalanceSheet

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {AccountId} from "../../../src/common/types/AccountId.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 
-import {Holdings} from "src/hub/Holdings.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
+import {Holdings} from "../../../src/hub/Holdings.sol";
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IHoldings, HoldingAccount} from "../../../src/hub/interfaces/IHoldings.sol";
 
 import "forge-std/Test.sol";
 
@@ -236,6 +236,40 @@ contract TestUpdateValuation is TestCommon {
     function testErrHoldingNotFound() public {
         vm.expectRevert(IHoldings.HoldingNotFound.selector);
         holdings.updateValuation(POOL_A, SC_1, ASSET_A, newValuation);
+    }
+}
+
+contract TestUpdateIsLiability is TestCommon {
+    function testSuccess() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        vm.expectEmit();
+        emit IHoldings.UpdateIsLiability(POOL_A, SC_1, ASSET_A, true);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
+
+        assertEq(holdings.isLiability(POOL_A, SC_1, ASSET_A), true);
+    }
+
+    function testErrNotAuthorized() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, false);
+    }
+
+    function testErrHoldingNotFound() public {
+        vm.expectRevert(IHoldings.HoldingNotFound.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, false);
+    }
+
+    function testErrHoldingNotZero() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, false, new HoldingAccount[](0));
+
+        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+
+        vm.expectRevert(IHoldings.HoldingNotZero.selector);
+        holdings.updateIsLiability(POOL_A, SC_1, ASSET_A, true);
     }
 }
 

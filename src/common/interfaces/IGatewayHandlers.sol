@@ -1,12 +1,14 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {D18} from "src/misc/types/D18.sol";
+import {IRequestManager} from "./IRequestManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {VaultUpdateKind} from "src/common/libraries/MessageLib.sol";
+import {D18} from "../../misc/types/D18.sol";
+
+import {PoolId} from "../types/PoolId.sol";
+import {AssetId} from "../types/AssetId.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
+import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 /// -----------------------------------------------------
 ///  Hub Handlers
@@ -43,7 +45,8 @@ interface IHubGatewayHandler {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
-        uint128 amount
+        uint128 amount,
+        uint128 extraGasLimit
     ) external;
 
     /// @notice Updates the total issuance of shares by request from vaults.
@@ -62,7 +65,7 @@ interface IHubGatewayHandler {
 ///  Vaults Handlers
 /// -----------------------------------------------------
 
-/// @notice Interface for Vaults methods related to pools called by messages
+/// @notice Interface for spoke related methods called by messages
 interface ISpokeGatewayHandler {
     /// @notice    New pool details from an existing Centrifuge pool are added.
     /// @param     poolId The pool id
@@ -84,37 +87,32 @@ interface ISpokeGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, address manager) external;
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)
         external;
 
-    /// @notice  Updates the price of a share class token, i.e. the factor of pool currency amount per share class token
+    /// @notice  Updates the price (pool currency amount per share class token) of a share class token
     /// @param  poolId The pool id
     /// @param  scId The share class id
-    /// @param  price The price of pool currency per share class token as factor.
+    /// @param  price The price of pool currency per share class token.
     /// @param  computedAt The timestamp when the price was computed
-    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, uint128 price, uint64 computedAt) external;
+    function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 price, uint64 computedAt) external;
 
-    /// @notice  Updates the price of an asset, i.e. the factor of pool currency amount per asset unit
+    /// @notice  Updates the price (pool currency amount per asset unit) of an asset
     /// @param  poolId The pool id
     /// @param  scId The share class id
     /// @param  assetId The asset id
-    /// @param  poolPerAsset The price of pool currency per asset unit as factor.
+    /// @param  price The price of pool currency per asset unit.
     /// @param  computedAt The timestamp when the price was computed
-    function updatePricePoolPerAsset(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 poolPerAsset,
-        uint64 computedAt
-    ) external;
+    function updatePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price, uint64 computedAt)
+        external;
 
     /// @notice Updates the hook of a share class token
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
-    /// @param  hook The new hook addres
+    /// @param  hook The new hook address
     function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external;
 
     /// @notice Updates the restrictions on a share class token for a specific user
@@ -141,13 +139,6 @@ interface ISpokeGatewayHandler {
         VaultUpdateKind kind
     ) external;
 
-    /// @notice Updates the target address. Generic update function from Hub to Vaults
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  target The target address to be called
-    /// @param  update The payload to be processed by the target address
-    function updateContract(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
-
     /// @notice Updates the max price age of an asset
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
@@ -170,7 +161,17 @@ interface ISpokeGatewayHandler {
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
 }
 
-/// @notice Interface for Vaults methods related to epoch called by messages
+/// @notice Interface for the update contract method, called by message
+interface IUpdateContractGatewayHandler {
+    /// @notice Updates the target address. Generic update function from Hub to Vaults
+    /// @param  poolId The centrifuge pool id
+    /// @param  scId The share class id
+    /// @param  target The target address to be called
+    /// @param  update The payload to be processed by the target address
+    function execute(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
+}
+
+/// @notice Interface for methods implemented by a balance sheet
 interface IBalanceSheetGatewayHandler {
     function updateManager(PoolId poolId, address who, bool canManage) external;
 }

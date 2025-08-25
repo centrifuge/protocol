@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
+import {Auth} from "../../../src/misc/Auth.sol";
 
-import {IAdapter} from "src/common/interfaces/IAdapter.sol";
-import {IMessageHandler} from "src/common/interfaces/IMessageHandler.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -13,6 +13,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     uint16 localCentrifugeId;
     IMessageHandler public entrypoint;
     IMessageHandler public endpoint;
+    uint128 public refundedValue;
 
     constructor(uint16 localCentrifugeId_, IMessageHandler entrypoint_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
@@ -21,6 +22,10 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
 
     function setEndpoint(IMessageHandler endpoint_) public {
         endpoint = endpoint_;
+    }
+
+    function setRefundedValue(uint128 refundedValue_) public {
+        refundedValue = refundedValue_;
     }
 
     /// @inheritdoc IMessageHandler
@@ -32,7 +37,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IAdapter
-    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address)
+    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address refund)
         external
         payable
         returns (bytes32 adapterData)
@@ -44,6 +49,9 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         endpoint.handle(localCentrifugeId, payload);
 
         adapterData = bytes32("");
+
+        (bool success,) = payable(refund).call{value: refundedValue}(new bytes(0));
+        assertEq(success, true, "Refund must success");
     }
 
     /// @inheritdoc IAdapter

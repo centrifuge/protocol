@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {IERC165} from "src/misc/interfaces/IERC165.sol";
-import {SafeTransferLib} from "src/misc/libraries/SafeTransferLib.sol";
+import {IOnOfframpManager} from "./interfaces/IOnOfframpManager.sol";
+import {IOnOfframpManagerFactory} from "./interfaces/IOnOfframpManagerFactory.sol";
+import {IDepositManager, IWithdrawManager} from "./interfaces/IBalanceSheetManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {IERC165} from "../misc/interfaces/IERC165.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
-import {ISpoke} from "src/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IOnOfframpManager} from "src/managers/interfaces/IOnOfframpManager.sol";
-import {IOnOfframpManagerFactory} from "src/managers/interfaces/IOnOfframpManagerFactory.sol";
-import {IDepositManager, IWithdrawManager} from "src/managers/interfaces/IBalanceSheetManager.sol";
+import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.
@@ -28,18 +27,18 @@ contract OnOfframpManager is IOnOfframpManager {
     using CastLib for *;
 
     PoolId public immutable poolId;
-    address public immutable spoke;
+    address public immutable contractUpdater;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
 
     mapping(address asset => bool) public onramp;
     mapping(address relayer => bool) public relayer;
-    mapping(address asset => address receiver) public offramp;
+    mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
-    constructor(PoolId poolId_, ShareClassId scId_, address spoke_, IBalanceSheet balanceSheet_) {
+    constructor(PoolId poolId_, ShareClassId scId_, address contractUpdater_, IBalanceSheet balanceSheet_) {
         poolId = poolId_;
         scId = scId_;
-        spoke = spoke_;
+        contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
     }
 
@@ -51,7 +50,7 @@ contract OnOfframpManager is IOnOfframpManager {
     function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == spoke, NotSpoke());
+        require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
@@ -79,8 +78,10 @@ contract OnOfframpManager is IOnOfframpManager {
                 require(tokenId == 0, ERC6909NotSupported());
                 address receiver = m.what.toAddress();
 
-                offramp[asset] = receiver;
-                emit UpdateOfframp(asset, receiver);
+                offramp[asset][receiver] = m.isEnabled;
+                emit UpdateOfframp(asset, receiver, m.isEnabled);
+            } else {
+                revert UnknownUpdateContractKind();
             }
         } else {
             revert UnknownUpdateContractType();
@@ -101,7 +102,7 @@ contract OnOfframpManager is IOnOfframpManager {
     /// @inheritdoc IWithdrawManager
     function withdraw(address asset, uint256, /* tokenId */ uint128 amount, address receiver) external {
         require(relayer[msg.sender], NotRelayer());
-        require(receiver != address(0) && receiver == offramp[asset], InvalidOfframpDestination());
+        require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
 
         balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
     }
@@ -118,20 +119,20 @@ contract OnOfframpManager is IOnOfframpManager {
 }
 
 contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
-    ISpoke public immutable spoke;
+    address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
-    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_) {
-        spoke = spoke_;
+    constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
+        contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
     }
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        require(address(spoke.shareToken(poolId, scId)) != address(0), InvalidIds());
+        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, address(spoke), balanceSheet
+            poolId, scId, contractUpdater, balanceSheet
         );
 
         emit DeployOnOfframpManager(poolId, scId, address(manager));

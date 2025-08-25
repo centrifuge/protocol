@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
+import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
+import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
+import {PricingLib} from "../../../../src/common/libraries/PricingLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -249,7 +249,7 @@ contract ConvertWithReciprocalPriceEdgeCasesTest is PricingLibBaseTest {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testEdgeCaseWithReciprocalPriceZeroPrice() public {
-        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        vm.expectRevert(PricingLib.DivisionByZero.selector);
         PricingLib.convertWithReciprocalPrice(1e18, 18, 18, d18(0), MathLib.Rounding.Down);
     }
 }
@@ -407,7 +407,7 @@ contract ConvertWithPricesEdgeCasesTest is PricingLibBaseTest {
         uint256 resultNumZero = PricingLib.convertWithPrices(1e18, 18, 18, d18(0), d18(1e18), MathLib.Rounding.Down);
         assertEq(resultNumZero, 0);
 
-        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        vm.expectRevert(PricingLib.DivisionByZero.selector);
         PricingLib.convertWithPrices(1e18, 18, 18, d18(1e18), d18(0), MathLib.Rounding.Down);
     }
 }
@@ -592,7 +592,7 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         assertEq(result, 0, "Zero pricePoolPerShare should return 0");
 
         // Test zero pricePoolPerAsset - consumers should handle this case before calling but let's test it anyway
-        vm.expectRevert(bytes("PricingLib/division-by-zero"));
+        vm.expectRevert(PricingLib.DivisionByZero.selector);
         PricingLib.shareToAssetAmount(1e18, 18, 6, d18(1e18), d18(0), MathLib.Rounding.Down);
 
         // Test all zeros - should return 0 gracefully

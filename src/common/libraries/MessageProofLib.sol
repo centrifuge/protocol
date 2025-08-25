@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 library MessageProofLib {
     using BytesLib for bytes;

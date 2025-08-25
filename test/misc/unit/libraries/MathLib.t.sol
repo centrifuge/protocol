@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.28;
 
-import "src/misc/libraries/MathLib.sol";
+import "../../../../src/misc/libraries/MathLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -106,6 +106,19 @@ contract MathLibTest is Test {
         vm.assume(x > type(uint64).max);
         vm.expectRevert(MathLib.Uint64_Overflow.selector);
         MathLib.toUint64(x);
+    }
+
+    function testToUint96(uint256 x) public pure {
+        x = bound(x, 0, type(uint96).max);
+
+        assertEq(x, uint256(MathLib.toUint96(x)));
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testToUint96Overflow(uint256 x) public {
+        vm.assume(x > type(uint96).max);
+        vm.expectRevert(MathLib.Uint96_Overflow.selector);
+        MathLib.toUint96(x);
     }
 
     function testMin(uint256 x, uint256 y) public pure {

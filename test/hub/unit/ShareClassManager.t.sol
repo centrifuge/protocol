@@ -1,32 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {ShareClassManager} from "src/hub/ShareClassManager.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
-
-import "forge-std/Test.sol";
-
+import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
 import {
     IShareClassManager,
     EpochInvestAmounts,
     EpochRedeemAmounts,
     UserOrder,
-    ShareClassMetadata,
-    ShareClassMetrics,
-    QueuedOrder,
-    RequestType
-} from "src/hub/interfaces/IShareClassManager.sol";
+    QueuedOrder
+} from "../../../src/hub/interfaces/IShareClassManager.sol";
+
+import "forge-std/Test.sol";
 
 uint16 constant CHAIN_ID = 1;
 uint64 constant POOL_ID = 42;
@@ -246,19 +242,11 @@ contract ShareClassManagerSimpleTest is ShareClassManagerBaseTest {
     using MathLib for uint128;
     using CastLib for string;
 
-    function testDeployment(address nonWard) public view {
-        vm.assume(nonWard != address(shareClass.hubRegistry()) && nonWard != address(this));
-
-        assertEq(address(shareClass.hubRegistry()), hubRegistryMock);
+    function testInitialValues() public view {
         assertEq(shareClass.nowDepositEpoch(scId, USDC), 1);
         assertEq(shareClass.nowRedeemEpoch(scId, USDC), 1);
         assertEq(shareClass.shareClassCount(poolId), 1);
         assert(shareClass.shareClassIds(poolId, scId));
-
-        assertEq(shareClass.wards(address(this)), 1);
-        assertEq(shareClass.wards(address(shareClass.hubRegistry())), 0);
-
-        assertEq(shareClass.wards(nonWard), 0);
     }
 
     function testDefaultGetShareClassNavPerShare() public view {

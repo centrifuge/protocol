@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18} from "src/misc/types/D18.sol";
-import {IAuth} from "src/misc/interfaces/IAuth.sol";
+import {D18} from "../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {IGateway} from "src/common/interfaces/IGateway.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {ISnapshotHook} from "src/common/interfaces/ISnapshotHook.sol";
+import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {AssetId} from "../../../src/common/types/AssetId.sol";
+import {AccountId} from "../../../src/common/types/AccountId.sol";
+import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
 
-import {Hub} from "src/hub/Hub.sol";
-import {IHoldings} from "src/hub/interfaces/IHoldings.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "src/hub/interfaces/IHub.sol";
-import {IAccounting, JournalEntry} from "src/hub/interfaces/IAccounting.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {Hub} from "../../../src/hub/Hub.sol";
+import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
+import {IHubHelpers} from "../../../src/hub/interfaces/IHubHelpers.sol";
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {IHub, VaultUpdateKind} from "../../../src/hub/interfaces/IHub.sol";
+import {IAccounting, JournalEntry} from "../../../src/hub/interfaces/IAccounting.sol";
+import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -57,6 +57,12 @@ contract TestMainMethodsChecks is TestCommon {
         vm.startPrank(makeAddr("noGateway"));
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.file(bytes32(""), address(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.createPool(PoolId.wrap(0), address(0), AssetId.wrap(0));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.registerAsset(AssetId.wrap(0), 0);
 
         bytes memory EMPTY_BYTES;
@@ -70,6 +76,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hub.initiateTransferShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
 
         vm.stopPrank();
     }
@@ -128,10 +137,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.approveRedeems(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
+        hub.issueShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0));
+        hub.revokeShares(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.forceCancelDepositRequest(POOL_A, ShareClassId.wrap(0), bytes32(0), AssetId.wrap(0));
@@ -173,6 +182,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateHoldingIsLiability(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), true);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));

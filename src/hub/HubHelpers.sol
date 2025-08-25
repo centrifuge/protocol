@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18, d18} from "src/misc/types/D18.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
+import {IHub, AccountType} from "./interfaces/IHub.sol";
+import {IAccounting} from "./interfaces/IAccounting.sol";
+import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
+import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
+import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {AccountId} from "src/common/types/AccountId.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {IValuation} from "src/common/interfaces/IValuation.sol";
-import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
-import {RequestMessageLib, RequestType} from "src/common/libraries/RequestMessageLib.sol";
-import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18, d18} from "../misc/types/D18.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {IHub, AccountType} from "src/hub/interfaces/IHub.sol";
-import {IAccounting} from "src/hub/interfaces/IAccounting.sol";
-import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
-import {IHubRegistry} from "src/hub/interfaces/IHubRegistry.sol";
-import {IHoldings, HoldingAccount} from "src/hub/interfaces/IHoldings.sol";
-import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {AccountId} from "../common/types/AccountId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IValuation} from "../common/interfaces/IValuation.sol";
+import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {RequestMessageLib, RequestType} from "../common/libraries/RequestMessageLib.sol";
+import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
 contract HubHelpers is Auth, IHubHelpers {
     using MathLib for uint256;
@@ -193,7 +193,8 @@ contract HubHelpers is Auth, IHubHelpers {
                     scId,
                     assetId,
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    )
+                    ),
+                    0
                 );
             }
         } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
@@ -206,7 +207,8 @@ contract HubHelpers is Auth, IHubHelpers {
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize()
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
+                    0
                 );
             }
         } else {
@@ -247,11 +249,14 @@ contract HubHelpers is Auth, IHubHelpers {
 
     /// @inheritdoc IHubHelpers
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (D18) {
-        AssetId poolCurrency = hubRegistry.currency(poolId);
+        // Assume price of 1.0 if the holding is not initialized yet
+        if (!holdings.isInitialized(poolId, scId, assetId)) return d18(1, 1);
+
         // NOTE: We assume symmetric prices are provided by holdings valuation
         IValuation valuation = holdings.valuation(poolId, scId, assetId);
 
         // Retrieve amount of 1 asset unit in pool currency
+        AssetId poolCurrency = hubRegistry.currency(poolId);
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
         uint128 poolAmountPerAsset = valuation.getQuote(assetUnitAmount, assetId, poolCurrency);

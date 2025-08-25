@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "src/misc/Auth.sol";
-import {D18} from "src/misc/types/D18.sol";
-import {Recoverable} from "src/misc/Recoverable.sol";
-import {CastLib} from "src/misc/libraries/CastLib.sol";
-import {MathLib} from "src/misc/libraries/MathLib.sol";
-import {BytesLib} from "src/misc/libraries/BytesLib.sol";
+import {IBaseVault} from "./interfaces/IBaseVault.sol";
+import {IDepositManager} from "./interfaces/IVaultManagers.sol";
+import {ISyncDepositManager} from "./interfaces/IVaultManagers.sol";
+import {ISyncManager, ISyncDepositValuation} from "./interfaces/IVaultManagers.sol";
 
-import {PoolId} from "src/common/types/PoolId.sol";
-import {AssetId} from "src/common/types/AssetId.sol";
-import {PricingLib} from "src/common/libraries/PricingLib.sol";
-import {ShareClassId} from "src/common/types/ShareClassId.sol";
+import {Auth} from "../misc/Auth.sol";
+import {D18} from "../misc/types/D18.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
+import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
-import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
-import {IDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncDepositManager} from "src/vaults/interfaces/IVaultManagers.sol";
-import {ISyncManager, ISyncDepositValuation} from "src/vaults/interfaces/IVaultManagers.sol";
+import {PoolId} from "../common/types/PoolId.sol";
+import {AssetId} from "../common/types/AssetId.sol";
+import {PricingLib} from "../common/libraries/PricingLib.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "src/spoke/interfaces/IBalanceSheet.sol";
-import {ISpoke, VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
-import {IUpdateContract} from "src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "src/spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
+import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -204,13 +204,14 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
         ShareClassId scId = vault_.scId();
         VaultDetails memory vaultDetails = spoke.vaultDetails(vault_);
 
-        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
-        balanceSheet.issue(poolId, scId, receiver, shares);
-        balanceSheet.resetPricePoolPerShare(poolId, scId);
-
         // Note deposit into the pool escrow, to make assets available for managers of the balance sheet.
         // ERC-20 transfer is handled by the vault to the pool escrow afterwards.
         balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets);
+
+        // Mint shares to the receiver.
+        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare(poolId, scId));
+        balanceSheet.issue(poolId, scId, receiver, shares);
+        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     function _maxDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IBaseVault vault_)
