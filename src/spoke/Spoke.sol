@@ -350,7 +350,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         IVault vault_ = factory.newVault(poolId, scId, asset, tokenId, shareClass_.shareToken, new address[](0));
 
         require(
-            vault_.vaultKind() == VaultKind.Sync || address(assetInfo[poolId][scId][assetId].manager) != address(0),
+            vault_.vaultKind() == VaultKind.Sync || vault_.vaultKind() == VaultKind.SyncDepositAsyncRedeem || address(assetInfo[poolId][scId][assetId].manager) != address(0),
             InvalidRequestManager()
         );
 

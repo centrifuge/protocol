@@ -17,6 +17,7 @@ import {AssetId, newAssetId} from "src/common/types/AssetId.sol";
 import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 // Test Utils
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
@@ -24,6 +25,8 @@ import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 
 abstract contract HubTargets is BaseTargetFunctions, Properties {
+    uint128 constant GAS = MAX_MESSAGE_COST;
+
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
 
     /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
@@ -57,35 +60,35 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint32 maxClaimsBound = shareClassManager.maxDepositClaims(
-            IBaseVault(_getVault()).scId(), investor, hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            IBaseVault(_getVault()).scId(), investor, spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
         (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
         (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         (, uint128 cancelledAmountBefore) = shareClassManager.queuedDepositRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
         hub.notifyDeposit(
             IBaseVault(_getVault()).poolId(),
             IBaseVault(_getVault()).scId(),
-            hubRegistry.currency(IBaseVault(_getVault()).poolId()),
+            spoke.vaultDetails(IBaseVault(_getVault())).assetId,
             investor,
             maxClaims
         );
 
         (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
         (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         (uint32 depositEpochId,,,) = shareClassManager.epochId(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
         (, uint128 cancelledAmountAfter) = shareClassManager.queuedDepositRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
         uint128 cancelDelta = cancelledAmountBefore - cancelledAmountAfter; // cancelled decreases if it was claimed
@@ -93,9 +96,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             // are handled in the AsyncRequestManager
         sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM); // claims are
             // handled in the ShareClassManager
-        depositProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor(
+        depositProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += (pendingBeforeSCM - pendingAfterSCM);
-        cancelledDeposits[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor(
+        cancelledDeposits[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
@@ -113,35 +116,35 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         bytes32 investor = CastLib.toBytes32(_getActor());
         uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
-            IBaseVault(_getVault()).scId(), investor, hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            IBaseVault(_getVault()).scId(), investor, spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
         uint256 investorSharesBefore = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
         (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
         (uint128 pendingBefore,) = shareClassManager.redeemRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
         hub.notifyRedeem(
             IBaseVault(_getVault()).poolId(),
             IBaseVault(_getVault()).scId(),
-            hubRegistry.currency(IBaseVault(_getVault()).poolId()),
+            spoke.vaultDetails(IBaseVault(_getVault())).assetId,
             investor,
             maxClaims
         );
 
         (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
         (, uint32 redeemEpochId,,) = shareClassManager.epochId(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
         (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId()), investor
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
         uint256 investorSharesAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
@@ -151,9 +154,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore); // the
             // currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
         cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += cancelDelta;
-        redemptionsProcessed[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor(
+        redemptionsProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += (pendingBefore - pendingAfter);
-        cancelledRedemptions[IBaseVault(_getVault()).scId()][hubRegistry.currency(IBaseVault(_getVault()).poolId())][_getActor(
+        cancelledRedemptions[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += cancelDelta;
         sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += cancelDelta;
 
@@ -180,5 +183,24 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         this.hub_multicall{value: msg.value}(queuedCalls);
 
         queuedCalls = new bytes[](0);
+    }
+
+    /// === Admin Functions === ///
+    function hub_setRequestManager(uint64 poolId, bytes16 shareClassId, uint128 assetId, address requestManager) public asAdmin {
+        hub.setRequestManager{value: GAS}(
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(shareClassId),
+            AssetId.wrap(assetId),
+            CastLib.toBytes32(requestManager)
+        );
+    }
+
+    function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
+        hub.updateBalanceSheetManager{value: GAS}(
+            chainId,
+            PoolId.wrap(poolId),
+            CastLib.toBytes32(manager),
+            enable
+        );
     }
 }

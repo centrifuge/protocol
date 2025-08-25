@@ -109,7 +109,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
         _before.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
@@ -157,7 +157,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
         _after.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
@@ -281,7 +281,7 @@ abstract contract BeforeAfter is Setup {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
             _structToUpdate.pricePoolPerAsset[poolId][scId][assetId] = _priceAsset;

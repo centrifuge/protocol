@@ -86,7 +86,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_sum_of_pending_redeem_request() public tokenIsSet {
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
@@ -428,7 +428,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -444,7 +444,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -460,7 +460,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -476,7 +476,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -491,7 +491,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_cancelled_and_processed_redemptions_soundness() public {
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
 
         for (uint256 i; i < actors.length; i++) {
@@ -508,7 +508,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
@@ -526,7 +526,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
         PoolId poolId = vault.poolId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         for (uint256 i; i < actors.length; i++) {
             totalRedemptions += requestRedeemed[scId][assetId][actors[i]];
@@ -542,7 +542,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = shareClassManager.depositRequest(scId, assetId, actors[i].toBytes32());
@@ -564,7 +564,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = shareClassManager.redeemRequest(scId, assetId, actors[i].toBytes32());
@@ -585,7 +585,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //     IBaseVault vault = IBaseVault(_getVault());
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = hubRegistry.currency(poolId);
+    //     AssetId assetId = AssetId.wrap(_getAssetId());
     //     (address assetAddr, uint256 tokenId) = spoke.idToAsset(assetId);
 
     //     PoolEscrow poolEscrow = PoolEscrow(payable(address(poolEscrowFactory.escrow(poolId))));
@@ -600,7 +600,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //     IBaseVault vault = IBaseVault(_getVault());
     //     PoolId poolId = vault.poolId();
     //     ShareClassId scId = vault.scId();
-    //     AssetId assetId = hubRegistry.currency(poolId);
+    //     AssetId assetId = AssetId.wrap(_getAssetId());
 
     //     // first check if the share amount changed
     //     uint256 shareDelta;
@@ -647,7 +647,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
         uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
@@ -667,7 +667,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(scId, assetId);
         uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
@@ -699,7 +699,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         (uint32 redeemEpochId) = shareClassManager.nowRedeemEpoch(scId, assetId);
         uint128 pendingRedeem = shareClassManager.pendingRedeem(scId, assetId);
@@ -734,7 +734,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 // skip the first share class because it's never assigned
                 for (uint32 j = 1; j < shareClassCount; j++) {
                     ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                    AssetId assetId = hubRegistry.currency(poolId);
+                    AssetId assetId = AssetId.wrap(_getAssetId());
 
                     uint32 depositEpochIdDifference =
                         _after.ghostEpochId[scId][assetId].deposit - _before.ghostEpochId[scId][assetId].deposit;
@@ -766,7 +766,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
+    //             AssetId assetId = AssetId.wrap(_getAssetId());
     //             // loop over all account types defined in IHub::AccountType
     //             for(uint8 kind = 0; kind < 6; kind++) {
     //                 AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
@@ -787,7 +787,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                AssetId assetId = AssetId.wrap(_getAssetId());
 
                 if (_before.ghostHolding[poolId][scId][assetId] > _after.ghostHolding[poolId][scId][assetId]) {
                     // loop over all account types defined in IHub::AccountType
@@ -810,7 +810,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
 
         (, uint128 assets) = accounting.accountValue(poolId, accountId);
@@ -829,7 +829,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                AssetId assetId = AssetId.wrap(_getAssetId());
 
                 // get the account ids for each account
                 AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
@@ -858,7 +858,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         // get the account ids for each account
         AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
@@ -889,7 +889,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                AssetId assetId = AssetId.wrap(_getAssetId());
 
                 // get the account ids for each account
                 AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
@@ -915,7 +915,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         // get the account ids for each account
         AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
@@ -941,7 +941,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             // skip the first share class because it's never assigned
             for (uint32 j = 1; j < shareClassCount; j++) {
                 ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-                AssetId assetId = hubRegistry.currency(poolId);
+                AssetId assetId = AssetId.wrap(_getAssetId());
 
                 // get the account ids for each account
                 AccountId assetAccountId = holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
@@ -972,7 +972,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         bytes32 actor = CastLib.toBytes32(_getActor());
         // precondition: user already has non-zero pending redeem and it has changed
@@ -996,7 +996,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory _actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
         address asset = vault.asset();
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
 
         (uint128 holdingAssetAmount,,,) = holdings.holding(vault.poolId(), vault.scId(), assetId);
         address poolEscrow = address(poolEscrowFactory.escrow(vault.poolId()));
@@ -1010,7 +1010,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         // TODO(wischli): Find feasible replacement now that queues are always enabled
         // precondition: if queue is enabled, return early because the totalIssuance is only updated immediately when
@@ -1094,7 +1094,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //         // skip the first share class because it's never assigned
     //         for (uint32 j = 1; j < shareClassCount; j++) {
     //             ShareClassId scId = shareClassManager.previewShareClassId(poolId, j);
-    //             AssetId assetId = hubRegistry.currency(poolId);
+    //             AssetId assetId = AssetId.wrap(_getAssetId());
 
     //             address pendingShareClassEscrow = hub.escrow(poolId, scId, EscrowId.PendingShareClass);
     //             address shareClassEscrow = hub.escrow(poolId, scId, EscrowId.ShareClass);
@@ -1127,7 +1127,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         // get the current deposit epoch
         uint32 epochId = shareClassManager.nowDepositEpoch(scId, assetId);
@@ -1177,7 +1177,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
 
         // get the current redeem epoch
         uint32 epochId = shareClassManager.nowRedeemEpoch(scId, assetId);

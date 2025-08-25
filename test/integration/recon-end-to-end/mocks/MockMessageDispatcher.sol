@@ -9,6 +9,7 @@ import {
     IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
+import {IRequestManager} from "src/common/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
 
 import {CastLib} from "src/misc/libraries/CastLib.sol";
@@ -137,6 +138,10 @@ contract MockMessageDispatcher {
 
     function sendUpdateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external {
         balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+    }
+
+    function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external {
+        spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
     }
 
     function sendApprovedDeposits(
@@ -274,7 +279,7 @@ contract MockMessageDispatcher {
         hub.registerAsset(assetId, decimals);
     }
 
-    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
+    function sendRequestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, uint128 extraGasLimit) external {
         spoke.requestCallback(poolId, scId, assetId, payload);
     }
 

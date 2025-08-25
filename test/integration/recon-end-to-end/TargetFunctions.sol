@@ -20,6 +20,7 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -145,11 +146,35 @@ abstract contract TargetFunctions is
             hub_initializeHolding(valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT);
         }
 
+        // 4a. Register request manager on hub side BEFORE deploying vaults (critical for async operations)
+        {
+            if (isAsyncVault) {
+                // Set request manager for the pool's share class
+                hub_setRequestManager(_getPool(), _scId, _getAssetId(), address(asyncRequestManager));
+                
+                // Update balance sheet manager for async request manager
+                hub_updateBalanceSheetManager(
+                    CENTRIFUGE_CHAIN_ID,
+                    _getPool(),
+                    address(asyncRequestManager),
+                    true
+                );
+            } else {
+                // For sync vaults, register the sync manager
+                hub_updateBalanceSheetManager(
+                    CENTRIFUGE_CHAIN_ID,
+                    _getPool(),
+                    address(syncManager),
+                    true
+                );
+            }
+        }
+
         // 5. Deploy new vault and register it
         {
             spoke_deployVault(isAsyncVault);
 
-            // must happen before linking vault
+            // must happen before linking vault (all vaults need request manager for redemptions)
             spoke_setRequestManager(_getVault());
 
             spoke_linkVault(_getVault());

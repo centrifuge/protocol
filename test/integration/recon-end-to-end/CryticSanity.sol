@@ -151,7 +151,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         shortcut_request_deposit(1e18, 1e18, 1e18, 0);
 
         uint32 nowDepositEpoch = shareClassManager.nowDepositEpoch(
-            IBaseVault(_getVault()).scId(), hubRegistry.currency(IBaseVault(_getVault()).poolId())
+            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
         hub_approveDeposits(nowDepositEpoch, 5e17);
         hub_issueShares(nowDepositEpoch, 5e17);

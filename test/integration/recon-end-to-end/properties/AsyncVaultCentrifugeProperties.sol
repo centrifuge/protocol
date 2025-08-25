@@ -128,7 +128,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         // (uint32 latestDepositApproval,,,) = shareClassManager.epochPointers(scId, assetId);
         (uint256 pendingDepositBefore,) = shareClassManager.depositRequest(scId, assetId, _getActor().toBytes32());
 
@@ -200,7 +200,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
 
         // === PoolEscrow State Analysis Before Mint ===
@@ -266,7 +266,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
 
         vm.prank(_getActor());
@@ -310,7 +310,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
-        AssetId assetId = hubRegistry.currency(poolId);
+        AssetId assetId = AssetId.wrap(_getAssetId());
         (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
         (uint256 pendingRedeemBefore,) = shareClassManager.redeemRequest(scId, assetId, _getActor().toBytes32());
 

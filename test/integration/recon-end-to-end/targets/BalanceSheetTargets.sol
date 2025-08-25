@@ -58,7 +58,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
@@ -81,7 +81,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = hubRegistry.currency(vault.poolId());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
