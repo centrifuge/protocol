@@ -195,14 +195,14 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifyPool(CENTRIFUGE_CHAIN_ID);
     }
 
-    function hub_notifyShareClass(uint16 centrifugeId, bytes32 hook) public updateGhosts {
+    function hub_notifyShareClass(uint16 centrifugeId, uint256 hookAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
-        hub.notifyShareClass(poolId, scId, centrifugeId, hook);
+        hub.notifyShareClass(poolId, scId, centrifugeId, bytes32(hookAsUint));
     }
 
-    function hub_notifyShareClass_clamped(bytes32 hook) public {
-        hub_notifyShareClass(CENTRIFUGE_CHAIN_ID, hook);
+    function hub_notifyShareClass_clamped(uint256 hookAsUint) public {
+        hub_notifyShareClass(CENTRIFUGE_CHAIN_ID, hookAsUint);
     }
 
     function hub_notifySharePrice(uint16 centrifugeId) public updateGhostsWithType(OpType.UPDATE) {
@@ -254,9 +254,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         // }
     }
 
-    function hub_setAccountMetadata(uint32 accountAsInt, bytes memory metadata) public updateGhosts {
+    function hub_setAccountMetadata(uint32 accountAsInt, uint256 metadataAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         AccountId account = AccountId.wrap(accountAsInt);
+        bytes memory metadata = abi.encodePacked(metadataAsUint);
         hub.setAccountMetadata(poolId, account, metadata);
     }
 
@@ -268,8 +269,9 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
-    function hub_setPoolMetadata(bytes memory metadata) public updateGhosts {
+    function hub_setPoolMetadata(uint256 metadataAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
+        bytes memory metadata = abi.encodePacked(metadataAsUint);
         hub.setPoolMetadata(poolId, metadata);
     }
 
@@ -288,14 +290,15 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_updateHoldingValuation(assetId.raw(), valuation);
     }
 
-    function hub_updateRestriction(uint16 chainId, bytes calldata payload) public updateGhosts {
+    function hub_updateRestriction(uint16 chainId, uint256 payloadAsUint) public updateGhosts {
         PoolId poolId = PoolId.wrap(_getPool());
         ShareClassId scId = ShareClassId.wrap(_getShareClassId());
+        bytes memory payload = abi.encodePacked(payloadAsUint);
         hub.updateRestriction(poolId, scId, chainId, payload, 0);
     }
 
-    function hub_updateRestriction_clamped(bytes calldata payload) public {
-        hub_updateRestriction(CENTRIFUGE_CHAIN_ID, payload);
+    function hub_updateRestriction_clamped(uint256 payloadAsUint) public {
+        hub_updateRestriction(CENTRIFUGE_CHAIN_ID, payloadAsUint);
     }
 
     function syncManager_setValuation(address valuation) public updateGhosts {
@@ -309,7 +312,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         syncManager_setValuation(valuation);
     }
 
-    function hub_updateSharePrice(uint64 poolIdAsUint, bytes16 scIdAsBytes, uint128 navPoolPerShare)
+    function hub_updateSharePrice(uint64 poolIdAsUint, uint128 scIdAsUint, uint128 navPoolPerShare)
         public
         updateGhosts
     {
