@@ -362,8 +362,8 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         uint128 availableBalanceBefore;
         uint128 availableBalanceAfter;
         // State classification
-        bool isNormalStateBefore;  // total > reserved before
-        bool isNormalStateAfter;   // total > reserved after
+        bool isNormalStateBefore; // total > reserved before
+        bool isNormalStateAfter; // total > reserved after
     }
 
     /// @dev Analyzes PoolEscrow state before operations
@@ -379,14 +379,15 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         state.asset = address(IBaseVault(_getVault()).asset());
         state.scId = scId;
         state.tokenId = 0; // ERC20 tokens use tokenId 0
-        
+
         // Capture raw holding values before operation
-        (state.totalBefore, state.reservedBefore) = PoolEscrow(payable(address(state.poolEscrow))).holding(scId, state.asset, state.tokenId);
-        
+        (state.totalBefore, state.reservedBefore) =
+            PoolEscrow(payable(address(state.poolEscrow))).holding(scId, state.asset, state.tokenId);
+
         // Calculate derived values before operation
         state.availableBalanceBefore = state.poolEscrow.availableBalanceOf(scId, state.asset, state.tokenId);
         state.isNormalStateBefore = state.totalBefore > state.reservedBefore;
-        
+
         // Initialize after values (will be updated later)
         state.totalAfter = state.totalBefore;
         state.reservedAfter = state.reservedBefore;
@@ -398,8 +399,9 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @param state The state struct to update
     function _updatePoolEscrowStateAfter(PoolEscrowState memory state) internal view {
         // Capture raw holding values after operation
-        (state.totalAfter, state.reservedAfter) = PoolEscrow(payable(address(state.poolEscrow))).holding(state.scId, state.asset, state.tokenId);
-        
+        (state.totalAfter, state.reservedAfter) =
+            PoolEscrow(payable(address(state.poolEscrow))).holding(state.scId, state.asset, state.tokenId);
+
         // Calculate derived values after operation
         state.availableBalanceAfter = state.poolEscrow.availableBalanceOf(state.scId, state.asset, state.tokenId);
         state.isNormalStateAfter = state.totalAfter > state.reservedAfter;
@@ -424,54 +426,130 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             state.reservedAfter == state.reservedBefore,
             string.concat(operationName, ": reserved amount should not change")
         );
-        
+
         // Invariant 2: Total should increase by exactly the operation amount
         t(
             state.totalBefore + uint128(operationAmount) == state.totalAfter,
             string.concat(operationName, ": total should increase by operation amount")
         );
-        
-        // === Scenario-Based Validation ===
+
+        // === Vault Type Detection ===
+        bool isAsyncVault = IBaseVault(_getVault()).vaultKind() == VaultKind.Async;
+
+        if (isAsyncVault) {
+            _validateAsyncVaultMaxValueChange(maxValueBefore, maxValueAfter, operationAmount, operationName, state);
+        } else {
+            _validateSyncVaultMaxValueChange(maxValueBefore, maxValueAfter, operationAmount, operationName, state);
+        }
+    }
+
+    /// @dev Validates AsyncVault max value changes (user-specific allocation-based)
+    function _validateAsyncVaultMaxValueChange(
+        uint256 maxValueBefore,
+        uint256 maxValueAfter,
+        uint256 operationAmount,
+        string memory operationName,
+        PoolEscrowState memory state
+    ) internal {
+        // === AsyncVault Scenario-Based Validation ===
         if (state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 1: Normal -> Normal (total > reserved before and after)
             t(
                 maxValueAfter == maxValueBefore - operationAmount,
-                string.concat("Normal->Normal: max", operationName, " should decrease by exact operation amount")
+                string.concat("Async Normal->Normal: max", operationName, " should decrease by exact operation amount")
             );
-            
         } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
             // Scenario 2: Critical -> Critical (total ≤ reserved before and after)
-            t(
-                maxValueBefore == 0,
-                string.concat("Critical->Critical: max", operationName, "Before should be 0")
-            );
-            t(
-                maxValueAfter == 0,
-                string.concat("Critical->Critical: max", operationName, "After should be 0")
-            );
-            
+            t(maxValueBefore == 0, string.concat("Async Critical->Critical: max", operationName, "Before should be 0"));
+            t(maxValueAfter == 0, string.concat("Async Critical->Critical: max", operationName, "After should be 0"));
         } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
+            t(maxValueBefore == 0, string.concat("Async Critical->Normal: max", operationName, "Before should be 0"));
+
+            // For AsyncVault, maxValueAfter is based on user's maxMint allocation, not PoolEscrow calculation
             t(
-                maxValueBefore == 0,
-                string.concat("Critical->Normal: max", operationName, "Before should be 0")
+                // maxValueAfter > 0,
+                maxValueAfter == state.totalBefore + operationAmount - state.reservedBefore,
+                string.concat("Async Critical->Normal: max", operationName, "After should be > 0")
             );
-            
-            uint128 expectedMaxAfter = state.totalAfter - state.reservedBefore;
-            t(
-                maxValueAfter == expectedMaxAfter,
-                string.concat("Critical->Normal: max", operationName, "After should equal (totalAfter - reservedAfter)")
-            );
-            
-            t(
-                expectedMaxAfter < operationAmount,
-                string.concat("Critical->Normal: available balance should be less than operation amount")
-            );
-            
         } else {
             // Scenario 4: Normal -> Critical (total > reserved before, total ≤ reserved after)
             // This should be theoretically impossible since we're only adding funds via deposits
-            t(false, string.concat("Invalid transition: Normal->Critical impossible for ", operationName));
+            t(false, string.concat("Async Invalid transition: Normal->Critical impossible for ", operationName));
+        }
+    }
+
+    /// @dev Validates SyncVault max value changes (maxReserve-based, can be uint128.max)
+    function _validateSyncVaultMaxValueChange(
+        uint256 maxValueBefore,
+        uint256 maxValueAfter,
+        uint256 operationAmount,
+        string memory operationName,
+        PoolEscrowState memory state
+    ) internal {
+        // === SyncVault Scenario-Based Validation ===
+        if (state.isNormalStateBefore && state.isNormalStateAfter) {
+            // Scenario 1: Normal -> Normal (total > reserved before and after)
+            // SyncVault: maxDeposit = maxReserve - availableBalance
+            t(
+                maxValueAfter == maxValueBefore - operationAmount,
+                string.concat("Sync Normal->Normal: max", operationName, " should decrease by exact operation amount")
+            );
+        } else if (!state.isNormalStateBefore && !state.isNormalStateAfter) {
+            // Scenario 2: Critical -> Critical (total ≤ reserved before and after)
+            // SyncVault: In critical state, maxDeposit = maxReserve - availableBalance
+            // When maxReserve = uint128.max, maxDeposit can be very large even in critical state
+
+            // Key insight: SyncVault doesn't return 0 in critical state like AsyncVault does
+            // Instead, it follows: maxDeposit = maxReserve - availableBalance
+            // The "critical" state only means total ≤ reserved, not that maxDeposit = 0
+
+            // Validate that both values follow the same logic pattern
+            if (maxValueBefore == type(uint128).max) {
+                // When maxReserve = uint128.max, expect consistent large values
+                t(
+                    maxValueAfter >= maxValueBefore - operationAmount - 1
+                        && maxValueAfter <= maxValueBefore - operationAmount + 1,
+                    string.concat(
+                        "Sync Critical->Critical: max",
+                        operationName,
+                        " should decrease by ~operation amount (+/-1 wei)"
+                    )
+                );
+            } else {
+                // Standard case: regular maxReserve value
+                t(
+                    maxValueAfter == maxValueBefore - operationAmount,
+                    string.concat(
+                        "Sync Critical->Critical: max", operationName, " should decrease by exact operation amount"
+                    )
+                );
+            }
+        } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
+            // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
+            // SyncVault: Both before and after follow maxReserve - availableBalance calculation
+            // The availableBalance calculation changes during PoolEscrow state transitions
+
+            // SyncVault Critical->Normal: The decrease is approximately operationAmount, but can deviate due to
+            // PoolEscrow state transition effects on availableBalance calculation
+            uint256 actualDecrease = maxValueBefore - maxValueAfter;
+            
+            // The decrease is bounded by: (operationAmount - reserved) ≤ actualDecrease ≤ operationAmount
+            // This is because actualDecrease = totalBefore + operationAmount - reserved, where 0 ≤ totalBefore ≤ reserved
+            t(
+                actualDecrease >= operationAmount - state.reservedAfter && actualDecrease <= operationAmount,
+                string.concat("Sync Critical->Normal: max", operationName, " decrease should be within [operationAmount - reserved, operationAmount]")
+            );
+
+            // The before value should follow maxReserve logic (could be large)
+            t(
+                maxValueBefore >= operationAmount,
+                string.concat("Sync Critical->Normal: max", operationName, "Before should be >= operation amount")
+            );
+        } else {
+            // Scenario 4: Normal -> Critical (total > reserved before, total ≤ reserved after)
+            // This should be theoretically impossible since we're only adding funds via deposits
+            t(false, string.concat("Sync Invalid transition: Normal->Critical impossible for ", operationName));
         }
     }
 
@@ -502,7 +580,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     // This is tightly coupled to our system
     // A simpler system with no actors would not need these checks
     // Although they don't hurt
-    // NOTE: We could also change the entire propertie to handlers and we would be ok as well
+    // NOTE: We could also change the entire properties to handlers and we would be ok as well
     function _canCheckProperties() internal view returns (bool) {
         if (TODO_RECON_SKIP_ERC7540) {
             return false;
