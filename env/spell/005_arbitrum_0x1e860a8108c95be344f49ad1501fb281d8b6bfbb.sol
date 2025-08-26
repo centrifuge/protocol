@@ -6,11 +6,6 @@ pragma solidity ^0.8.28;
 // Source Branch: spell/004-disable-v2-vaults
 // CREATE3 Deterministic Deployment
 
-
-
-/// @notice Arbitrum-specific spell that disables V2 permissions for JTRSY_USDC only
-
-import {DisableV2Common} from "./DisableV2Common.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IRoot} from "../../src/common/interfaces/IRoot.sol";
 import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
@@ -18,6 +13,8 @@ import {ISpoke} from "../../src/spoke/interfaces/ISpoke.sol";
 import {IntegrationConstants} from "../integration/utils/IntegrationConstants.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
+
+/// @notice Arbitrum-specific spell that disables V2 permissions for JTRSY_USDC only
 
 contract DisableV2Arb is DisableV2Common {
     address public constant V2_JTRSY_VAULT_ADDRESS = IntegrationConstants.ARB_V2_JTRSY_VAULT;
@@ -27,7 +24,6 @@ contract DisableV2Arb is DisableV2Common {
         return V2_JTRSY_VAULT_ADDRESS;
     }
 }
-
 
 interface VaultLike {
     function root() external view returns (address);

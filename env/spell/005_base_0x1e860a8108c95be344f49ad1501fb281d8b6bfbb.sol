@@ -6,14 +6,7 @@ pragma solidity ^0.8.28;
 // Source Branch: spell/004-disable-v2-vaults
 // CREATE3 Deterministic Deployment
 
-
-
-
-/// @notice Base network-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
-/// @dev Also deploys V3 JAAA vault on Base spoke
-
 import {AssetId} from "../../src/common/types/AssetId.sol";
-import {DisableV2Common} from "./DisableV2Common.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IRequestManager} from "../../src/common/interfaces/IRequestManager.sol";
 import {IRoot} from "../../src/common/interfaces/IRoot.sol";
@@ -25,6 +18,8 @@ import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
 
+/// @notice Base network-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
+/// @dev Also deploys V3 JAAA vault on Base spoke
 contract DisableV2Base is DisableV2Common {
     // V2 vault addresses
     address public constant V2_JTRSY_VAULT_ADDRESS = IntegrationConstants.BASE_V2_JTRSY_VAULT;
@@ -91,7 +86,6 @@ contract DisableV2Base is DisableV2Common {
         V3_ROOT.denyContract(V3_BALANCE_SHEET, address(this));
     }
 }
-
 
 interface VaultLike {
     function root() external view returns (address);

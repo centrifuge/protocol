@@ -6,11 +6,6 @@ pragma solidity ^0.8.28;
 // Source Branch: spell/004-disable-v2-vaults
 // CREATE3 Deterministic Deployment
 
-
-
-/// @notice Ethereum-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
-
-import {DisableV2Common} from "./DisableV2Common.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IRoot} from "../../src/common/interfaces/IRoot.sol";
 import {IShareToken} from "../../src/spoke/interfaces/IShareToken.sol";
@@ -19,6 +14,7 @@ import {IntegrationConstants} from "../integration/utils/IntegrationConstants.so
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 
+/// @notice Ethereum-specific spell that disables V2 permissions for both JTRSY_USDC and JAAA_USDC
 contract DisableV2Eth is DisableV2Common {
     // V2 vault addresses (Ethereum-only)
     address public constant V2_JTRSY_VAULT_ADDRESS = IntegrationConstants.ETH_V2_JTRSY_VAULT;
@@ -46,7 +42,6 @@ contract DisableV2Eth is DisableV2Common {
         _cleanupRootPermissions();
     }
 }
-
 
 interface VaultLike {
     function root() external view returns (address);
