@@ -49,17 +49,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Categorized Issues === ///
 
-
-    // // forge test --match-test test_property_escrow_balance_2 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed
-    // function test_property_escrow_balance_2() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
-
-    //     shortcut_deposit_sync(0, 5421286);
-
-    //     property_escrow_balance();
-    // }
-
     // // forge test --match-test test_property_sum_of_received_leq_fulfilled_4 -vvv
     // // NOTE: issue with ghost tracking variables that needs to be fixed
     // function test_property_sum_of_received_leq_fulfilled_4() public {
