@@ -282,7 +282,7 @@ abstract contract TargetFunctions is
         uint64 pricePoolPerShare,
         uint128 priceValuation,
         uint256 amount,
-        uint128 navPerShare,
+        uint128, /* navPerShare */
         uint256 toEntropy
     ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
@@ -377,7 +377,9 @@ abstract contract TargetFunctions is
         shortcut_approve_and_revoke_shares_safe(pendingRedeem, redeemEpoch, navPerShare);
     }
 
-    function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_claim_clamped(uint256 shares, uint128, /* navPerShare */ uint256 toEntropy)
+        public
+    {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
@@ -429,7 +431,6 @@ abstract contract TargetFunctions is
 
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint128 price) public {
-        AssetId poolCurrency = hubRegistry.currency(PoolId.wrap(_getPool()));
         AssetId assetId = AssetId.wrap(_getAssetId());
 
         transientValuation_setPrice(assetId, AssetId.wrap(_getAssetId()), price);
@@ -443,5 +444,48 @@ abstract contract TargetFunctions is
 
     function root_cancelRely(address target) public asAdmin {
         root.cancelRely(target);
+    }
+
+    // === PRICE CONTROL HANDLERS === //
+
+    /// @dev Force price to zero for testing zero-price scenarios
+    function hub_setPriceZero() public asAdmin {
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+    }
+
+    /// @dev Set non-zero price with proper clamping for realistic testing
+    function hub_setPriceNonZero_clamped(uint256 price) public asAdmin {
+        // Simple clamping logic to replace bound()
+        if (price == 0) price = 1;
+        if (price > type(uint128).max) price = type(uint128).max;
+
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
+    }
+
+    /// @dev Set price to realistic range for testing normal operations
+    function hub_setPriceRealistic_clamped(uint256 price) public asAdmin {
+        // Clamp to realistic DeFi price range (0.001 to 1,000,000)
+        if (price < 1e15) price = 1e15;
+        if (price > 1e24) price = 1e24;
+
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        hub.updateSharePrice(poolId, scId, D18.wrap(uint128(price)));
     }
 }

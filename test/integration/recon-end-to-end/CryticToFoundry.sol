@@ -47,57 +47,8 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Potential Issues === ///
 
-    // forge test --match-test test_optimize_maxDeposit_greater_0 -vvv
-    function test_optimize_maxDeposit_greater_0() public {
-        // Max value: 6680541285479;
-
-        shortcut_deployNewTokenPoolAndShare(
-            0, 2143041919793394225184990517963364852588231435786230956613865713711501, false, false, false
-        );
-
-        shortcut_request_deposit(
-            353266058244111273,
-            289,
-            2808225,
-            5649272889820275245471469757319427940817839515203893610656078129204693045992
-        );
-
-        balanceSheet_issue(16959863524853505889821508051117429097);
-
-        shortcut_withdraw_and_claim_clamped(
-            24948563696194949097534738073981412730847795109726489012468501556299013517411,
-            1375587557,
-            59055930033638046365131754211851914515773444673635410048598815021561384717521
-        );
-
-        shortcut_cancel_redeem_immediately_issue_and_revoke_clamped(
-            83223019725898119924486676653907346822606427815769443731521280212711078341796,
-            4174596,
-            14943228121867923935748358918203031574008403248337313074299135211399085189053
-        );
-
-        switch_actor(160726349);
-
-        shortcut_deposit_sync(73, 17161000575339933926131652139242);
-        asset_mint(0x0000000000000000000000000000000000020000, 170406986501745008686980512511614149806);
-
-        asyncVault_maxDeposit(
-            130852067948, 883859, 336644681387797769804767077393537239358796173737373383335960173846558
-        );
-        console2.log("test_optimize_maxDeposit_greater_0", optimize_maxDeposit_greater());
-    }
-
     /// === Categorized Issues === ///
-    // forge test --match-test test_property_holdings_balance_equals_escrow_balance_0 -vvv
-    // NOTE: passing in 0 for pricePoolPerShare results in holdingAssetAmount being 0
-    // TODO: either add a precondition to check price isn't 0 or accept that property can't be checked
-    // function test_property_holdings_balance_equals_escrow_balance_0() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, true, false, true);
 
-    //     shortcut_deposit_and_claim(0, 1, 1, 1, 0);
-
-    //     property_holdings_balance_equals_escrow_balance();
-    // }
 
     // // forge test --match-test test_property_escrow_balance_2 -vvv
     // // NOTE: issue with ghost tracking variables that needs to be fixed

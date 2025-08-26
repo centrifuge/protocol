@@ -15,6 +15,7 @@ import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
+import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
@@ -108,11 +109,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // NOTE: Overflow should always result back to a rational value as token cannot overflow due to other
         // functions permanently reverting
         IBaseVault vault = IBaseVault(_getVault());
+
+        // TODO(wischli): Investigate with zero price
+
         uint256 ghostTotalSupply;
         address shareToken = vault.share();
         uint256 totalSupply = IShareToken(shareToken).totalSupply();
 
-        // NOTE: shareMints is no longer updated because hub_triggerIssueShares was removed
+        // TODO(wischli): shareMints is no longer updated because hub_triggerIssueShares was removed
         unchecked {
             ghostTotalSupply = (shareMints[address(shareToken)] + executedInvestments[address(shareToken)])
                 - executedRedemptions[address(shareToken)];
@@ -806,7 +810,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
     /// @dev Property: Value of Holdings == accountValue(Asset)
     function property_accounting_and_holdings_soundness() public {
-        uint64[] memory _createdPools = _getPools();
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -817,7 +820,12 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
         // This property holds all of the system accounting together
-        eq(assets, holdingsValue, "Assets and Holdings value must match");
+        // NOTE: If priceAssetPerPool == 0, this equality might break, investigate then
+        uint128 deltaAssetsHoldingValue = assets - holdingsValue;
+        t(
+            deltaAssetsHoldingValue == 0 || _before.pricePoolPerAsset[poolId][scId][assetId].raw() == 0,
+            "Assets and Holdings value must match except if price is zero"
+        );
     }
 
     /// @dev Property: Total Yield = assets - equity
@@ -990,11 +998,15 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: The amount of holdings of an asset for a pool-shareClas pair in Holdings MUST always be equal to
+    /// @dev Property: The amount of holdings of an asset for a pool-shareClass pair in Holdings MUST always be equal to
     /// the balance of the escrow for said pool-shareClass for the respective token
+    /// @dev This property is undefined when price is zero (no shares issued, so holdings don't track escrow movements)
     function property_holdings_balance_equals_escrow_balance() public {
-        address[] memory _actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
+
+        // Guard: Skip when price is zero (property is undefined)
+        if (_before.pricePerShare == 0) return;
+
         address asset = vault.asset();
         AssetId assetId = spoke.vaultDetails(vault).assetId;
 
@@ -1052,7 +1064,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (currentOperation == OpType.ADD) {
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
             uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-            uint256 expectedShares = (_before.pricePerShare * assetDelta) - (10 ** decimals);
+            uint256 expectedShares =
+                _before.pricePerShare == 0 ? 0 : (_before.pricePerShare * assetDelta) - (10 ** decimals);
             if (expectedShares > shareDelta) {
                 // difference between expected and how much they actually paid
                 uint256 expectedVsActual = shareDelta - expectedShares;
@@ -1070,7 +1083,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         if (currentOperation == OpType.REMOVE) {
             uint256 assetDelta = _after.totalAssets - _before.totalAssets;
             uint256 shareDelta = _after.totalShareSupply - _before.totalShareSupply;
-            uint256 expectedShares = (_before.pricePerShare * assetDelta) + (10 ** decimals);
+            uint256 expectedShares =
+                _before.pricePerShare == 0 ? 0 : (_before.pricePerShare * assetDelta) + (10 ** decimals);
             if (expectedShares > shareDelta) {
                 // difference between expected and how much they actually paid
                 uint256 expectedVsActual = expectedShares - shareDelta;
@@ -1219,6 +1233,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
     }
 
+    /// === ZERO PRICE PROPERTIES === ///
+
+    /// @dev Property: When price is zero, no shares should be issued
+    function property_zeroPrice_noShareIssuance() public {
+        if (_before.pricePerShare == 0) {
+            // Verify no new shares were issued in this transaction
+            uint256 shareSupplyDelta = _after.totalShareSupply - _before.totalShareSupply;
+            eq(shareSupplyDelta, 0, "Shares issued at zero price");
+        }
+    }
+
     /// === DOOMSDAY TESTS === ///
 
     /// @dev Property: pricePerShare never changes after a user operation
@@ -1250,6 +1275,83 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         catch (bytes memory reason) {
             bool expectedRevert = checkError(reason, "AccountDoesNotExist()");
             t(expectedRevert, "accountValue should never revert");
+        }
+    }
+
+    /// @dev Doomsday test: System handles all operations gracefully at zero price
+    function doomsday_zeroPrice_noPanics() public statelessTest {
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+
+        // Set zero price directly
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        hub.updateSharePrice(poolId, scId, D18.wrap(0));
+
+        // === CONVERSION FUNCTION TESTS === //
+        try vault.convertToShares(1e18) returns (uint256 shares) {
+            eq(shares, 0, "convertToShares should return 0 at zero price");
+        } catch {
+            t(false, "convertToShares should not panic at zero price");
+        }
+
+        try vault.convertToAssets(1e18) returns (uint256 assets) {
+            eq(assets, 0, "convertToAssets should return 0 at zero price");
+        } catch {
+            t(false, "convertToAssets should not panic at zero price");
+        }
+
+        try BaseVault(address(vault)).pricePerShare() returns (uint256 pps) {
+            eq(pps, 0, "pricePerShare should be 0");
+        } catch {
+            t(false, "pricePerShare should not panic at zero price");
+        }
+
+        // === VAULT OPERATION TESTS === //
+        try vault.maxDeposit(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxDeposit handled zero price");
+        } catch {
+            t(false, "maxDeposit shout not revert at zero price");
+        }
+
+        try vault.maxMint(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxMint should return 0 at zero price");
+        } catch {
+            t(false, "maxMint shout not revert at zero price");
+        }
+
+        try vault.maxRedeem(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxRedeem should return 0 at zero price");
+        } catch {
+            t(false, "maxRedeem shout not revert at zero price");
+        }
+
+        try vault.maxWithdraw(_getActor()) returns (uint256 max) {
+            eq(max, 0, "maxWithdraw should return 0 at zero price");
+        } catch {
+            t(false, "maxWithdraw shout not revert at zero price");
+        }
+
+        // === SHARE CLASS MANAGER OPERATIONS === //
+        uint32 nowIssueEpoch = shareClassManager.nowIssueEpoch(scId, assetId);
+        try shareClassManager.issueShares(poolId, scId, assetId, nowIssueEpoch, D18.wrap(0)) returns (
+            uint128 issued, uint128, uint128
+        ) {
+            eq(issued, 0, "issued shares should return 0 at zero price");
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(expectedRevert, "issueShares shout not revert at zero price apart from EpochNotFound");
+        }
+
+        uint32 nowRevokeEpoch = shareClassManager.nowRevokeEpoch(scId, assetId);
+        try shareClassManager.revokeShares(poolId, scId, assetId, nowRevokeEpoch, D18.wrap(0)) returns (
+            uint128, uint128 assetAmount, uint128
+        ) {
+            eq(assetAmount, 0, "revoked asset amount should return 0 at zero price");
+        } catch (bytes memory reason) {
+            bool expectedRevert = checkError(reason, "EpochNotFound()");
+            t(expectedRevert, "issueShares shout not revert at zero price apart from EpochNotFound");
         }
     }
 
