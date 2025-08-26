@@ -47,7 +47,6 @@ contract MockLayerZeroEndpoint is Mock {
     }
 
     function quote(MessagingParams calldata, address) external pure returns (MessagingFee memory) {
-        // TODO: decode gas limit from params.options
         return MessagingFee(200_000, 0);
     }
 }
