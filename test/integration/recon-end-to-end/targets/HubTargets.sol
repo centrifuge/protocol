@@ -96,9 +96,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             // are handled in the AsyncRequestManager
         sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM); // claims are
             // handled in the ShareClassManager
-        depositProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
+        userDepositProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += (pendingBeforeSCM - pendingAfterSCM);
-        cancelledDeposits[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
+        userCancelledDeposits[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
         )] += cancelDelta;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
@@ -122,14 +122,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
         uint256 investorSharesBefore = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
-        (, uint128 cancelledAmountBefore) = shareClassManager.queuedRedeemRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
         (uint128 pendingBefore,) = shareClassManager.redeemRequest(
             IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
-        hub.notifyRedeem(
+        (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount) = hubHelpers.notifyRedeem(
             IBaseVault(_getVault()).poolId(),
             IBaseVault(_getVault()).scId(),
             spoke.vaultDetails(IBaseVault(_getVault())).assetId,
@@ -143,27 +140,29 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         (, uint32 redeemEpochId,,) = shareClassManager.epochId(
             IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
         );
-        (, uint128 cancelledAmountAfter) = shareClassManager.queuedRedeemRequest(
+        (bool isCancellingAfter, ) = shareClassManager.queuedRedeemRequest(
             IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
         );
 
         uint256 investorSharesAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
         uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
 
-        uint128 cancelDelta = cancelledAmountBefore - cancelledAmountAfter; // cancelled decreases if it was claimed
-        currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore); // the
-            // currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
-        cancelRedeemShareTokenPayout[IBaseVault(_getVault()).share()] += cancelDelta;
-        redemptionsProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
-        )] += (pendingBefore - pendingAfter);
-        cancelledRedemptions[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
-        )] += cancelDelta;
-        sumOfClaimedRedeemCancelations[IBaseVault(_getVault()).share()] += cancelDelta;
+        // NOTE: The currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
+        currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore);
+        userRedemptionsProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor()] += paymentShareAmount;
+        userCancelledRedeems[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor()] += cancelledShareAmount;
+        sumOfClaimedCancelledRedeemShares[IBaseVault(_getVault()).share()] += cancelledShareAmount;
 
         // precondition: lastUpdate doesn't change if there's no claim actually made
         if (maxClaims == maxClaimsBound && maxClaims > 0) {
             // nowRedeemEpoch = redeemEpochId + 1
             eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+
+            t(isCancellingAfter, "queued cancellation post claiming should not be possible");
+
+            gte(pendingBefore - pendingAfter, paymentShareAmount, "pending delta should be greater (if cancel queued) or equal to the payment share amount");
+
+            eq(investorSharesBefore, investorSharesAfter, "claiming should not impact user shares on spoke which are transferred during requestRedeem");
         } else if (maxClaimsBound > 0) {
             // Continue claiming until all epochs are processed
             hub_notifyRedeem(1);
@@ -186,7 +185,10 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     }
 
     /// === Admin Functions === ///
-    function hub_setRequestManager(uint64 poolId, bytes16 shareClassId, uint128 assetId, address requestManager) public asAdmin {
+    function hub_setRequestManager(uint64 poolId, bytes16 shareClassId, uint128 assetId, address requestManager)
+        public
+        asAdmin
+    {
         hub.setRequestManager{value: GAS}(
             PoolId.wrap(poolId),
             ShareClassId.wrap(shareClassId),
@@ -195,12 +197,10 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
-        hub.updateBalanceSheetManager{value: GAS}(
-            chainId,
-            PoolId.wrap(poolId),
-            CastLib.toBytes32(manager),
-            enable
-        );
+    function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable)
+        public
+        asAdmin
+    {
+        hub.updateBalanceSheetManager{value: GAS}(chainId, PoolId.wrap(poolId), CastLib.toBytes32(manager), enable);
     }
 }

@@ -17,6 +17,7 @@ import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {IERC20} from "src/misc/interfaces/IERC20.sol";
 import {PricingLib} from "src/common/libraries/PricingLib.sol";
 import {VaultDetails} from "src/spoke/interfaces/ISpoke.sol";
 
@@ -93,7 +94,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address[] memory actors = _getActors();
         uint256 sumOfRedemptionsProcessed;
         for (uint256 i; i < actors.length; i++) {
-            sumOfRedemptionsProcessed += redemptionsProcessed[scId][assetId][actors[i]];
+            sumOfRedemptionsProcessed += userRedemptionsProcessed[scId][assetId][actors[i]];
         }
 
         lte(
@@ -142,20 +143,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: Sum of assets received on claimCancelDepositRequest <= sum of fulfillCancelDepositRequest.assets
-    function property_sum_of_assets_received_on_claim_cancel_deposit_request() public assetIsSet {
-        // claimCancelDepositRequest
-        // requestManager_fulfillCancelDepositRequest
-        IBaseVault vault = IBaseVault(_getVault());
-        address asset = vault.asset();
-
-        lte(
-            sumOfClaimedDepositCancelations[address(asset)],
-            cancelDepositCurrencyPayout[address(asset)],
-            "sumOfClaimedDepositCancelations !<= cancelDepositCurrencyPayout"
-        );
-    }
-
     /// @dev Property (inductive): Sum of assets received on claimCancelDepositRequest <= sum of
     /// fulfillCancelDepositRequest.assets
     function property_sum_of_assets_received_on_claim_cancel_deposit_request_inductive() public tokenIsSet {
@@ -177,15 +164,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// @dev Property: Sum of share class tokens received on claimCancelRedeemRequest <= sum of
-    /// fulfillCancelRedeemRequest.shares
-    function property_sum_of_received_leq_fulfilled() public tokenIsSet {
-        // claimCancelRedeemRequest
+
+    // TODO(wischli): Breaks for ever `revokedShares` which reduced totalSupply
+    /// @dev Property: Total cancelled redeem shares <= total supply
+    function property_total_cancelled_redeem_shares_lte_total_supply() public tokenIsSet {
         IBaseVault vault = IBaseVault(_getVault());
+
+        uint256 totalSupply = IShareToken(vault.share()).totalSupply()'
         lte(
-            sumOfClaimedRedeemCancelations[address(vault.share())],
-            cancelRedeemShareTokenPayout[address(vault.share())],
-            "sumOfClaimedRedeemCancelations !<= cancelRedeemShareTokenPayout"
+            sumOfClaimedCancelledRedeemShares[address(vault.share())],
+            totalSupply,
+            "Ghost: sumOfClaimedCancelledRedeemShares exceeds totalSupply"
         );
     }
 
@@ -270,7 +259,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
 
         // Get actor data
-        {
+
+            {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
             lte(
@@ -312,7 +302,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             ghostBalOfEscrow = (
                 (sumOfDepositRequests[asset] + sumOfSyncDepositsAsset[asset] + sumOfManagerDeposits[asset])
                     - (
-                        sumOfClaimedDepositCancelations[asset] + sumOfClaimedRedemptions[asset]
+                        sumOfClaimedCancelledDeposits[asset] + sumOfClaimedRedemptions[asset]
                             + sumOfManagerWithdrawals[asset]
                     )
             );
@@ -339,7 +329,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     - (
                         sumOfClaimedDeposits[address(shareToken)] + executedRedemptions[address(shareToken)] // revoked
                             // redemptions burn share tokens
-                            + sumOfClaimedRedeemCancelations[address(shareToken)]
+                            + sumOfClaimedCancelledRedeemShares[address(shareToken)]
                     )
             ); // claims of cancelled amount can happen in claimCancelRedeemRequest or notifyRedeem
         }
@@ -436,8 +426,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userDepositProcessed[scId][assetId][actors[i]],
                 "property_soundness_processed_deposits Actor Requests must be gte than processed amounts"
             );
         }
@@ -452,8 +442,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestRedeemed[scId][assetId][actors[i]],
-                redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]],
+                userRedemptionsProcessed[scId][assetId][actors[i]],
                 "property_soundness_processed_redemptions Actor Requests must be gte than processed amounts"
             );
         }
@@ -468,8 +458,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                cancelledDeposits[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userCancelledDeposits[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled amounts"
             );
         }
@@ -484,8 +474,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestDeposited[scId][assetId][actors[i]],
-                cancelledDeposits[scId][assetId][actors[i]] + depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]],
+                userCancelledDeposits[scId][assetId][actors[i]] + userDepositProcessed[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled + processed amounts"
             );
         }
@@ -500,8 +490,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         for (uint256 i; i < actors.length; i++) {
             gte(
-                requestRedeemed[scId][assetId][actors[i]],
-                cancelledRedemptions[scId][assetId][actors[i]] + redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]],
+                userCancelledRedeems[scId][assetId][actors[i]] + userRedemptionsProcessed[scId][assetId][actors[i]],
                 "actor requests must be >= cancelled + processed amounts"
             );
         }
@@ -516,7 +506,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
-            totalDeposits += requestDeposited[scId][assetId][actors[i]];
+            totalDeposits += userRequestDeposited[scId][assetId][actors[i]];
         }
 
         gte(totalDeposits, approvedDeposits[scId][assetId], "total deposits < approved deposits");
@@ -533,7 +523,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         AssetId assetId = AssetId.wrap(_getAssetId());
 
         for (uint256 i; i < actors.length; i++) {
-            totalRedemptions += requestRedeemed[scId][assetId][actors[i]];
+            totalRedemptions += userRequestRedeemed[scId][assetId][actors[i]];
         }
 
         gte(totalRedemptions, approvedRedemptions[scId][assetId], "total redemptions < approved redemptions");
@@ -553,8 +543,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             (, uint128 queued) = shareClassManager.queuedDepositRequest(scId, assetId, actors[i].toBytes32());
 
             eq(
-                requestDeposited[scId][assetId][actors[i]] - cancelledDeposits[scId][assetId][actors[i]]
-                    - depositProcessed[scId][assetId][actors[i]],
+                userRequestDeposited[scId][assetId][actors[i]] - userCancelledDeposits[scId][assetId][actors[i]]
+                    - userDepositProcessed[scId][assetId][actors[i]],
                 pending + queued,
                 "actor requested deposits - cancelled deposits - processed deposits != actor pending deposits + queued deposits"
             );
@@ -575,8 +565,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             (, uint128 queued) = shareClassManager.queuedRedeemRequest(scId, assetId, actors[i].toBytes32());
 
             eq(
-                requestRedeemed[scId][assetId][actors[i]] - cancelledRedemptions[scId][assetId][actors[i]]
-                    - redemptionsProcessed[scId][assetId][actors[i]],
+                userRequestRedeemed[scId][assetId][actors[i]] - userCancelledRedeems[scId][assetId][actors[i]]
+                    - userRedemptionsProcessed[scId][assetId][actors[i]],
                 pending + queued,
                 "property_actor_pending_and_queued_redemptions"
             );

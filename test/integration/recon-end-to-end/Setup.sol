@@ -146,14 +146,14 @@ abstract contract Setup is
     uint64 internal POOL_ID_COUNTER = 1;
 
     /// === GHOST === ///
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestDeposited;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) depositProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) cancelledDeposits;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestDeposited;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userDepositProcessed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledDeposits;
 
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestRedeemed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) requestRedeemedAssets;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) redemptionsProcessed;
-    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) cancelledRedemptions;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRequestRedeemedAssets;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userRedemptionsProcessed;
+    mapping(ShareClassId scId => mapping(AssetId assetId => mapping(address user => uint256))) userCancelledRedeems;
 
     mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedDeposits;
     mapping(ShareClassId scId => mapping(AssetId assetId => uint256)) approvedRedemptions;

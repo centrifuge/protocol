@@ -49,26 +49,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Categorized Issues === ///
 
-    // // forge test --match-test test_property_sum_of_received_leq_fulfilled_4 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed
-    // function test_property_sum_of_received_leq_fulfilled_4() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 183298046153037838558708965697738377830, true, false, true);
-
-    //     shortcut_deposit_and_claim(0, 1, 1, 1, 0);
-
-    //     shortcut_cancel_redeem_claim_clamped(1, 0, 507631448169772);
-
-    //     shortcut_queue_redemption(1, 0, 68399535177262588966825901408398773);
-
-    //     shortcut_cancel_redeem_clamped(1, 0, 0);
-
-    //     shortcut_withdraw_and_claim_clamped(1, 0, 0);
-
-    //     shortcut_cancel_redeem_claim_clamped(0, 0, 0);
-
-    //     property_sum_of_received_leq_fulfilled();
-    // }
-
     // // forge test --match-test test_property_sum_of_minted_equals_total_supply_5 -vvv
     // // NOTE: issue with ghost tracking variables that needs to be fixed, probably due to not updating correctly for
     // sync

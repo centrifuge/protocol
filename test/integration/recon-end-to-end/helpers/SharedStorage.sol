@@ -87,9 +87,9 @@ abstract contract SharedStorage {
     mapping(address => uint256) sumOfTransfersOut;
 
     // Global-1
-    mapping(address => uint256) cancelRedeemShareTokenPayout;
+    mapping(address => uint256) sumOfClaimedCancelledDeposits; // TODO(wischli): Remove if no use-case
     // Global-2
-    mapping(address => uint256) cancelDepositCurrencyPayout;
+    mapping(address => uint256) sumOfClaimedCancelledRedeemShares; // TODO(wischli): Remove if no use-case
 
     // END === invariant_E_1 === //
 
@@ -132,12 +132,6 @@ abstract contract SharedStorage {
      */
     mapping(address => uint256) sumOfRedeemRequests;
 
-    /**
-     * See:
-     *         - asyncRequests_fulfillRedeemRequest
-     */
-    mapping(address => uint256) sumOfClaimedDepositCancelations;
-    mapping(address => uint256) sumOfClaimedRedeemCancelations;
 
     mapping(address asset => uint256) sumOfSyncDepositsAsset;
     mapping(address share => uint256) sumOfSyncDepositsShare;
