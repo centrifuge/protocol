@@ -25,8 +25,8 @@ import "forge-std/Test.sol";
 
 enum CrossChainDirection {
     WithIntermediaryHub, // C -> A -> B (Hub is on A)
-    FromHub, // C == A -> B (Hub is on C)
-    ToHub // C -> B == A (Hub is on B)
+    FromHub, // C => A -> B (Hub is on A)
+    ToHub // C -> A => B (Hub is on A)
 
 }
 
@@ -46,7 +46,6 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
     LocalAdapter adapterCToA;
     LocalAdapter adapterAToC;
 
-    CSpoke sA;
     CSpoke sC;
     CSpoke sB;
 
@@ -70,27 +69,20 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
     function _setSpokes(CrossChainDirection direction) internal {
         if (direction == CrossChainDirection.WithIntermediaryHub) {
-            _setSpoke(deployA, CENTRIFUGE_ID_A, sA);
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
             _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
         } else if (direction == CrossChainDirection.FromHub) {
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
             _setSpoke(deployA, CENTRIFUGE_ID_A, sC);
-            sA = sC;
         } else if (direction == CrossChainDirection.ToHub) {
             _setSpoke(deployA, CENTRIFUGE_ID_A, sB);
             _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
-            sA = sB;
         }
     }
 
     /// @notice Configure the third chain (C) with assets
     function _testConfigureAssets(CrossChainDirection direction) internal {
         _setSpokes(direction);
-
-        if (direction == CrossChainDirection.WithIntermediaryHub) {
-            _configureAsset(sA);
-        }
         _configureAsset(sB);
         _configureAsset(sC);
     }
@@ -98,10 +90,6 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
     /// @notice Configure a pool with support for all three chains
     function _testConfigurePool(CrossChainDirection direction) internal {
         _setSpokes(direction);
-
-        if (direction == CrossChainDirection.WithIntermediaryHub) {
-            _configurePool(sA);
-        }
         _configurePool(sB);
         _configurePool(sC);
     }
