@@ -872,6 +872,8 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         bytes32 batchHash = keccak256(message);
 
         vm.expectEmit();
+        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
+        vm.expectEmit();
         emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
         gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
 
