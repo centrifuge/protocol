@@ -397,6 +397,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit
     ) external auth {
         if (targetCentrifugeId == localCentrifugeId) {
+            // Spoke chain X => Hub chain Y => Spoke chain Y
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
             bytes memory message = MessageLib.ExecuteTransferShares({

@@ -121,7 +121,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hub.initiateTransferShares(
-                sourceCentrifugeId,
+                centrifugeId,
                 m.centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
