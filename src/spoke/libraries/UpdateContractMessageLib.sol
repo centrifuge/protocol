@@ -132,9 +132,7 @@ library UpdateContractMessageLib {
     {
         require(updateContractType(data) == UpdateContractType.UpdateQueue, UnknownMessageType());
 
-        return UpdateContractUpdateQueue({
-            minDelay: data.toUint64(1)
-        });
+        return UpdateContractUpdateQueue({minDelay: data.toUint64(1)});
     }
 
     function serialize(UpdateContractUpdateQueue memory t) internal pure returns (bytes memory) {
