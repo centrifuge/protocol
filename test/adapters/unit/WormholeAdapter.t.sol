@@ -69,7 +69,7 @@ contract WormholeAdapterTestBase is Test {
 }
 
 contract WormholeAdapterTestWire is WormholeAdapterTestBase {
-    function testFileErrNotAuthorized() public {
+    function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         adapter.wire(CENTRIFUGE_CHAIN_ID, WORMHOLE_CHAIN_ID, REMOTE_WORMHOLE_ADDR);
@@ -146,7 +146,7 @@ contract WormholeAdapterTest is WormholeAdapterTestBase {
         vm.expectRevert(IWormholeAdapter.InvalidSource.selector);
         adapter.receiveWormholeMessages(payload, vaas, address(0).toBytes32LeftPadded(), invalidChain, bytes32(0));
 
-        // Incorrect chain
+        // Incorrect sender
         vm.expectRevert(IWormholeAdapter.NotWormholeRelayer.selector);
         adapter.receiveWormholeMessages(
             payload, vaas, validAddress.toBytes32LeftPadded(), WORMHOLE_CHAIN_ID, bytes32(0)
