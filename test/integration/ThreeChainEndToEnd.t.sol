@@ -68,6 +68,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
     }
 
     function _setSpokes(CrossChainDirection direction) internal {
+        // NOTE: Hub is always in deployA.
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             _setSpoke(deployB, CENTRIFUGE_ID_B, sB);
             _setSpoke(deployC, CENTRIFUGE_ID_C, sC);
