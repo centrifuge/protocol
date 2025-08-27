@@ -15,6 +15,7 @@ import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 
 import {console2} from "forge-std/console2.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
@@ -41,10 +42,20 @@ contract QueueManager is IQueueManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IUpdateContract
-    function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
+    function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        // TODO: allow updating lastSync, extraGasLimit
+        // TODO: allow updating extraGasLimit ?
+        uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
+        if (kind == uint8(UpdateContractType.UpdateQueue)) {
+            UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
+                UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
+            ShareClassState storage sc_ = sc[poolId][scId];
+            sc_.minDelay = m.minDelay;
+            emit UpdateMinDelay(poolId, scId, m.minDelay);
+        } else {
+            revert UnknownUpdateContractType();
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -54,9 +65,6 @@ contract QueueManager is IQueueManager, IUpdateContract {
     /// @dev It is the caller's responsibility to ensure all asset IDs have a non-zero delta,
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
-    ///
-    ///      TODO: how to prevent spam for invalid asset IDs? Without checking the delta is non-negative,
-    ///      since this would open up a DoS vector.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
         ShareClassState storage sc_ = sc[poolId][scId];
         require(sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay);

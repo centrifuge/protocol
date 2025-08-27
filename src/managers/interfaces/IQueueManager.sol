@@ -6,6 +6,8 @@ import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 interface IQueueManager {
+    event UpdateMinDelay(PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay);
+
     error InvalidPoolId();
     error NotContractUpdater();
     error NoUpdates();

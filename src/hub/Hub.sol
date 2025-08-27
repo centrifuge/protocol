@@ -719,6 +719,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
         sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount, extraGasLimit);
+        // shareClassManager.updateShares(fromCentrifugeId, poolId, scId, amount, false);
+        // shareClassManager.updateShares(toCentrifugeId, poolId, scId, amount, true);
+
+        // ISnapshotHook hook = holdings.snapshotHook(poolId);
+        // if (address(hook) != address(0)) hook.onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId, amount);
+
+        // emit ForwardTransferShares(fromCentrifugeId, toCentrifugeId, poolId, scId, receiver, amount);
+        // sender.sendExecuteTransferShares(toCentrifugeId, poolId, scId, receiver, amount, extraGasLimit);
     }
 
     //----------------------------------------------------------------------------------------------
