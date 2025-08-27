@@ -708,7 +708,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     /// @inheritdoc IHubGatewayHandler
     function initiateTransferShares(
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
@@ -717,8 +718,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount, extraGasLimit);
+        emit ForwardTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(
+            originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
+        );
     }
 
     //----------------------------------------------------------------------------------------------

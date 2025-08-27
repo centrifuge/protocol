@@ -125,7 +125,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
         emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
-        if (direction != CrossChainDirection.FromHub) {
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
             vm.expectEmit(true, false, false, false);
             emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""));
         } else {
@@ -143,7 +143,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
         IShareToken shareTokenC = IShareToken(sC.spoke.shareToken(POOL_A, SC_1));
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
-        if (direction != CrossChainDirection.FromHub) {
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
             assertEq(shareTokenC.balanceOf(INVESTOR_A), 0, "Share transfer not executed due to unpaid message");
             bytes memory message = MessageLib.ExecuteTransferShares({
                 poolId: PoolId.unwrap(POOL_A),

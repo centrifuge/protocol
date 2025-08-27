@@ -368,7 +368,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 remoteExtraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hub.initiateTransferShares(targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
+            hub.initiateTransferShares(
+                localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
+            );
         } else {
             gateway.send(
                 poolId.centrifugeId(),
@@ -386,26 +388,33 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IHubMessageSender
     function sendExecuteTransferShares(
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
     ) external auth {
-        if (centrifugeId == localCentrifugeId) {
+        if (targetCentrifugeId == localCentrifugeId) {
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
+            bytes memory message = MessageLib.ExecuteTransferShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                receiver: receiver,
+                amount: amount
+            }).serialize();
+
             gateway.setExtraGasLimit(extraGasLimit);
-            gateway.addUnpaidMessage(
-                centrifugeId,
-                MessageLib.ExecuteTransferShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount
-                }).serialize()
-            );
+
+            if (originCentrifugeId == localCentrifugeId) {
+                // Spoke chain X => Hub chain X => Spoke chain Y: payment done directly on X
+                gateway.send(targetCentrifugeId, message);
+            } else {
+                // Spoke chain X => Hub chain Y => Spoke chain Z
+                gateway.addUnpaidMessage(targetCentrifugeId, message);
+            }
         }
     }
 
