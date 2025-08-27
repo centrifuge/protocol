@@ -21,7 +21,6 @@ import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 
 import {Spoke} from "../../../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
-import {QueueManager} from "../../../src/managers/QueueManager.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
@@ -33,6 +32,8 @@ import {MockSnapshotHook} from "../../hooks/mocks/MockSnapshotHook.sol";
 import {FreezeOnly} from "../../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
+
+import {QueueManager} from "../../../src/managers/QueueManager.sol";
 
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
