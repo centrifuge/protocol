@@ -14,7 +14,6 @@ import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
 
-import {console2} from "forge-std/console2.sol";
 import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
@@ -69,8 +68,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
         ShareClassState storage sc_ = sc[poolId][scId];
         require(sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay);
 
-        (uint128 delta, bool isPositive, uint32 queuedAssetCounter, uint64 nonce) =
-            balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
         require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
 
         bool submitShares = delta > 0 && assetIds.length >= queuedAssetCounter;
