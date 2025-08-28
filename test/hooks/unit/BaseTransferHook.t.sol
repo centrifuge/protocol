@@ -166,10 +166,10 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
 }
 
 contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
-    function testIsDepositRequest() public view {
-        assertTrue(hook.isDepositRequest(address(0), user1));
-        assertFalse(hook.isDepositRequest(address(0), depositTarget));
-        assertFalse(hook.isDepositRequest(user1, user2));
+    function testIsIssuance() public view {
+        assertTrue(hook.isIssuance(address(0), user1));
+        assertFalse(hook.isIssuance(address(0), depositTarget));
+        assertFalse(hook.isIssuance(user1, user2));
     }
 
     function testIsDepositFulfillment() public view {
@@ -195,11 +195,11 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertFalse(hook.isRedeemFulfillment(redeemSource, user1));
     }
 
-    function testIsRedeemClaim() public view {
-        assertTrue(hook.isRedeemClaim(user1, address(0)));
-        assertFalse(hook.isRedeemClaim(redeemSource, address(0)));
-        assertFalse(hook.isRedeemClaim(crosschainSource, address(0)));
-        assertFalse(hook.isRedeemClaim(user1, user2));
+    function testIsRevocation() public view {
+        assertTrue(hook.isRevocation(user1, address(0)));
+        assertFalse(hook.isRevocation(redeemSource, address(0)));
+        assertFalse(hook.isRevocation(crosschainSource, address(0)));
+        assertFalse(hook.isRevocation(user1, user2));
     }
 
     function testIsCrosschainTransfer() public view {
