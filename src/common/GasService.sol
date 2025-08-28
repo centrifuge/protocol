@@ -61,8 +61,8 @@ contract GasService is IGasService {
         notifyPricePoolPerAsset = BASE_COST + 35759;
         notifyShareMetadata = BASE_COST + 13343;
         updateShareHook = BASE_COST + 6415;
-        initiateTransferShares = BASE_COST + 52195;
-        executeTransferShares = BASE_COST + 70267;
+        initiateTransferShares = BASE_COST + 89689;
+        executeTransferShares = BASE_COST + 70428;
         updateRestriction = BASE_COST + 35992;
         updateContract = BASE_COST + 53345;
         requestCallback = BASE_COST + 186947; // approve deposit case
