@@ -62,7 +62,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes calldata message) external auth {
+    function handle(uint16 centrifugeId, bytes calldata message) external payable auth {
         MessageType kind = message.messageType();
         uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
 

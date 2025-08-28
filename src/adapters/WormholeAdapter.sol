@@ -63,7 +63,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(source.addr != address(0) && source.addr == sourceAddress.toAddressLeftPadded(), InvalidSource());
         require(msg.sender == address(relayer), NotWormholeRelayer());
 
-        entrypoint.handle(source.centrifugeId, payload);
+        entrypoint.handle{value: msg.value}(source.centrifugeId, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, uint256 gasValue, address refund)
         external
         payable
         returns (bytes32 adapterData)
@@ -81,18 +81,18 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
         require(destination.wormholeId != 0, UnknownChainId());
 
         uint64 sequence = relayer.sendPayloadToEvm{value: msg.value}(
-            destination.wormholeId, destination.addr, payload, 0, gasLimit, localWormholeId, refund
+            destination.wormholeId, destination.addr, payload, gasValue, gasLimit, localWormholeId, refund
         );
 
         adapterData = bytes32(bytes8(sequence));
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata, uint256 gasLimit)
+    function estimate(uint16 centrifugeId, bytes calldata, uint256 gasLimit, uint256 gasValue)
         external
         view
         returns (uint256 nativePriceQuote)
     {
-        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, 0, gasLimit);
+        (nativePriceQuote,) = relayer.quoteEVMDeliveryPrice(destinations[centrifugeId].wormholeId, gasValue, gasLimit);
     }
 }

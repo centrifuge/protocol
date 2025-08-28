@@ -75,7 +75,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.
-    function retry(uint16 centrifugeId, bytes memory message) external;
+    function retry(uint16 centrifugeId, bytes memory message) external payable;
 
     /// @notice Set an extra gas to the gas limit of the message
     function setExtraGasLimit(uint128 gas) external;

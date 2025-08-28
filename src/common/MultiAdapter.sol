@@ -86,7 +86,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes calldata payload) external {
+    function handle(uint16 centrifugeId, bytes calldata payload) external payable {
         _handle(centrifugeId, payload, IAdapter(msg.sender));
     }
 
@@ -113,7 +113,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
         // Special case for gas efficiency
         if (adapter.quorum == 1 && !isMessageProof) {
-            gateway.handle(centrifugeId, payload);
+            gateway.handle{value: msg.value}(centrifugeId, payload);
             return;
         }
 
@@ -179,7 +179,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, uint256 gasValue, address refund)
         external
         payable
         auth
@@ -192,13 +192,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, payloadHash));
         bytes memory proof = payloadHash.serializeMessageProof();
 
-        uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit);
-        bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
+        uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit, gasValue);
+        bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, gasValue, refund);
         emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
         for (uint256 i = 1; i < adapters_.length; i++) {
-            cost = adapters_[i].estimate(centrifugeId, proof, gasLimit);
-            adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, refund);
+            cost = adapters_[i].estimate(centrifugeId, proof, gasLimit, gasValue);
+            adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, gasValue, refund);
             emit SendProof(centrifugeId, payloadId, payloadHash, adapters_[i], adapterData);
         }
 
@@ -206,7 +206,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit)
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, uint256 gasValue)
         external
         view
         returns (uint256 total)
@@ -215,7 +215,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         bytes memory proof = keccak256(payload).serializeMessageProof();
 
         for (uint256 i; i < adapters_.length; i++) {
-            total += adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit);
+            total +=
+                adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit, gasValue);
         }
     }
 

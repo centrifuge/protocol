@@ -8,11 +8,14 @@ interface IAdapter is IAuth {
     error UnknownChainId();
 
     /// @notice Send a payload to the destination chain
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, uint256 gasValue, address refund)
         external
         payable
         returns (bytes32 adapterData);
 
     /// @notice Estimate the total cost in native gas tokens
-    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
+    function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, uint256 gasValue)
+        external
+        view
+        returns (uint256);
 }
