@@ -82,6 +82,13 @@ contract MockProcessor is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
+
+    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
+        if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
+        revert("Unreachable: message never asked for pool");
+    }
 }
 
 contract MockPoolRefund is Recoverable {
@@ -579,7 +586,7 @@ contract GatewayTestSend is GatewayTest {
     }
 
     function testSendMessageUsingSubsidizedPoolPayment() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes memory message = MessageKind.WithPool0.asBytes(); // NOTE payment for WithPool0 is POOL_A
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
@@ -588,7 +595,7 @@ contract GatewayTestSend is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
 
         vm.expectEmit();
-        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
+        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_0, message);
         gateway.send(REMOTE_CENT_ID, message);
 
         (uint256 value,) = gateway.subsidy(POOL_A);
