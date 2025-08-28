@@ -25,7 +25,6 @@ import {TokenFactory} from "../../../src/spoke/factories/TokenFactory.sol";
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 
-import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
 
@@ -62,7 +61,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     address public asyncRequestManager;
     address public syncManager;
     address public wormholeAdapter;
-    address public axelarAdapter;
     address public messageProcessor;
     address public messageDispatcher;
     address public multiAdapter;
@@ -163,7 +161,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         asyncRequestManager = IntegrationConstants.ASYNC_REQUEST_MANAGER;
         syncManager = IntegrationConstants.SYNC_MANAGER;
         wormholeAdapter = IntegrationConstants.WORMHOLE_ADAPTER;
-        axelarAdapter = IntegrationConstants.AXELAR_ADAPTER;
         messageProcessor = IntegrationConstants.MESSAGE_PROCESSOR;
         messageDispatcher = IntegrationConstants.MESSAGE_DISPATCHER;
         multiAdapter = IntegrationConstants.MULTI_ADAPTER;
@@ -273,10 +270,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
 
         // From VaultsDeployer - adapters
         _validateRootWard(wormholeAdapter);
-        // Only validate Axelar adapter on chains that support it (not Plume)
-        if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID) {
-            _validateRootWard(axelarAdapter);
-        }
 
         // Validate vault contracts based on chain
         if (isEthereum()) {
@@ -505,12 +498,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
     function _validateAdapterSourceDestinationMappings() internal view virtual {
         WormholeAdapter wormholeAdapterContract = WormholeAdapter(wormholeAdapter);
 
-        // Only validate Axelar if not on Plume (Plume doesn't have Axelar deployed)
-        AxelarAdapter axelarAdapterContract;
-        if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID) {
-            axelarAdapterContract = AxelarAdapter(axelarAdapter);
-        }
-
         ChainConfigs.ChainConfig[SUPPORTED_CHAINS_COUNT] memory chains = ChainConfigs.getAllChains();
 
         for (uint256 i = 0; i < chains.length; i++) {
@@ -519,13 +506,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
                 _validateWormholeMapping(
                     wormholeAdapterContract, chains[i].wormholeId, chains[i].centrifugeId, chains[i].name
                 );
-
-                // Validate Axelar mapping if both current chain and target chain support it
-                if (localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID && chains[i].hasAxelar) {
-                    _validateAxelarMapping(
-                        axelarAdapterContract, chains[i].axelarId, chains[i].centrifugeId, chains[i].name
-                    );
-                }
             }
         }
     }
@@ -575,12 +555,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         // Verify first adapter is always Wormhole (primary)
         IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, 0);
         assertEq(address(primaryAdapter), wormholeAdapter);
-
-        if (expectedQuorum == STANDARD_QUORUM) {
-            // Verify second adapter is Axelar
-            IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, 1);
-            assertEq(address(secondaryAdapter), axelarAdapter);
-        }
     }
 
     /// @notice Helper function to validate Wormhole adapter source/destination mappings
@@ -603,42 +577,6 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
             destWormholeId, wormholeId, _formatAdapterError("WormholeAdapter", "destination wormholeId", chainName)
         );
         assertEq(destAddr, wormholeAdapter, _formatAdapterError("WormholeAdapter", "destination address", chainName));
-    }
-
-    /// @notice Helper function to validate Axelar adapter source/destination mappings
-    function _validateAxelarMapping(
-        AxelarAdapter axelarAdapterContract,
-        string memory axelarId,
-        uint16 centrifugeId,
-        string memory chainName
-    ) internal view {
-        // Validate source mapping (incoming from remote chain)
-        (uint16 sourceCentrifugeId, bytes32 sourceAddressHash) = axelarAdapterContract.sources(axelarId);
-        assertEq(
-            sourceCentrifugeId,
-            centrifugeId,
-            string(abi.encodePacked("AxelarAdapter source centrifugeId mismatch for ", chainName))
-        );
-        // Note: addressHash is keccak256 of the remote adapter address string
-        bytes32 expectedAddressHash = keccak256(abi.encodePacked(vm.toString(axelarAdapter)));
-        assertEq(
-            sourceAddressHash,
-            expectedAddressHash,
-            _formatAdapterError("AxelarAdapter", "source addressHash", chainName)
-        );
-
-        // Validate destination mapping (outgoing to remote chain)
-        (string memory destAxelarId, string memory destAddr) = axelarAdapterContract.destinations(centrifugeId);
-        assertEq(
-            keccak256(bytes(destAxelarId)),
-            keccak256(bytes(axelarId)),
-            _formatAdapterError("AxelarAdapter", "destination axelarId", chainName)
-        );
-        assertEq(
-            keccak256(bytes(destAddr)),
-            keccak256(abi.encodePacked(vm.toString(axelarAdapter))),
-            _formatAdapterError("AxelarAdapter", "destination address", chainName)
-        );
     }
 
     /// @notice Formats standardized adapter error messages

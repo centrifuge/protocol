@@ -6,7 +6,6 @@ import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "./ExtendedHubDeploy
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
 import {
     WormholeInput,
-    AxelarInput,
     LayerZeroInput,
     AdaptersInput,
     AdaptersDeployer,
@@ -99,11 +98,6 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
             wormhole: WormholeInput({
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.wormhole.deploy"),
                 relayer: _parseJsonAddressOrDefault(config, "$.adapters.wormhole.relayer")
-            }),
-            axelar: AxelarInput({
-                shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy"),
-                gateway: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gateway"),
-                gasService: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gasService")
             }),
             layerZero: LayerZeroInput({
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),

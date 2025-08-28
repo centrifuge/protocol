@@ -6,7 +6,6 @@ import {IGuardian} from "../src/common/interfaces/IGuardian.sol";
 
 import "forge-std/Script.sol";
 
-import {IAxelarAdapter} from "../src/adapters/interfaces/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/adapters/interfaces/IWormholeAdapter.sol";
 
 /// @dev Configures the local network's adapters to communicate with remote networks.
@@ -79,17 +78,6 @@ contract WireAdapters is Script {
                 );
 
                 console.log("Wired WormholeAdapter from", localNetwork, "to", remoteNetwork);
-            }
-
-            // Wire AxelarAdapter
-            if (localAxelarAddr != address(0)) {
-                IAxelarAdapter(localAxelarAddr).wire(
-                    remoteCentrifugeId,
-                    vm.parseJsonString(remoteConfig, "$.adapters.axelar.axelarId"),
-                    vm.toString(vm.parseJsonAddress(remoteConfig, "$.contracts.axelarAdapter"))
-                );
-
-                console.log("Wired AxelarAdapter from", localNetwork, "to", remoteNetwork);
             }
         }
         vm.stopBroadcast();
