@@ -187,7 +187,10 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
-        _addUnpaidBatch(centrifugeId, message, gasService.messageGasLimit(centrifugeId, message));
+        uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
+        extraGasLimit = 0;
+        emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
+        _addUnpaidBatch(centrifugeId, message, gasLimit);
     }
 
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {

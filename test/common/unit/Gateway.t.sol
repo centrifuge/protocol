@@ -636,16 +636,23 @@ contract GatewayTestSend is GatewayTest {
 
         gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
         gateway.send(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.extraGasLimit(), 0);
     }
 
     function testMessageBatchedWithExtraGasLimit() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
 
-        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
         gateway.startBatching();
+
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
         gateway.send(REMOTE_CENT_ID, message);
 
-        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
+        gateway.send(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.batchGasLimit(REMOTE_CENT_ID, POOL_A), (MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT) * 2);
+        assertEq(gateway.extraGasLimit(), 0);
     }
 }
 
@@ -865,6 +872,8 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         bytes32 batchHash = keccak256(message);
 
         vm.expectEmit();
+        emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
+        vm.expectEmit();
         emit IGateway.UnderpaidBatch(REMOTE_CENT_ID, message);
         gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
 
@@ -883,5 +892,17 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         (uint128 counter, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(counter, 2);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT);
+    }
+
+    function testCorrectAddUnpaidMessageWithExtraGas() public {
+        bytes memory message = MessageKind.WithPoolA1.asBytes();
+        bytes32 batchHash = keccak256(message);
+
+        gateway.setExtraGasLimit(EXTRA_GAS_LIMIT);
+        gateway.addUnpaidMessage(REMOTE_CENT_ID, message);
+
+        (, uint128 gasLimit) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
+        assertEq(gasLimit, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
+        assertEq(gateway.extraGasLimit(), 0);
     }
 }
