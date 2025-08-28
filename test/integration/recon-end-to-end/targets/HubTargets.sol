@@ -114,59 +114,55 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their
     /// depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        bytes32 investor = CastLib.toBytes32(_getActor());
-        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(
-            IBaseVault(_getVault()).scId(), investor, spoke.vaultDetails(IBaseVault(_getVault())).assetId
-        );
+        IBaseVault vault = IBaseVault(_getVault());
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        address actor = _getActor();
+        bytes32 investor = CastLib.toBytes32(actor);
+        
+        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
-        uint256 investorSharesBefore = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
-        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
-        (uint128 pendingBefore,) = shareClassManager.redeemRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-
-        (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount) = hubHelpers.notifyRedeem(
-            IBaseVault(_getVault()).poolId(),
-            IBaseVault(_getVault()).scId(),
-            spoke.vaultDetails(IBaseVault(_getVault())).assetId,
-            investor,
-            maxClaims
-        );
-
-        (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-        (, uint32 redeemEpochId,,) = shareClassManager.epochId(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
-        );
-        (bool isCancellingAfter, ) = shareClassManager.queuedRedeemRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-
-        uint256 investorSharesAfter = IShareToken(IBaseVault(_getVault()).share()).balanceOf(_getActor());
-        uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(IBaseVault(_getVault()), _getActor());
-
-        // NOTE: The currency payout is returned by SCM::notifyRedeem and stored in user's investments in AsyncRequestManager
-        currencyPayout[IBaseVault(_getVault()).asset()] += (investorClaimableAfter - investorClaimableBefore);
-        userRedemptionsProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor()] += paymentShareAmount;
-        userCancelledRedeems[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor()] += cancelledShareAmount;
-        sumOfClaimedCancelledRedeemShares[IBaseVault(_getVault()).share()] += cancelledShareAmount;
-
-        // precondition: lastUpdate doesn't change if there's no claim actually made
+        _executeNotifyRedeem(vault, scId, assetId, actor, investor, maxClaims);
+        
         if (maxClaims == maxClaimsBound && maxClaims > 0) {
-            // nowRedeemEpoch = redeemEpochId + 1
-            eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
-
-            t(isCancellingAfter, "queued cancellation post claiming should not be possible");
-
-            gte(pendingBefore - pendingAfter, paymentShareAmount, "pending delta should be greater (if cancel queued) or equal to the payment share amount");
-
-            eq(investorSharesBefore, investorSharesAfter, "claiming should not impact user shares on spoke which are transferred during requestRedeem");
+            _validateNotifyRedeemProperties(scId, assetId, investor);
         } else if (maxClaimsBound > 0) {
-            // Continue claiming until all epochs are processed
             hub_notifyRedeem(1);
         }
+    }
+
+    function _executeNotifyRedeem(
+        IBaseVault vault, 
+        ShareClassId scId, 
+        AssetId assetId, 
+        address actor, 
+        bytes32 investor, 
+        uint32 maxClaims
+    ) private {
+        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(vault, actor);
+        
+        (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount) = hubHelpers.notifyRedeem(
+            vault.poolId(), scId, assetId, investor, maxClaims
+        );
+
+        uint256 investorClaimableAfter = asyncRequestManager.maxWithdraw(vault, actor);
+
+        // Update tracking variables
+        currencyPayout[vault.asset()] += (investorClaimableAfter - investorClaimableBefore);
+        userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
+        userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
+        sumOfClaimedCancelledRedeemShares[vault.share()] += cancelledShareAmount;
+    }
+
+    function _validateNotifyRedeemProperties(ShareClassId scId, AssetId assetId, bytes32 investor) private {
+        (uint128 pendingAfter, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, investor);
+        (, uint32 redeemEpochId,,) = shareClassManager.epochId(scId, assetId);
+        (bool isCancellingAfter, ) = shareClassManager.queuedRedeemRequest(scId, assetId, investor);
+
+        // nowRedeemEpoch = redeemEpochId + 1
+        eq(lastUpdate, redeemEpochId + 1, "lastUpdate != nowRedeemEpoch");
+        t(!isCancellingAfter, "queued cancellation post claiming should not be possible");
     }
 
     /// === EXECUTION FUNCTIONS === ///

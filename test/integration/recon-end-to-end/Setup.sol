@@ -163,6 +163,27 @@ abstract contract Setup is
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
 
+    // Ghost variables for queue tracking (Step 1.1)
+    mapping(bytes32 => int256) public ghost_netSharePosition; // Net share position (positive for issuance, negative for revocation)
+    mapping(bytes32 => uint256) public ghost_flipCount; // Count of position flips between issuance and revocation
+    mapping(bytes32 => uint256) public ghost_totalIssued; // Total shares issued cumulatively
+    mapping(bytes32 => uint256) public ghost_totalRevoked; // Total shares revoked cumulatively
+    mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
+    mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
+    mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
+    mapping(bytes32 => uint256) public ghost_assetQueueNonce; // Track nonce progression per asset
+
+    // Before/After state tracking for ShareQueueProperties
+    mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
+    mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
+    mapping(bytes32 => uint32) public before_queuedAssetCounter; // Asset counter before operation
+    mapping(bytes32 => uint64) public before_nonce; // Nonce before operation
+
+    // Pool tracking for property iteration
+    PoolId[] public activePools; // All created pools
+    mapping(PoolId => ShareClassId[]) public activeShareClasses; // Share classes per pool
+    AssetId[] public trackedAssets; // All registered assets
+
     int256 maxDepositGreater;
     int256 maxDepositLess;
     int256 maxRedeemGreater;
@@ -386,5 +407,69 @@ abstract contract Setup is
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));
         balanceSheet.rely(address(messageDispatcher));
+    }
+
+    // Helper functions for ShareQueueProperties
+
+    /// @notice Capture share queue state before operation
+    function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
+        bytes32 key = _poolShareKey(poolId, scId);
+        
+        // Direct call - no try-catch needed for public mapping getter
+        (
+            uint128 delta,
+            bool isPositive,
+            uint32 queuedAssetCounter,
+            uint64 nonce
+        ) = balanceSheet.queuedShares(poolId, scId);
+        
+        before_shareQueueDelta[key] = delta;
+        before_shareQueueIsPositive[key] = isPositive;
+        before_queuedAssetCounter[key] = queuedAssetCounter;
+        before_nonce[key] = nonce;
+    }
+
+    /// @notice Generate consistent key for pool-share class combination
+    function _poolShareKey(PoolId poolId, ShareClassId scId) internal pure returns (bytes32) {
+        return keccak256(abi.encode(poolId, scId));
+    }
+
+    /// @notice Track pools and share classes for property iteration
+    function _trackPoolAndShareClass(PoolId poolId, ShareClassId scId) internal {
+        // Check if pool is already tracked
+        bool poolExists = false;
+        for (uint256 i = 0; i < activePools.length; i++) {
+            if (PoolId.unwrap(activePools[i]) == PoolId.unwrap(poolId)) {
+                poolExists = true;
+                break;
+            }
+        }
+        if (!poolExists) {
+            activePools.push(poolId);
+        }
+
+        // Check if share class is already tracked for this pool
+        ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+        bool scExists = false;
+        for (uint256 i = 0; i < shareClasses.length; i++) {
+            if (ShareClassId.unwrap(shareClasses[i]) == ShareClassId.unwrap(scId)) {
+                scExists = true;
+                break;
+            }
+        }
+        if (!scExists) {
+            shareClasses.push(scId);
+        }
+    }
+
+    /// @notice Track asset for property iteration
+    function _trackAsset(AssetId assetId) internal {
+        // Check if asset is already tracked
+        for (uint256 i = 0; i < trackedAssets.length; i++) {
+            if (AssetId.unwrap(trackedAssets[i]) == AssetId.unwrap(assetId)) {
+                return; // Already tracked
+            }
+        }
+        trackedAssets.push(assetId);
     }
 }

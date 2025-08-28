@@ -30,9 +30,21 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.deposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId; 
+        
+        // Track for property iteration
+        _trackPoolAndShareClass(poolId, scId);
+        _trackAsset(assetId);
+        
+        balanceSheet.deposit(poolId, scId, vault.asset(), tokenId, amount);
 
         sumOfManagerDeposits[vault.asset()] += amount;
+        
+        // Update queue ghost variables
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        ghost_assetQueueDeposits[assetKey] += amount;
     }
 
     // NOTE: removed because not useful for fuzzing
@@ -45,20 +57,44 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
+        // Track for property iteration
+        _trackPoolAndShareClass(poolId, scId);
+
+        // Track previous net position for flip detection
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        int256 prevNetPosition = ghost_netSharePosition[shareKey];
+        
         balanceSheet.issue(poolId, scId, _getActor(), shares);
 
         issuedBalanceSheetShares[poolId][scId] += shares;
         shareMints[vault.share()] += shares;
+        
+        // Update ghost variables
+        ghost_totalIssued[shareKey] += shares;
+        ghost_netSharePosition[shareKey] += int256(uint256(shares));
+        
+        // Check for position flip
+        if (prevNetPosition < 0 && ghost_netSharePosition[shareKey] >= 0) {
+            ghost_flipCount[shareKey]++;
+        }
     }
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.noteDeposit(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        
+        balanceSheet.noteDeposit(poolId, scId, vault.asset(), tokenId, amount);
+        
+        // Update queue ghost variables
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        ghost_assetQueueDeposits[assetKey] += amount;
     }
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
@@ -81,7 +117,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
@@ -95,10 +131,26 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
+        // Track for property iteration
+        _trackPoolAndShareClass(poolId, scId);
+
+        // Track previous net position for flip detection
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        int256 prevNetPosition = ghost_netSharePosition[shareKey];
+        
         balanceSheet.revoke(poolId, scId, shares);
 
         revokedBalanceSheetShares[poolId][scId] += shares;
         shareMints[vault.share()] -= shares;
+        
+        // Update ghost variables
+        ghost_totalRevoked[shareKey] += shares;
+        ghost_netSharePosition[shareKey] -= int256(uint256(shares));
+        
+        // Check for position flip
+        if (prevNetPosition > 0 && ghost_netSharePosition[shareKey] <= 0) {
+            ghost_flipCount[shareKey]++;
+        }
     }
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
@@ -110,8 +162,54 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_withdraw(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        balanceSheet.withdraw(vault.poolId(), vault.scId(), vault.asset(), tokenId, _getActor(), amount);
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        
+        balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount);
 
         sumOfManagerWithdrawals[vault.asset()] += amount;
+        
+        // Update queue ghost variables
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        ghost_assetQueueWithdrawals[assetKey] += amount;
+    }
+
+    // === NEW TARGET FUNCTIONS FOR QUEUE OPERATIONS ===
+    
+    function balanceSheet_reserve(uint256 tokenId, uint128 amount) public updateGhosts asActor {
+        IBaseVault vault = IBaseVault(_getVault());
+        balanceSheet.reserve(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
+    }
+    
+    function balanceSheet_unreserve(uint256 tokenId, uint128 amount) public updateGhosts asActor {
+        IBaseVault vault = IBaseVault(_getVault());
+        balanceSheet.unreserve(vault.poolId(), vault.scId(), vault.asset(), tokenId, amount);
+    }
+    
+    function balanceSheet_submitQueuedAssets(uint128 extraGasLimit) public updateGhosts asActor {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        
+        // Track nonce before submission
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        ghost_assetQueueNonce[assetKey]++;
+        
+        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
+    }
+    
+    function balanceSheet_submitQueuedShares(uint128 extraGasLimit) public updateGhosts asActor {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        
+        // Track nonce before submission
+        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        ghost_shareQueueNonce[shareKey]++;
+        
+        balanceSheet.submitQueuedShares(poolId, scId, extraGasLimit);
     }
 }

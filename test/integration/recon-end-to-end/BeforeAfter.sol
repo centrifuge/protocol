@@ -133,6 +133,9 @@ abstract contract BeforeAfter is Setup {
                 _before.ghostAccountValue[poolId][accountId] = accountValue;
             }
         }
+
+        // Track share queue state before operation for ShareQueueProperties
+        _captureShareQueueState(poolId, scId);
     }
 
     function __after() internal {
