@@ -164,6 +164,10 @@ library MessageLib {
 
         if (kind <= uint8(MessageType.RecoverTokens)) {
             return 0; // Non centrifugeId associated
+        } else if (kind == uint8(MessageType.InitiateSetPoolAdapters)) {
+            return message.messagePoolIdPayment().centrifugeId();
+        } else if (kind == uint8(MessageType.ExecuteSetPoolAdapters)) {
+            return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.RegisterAsset)) {

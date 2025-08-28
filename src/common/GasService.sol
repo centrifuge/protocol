@@ -92,7 +92,6 @@ contract GasService is IGasService {
         if (kind == MessageType.RegisterAsset) return registerAsset;
         if (kind == MessageType.InitiateSetPoolAdapters) return initiateSetPoolAdapters;
         if (kind == MessageType.ExecuteSetPoolAdapters) return executeSetPoolAdapters;
-        if (kind == MessageType.RegisterAsset) return registerAsset;
         if (kind == MessageType.Request) return request;
         if (kind == MessageType.NotifyPool) return notifyPool;
         if (kind == MessageType.NotifyShareClass) return notifyShareClass;
