@@ -10,9 +10,11 @@ import {LayerZeroAdapter} from "src/adapters/LayerZeroAdapter.sol";
 
 import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
 
-contract MockEntrypoint is IMessageHandler {
-    uint128 constant GAS_LIMIT = 500_000;
+bytes constant MESSAGE = "payload";
+uint128 constant GAS_LIMIT = 500_000;
+uint128 constant GAS_VALUE = 200_000;
 
+contract MockEntrypoint is IMessageHandler {
     event GasReceived(uint256 gas);
 
     function handle(uint16, bytes memory) external payable {
@@ -20,7 +22,7 @@ contract MockEntrypoint is IMessageHandler {
     }
 
     function send(IAdapter adapter) external payable {
-        adapter.send{value: msg.value}(0, "a", GAS_LIMIT, msg.value - GAS_LIMIT, address(0));
+        adapter.send{value: msg.value}(0, MESSAGE, GAS_LIMIT, GAS_VALUE, address(0));
     }
 }
 
@@ -62,13 +64,16 @@ contract AdaptersSendingGasScript is Script, CreateXScript {
         wormhole.wire(0, WORMHOLE_SEPOPLIA_ETH_ID, address(wormhole));
         layerZero.wire(0, LAYER_ZERO_SEPOPLIA_ETH_ID, address(layerZero));
 
-        entrypoint.send{value: 500_123}(wormhole);
-        entrypoint.send{value: 500_123}(layerZero);
+        uint256 wormholeGas = wormhole.estimate(0, MESSAGE, GAS_LIMIT, GAS_VALUE);
+        entrypoint.send{value: wormholeGas}(wormhole);
+
+        uint256 layerZeroGas = layerZero.estimate(0, MESSAGE, GAS_LIMIT, GAS_VALUE);
+        entrypoint.send{value: layerZeroGas}(layerZero);
 
         vm.stopBroadcast();
 
-        console.log("entrypoint: ", address(entrypoint));
-        console.log("Wormhole: ", address(wormhole));
-        console.log("layerZero: ", address(layerZero));
+        console.log("entrypoint: ", address(entrypoint)); // 0xc9d550e6A3B0D68dCfE5Bb9A159fae5805eA898B
+        console.log("Wormhole: ", address(wormhole)); // 0xbccC9e078c1cE886A6923A9F094413F907cb9277
+        console.log("layerZero: ", address(layerZero)); // 0xE1A56Ee71F6A1B486f23b2DE2B7bC1986bed0485
     }
 }
