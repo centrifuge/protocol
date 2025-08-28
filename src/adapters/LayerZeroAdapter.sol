@@ -20,6 +20,8 @@ import {MathLib} from "../misc/libraries/MathLib.sol";
 
 import {IMessageHandler} from "../common/interfaces/IMessageHandler.sol";
 
+import "forge-std/Test.sol";
+
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
 /// @dev    A delegate is set on deployment, to configure the DVN and executor
@@ -146,6 +148,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/oapp/contracts/oapp/libs/OptionsBuilder.sol#L42
     function _options(uint128 gasLimit, uint128 gasValue) internal pure returns (bytes memory) {
         bytes memory option = abi.encodePacked(gasLimit, gasValue);
+        console.log(option.length);
         return abi.encodePacked(
             TYPE_3,
             WORKER_ID,

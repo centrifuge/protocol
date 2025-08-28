@@ -29,7 +29,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 remoteCentrifugeId, bytes calldata message) external {
+    function handle(uint16 remoteCentrifugeId, bytes calldata message) external payable {
         // Local messages must be bypassed
         assertNotEq(localCentrifugeId, remoteCentrifugeId, "Local messages must be bypassed");
 
@@ -37,7 +37,7 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IAdapter
-    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, address refund)
+    function send(uint16 remoteCentrifugeId, bytes calldata payload, uint256, uint256, address refund)
         external
         payable
         returns (bytes32 adapterData)
@@ -55,7 +55,11 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
     }
 
     /// @inheritdoc IAdapter
-    function estimate(uint16, bytes calldata, uint256 gasLimit) public pure returns (uint256 nativePriceQuote) {
+    function estimate(uint16, bytes calldata, uint256 gasLimit, uint256)
+        public
+        pure
+        returns (uint256 nativePriceQuote)
+    {
         return gasLimit;
     }
 }

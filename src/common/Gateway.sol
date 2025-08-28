@@ -155,7 +155,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         internal
         returns (bool succeeded)
     {
-        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
+        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit, 0 /* TODO*/ );
 
         // Ensure sufficient funds are available
         if (transactionRefund != address(0)) {
@@ -179,6 +179,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             centrifugeId,
             batch,
             batchGasLimit,
+            0, /*TODO*/
             transactionRefund != address(0) ? transactionRefund : address(subsidy[poolId].refund)
         );
 

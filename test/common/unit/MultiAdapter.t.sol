@@ -21,7 +21,7 @@ contract MockGateway is IMessageHandler {
 
     mapping(uint16 => bytes[]) public handled;
 
-    function handle(uint16 centrifugeId, bytes memory payload) external {
+    function handle(uint16 centrifugeId, bytes memory payload) external payable {
         handled[centrifugeId].push(payload);
     }
 
@@ -61,6 +61,7 @@ contract MultiAdapterTest is Test {
     bytes32 constant ADAPTER_DATA_3 = bytes32("data3");
 
     uint256 constant GAS_LIMIT = 10.0 gwei;
+    uint256 constant GAS_VALUE = 20.0 gwei;
 
     bytes constant MESSAGE_1 = "Message 1";
     bytes constant MESSAGE_2 = "Message 2";
@@ -80,14 +81,14 @@ contract MultiAdapterTest is Test {
     function _mockAdapter(IAdapter adapter, bytes memory message, uint256 estimate, bytes32 adapterData) internal {
         vm.mockCall(
             address(adapter),
-            abi.encodeWithSelector(IAdapter.estimate.selector, REMOTE_CENT_ID, message, GAS_LIMIT),
+            abi.encodeWithSelector(IAdapter.estimate.selector, REMOTE_CENT_ID, message, GAS_LIMIT, GAS_VALUE),
             abi.encode(GAS_LIMIT + estimate)
         );
 
         vm.mockCall(
             address(adapter),
             GAS_LIMIT + estimate,
-            abi.encodeWithSelector(IAdapter.send.selector, REMOTE_CENT_ID, message, GAS_LIMIT, REFUND),
+            abi.encodeWithSelector(IAdapter.send.selector, REMOTE_CENT_ID, message, GAS_LIMIT, GAS_VALUE, REFUND),
             abi.encode(adapterData)
         );
     }
@@ -509,12 +510,12 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.send(REMOTE_CENT_ID, new bytes(0), GAS_LIMIT, REFUND);
+        multiAdapter.send(REMOTE_CENT_ID, new bytes(0), GAS_LIMIT, GAS_VALUE, REFUND);
     }
 
     function testErrEmptyAdapterSet() public {
         vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
-        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, GAS_VALUE, REFUND);
     }
 
     function testSendMessage() public {
@@ -539,6 +540,6 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         emit IMultiAdapter.SendProof(REMOTE_CENT_ID, payloadId, batchHash, proofAdapter1, ADAPTER_DATA_2);
         vm.expectEmit();
         emit IMultiAdapter.SendProof(REMOTE_CENT_ID, payloadId, batchHash, proofAdapter2, ADAPTER_DATA_3);
-        multiAdapter.send{value: cost}(REMOTE_CENT_ID, message, GAS_LIMIT, REFUND);
+        multiAdapter.send{value: cost}(REMOTE_CENT_ID, message, GAS_LIMIT, GAS_VALUE, REFUND);
     }
 }

@@ -12,6 +12,7 @@ import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {Gateway, IRoot, IGasService, IGateway} from "../../../src/common/Gateway.sol";
 import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
+import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 
 import "forge-std/Test.sol";
 
@@ -49,7 +50,7 @@ function asBytes(MessageKind kind) pure returns (bytes memory) {
 using {asBytes, length} for MessageKind;
 
 // A MessageLib agnostic processor
-contract MockProcessor is IMessageProperties {
+contract MockProcessor is IMessageProperties, IMessageHandler {
     using BytesLib for bytes;
 
     error HandleError();
@@ -61,7 +62,7 @@ contract MockProcessor is IMessageProperties {
         shouldNotFail = true;
     }
 
-    function handle(uint16 centrifugeId, bytes memory payload) external {
+    function handle(uint16 centrifugeId, bytes memory payload) external payable {
         if (payload.toUint8(0) == uint8(MessageKind.WithPoolAFail) && !shouldNotFail) {
             revert HandleError();
         }
@@ -126,6 +127,7 @@ contract GatewayTest is Test {
     uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
     uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
     uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
+    uint128 constant GAS_VALUE = 2.0 gwei;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
@@ -141,14 +143,14 @@ contract GatewayTest is Test {
     function _mockAdapter(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund) internal {
         vm.mockCall(
             address(adapter),
-            abi.encodeWithSelector(IAdapter.estimate.selector, centrifugeId, message, gasLimit),
+            abi.encodeWithSelector(IAdapter.estimate.selector, centrifugeId, message, gasLimit, 0 /*TODO*/ ),
             abi.encode(gasLimit + ADAPTER_ESTIMATE)
         );
 
         vm.mockCall(
             address(adapter),
             gasLimit + ADAPTER_ESTIMATE,
-            abi.encodeWithSelector(IAdapter.send.selector, centrifugeId, message, gasLimit, refund),
+            abi.encodeWithSelector(IAdapter.send.selector, centrifugeId, message, gasLimit, 0, /*TODO*/ refund),
             abi.encode(ADAPTER_DATA)
         );
     }

@@ -90,7 +90,11 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function send(uint16, bytes memory data, uint256, address) external payable returns (bytes32 adapterData) {
+    function send(uint16, bytes memory data, uint256, uint256, address)
+        external
+        payable
+        returns (bytes32 adapterData)
+    {
         while (data.length > 0) {
             uint16 messageLength = data.messageLength();
             bytes memory message = data.slice(0, messageLength);
@@ -151,8 +155,8 @@ contract MockVaults is Test, Auth, IAdapter {
         );
     }
 
-    function estimate(uint16, bytes calldata, uint256 baseCost) external pure returns (uint256) {
-        return baseCost;
+    function estimate(uint16, bytes calldata, uint256 gasLimit, uint256) external pure returns (uint256) {
+        return gasLimit;
     }
 
     function resetMessages() external {

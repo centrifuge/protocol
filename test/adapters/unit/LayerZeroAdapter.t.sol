@@ -121,9 +121,9 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         assertEq(adapter.wards(address(this)), 1);
     }
 
-    function testEstimate(uint64 gasLimit) public view {
+    function testEstimate(uint128 gasLimit, uint128 gasValue) public view {
         bytes memory payload = "irrelevant";
-        assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit), 200_000);
+        assertEq(adapter.estimate(CENTRIFUGE_ID, payload, gasLimit, gasValue), 200_000);
     }
 
     function testIncomingCalls(
@@ -179,25 +179,29 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         );
     }
 
-    function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund)
-        public
-    {
+    function testOutgoingCalls(
+        bytes calldata payload,
+        address invalidOrigin,
+        uint128 gasLimit,
+        uint128 gasValue,
+        address refund
+    ) public {
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
-        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, gasValue, refund);
 
         vm.deal(address(GATEWAY), 0.1 ether);
         vm.prank(address(GATEWAY));
         vm.expectRevert(IAdapter.UnknownChainId.selector);
-        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, gasValue, refund);
 
         adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, makeAddr("DestinationAdapter"));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));
-        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
+        adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, gasValue, refund);
 
         assertEq(endpoint.values_uint32("params.dstEid"), LAYERZERO_ID);
         assertEq(endpoint.values_bytes32("params.receiver"), makeAddr("DestinationAdapter").toBytes32LeftPadded());
@@ -205,9 +209,9 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         bytes memory expectedOptions = abi.encodePacked(
             uint16(3), // TYPE_3
             uint8(1), // WORKER_ID
-            uint16(17), // uint128 gasLimit byte length + 1
+            uint16(33), // optionType == 1 + uint128 gasLimit + uint128 gasValue
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit)
+            abi.encodePacked(gasLimit, gasValue)
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);

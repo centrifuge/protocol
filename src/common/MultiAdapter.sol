@@ -188,9 +188,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter[] memory adapters_ = adapters[centrifugeId];
         require(adapters_.length != 0, EmptyAdapterSet());
 
-        bytes32 payloadHash = keccak256(payload);
-        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, payloadHash));
-        bytes memory proof = payloadHash.serializeMessageProof();
+        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
+        bytes memory proof = keccak256(payload).serializeMessageProof();
 
         uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit, gasValue);
         bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, gasValue, refund);
@@ -199,7 +198,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         for (uint256 i = 1; i < adapters_.length; i++) {
             cost = adapters_[i].estimate(centrifugeId, proof, gasLimit, gasValue);
             adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, gasValue, refund);
-            emit SendProof(centrifugeId, payloadId, payloadHash, adapters_[i], adapterData);
+            emit SendProof(centrifugeId, payloadId, keccak256(payload), adapters_[i], adapterData);
         }
 
         return bytes32(0);
