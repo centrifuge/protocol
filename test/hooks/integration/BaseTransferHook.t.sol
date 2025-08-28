@@ -42,7 +42,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         assertTrue(
             correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn is fulfillment"
         );
-        assertFalse(correctHook.isRevocation(address(balanceSheet), address(0)), "balanceSheet burn not revocation");
+        assertFalse(
+            correctHook.isRedeemClaimOrRevocation(address(balanceSheet), address(0)), "balanceSheet burn not revocation"
+        );
     }
 
     function testAsyncRequestManagerBurns() public view {
@@ -51,7 +53,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             "asyncRequestManager not fulfillment"
         );
         assertTrue(
-            correctHook.isRevocation(address(asyncRequestManager), address(0)), "asyncRequestManager is revocation"
+            correctHook.isRedeemClaimOrRevocation(address(asyncRequestManager), address(0)),
+            "asyncRequestManager is revocation"
         );
     }
 
@@ -69,7 +72,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             "balanceSheet burns must be classified as fulfillments"
         );
         assertTrue(
-            deployed.isRevocation(address(asyncRequestManager), address(0)),
+            deployed.isRedeemClaimOrRevocation(address(asyncRequestManager), address(0)),
             "asyncRequestManager burns must be classified as revocations"
         );
 
@@ -85,7 +88,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             correctHook.isDepositFulfillment(address(0), address(globalEscrow)), "mint to globalEscrow is fulfillment"
         );
         assertTrue(correctHook.isDepositClaim(address(globalEscrow), USER), "globalEscrow to user is claim");
-        assertTrue(correctHook.isIssuance(address(0), USER), "mint to user is issuance");
+        assertTrue(correctHook.isDepositRequestOrIssuance(address(0), USER), "mint to user is issuance");
     }
 
     function testRedeemFlow() public view {
@@ -124,26 +127,31 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     function testCrosschainTransfers() public view {
         assertTrue(correctHook.isCrosschainTransfer(address(spoke), address(0)), "spoke burn is crosschain");
         assertFalse(correctHook.isRedeemFulfillment(address(spoke), address(0)), "spoke burn not fulfillment");
-        assertFalse(correctHook.isRevocation(address(spoke), address(0)), "spoke burn not revocation");
+        assertFalse(correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)), "spoke burn not revocation");
     }
 
     function testOtherContractBurns() public view {
-        assertTrue(correctHook.isRevocation(address(globalEscrow), address(0)), "globalEscrow burn is revocation");
+        assertTrue(
+            correctHook.isRedeemClaimOrRevocation(address(globalEscrow), address(0)), "globalEscrow burn is revocation"
+        );
 
         if (address(vaultRouter) != address(0)) {
-            assertTrue(correctHook.isRevocation(address(vaultRouter), address(0)), "vaultRouter burn is revocation");
+            assertTrue(
+                correctHook.isRedeemClaimOrRevocation(address(vaultRouter), address(0)),
+                "vaultRouter burn is revocation"
+            );
         }
     }
 
     function testUserToUserTransfers() public view {
         address user2 = address(0x222);
 
-        assertFalse(correctHook.isIssuance(USER, user2), "user to user not issuance");
+        assertFalse(correctHook.isDepositRequestOrIssuance(USER, user2), "user to user not issuance");
         assertFalse(correctHook.isDepositFulfillment(USER, user2), "user to user not deposit fulfillment");
         assertFalse(correctHook.isDepositClaim(USER, user2), "user to user not deposit claim");
         assertFalse(correctHook.isRedeemRequest(USER, user2), "user to user not redeem request");
         assertFalse(correctHook.isRedeemFulfillment(USER, user2), "user to user not redeem fulfillment");
-        assertFalse(correctHook.isRevocation(USER, user2), "user to user not revocation");
+        assertFalse(correctHook.isRedeemClaimOrRevocation(USER, user2), "user to user not revocation");
         assertFalse(correctHook.isCrosschainTransfer(USER, user2), "user to user not cross-chain");
     }
 }

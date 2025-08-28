@@ -84,7 +84,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         virtual
         returns (bool);
 
-    function isIssuance(address from, address to) public view returns (bool) {
+    function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {
         return from == address(0) && to != depositTarget;
     }
 
@@ -104,7 +104,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         return from == redeemSource && to == address(0);
     }
 
-    function isRevocation(address from, address to) public view returns (bool) {
+    function isRedeemClaimOrRevocation(address from, address to) public view returns (bool) {
         return (from != redeemSource && from != crosschainSource) && to == address(0);
     }
 

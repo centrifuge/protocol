@@ -27,10 +27,10 @@ contract FreelyTransferable is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isIssuance(from, to)) return isTargetMember(to, hookData);
+        if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
         if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRevocation(from, to)) return isSourceMember(from, hookData);
+        if (isRedeemClaimOrRevocation(from, to)) return isSourceMember(from, hookData);
 
         // Else, it's a fulfillment, redemption, or transfer
         return true;
