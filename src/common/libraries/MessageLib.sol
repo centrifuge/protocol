@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
