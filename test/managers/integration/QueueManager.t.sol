@@ -112,7 +112,7 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerBaseTest {
             UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay}).serialize()
         );
 
-        (uint64 updatedMinDelay, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (uint64 updatedMinDelay, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(updatedMinDelay, minDelay);
         assertEq(lastSync, 0);
     }
@@ -201,7 +201,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -228,7 +228,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -253,7 +253,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -330,7 +330,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -364,7 +364,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.sc(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 }

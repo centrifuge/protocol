@@ -28,7 +28,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
         uint64 lastSync;
     }
 
-    mapping(PoolId => mapping(ShareClassId => ShareClassState)) public sc;
+    mapping(PoolId => mapping(ShareClassId => ShareClassState)) public shareClassState;
 
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
@@ -48,7 +48,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
         if (kind == uint8(UpdateContractType.UpdateQueue)) {
             UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
-            ShareClassState storage sc_ = sc[poolId][scId];
+            ShareClassState storage sc_ = shareClassState[poolId][scId];
             sc_.minDelay = m.minDelay;
             emit UpdateMinDelay(poolId, scId, m.minDelay);
         } else {
@@ -64,7 +64,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
-        ShareClassState storage sc_ = sc[poolId][scId];
+        ShareClassState storage sc_ = shareClassState[poolId][scId];
         require(
             sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay,
             MinDelayNotElapsed()
