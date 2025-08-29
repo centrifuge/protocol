@@ -29,7 +29,6 @@ abstract contract QueueManagerBaseTest is BaseTest {
     address vault2;
     address vault3;
 
-    address relayer = makeAddr("relayer");
     address user = makeAddr("user");
 
     function setUp() public override {
