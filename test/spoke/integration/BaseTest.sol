@@ -23,6 +23,7 @@ import {IShareToken} from "../../../src/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../../src/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
+import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 
 import {
     ExtendedSpokeDeployer, ExtendedSpokeActionBatcher, CommonInput
@@ -206,6 +207,17 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         if (claimDeposit) {
             vault.deposit(amount, _investor);
         }
+        vm.stopPrank();
+    }
+
+    function depositSync(address _vault, address _investor, uint256 amount) public {
+        SyncDepositVault vault = SyncDepositVault(_vault);
+        ERC20 asset = ERC20(vault.asset());
+        asset.mint(_investor, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), _investor, type(uint64).max);
+        vm.startPrank(_investor);
+        asset.approve(_vault, amount);
+        vault.deposit(amount, _investor);
         vm.stopPrank();
     }
 

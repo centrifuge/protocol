@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
+import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
@@ -66,22 +67,45 @@ contract QueueManager is IQueueManager, IUpdateContract {
     ///      get synced as well.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
         ShareClassState storage sc_ = sc[poolId][scId];
-        require(sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay);
+        require(
+            sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay,
+            MinDelayNotElapsed()
+        );
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
         require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
 
-        bool submitShares = delta > 0 && assetIds.length >= queuedAssetCounter;
-        uint256 submissions = MathLib.min(assetIds.length, queuedAssetCounter);
-        bytes[] memory cs = new bytes[](submitShares ? submissions + 1 : submissions);
+        bool maybeSubmitShares = delta > 0 && assetIds.length >= queuedAssetCounter;
+        uint256 submissions = assetIds.length;
+        uint32 actualSubmissions = 0;
+        bytes[] memory cs = new bytes[](maybeSubmitShares ? submissions + 1 : submissions);
+
         for (uint256 i; i < submissions; i++) {
-            cs[i] = abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], 0);
+            require(
+                TransientStorageLib.tloadBool(keccak256(abi.encode("assetSeen", assetIds[i]))) == false,
+                DuplicateAsset()
+            );
+            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
+            if (deposits == 0 && withdrawals == 0) {
+                // noop by just reading a property
+                // doing a noop call instead of reverting, to prevent DoS
+                cs[i] = abi.encodeWithSelector(balanceSheet.root.selector);
+            } else {
+                cs[i] = abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], 0);
+                actualSubmissions++;
+            }
+            TransientStorageLib.tstore(keccak256(abi.encode("assetSeen", assetIds[i])), true);
         }
 
-        if (submitShares) {
-            cs[submissions] = abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, 0);
+        if (maybeSubmitShares) {
+            if (actualSubmissions < queuedAssetCounter) {
+                // We didn't actually submit all queued assets, so don't submit shares
+                cs[submissions] = abi.encodeWithSelector(balanceSheet.root.selector);
+            } else {
+                cs[submissions] = abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, 0);
+                sc_.lastSync = uint64(block.timestamp);
+            }
         }
-        sc_.lastSync = uint64(block.timestamp);
 
         IMulticall(address(balanceSheet)).multicall(cs);
     }

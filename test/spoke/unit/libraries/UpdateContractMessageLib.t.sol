@@ -51,4 +51,13 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.who, b.who);
         assertEq(a.what, b.what);
     }
+
+    function testUpdateContractUpdateQueue(uint64 minDelay) public pure {
+        UpdateContractMessageLib.UpdateContractUpdateQueue memory a =
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay});
+        UpdateContractMessageLib.UpdateContractUpdateQueue memory b =
+            UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(a.serialize());
+
+        assertEq(a.minDelay, b.minDelay);
+    }
 }
