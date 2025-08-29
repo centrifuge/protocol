@@ -6,12 +6,12 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
+import "../../spoke/integration/BaseTest.sol";
+
 import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IQueueManager} from "../../../src/managers/QueueManager.sol";
-
-import "../../spoke/integration/BaseTest.sol";
 
 abstract contract QueueManagerBaseTest is BaseTest {
     uint64 constant DEFAULT_MIN_DELAY = 3600; // 1 hour
