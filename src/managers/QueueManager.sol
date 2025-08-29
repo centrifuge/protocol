@@ -48,8 +48,8 @@ contract QueueManager is IQueueManager, IUpdateContract {
         if (kind == uint8(UpdateContractType.UpdateQueue)) {
             UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
-            ShareClassState storage sc_ = shareClassState[poolId][scId];
-            sc_.minDelay = m.minDelay;
+            ShareClassState storage sc = shareClassState[poolId][scId];
+            sc.minDelay = m.minDelay;
             emit UpdateMinDelay(poolId, scId, m.minDelay);
         } else {
             revert UnknownUpdateContractType();
@@ -64,10 +64,9 @@ contract QueueManager is IQueueManager, IUpdateContract {
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
-        ShareClassState storage sc_ = shareClassState[poolId][scId];
+        ShareClassState storage sc = shareClassState[poolId][scId];
         require(
-            sc_.lastSync == 0 || sc_.minDelay == 0 || block.timestamp >= sc_.lastSync + sc_.minDelay,
-            MinDelayNotElapsed()
+            sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
         );
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
@@ -101,7 +100,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
                 cs[submissions] = abi.encodeWithSelector(balanceSheet.root.selector);
             } else {
                 cs[submissions] = abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, 0);
-                sc_.lastSync = uint64(block.timestamp);
+                sc.lastSync = uint64(block.timestamp);
             }
         }
 
