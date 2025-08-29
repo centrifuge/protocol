@@ -7,6 +7,7 @@ import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpoke
 import {
     WormholeInput,
     AxelarInput,
+    LayerZeroInput,
     AdaptersInput,
     AdaptersDeployer,
     AdaptersActionBatcher
@@ -103,6 +104,11 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy"),
                 gateway: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gateway"),
                 gasService: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gasService")
+            }),
+            layerZero: LayerZeroInput({
+                shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerZero.deploy"),
+                endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.endpoint"),
+                delegate: _parseJsonAddressOrDefault(config, "$.adapters.layerZero.delegate")
             })
         });
 

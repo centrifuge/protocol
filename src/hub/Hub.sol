@@ -78,7 +78,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
-        else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
@@ -708,7 +707,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     /// @inheritdoc IHubGatewayHandler
     function initiateTransferShares(
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
@@ -717,8 +717,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        emit ForwardTransferShares(centrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(centrifugeId, poolId, scId, receiver, amount, extraGasLimit);
+        emit ForwardTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(
+            originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
+        );
     }
 
     //----------------------------------------------------------------------------------------------
