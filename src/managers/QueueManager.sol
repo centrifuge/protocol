@@ -3,9 +3,8 @@ pragma solidity 0.8.28;
 
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
-import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
+import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
