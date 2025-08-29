@@ -7,7 +7,7 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
 import {IQueueManager} from "../../../src/managers/QueueManager.sol";
 
