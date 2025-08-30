@@ -35,6 +35,7 @@ contract WireAdapters is Script {
         // Declare and initialize local adapter addresses
         address localWormholeAddr = address(0);
         address localAxelarAddr = address(0);
+        address localLayerZeroAddr = address(0);
 
         // Try to get local Wormhole adapter
         try vm.parseJsonAddress(localConfig, "$.contracts.wormholeAdapter") returns (address addr) {
@@ -54,6 +55,16 @@ contract WireAdapters is Script {
             }
         } catch {
             console.log("No AxelarAdapter found in config for network", localNetwork);
+        }
+
+        // Try to get local LayerZero adapter
+        try vm.parseJsonAddress(localConfig, "$.contracts.layerZeroAdapter") returns (address addr) {
+            if (addr != address(0)) {
+                localLayerZeroAddr = addr;
+                adapters.push(IAdapter(addr));
+            }
+        } catch {
+            console.log("No LayerZeroAdapter found in config for network", localNetwork);
         }
 
         string[] memory connectsTo = vm.parseJsonStringArray(localConfig, "$.network.connectsTo");
@@ -108,6 +119,8 @@ contract WireAdapters is Script {
                     );
                 }
             }
+
+            // TODO: Add Wire LayerZero
         }
         vm.stopBroadcast();
     }

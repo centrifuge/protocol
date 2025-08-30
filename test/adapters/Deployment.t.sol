@@ -10,7 +10,8 @@ import {
     AdaptersActionBatcher,
     AdaptersInput,
     WormholeInput,
-    AxelarInput
+    AxelarInput,
+    LayerZeroInput
 } from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -23,10 +24,14 @@ contract AdaptersDeploymentInputTest is Test {
     address immutable AXELAR_GATEWAY = makeAddr("AxelarGateway");
     address immutable AXELAR_GAS_SERVICE = makeAddr("AxelarGasService");
 
+    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroAdapter");
+    address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
+
     function _adaptersInput() internal view returns (AdaptersInput memory) {
         return AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE})
+            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
+            layerzero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE})
         });
     }
 }
