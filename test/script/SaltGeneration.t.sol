@@ -17,12 +17,12 @@ contract SaltGenerationTestBase is Test, CommonDeployer {
     // Creation tx: https://etherscan.io/tx/0x7abb5ac9e683c151f430f97bb812340706db27b77f8c46998e2c4657bf6fcb87
     bytes32 public constant ASYNC_VAULT_FACTORY_SALT =
         0x72f886aad0b3f2a37f35ed368e557396be04bbfd54aeb2ddbd7502522d8641a7;
-    address public constant ASYNC_VAULT_FACTORY_ADDRESS = 0xed9D489BB79c7CB58c522f36Fc6944eAA95Ce385;
+    address public constant ASYNC_VAULT_FACTORY_ADDRESS = 0xb47E57b4D477FF80c42dB8B02CB5cb1a74b5D20a;
 
     // Creation tx: https://etherscan.io/tx/0x0f08fa1cdb5888cf2d636545c0183baa7e36a0b2c5e32b2c6f6c9a4b06c6b997
     bytes32 public constant SYNC_DEPOSIT_VAULT_FACTORY_SALT =
         0xed489e1d5b5012ea883215229b0a1dce152dc4d713a4ef196fda319d39ba7e5e;
-    address public constant SYNC_DEPOSIT_VAULT_FACTORY_ADDRESS = 0x21BF2544b5A0B03c8566a16592ba1b3B192B50Bc;
+    address public constant SYNC_DEPOSIT_VAULT_FACTORY_ADDRESS = 0x00E3c7EE9Bbc98B9Cb4Cc2c06fb211c1Bb199Ee5;
 
     function _testAsyncRequestManagerSalt() public view {
         assertEq(
