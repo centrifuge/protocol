@@ -66,8 +66,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             address shareToken = vault.share();
             lte(
                 sumOfClaimedDeposits[address(shareToken)],
-                sumOfFullfilledDeposits[address(shareToken)],
-                "sumOfClaimedDeposits[address(shareToken)] > sumOfFullfilledDeposits[address(shareToken)]"
+                sumOfFulfilledDeposits[address(shareToken)],
+                "sumOfClaimedDeposits[address(shareToken)] > sumOfFulfilledDeposits[address(shareToken)]"
             );
         }
     }
@@ -79,8 +79,8 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         address asset = vault.asset();
         lte(
             sumOfClaimedRedemptions[address(asset)],
-            currencyPayout[address(asset)],
-            "sumOfClaimedRedemptions[address(_getAsset())] > currencyPayout[address(_getAsset())]"
+            sumOfWithdrawable[address(asset)],
+            "sumOfClaimedRedemptions[address(_getAsset())] > sumOfWithdrawable[address(_getAsset())]"
         );
     }
 
@@ -170,7 +170,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_total_cancelled_redeem_shares_lte_total_supply() public tokenIsSet {
         IBaseVault vault = IBaseVault(_getVault());
 
-        uint256 totalSupply = IShareToken(vault.share()).totalSupply()'
+        uint256 totalSupply = IShareToken(vault.share()).totalSupply();
         lte(
             sumOfClaimedCancelledRedeemShares[address(vault.share())],
             totalSupply,
@@ -325,7 +325,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         unchecked {
             ghostBalanceOfEscrow = (
-                (sumOfFullfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)])
+                (sumOfFulfilledDeposits[address(shareToken)] + sumOfRedeemRequests[address(shareToken)])
                     - (
                         sumOfClaimedDeposits[address(shareToken)] + executedRedemptions[address(shareToken)] // revoked
                             // redemptions burn share tokens

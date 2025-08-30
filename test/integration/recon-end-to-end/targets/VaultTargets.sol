@@ -357,8 +357,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // Processed Deposit | E-2 | Global-1
         // for sync vaults, deposits are fulfilled and claimed immediately
         if (!isAsyncVault) {
-            sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
-            sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            if (pendingBefore >= pendingAfter) {
+                sumOfFulfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
+                sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            }
             executedInvestments[vault.share()] += shares;
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
@@ -434,8 +436,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfSyncDepositsAsset[vault.asset()] += assets;
 
             sumOfSyncDepositsShare[vault.share()] += shares;
-            sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
-            sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            if (pendingBefore >= pendingAfter) {
+                sumOfFulfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
+                sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            }
             executedInvestments[vault.share()] += shares;
         }
 

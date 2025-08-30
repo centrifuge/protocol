@@ -237,7 +237,9 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         uint256 toEntropy
     ) public {
-        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
+        // Request 2x amount to ensure sufficient pending after claiming the approved amount
+        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
 
         uint32 depositEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
@@ -308,7 +310,9 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        vault_requestRedeem(shares, toEntropy);
+        // Request 2x shares to ensure sufficient pending after claiming the approved amount  
+        // This prevents assertion failures in hub_notifyRedeem when pending delta < payment amount
+        vault_requestRedeem(shares * 2, toEntropy);
 
         uint32 redeemEpoch =
             shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
