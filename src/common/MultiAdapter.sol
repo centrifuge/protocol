@@ -16,7 +16,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
     using MessageProofLib for *;
     using BytesLib for bytes;
-    using ArrayLib for uint16[8];
+    using ArrayLib for int16[8];
     using MathLib for uint256;
 
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
@@ -128,7 +128,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         // Increase vote
         state.votes[adapter.id - 1]++;
 
-        if (state.votes.countNonZeroValues() >= adapter.quorum) {
+        if (state.votes.countPositiveValues() >= adapter.quorum) {
             // Reduce votes by quorum
             state.votes.decreaseFirstNValues(adapter.quorum);
 
@@ -232,7 +232,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
         return inbound[centrifugeId][payloadHash].votes;
     }
 }

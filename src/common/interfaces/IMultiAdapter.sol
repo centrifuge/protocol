@@ -22,8 +22,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
-        ///      Max uint16 = 65,535 so at most 65,535 duplicate messages can be processed in parallel.
-        uint16[MAX_ADAPTER_COUNT] votes;
+        ///      Max int16 = 65,535 so at most 65,535 duplicate messages can be processed in parallel.
+        int16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
         bytes pending;
@@ -136,7 +136,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  payloadHash The hash value of the incoming message.
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapter is configured for

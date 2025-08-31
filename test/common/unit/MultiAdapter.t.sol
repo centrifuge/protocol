@@ -92,8 +92,8 @@ contract MultiAdapterTest is Test {
         );
     }
 
-    function assertVotes(bytes memory message, uint16 r1, uint16 r2, uint16 r3) internal view {
-        uint16[8] memory votes = multiAdapter.votes(REMOTE_CENT_ID, keccak256(message));
+    function assertVotes(bytes memory message, int16 r1, int16 r2, int16 r3) internal view {
+        int16[8] memory votes = multiAdapter.votes(REMOTE_CENT_ID, keccak256(message));
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);
