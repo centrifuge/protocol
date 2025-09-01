@@ -56,6 +56,7 @@ struct AssetIdKey {
 interface ISpoke {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
+        uint16 centrifugeId,
         AssetId indexed assetId,
         address indexed asset,
         uint256 indexed tokenId,
@@ -328,4 +329,11 @@ interface ISpoke {
         external
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+
+    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
+    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+        external
+        view
+        returns (IVault vault);
 }

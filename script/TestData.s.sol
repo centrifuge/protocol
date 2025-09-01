@@ -43,7 +43,7 @@ contract TestData is FullDeployer {
     using UpdateRestrictionMessageLib for *;
     using UpdateContractMessageLib for *;
 
-    uint128 constant DEFAULT_EXTRA_GAS = uint128(0);
+    uint128 constant DEFAULT_EXTRA_GAS = uint128(2_000_000);
 
     address public admin;
 

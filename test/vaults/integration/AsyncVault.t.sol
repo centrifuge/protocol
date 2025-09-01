@@ -21,7 +21,6 @@ contract AsyncVaultTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
-        assertEq(address(vault.manager()), address(asyncRequestManager));
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
         IShareToken token = spoke.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
@@ -46,7 +45,6 @@ contract AsyncVaultTest is BaseTest {
 
         address random = makeAddr("random");
         vault.file("manager", random);
-        assertEq(address(vault.manager()), random);
 
         vault.file("asyncRedeemManager", random);
         assertEq(address(vault.asyncRedeemManager()), random);
