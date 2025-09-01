@@ -150,7 +150,7 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         return abi.encodePacked(
             TYPE_3,
             WORKER_ID,
-            uint16(option.length) + 1, // +1 for optionType
+            option.length.toUint16() + 1, // +1 for optionType
             OPTION_TYPE_LZRECEIVE,
             option
         );
