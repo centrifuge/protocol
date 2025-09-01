@@ -164,7 +164,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-
     // TODO(wischli): Breaks for ever `revokedShares` which reduced totalSupply
     /// @dev Property: Total cancelled redeem shares <= total supply
     function property_total_cancelled_redeem_shares_lte_total_supply() public tokenIsSet {
@@ -260,7 +259,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         // Get actor data
 
-            {
+        {
             (, uint256 redeemPrice) = _getDepositAndRedeemPrice();
 
             lte(

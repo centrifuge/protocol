@@ -22,7 +22,6 @@ import {Properties} from "../properties/Properties.sol";
 
 // Only for Share
 abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
-    
     /// @dev Property: must revert if sending to or from a frozen user
     /// @dev Property: must revert if sending to a non-member who is not endorsed
     function token_transfer(address to, uint256 value) public updateGhosts {

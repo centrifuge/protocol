@@ -21,6 +21,8 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -246,7 +248,6 @@ abstract contract TargetFunctions is
         shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
 
         hub_notifyDeposit(MAX_CLAIMS);
-
         vault_deposit(amount);
     }
 
@@ -310,9 +311,18 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        // Request 2x shares to ensure sufficient pending after claiming the approved amount  
-        // This prevents assertion failures in hub_notifyRedeem when pending delta < payment amount
-        vault_requestRedeem(shares * 2, toEntropy);
+        // Clamp shares to user's actual share balance to prevent insufficient balance errors
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(_getActor());
+
+        // Request 2x shares to ensure sufficient pending after claiming the approved amount
+        // But clamp to available balance
+        uint256 requestShares = shares * 2;
+        if (requestShares > userShareBalance) {
+            requestShares = userShareBalance;
+        }
+
+        vault_requestRedeem(requestShares, toEntropy);
 
         uint32 redeemEpoch =
             shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
