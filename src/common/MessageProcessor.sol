@@ -207,4 +207,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
         return message.messagePoolId();
     }
+
+    /// @inheritdoc IMessageProperties
+    function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
+    }
 }

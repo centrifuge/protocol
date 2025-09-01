@@ -147,15 +147,13 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            _send(centrifugeId, poolId, message, gasLimit);
+            _send(centrifugeId, message, gasLimit);
         }
     }
 
-    function _send(uint16 centrifugeId, PoolId poolId, bytes memory batch, uint128 batchGasLimit)
-        internal
-        returns (bool succeeded)
-    {
-        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit, 0 /* TODO*/ );
+    function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (bool succeeded) {
+        PoolId poolId = processor.messagePoolIdPayment(batch);
+        uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit, 0 /* TODO */ );
 
         // Ensure sufficient funds are available
         if (transactionRefund != address(0)) {
@@ -210,11 +208,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         require(underpaid_.counter > 0, NotUnderpaidBatch());
 
-        PoolId poolId = processor.messagePoolId(batch);
+        PoolId poolId = processor.messagePoolIdPayment(batch);
         if (msg.value > 0) subsidizePool(poolId);
 
         underpaid_.counter--;
-        require(_send(centrifugeId, poolId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
+        require(_send(centrifugeId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -303,7 +301,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes32 outboundBatchSlot = _outboundBatchSlot(centrifugeId, poolId);
             uint128 gasLimit = _gasLimitSlot(centrifugeId, poolId).tloadUint128();
 
-            _send(centrifugeId, poolId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
+            _send(centrifugeId, TransientBytesLib.get(outboundBatchSlot), gasLimit);
 
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
