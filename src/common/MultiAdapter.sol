@@ -21,6 +21,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     using ArrayLib for uint16[8];
     using MathLib for uint256;
 
+    PoolId public constant GLOBAL_ID = PoolId.wrap(0);
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
     uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
@@ -53,6 +54,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function file(bytes32 what, address instance) external auth {
         if (what == "gateway") gateway = IMessageHandler(instance);
+        if (what == "messageProperties") messageProperties = IMessageProperties(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
@@ -194,7 +196,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes memory payload, uint256 gasLimit, address refund)
         external
         payable
         auth
@@ -202,19 +204,24 @@ contract MultiAdapter is Auth, IMultiAdapter {
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
         IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
+
+        // If adapters not configured per pool, then use the global adapters
+        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
+
         require(adapters_.length != 0, EmptyAdapterSet());
 
         bytes32 payloadHash = keccak256(payload);
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, payloadHash));
-        bytes memory proof = payloadHash.serializeMessageProof();
 
         uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit);
         bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
         emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
+        // payload is now the proof (to avoid stack too deep issue)
+        payload = payloadHash.serializeMessageProof();
         for (uint256 i = 1; i < adapters_.length; i++) {
-            cost = adapters_[i].estimate(centrifugeId, proof, gasLimit);
-            adapterData = adapters_[i].send{value: cost}(centrifugeId, proof, gasLimit, refund);
+            cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
+            adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
             emit SendProof(centrifugeId, payloadId, payloadHash, adapters_[i], adapterData);
         }
 

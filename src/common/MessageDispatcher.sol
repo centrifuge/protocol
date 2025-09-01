@@ -8,6 +8,7 @@ import {IGateway} from "./interfaces/IGateway.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
 import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
@@ -38,6 +39,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     uint16 public immutable localCentrifugeId;
 
+    IMultiAdapter public multiAdapter;
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IBalanceSheetGatewayHandler public balanceSheet;
@@ -64,6 +66,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -535,14 +538,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
+    function sendInitiateSetPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
         if (centrifugeId == localCentrifugeId) {
             multiAdapter.file("adapters", centrifugeId, poolId, adapters);
         } else {
+            bytes32[] memory adapterList = new bytes32[](adapters.length);
+            for (uint256 i; i < adapters.length; i++) {
+                adapterList[i] = address(adapters[i]).toBytes32();
+            }
             gateway.send(
                 centrifugeId,
-                MessageLib.SetPoolAdapters({centrifugeId: centrifugeId, poolId: poolId.raw(), adapters: adapters})
-                    .serialize()
+                MessageLib.InitiateSetPoolAdapters({poolId: poolId.raw(), adapterList: adapterList}).serialize()
             );
         }
     }

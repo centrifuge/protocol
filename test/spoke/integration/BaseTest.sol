@@ -103,7 +103,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        multiAdapter.file("adapters", OTHER_CHAIN_ID, testAdapters);
+        multiAdapter.file("adapters", OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters);
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);

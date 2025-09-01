@@ -650,23 +650,23 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
         _isManager(poolId);
 
-        // Should we send a message to recover message from remote chains?
-        multiAdapter.initiateRecovery(centrifugeId, poolId, adapter, payloadHash);
+        //multiAdapter.initiateRecovery(centrifugeId, poolId, adapter, payloadHash);
+        // TODO
     }
 
     /// @inheritdoc IHub
     function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
         _isManager(poolId);
 
-        // Should we send a message to recover message from remote chains?
-        multiAdapter.disputeRecovery(centrifugeId, PoolId.wrap(0), adapter, payloadHash);
+        //multiAdapter.disputeRecovery(centrifugeId, PoolId.wrap(0), adapter, payloadHash);
+        // TODO
     }
 
     /// @inheritdoc IHub
     function setPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
         _isManager(poolId);
 
-        sender.sendSetPoolAdapters(centrifugeId, poolId, adapters);
+        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, adapters);
     }
 
     //----------------------------------------------------------------------------------------------

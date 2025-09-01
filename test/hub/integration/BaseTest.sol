@@ -74,7 +74,7 @@ contract BaseTest is HubDeployer, Test {
 
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        multiAdapter.file("adapters", centrifugeId, adapters);
+        multiAdapter.file("adapters", centrifugeId, PoolId.wrap(0), adapters);
     }
 
     function setUp() public virtual {

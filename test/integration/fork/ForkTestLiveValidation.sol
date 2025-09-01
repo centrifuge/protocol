@@ -582,16 +582,16 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         uint8 expectedQuorum = (sourceSupportsAxelar && targetSupportsAxelar) ? 2 : 1;
 
         // Verify quorum matches expected adapter count
-        uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId);
+        uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId, PoolId.wrap(0));
         assertEq(actualQuorum, expectedQuorum);
 
         // Verify first adapter is always Wormhole (primary)
-        IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, 0);
+        IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, PoolId.wrap(0), 0);
         assertEq(address(primaryAdapter), wormholeAdapter);
 
         if (expectedQuorum == STANDARD_QUORUM) {
             // Verify second adapter is Axelar
-            IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, 1);
+            IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, PoolId.wrap(0), 1);
             assertEq(address(secondaryAdapter), axelarAdapter);
         }
     }

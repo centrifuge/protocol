@@ -10,6 +10,8 @@ import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {MessageType, MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
 import {
     ISpokeGatewayHandler,
@@ -51,6 +53,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -194,9 +197,13 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.MaxSharePriceAge) {
             MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
-        } else if (kind == MessageType.SetPoolAdapters) {
-            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
-            multiAdapter.file("adapters", m.centrifugeId, PoolId.wrap(m.poolId), adapters);
+        } else if (kind == MessageType.InitiateSetPoolAdapters) {
+            MessageLib.InitiateSetPoolAdapters memory m = message.deserializeInitiateSetPoolAdapters();
+            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
+            for (uint256 i; i < adapters.length; i++) {
+                adapters[i] = IAdapter(m.adapterList[i].toAddress());
+            }
+            multiAdapter.file("adapters", centrifugeId, PoolId.wrap(m.poolId), adapters);
         } else {
             revert InvalidMessage(uint8(kind));
         }
