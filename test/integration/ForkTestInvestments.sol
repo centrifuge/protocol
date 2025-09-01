@@ -415,12 +415,12 @@ contract ForkTestSyncInvestments is ForkTestInvestmentHelpers {
     }
 
     function test_completeSyncDepositFlow() public {
-        vm.skip(true);  // broken live condition
+        vm.skip(true); // broken live condition
         _completeSyncDeposit(address(PLUME_SYNC_DEPOSIT_VAULT), makeAddr("INVESTOR_A"), 1e6);
     }
 
     function test_completeSyncDepositAsyncRedeemFlow() public {
-        vm.skip(true);  // broken live condition
+        vm.skip(true); // broken live condition
         _completeAsyncRedeem(PLUME_SYNC_DEPOSIT_VAULT, makeAddr("INVESTOR_A"), 1e6);
     }
 }
