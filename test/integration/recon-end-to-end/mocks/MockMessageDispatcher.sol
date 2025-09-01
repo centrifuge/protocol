@@ -8,6 +8,7 @@ import {
     IBalanceSheetGatewayHandler,
     IHubGatewayHandler
 } from "src/common/interfaces/IGatewayHandlers.sol";
+import {ISpokeMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 import {IAsyncRequestManager} from "src/vaults/interfaces/IVaultManagers.sol";
 import {IRequestManager} from "src/common/interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "src/common/interfaces/ITokenRecoverer.sol";
@@ -267,12 +268,10 @@ contract MockMessageDispatcher {
     function sendUpdateShares(
         PoolId poolId,
         ShareClassId scId,
-        uint128 shares,
-        bool isIssuance,
-        bool isSnapshot,
-        uint64 nonce
+        ISpokeMessageSender.UpdateData calldata data,
+        uint128 extraGasLimit
     ) external {
-        hub.updateShares(localCentrifugeId, poolId, scId, shares, isIssuance, isSnapshot, nonce);
+        hub.updateShares(localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce);
     }
 
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external {
