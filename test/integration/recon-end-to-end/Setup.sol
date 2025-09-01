@@ -228,6 +228,10 @@ abstract contract Setup is
         // Create TokenRecoverer for MessageDispatcher
         tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
+        
+        // Add missing TokenRecoverer permissions (matching CommonDeployer)
+        tokenRecoverer.rely(address(root));
+        tokenRecoverer.rely(address(messageDispatcher));
 
         // Create real MessageDispatcher with local forwarding
         messageDispatcher = new MessageDispatcher(
@@ -250,6 +254,8 @@ abstract contract Setup is
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
+        
+        balanceSheet.file("gateway", address(gateway));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         address[] memory tokenWards = new address[](2);
@@ -300,12 +306,26 @@ abstract contract Setup is
         shareClassManager.rely(address(hub));
         poolEscrowFactory.rely(address(hub));
 
+        // Add missing Root permissions (matching HubDeployer)
+        hubRegistry.rely(address(root));
+        holdings.rely(address(root));
+        accounting.rely(address(root));
+        shareClassManager.rely(address(root));
+        hub.rely(address(root));
+        hubHelpers.rely(address(root));
+
         accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
         // Hub needs permission to call HubHelpers functions
         hubHelpers.rely(address(hub));
+        
+        // Add missing HubHelpers permissions (matching HubDeployer)
+        hubHelpers.rely(address(messageDispatcher));
 
         hub.rely(address(messageDispatcher));
+        
+        // Add missing Gateway permission for Hub (matching HubDeployer)
+        gateway.rely(address(hub));
 
         // MessageDispatcher needs auth permissions to call protected functions
         spoke.rely(address(messageDispatcher));
@@ -315,6 +335,10 @@ abstract contract Setup is
         messageDispatcher.rely(address(spoke));
         messageDispatcher.rely(address(balanceSheet));
         messageDispatcher.rely(address(hub));
+        
+        // Add missing MessageDispatcher permissions (matching HubDeployer)
+        messageDispatcher.rely(address(root));
+        messageDispatcher.rely(address(hubHelpers));
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
@@ -323,6 +347,9 @@ abstract contract Setup is
         messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
+        
+        // Add missing HubHelpers file configuration (matching HubDeployer)
+        hubHelpers.file("hub", address(hub));
     }
 
     /// === Helper Functions === ///
@@ -379,7 +406,7 @@ abstract contract Setup is
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncManager));
         balanceSheet.rely(address(messageDispatcher));
-
+        balanceSheet.rely(address(gateway));
         // Rely global escrow
         globalEscrow.rely(address(asyncRequestManager));
         globalEscrow.rely(address(syncManager));
@@ -401,6 +428,9 @@ abstract contract Setup is
 
         // Rely gateway
         spoke.rely(address(gateway));
+        
+        // Add missing Gateway permissions (matching CommonDeployer)
+        gateway.rely(address(messageDispatcher));
 
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));
