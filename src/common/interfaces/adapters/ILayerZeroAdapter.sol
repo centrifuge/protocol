@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "../../interfaces/IAdapter.sol";
+import {IAdapter} from "../IAdapter.sol";
 
 // From
 // https://github.com/LayerZero-Labs/LayerZero-v2/blob/main/packages/layerzero-v2/evm/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol#L28C1-L34C1
