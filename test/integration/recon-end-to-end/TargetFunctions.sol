@@ -13,7 +13,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
@@ -114,7 +114,7 @@ abstract contract TargetFunctions is
 
         // 2. Deploy new pool and register it
         {
-            _poolId = PoolId.wrap(POOL_ID_COUNTER);
+            _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
             hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
 
             spoke_addPool();
