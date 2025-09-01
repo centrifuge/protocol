@@ -22,6 +22,12 @@
       "gateway": "0x5029C0EFf6C34351a0CEc334542cDb22c7928f78",
       "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "deploy": true
+    },
+    "layerzero": {
+      "deploy": false,
+      "endpoint": "",
+      "delegate": "",
+      "layerZeroEid": ""
     }
   },
   "contracts": {
