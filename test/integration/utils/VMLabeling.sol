@@ -75,7 +75,10 @@ abstract contract VMLabeling is Test {
 
         // Token addresses
         vm.label(IntegrationConstants.ETH_USDC, "EthUSDC");
+        vm.label(IntegrationConstants.BASE_USDC, "BaseUSDC");
+        vm.label(IntegrationConstants.ARBITRUM_USDC, "ArbitrumUSDC");
         vm.label(IntegrationConstants.AVAX_USDC, "AvaxUSDC");
+        vm.label(IntegrationConstants.BNB_USDC, "BnbUSDC");
         vm.label(IntegrationConstants.PLUME_PUSD, "PlumePUSD");
 
         // Pool admin addresses
@@ -90,6 +93,8 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.CFG, "CFG");
         vm.label(IntegrationConstants.WCFG, "WCFG");
         vm.label(IntegrationConstants.IOU_CFG, "IouCFG");
+        vm.label(IntegrationConstants.WCFG_MULTISIG, "WCFGMultisig");
+        vm.label(IntegrationConstants.CHAINBRIDGE_ERC20_HANDLER, "ChainbridgeERC20Handler");
 
         // V2 Legacy contracts
         vm.label(IntegrationConstants.V2_ROOT, "V2Root");
@@ -99,5 +104,9 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.V2_RESTRICTION_MANAGER, "V2RestrictionManager");
         vm.label(IntegrationConstants.V2_JTRSY_VAULT, "V2JTRSYVault");
         vm.label(IntegrationConstants.V2_JAAA_VAULT, "V2JAAAVault");
+        vm.label(IntegrationConstants.ETH_V2_JTRSY_VAULT, "EthV2JTRSYVault");
+        vm.label(IntegrationConstants.ETH_V2_JAAA_VAULT, "EthV2JAAAVault");
+        vm.label(IntegrationConstants.ARB_V2_JTRSY_VAULT, "ArbV2JTRSYVault");
+        vm.label(IntegrationConstants.BASE_V2_JTRSY_VAULT, "BaseV2JTRSYVault");
     }
 }
