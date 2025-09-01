@@ -67,44 +67,24 @@ contract LayerZeroAdapterTestBase is Test {
     }
 }
 
-contract LayerZeroAdapterTestFile is LayerZeroAdapterTestBase {
-    function testFileSourcesErrNotAuthorized() public {
+contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
+    function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("sources", LAYERZERO_ID, CENTRIFUGE_ID, REMOTE_LAYERZERO_ADDR);
+        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
     }
 
-    function testFileDestinationsErrNotAuthorized() public {
-        vm.prank(makeAddr("NotAuthorized"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        adapter.file("destinations", CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-    }
-
-    function testFileSourcesErrUnrecognizedParam() public {
-        vm.expectRevert(ILayerZeroAdapter.FileUnrecognizedParam.selector);
-        adapter.file("invalid", LAYERZERO_ID, CENTRIFUGE_ID, REMOTE_LAYERZERO_ADDR);
-    }
-
-    function testFileDestinationsErrUnrecognizedParam() public {
-        vm.expectRevert(ILayerZeroAdapter.FileUnrecognizedParam.selector);
-        adapter.file("invalid", CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-    }
-
-    function testFileSources() public {
+    function testWire() public {
         vm.expectEmit();
-        emit ILayerZeroAdapter.File("sources", LAYERZERO_ID, CENTRIFUGE_ID, REMOTE_LAYERZERO_ADDR);
-        adapter.file("sources", LAYERZERO_ID, CENTRIFUGE_ID, REMOTE_LAYERZERO_ADDR);
+        emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
+        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
 
+        // Check sources mapping
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(LAYERZERO_ID);
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_LAYERZERO_ADDR);
-    }
 
-    function testFileDestinations() public {
-        vm.expectEmit();
-        emit ILayerZeroAdapter.File("destinations", CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-        adapter.file("destinations", CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
-
+        // Check destinations mapping
         (uint32 layerZeroId, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
         assertEq(layerZeroId, LAYERZERO_ID);
         assertEq(remoteDestAddress, REMOTE_LAYERZERO_ADDR);
@@ -171,9 +151,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             Origin(LAYERZERO_ID, validAddress.toBytes32LeftPadded(), 0), bytes32("1"), payload, EXECUTOR, bytes("")
         );
 
-        // Configure using file methods instead of wire
-        adapter.file("sources", LAYERZERO_ID, CENTRIFUGE_ID, validAddress);
-        adapter.file("destinations", CENTRIFUGE_ID, LAYERZERO_ID, validAddress);
+        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, validAddress);
 
         // Incorrect address
         vm.prank(address(endpoint));
@@ -216,8 +194,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         vm.expectRevert(IAdapter.UnknownChainId.selector);
         adapter.send{value: 0.1 ether}(CENTRIFUGE_ID, payload, gasLimit, refund);
 
-        // Configure using file method instead of wire
-        adapter.file("destinations", CENTRIFUGE_ID, LAYERZERO_ID, makeAddr("DestinationAdapter"));
+        adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, makeAddr("DestinationAdapter"));
 
         vm.deal(address(this), 0.1 ether);
         vm.prank(address(GATEWAY));

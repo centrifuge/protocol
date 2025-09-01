@@ -86,31 +86,17 @@ struct LayerZeroDestination {
 }
 
 interface ILayerZeroAdapter is IAdapter, ILayerZeroReceiver {
-    event File(bytes32 indexed what, uint32 indexed layerZeroEid, uint16 indexed centrifugeId, address addr);
-    event File(bytes32 indexed what, uint16 indexed centrifugeId, uint32 indexed layerZeroEid, address addr);
+    event Wire(uint16 indexed centrifugeId, uint32 indexed layerZeroEid, address adapter);
     event SetDelegate(address indexed newDelegate);
 
     error NotLayerZeroEndpoint();
     error InvalidSource();
-    error FileUnrecognizedParam();
 
-    /// @notice Configure source mapping (incoming messages)
-    /// @param what Must be "sources"
-    /// @param layerZeroEid The source LayerZero Endpoint ID
-    /// @param centrifugeId The source Centrifuge chain ID
-    /// @param source The source LayerZero adapter address
-    function file(bytes32 what, uint32 layerZeroEid, uint16 centrifugeId, address source) external;
-
-    /// @notice Configure destination mapping (outgoing messages)
-    /// @param what Must be "destinations"
-    /// @param centrifugeId The destination Centrifuge chain ID
-    /// @param layerZeroEid The destination LayerZero Endpoint ID
-    /// @param destination The destination LayerZero adapter address
-    function file(bytes32 what, uint16 centrifugeId, uint32 layerZeroEid, address destination) external;
-
-    /// @notice Update the LayerZero delegate
-    /// @param newDelegate The new delegate address for DVN configuration
-    function setDelegate(address newDelegate) external;
+    /// @notice Wire the adapter to a remote one.
+    /// @param centrifugeId The remote chain's chain ID
+    /// @param layerZeroEid The remote chain's LayerZero Endpoint ID
+    /// @param adapter The remote chain's LayerZero adapter address
+    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external;
 
     /// @notice Returns the source configuration for a given layerzero endpoint id
     /// @param layerZeroEid The remote LayerZero Endpoint ID

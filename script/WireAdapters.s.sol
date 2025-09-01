@@ -129,8 +129,7 @@ contract WireAdapters is Script {
                     uint32 remoteLayerZeroEid =
                         uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerzero.layerZeroEid"));
                     ILayerZeroAdapter layerZeroAdapter = ILayerZeroAdapter(localLayerZeroAddr);
-                    layerZeroAdapter.file("sources", remoteLayerZeroEid, remoteCentrifugeId, remoteLayerZeroAddr);
-                    layerZeroAdapter.file("destinations", remoteCentrifugeId, remoteLayerZeroEid, remoteLayerZeroAddr);
+                    layerZeroAdapter.wire(remoteCentrifugeId, remoteLayerZeroEid, remoteLayerZeroAddr);
 
                     console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
                 } catch {

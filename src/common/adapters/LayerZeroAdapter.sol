@@ -48,20 +48,13 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ILayerZeroAdapter
-    function file(bytes32 what, uint32 layerZeroEid, uint16 centrifugeId, address source) external auth {
-        if (what == "sources") sources[layerZeroEid] = LayerZeroSource(centrifugeId, source);
-        else revert FileUnrecognizedParam();
-        emit File(what, layerZeroEid, centrifugeId, source);
+    function wire(uint16 centrifugeId, uint32 layerZeroEid, address adapter) external auth {
+        sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
+        destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
+        emit Wire(centrifugeId, layerZeroEid, adapter);
     }
 
-    /// @inheritdoc ILayerZeroAdapter
-    function file(bytes32 what, uint16 centrifugeId, uint32 layerZeroEid, address destination) external auth {
-        if (what == "destinations") destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, destination);
-        else revert FileUnrecognizedParam();
-        emit File(what, centrifugeId, layerZeroEid, destination);
-    }
-
-    /// @inheritdoc ILayerZeroAdapter
+    /// @dev Update the LayerZero delegate.
     function setDelegate(address newDelegate) external auth {
         endpoint.setDelegate(newDelegate);
         emit SetDelegate(newDelegate);
