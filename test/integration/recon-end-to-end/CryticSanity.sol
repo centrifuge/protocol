@@ -172,9 +172,9 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         shortcut_request_deposit(1e18, 1e18, 1e18, 0);
 
-        uint32 nowDepositEpoch = nowDepositEpoch();
-        hub_approveDeposits(nowDepositEpoch, 5e17);
-        hub_issueShares(nowDepositEpoch, 5e17);
+        uint32 _nowDepositEpoch = nowDepositEpoch();
+        hub_approveDeposits(_nowDepositEpoch, 5e17);
+        hub_issueShares(_nowDepositEpoch, 5e17);
 
         vault_cancelDepositRequest();
 
