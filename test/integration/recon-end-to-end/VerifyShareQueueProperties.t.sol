@@ -101,8 +101,8 @@ contract VerifyShareQueueProperties is Test, TargetFunctions, FoundryAsserts {
         console2.log("--- Verifying all share queue properties ---");
         
         // Now verify basic share queue properties work correctly with this state
-        _verifyShareQueueFlipLogic(poolId, scId);
-        _verifyShareQueueCommutativity(poolId, scId);
+        property_shareQueueFlipLogic();      // Tests ALL pools/share classes
+        property_shareQueueCommutativity();  // Tests ALL pools/share classes
         
     }
     
@@ -165,8 +165,8 @@ contract VerifyShareQueueProperties is Test, TargetFunctions, FoundryAsserts {
         console2.log("Final state after multiple operations - delta:", delta, "isPositive:", isPositive);
         
         // Verify properties still hold
-        _verifyShareQueueFlipLogic(poolId, scId);
-        _verifyShareQueueCommutativity(poolId, scId);
+        property_shareQueueFlipLogic();      // Tests ALL pools/share classes
+        property_shareQueueCommutativity();  // Tests ALL pools/share classes
         
     }
     
@@ -225,56 +225,15 @@ contract VerifyShareQueueProperties is Test, TargetFunctions, FoundryAsserts {
         assertEq(ghost_netSharePosition[shareKey], expectedNet, "Ghost net position should match");
         
         // Verify commutativity property
-        _verifyShareQueueCommutativity(poolId, scId);
+        property_shareQueueCommutativity();  // Tests ALL pools/share classes
         
         console2.log("Final totals - Issued:", totalIssued, "Revoked:", totalRevoked);
         console2.log("Expected net position:", uint256(expectedNet >= 0 ? expectedNet : -expectedNet), expectedNet >= 0 ? "(positive)" : "(negative)");
     }
     
-    // Helper property verification functions
-    
-    /// @notice Verify basic share queue flip logic for a specific pool/share class
-    function _verifyShareQueueFlipLogic(PoolId poolId, ShareClassId scId) internal view {
-        bytes32 key = keccak256(abi.encode(poolId, scId));
-        
-        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
-        
-        // Calculate expected net position from ghost tracking
-        int256 expectedNet = ghost_netSharePosition[key];
-        
-        // Calculate actual net position from queue state
-        int256 actualNet = isPositive ? int256(uint256(delta)) : -int256(uint256(delta));
-        
-        // For zero delta, must be negative (isPositive = false)
-        if (delta == 0) {
-            assertFalse(isPositive, "SHARE-QUEUE-01: Zero delta must have isPositive = false");
-            assertEq(actualNet, 0, "SHARE-QUEUE-02: Zero delta must represent zero net position");
-        } else {
-            // Non-zero delta: verify sign consistency
-            assertTrue(
-                (isPositive && actualNet > 0) || (!isPositive && actualNet < 0),
-                "SHARE-QUEUE-03: isPositive flag must match delta sign"
-            );
-        }
-        
-        // Verify net position matches tracked operations
-        assertEq(actualNet, expectedNet, "SHARE-QUEUE-04: Net position must match tracked issue/revoke operations");
-    }
-    
-    /// @notice Verify commutativity property for a specific pool/share class
-    function _verifyShareQueueCommutativity(PoolId poolId, ShareClassId scId) internal view {
-        bytes32 key = keccak256(abi.encode(poolId, scId));
-        
-        // Net position should equal total issued minus total revoked
-        int256 expectedFromTotals = int256(ghost_totalIssued[key]) - int256(ghost_totalRevoked[key]);
-        int256 trackedNet = ghost_netSharePosition[key];
-        
-        assertEq(
-            expectedFromTotals, 
-            trackedNet, 
-            "SHARE-QUEUE-06: Net position must be commutative (issued - revoked)"
-        );
-    }
+    // Removed duplicate helper functions - now using formal property functions from Properties.sol:
+    // - property_shareQueueFlipLogic() replaces _verifyShareQueueFlipLogic()
+    // - property_shareQueueCommutativity() replaces _verifyShareQueueCommutativity()
 
     /// @notice Test that before-state ghost variables are properly captured and asserted
     function test_beforeStateCapture() public {
@@ -525,5 +484,124 @@ contract VerifyShareQueueProperties is Test, TargetFunctions, FoundryAsserts {
         assertGt(deltaBefore, 0, "Before delta should be > 0");
         assertEq(deltaAfter, 0, "After delta should be 0 (neutral state)");
         
+    }
+
+    /// @notice Test the formal flip boundaries property function
+    function test_shareQueueFlipBoundaries() public {
+        console2.log("=== Testing ShareQueue Flip Boundaries Property ===");
+        
+        // Setup complete infrastructure with unique salt
+        shortcut_deployNewTokenPoolAndShare(18, 8, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set prices for operations
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Get vault details
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        bytes32 shareKey = _poolShareKey(poolId, scId);
+        
+        // Use the same successful pattern from existing test:
+        // Issue shares (creates positive state)
+        balanceSheet_issue(100);
+        
+        // Issue more shares to ensure we have tokens for revoke
+        balanceSheet_issue(50);  // Total net = 150, actor has 150 tokens
+        
+        // Revoke some shares - use only what was issued
+        vm.startPrank(_getActor());
+        IShareToken shareToken = spoke.shareToken(poolId, scId);
+        shareToken.approve(address(balanceSheet), 100);
+        vm.stopPrank();
+        balanceSheet_revoke(100);  // Net: 50 (150 - 100 = 50), still positive
+        
+        // Now revoke more to flip to zero (this creates a flip from positive to neutral)
+        vm.startPrank(_getActor());
+        shareToken.approve(address(balanceSheet), 50);
+        vm.stopPrank();
+        balanceSheet_revoke(50);   // Net: 0 (50 - 50 = 0), flipped to neutral (isPositive = false)
+        
+        // Verify we have a flip recorded
+        assertGt(ghost_flipCount[shareKey], 0, "Should have recorded flip");
+        
+        // Now call the formal property function to validate flip boundaries
+        property_shareQueueFlipBoundaries();
+        
+        console2.log("Flip count recorded:", ghost_flipCount[shareKey]);
+    }
+
+    /// @notice Test the formal share queue submission property function
+    function test_shareQueueSubmission() public {
+        console2.log("=== Testing ShareQueue Submission Property ===");
+        
+        // Setup complete infrastructure with unique salt
+        shortcut_deployNewTokenPoolAndShare(18, 9, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set prices for operations
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Get vault details
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        bytes32 shareKey = _poolShareKey(poolId, scId);
+        
+        // Record initial nonce
+        uint256 initialNonce = ghost_shareQueueNonce[shareKey];
+        
+        // Execute operations that populate the queue
+        balanceSheet_issue(100);
+        
+        // Execute submit operation which increments nonce
+        balanceSheet_submitQueuedShares(0); // extraGasLimit = 0
+        
+        // Verify nonce incremented
+        assertGt(ghost_shareQueueNonce[shareKey], initialNonce, "Nonce should increment");
+        
+        // Call the formal property function to validate submission behavior
+        property_shareQueueSubmission();
+        
+        console2.log("Initial nonce:", initialNonce);
+        console2.log("Final nonce:", ghost_shareQueueNonce[shareKey]);
+    }
+
+    /// @notice Test the formal asset counter property function
+    function test_shareQueueAssetCounter() public {
+        console2.log("=== Testing ShareQueue Asset Counter Property ===");
+        
+        // Setup complete infrastructure with unique salt
+        shortcut_deployNewTokenPoolAndShare(18, 10, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set prices for operations
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Get vault details
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Execute asset operations that affect counter
+        asset_approve(address(balanceSheet), 1000e18);
+        balanceSheet_deposit(0, 500e18);
+        
+        // Verify asset queue was populated
+        assertGt(ghost_assetQueueDeposits[assetKey], 0, "Should have asset deposits");
+        
+        // Call the formal property function to validate asset counter behavior  
+        property_shareQueueAssetCounter();
+        
+        console2.log("Asset deposits tracked:", ghost_assetQueueDeposits[assetKey]);
     }
 }
