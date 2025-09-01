@@ -52,12 +52,13 @@ contract TestUpdateContractMessageLibIdentities is Test {
         assertEq(a.what, b.what);
     }
 
-    function testUpdateContractUpdateQueue(uint64 minDelay) public pure {
+    function testUpdateContractUpdateQueue(uint64 minDelay, uint128 extraGasLimit) public pure {
         UpdateContractMessageLib.UpdateContractUpdateQueue memory a =
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay});
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay, extraGasLimit: extraGasLimit});
         UpdateContractMessageLib.UpdateContractUpdateQueue memory b =
             UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(a.serialize());
 
         assertEq(a.minDelay, b.minDelay);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
     }
 }

@@ -82,7 +82,8 @@ contract QueueManagerUpdateContractFailureTests is QueueManagerBaseTest {
         queueManager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY}).serialize()
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
+                .serialize()
         );
     }
 
@@ -101,20 +102,23 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerBaseTest {
     using UpdateContractMessageLib for *;
 
     /// forge-config: default.isolate = true
-    function testUpdateMinDelay(uint64 minDelay) public {
+    function testUpdateQueueConfig(uint64 minDelay, uint128 extraGasLimit) public {
         vm.expectEmit();
-        emit IQueueManager.UpdateMinDelay(POOL_A, defaultTypedShareClassId, minDelay);
+        emit IQueueManager.UpdateQueueConfig(POOL_A, defaultTypedShareClassId, minDelay, extraGasLimit);
 
         vm.prank(address(contractUpdater));
         queueManager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay}).serialize()
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: minDelay, extraGasLimit: extraGasLimit})
+                .serialize()
         );
 
-        (uint64 updatedMinDelay, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (uint64 updatedMinDelay, uint64 lastSync, uint128 updatedExtraGasLimit) =
+            queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(updatedMinDelay, minDelay);
         assertEq(lastSync, 0);
+        assertEq(updatedExtraGasLimit, extraGasLimit);
     }
 }
 
@@ -139,7 +143,8 @@ contract QueueManagerSyncFailureTests is QueueManagerBaseTest {
         queueManager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY}).serialize()
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
+                .serialize()
         );
 
         AssetId[] memory assetIds = new AssetId[](1);
@@ -201,7 +206,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -228,7 +233,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -253,7 +258,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -266,7 +271,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0}).serialize()
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: 0}).serialize()
         );
 
         AssetId[] memory assetIds = new AssetId[](1);
@@ -288,7 +293,8 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.update(
             POOL_A,
             defaultTypedShareClassId,
-            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY}).serialize()
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: DEFAULT_MIN_DELAY, extraGasLimit: 0})
+                .serialize()
         );
 
         // Mock balanceSheet.queuedShares to return updates
@@ -330,7 +336,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -364,7 +370,44 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncWithExtraGasLimit(uint128 extraGasLimit) public {
+        // Bound extraGasLimit to reasonable values to avoid ExceedsMaxGasLimit
+        vm.assume(extraGasLimit <= 10_000_000);
+
+        // Set extraGasLimit
+        vm.prank(address(contractUpdater));
+        queueManager.update(
+            POOL_A,
+            defaultTypedShareClassId,
+            UpdateContractMessageLib.UpdateContractUpdateQueue({minDelay: 0, extraGasLimit: extraGasLimit}).serialize()
+        );
+
+        depositSync(vault1, user, DEFAULT_AMOUNT);
+
+        AssetId[] memory assetIds = new AssetId[](1);
+        assetIds[0] = assetId1;
+
+        // Expect call to submitQueuedAssets with extraGasLimit
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                balanceSheet.submitQueuedAssets.selector, POOL_A, defaultTypedShareClassId, assetId1, extraGasLimit
+            )
+        );
+
+        // Expect call to submitQueuedShares with extraGasLimit
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit
+            )
+        );
+
+        queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
     }
 }

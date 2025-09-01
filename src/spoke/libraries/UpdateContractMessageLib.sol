@@ -123,6 +123,7 @@ library UpdateContractMessageLib {
 
     struct UpdateContractUpdateQueue {
         uint64 minDelay;
+        uint128 extraGasLimit;
     }
 
     function deserializeUpdateContractUpdateQueue(bytes memory data)
@@ -132,10 +133,10 @@ library UpdateContractMessageLib {
     {
         require(updateContractType(data) == UpdateContractType.UpdateQueue, UnknownMessageType());
 
-        return UpdateContractUpdateQueue({minDelay: data.toUint64(1)});
+        return UpdateContractUpdateQueue({minDelay: data.toUint64(1), extraGasLimit: data.toUint128(9)});
     }
 
     function serialize(UpdateContractUpdateQueue memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(UpdateContractType.UpdateQueue, t.minDelay);
+        return abi.encodePacked(UpdateContractType.UpdateQueue, t.minDelay, t.extraGasLimit);
     }
 }

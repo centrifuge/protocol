@@ -26,6 +26,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
     struct ShareClassState {
         uint64 minDelay;
         uint64 lastSync;
+        uint128 extraGasLimit;
     }
 
     mapping(PoolId => mapping(ShareClassId => ShareClassState)) public shareClassState;
@@ -43,14 +44,14 @@ contract QueueManager is IQueueManager, IUpdateContract {
     function update(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
         require(msg.sender == contractUpdater, NotContractUpdater());
 
-        // TODO: allow updating extraGasLimit ?
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
         if (kind == uint8(UpdateContractType.UpdateQueue)) {
             UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
             ShareClassState storage sc = shareClassState[poolId][scId];
             sc.minDelay = m.minDelay;
-            emit UpdateMinDelay(poolId, scId, m.minDelay);
+            sc.extraGasLimit = m.extraGasLimit;
+            emit UpdateQueueConfig(poolId, scId, m.minDelay, m.extraGasLimit);
         } else {
             revert UnknownUpdateContractType();
         }
@@ -88,7 +89,9 @@ contract QueueManager is IQueueManager, IUpdateContract {
                 // doing a noop call instead of reverting, to prevent DoS
                 cs[i] = abi.encodeWithSelector(balanceSheet.root.selector);
             } else {
-                cs[i] = abi.encodeWithSelector(balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], 0);
+                cs[i] = abi.encodeWithSelector(
+                    balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], sc.extraGasLimit
+                );
                 actualSubmissions++;
             }
             TransientStorageLib.tstore(keccak256(abi.encode("assetSeen", assetIds[i])), true);
@@ -99,7 +102,8 @@ contract QueueManager is IQueueManager, IUpdateContract {
                 // We didn't actually submit all queued assets, so don't submit shares
                 cs[submissions] = abi.encodeWithSelector(balanceSheet.root.selector);
             } else {
-                cs[submissions] = abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, 0);
+                cs[submissions] =
+                    abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, sc.extraGasLimit);
                 sc.lastSync = uint64(block.timestamp);
             }
         }
