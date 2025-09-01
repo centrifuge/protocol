@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {ILayerZeroEndpointV2} from "../../src/common/interfaces/adapters/ILayerZeroAdapter.sol";
 
 import {
     AdaptersDeployer,
@@ -40,6 +41,7 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function setUp() public {
         AdaptersActionBatcher batcher = new AdaptersActionBatcher();
         _mockRealWormholeContracts();
+        _mockLayerZeroEndpoint();
         deployAdapters(_commonInput(), _adaptersInput(), batcher);
         removeAdaptersDeployerAccess(batcher);
     }
@@ -55,6 +57,14 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
             WORMHOLE_DELIVERY_PROVIDER,
             abi.encodeWithSelector(IWormholeDeliveryProvider.chainId.selector),
             abi.encode(WORMHOLE_CHAIN_ID)
+        );
+    }
+
+    function _mockLayerZeroEndpoint() private {
+        vm.mockCall(
+            LAYERZERO_ENDPOINT,
+            abi.encodeWithSelector(ILayerZeroEndpointV2.setDelegate.selector, LAYERZERO_DELEGATE),
+            abi.encode()
         );
     }
 
@@ -86,5 +96,21 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         assertEq(address(axelarAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(axelarAdapter.axelarGateway()), AXELAR_GATEWAY);
         assertEq(address(axelarAdapter.axelarGasService()), AXELAR_GAS_SERVICE);
+    }
+
+    function testLayerZeroAdapter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adminSafe));
+
+        assertEq(layerZeroAdapter.wards(address(root)), 1);
+        assertEq(layerZeroAdapter.wards(address(guardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
+        assertEq(layerZeroAdapter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(layerZeroAdapter.entrypoint()), address(multiAdapter));
+        assertEq(address(layerZeroAdapter.endpoint()), LAYERZERO_ENDPOINT);
     }
 }
