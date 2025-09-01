@@ -5,6 +5,7 @@ import {CommonDeployer, CommonInput, CommonReport, CommonActionBatcher} from "./
 
 import {AxelarAdapter} from "../src/common/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/common/adapters/WormholeAdapter.sol";
+import {LayerZeroAdapter} from "../src/common/adapters/LayerZeroAdapter.sol";
 
 import "forge-std/Script.sol";
 
@@ -19,15 +20,23 @@ struct AxelarInput {
     address gasService;
 }
 
+struct LayerZeroInput {
+    bool shouldDeploy;
+    address endpoint;
+    address delegate;
+}
+
 struct AdaptersInput {
     WormholeInput wormhole;
     AxelarInput axelar;
+    LayerZeroInput layerzero;
 }
 
 struct AdaptersReport {
     CommonReport common;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
+    LayerZeroAdapter layerZeroAdapter;
 }
 
 contract AdaptersActionBatcher is CommonActionBatcher {
@@ -40,17 +49,24 @@ contract AdaptersActionBatcher is CommonActionBatcher {
             report.axelarAdapter.rely(address(report.common.root));
             report.axelarAdapter.rely(address(report.common.guardian));
         }
+        if (address(report.layerZeroAdapter) != address(0)) {
+            report.layerZeroAdapter.rely(address(report.common.root));
+            report.layerZeroAdapter.rely(address(report.common.guardian));
+            report.layerZeroAdapter.rely(address(report.common.adminSafe));
+        }
     }
 
     function revokeAdapters(AdaptersReport memory report) public onlyDeployer {
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.deny(address(this));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
     }
 }
 
 contract AdaptersDeployer is CommonDeployer {
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
+    LayerZeroAdapter layerZeroAdapter;
 
     function deployAdapters(CommonInput memory input, AdaptersInput memory adaptersInput, AdaptersActionBatcher batcher)
         public
@@ -90,10 +106,25 @@ contract AdaptersDeployer is CommonDeployer {
             );
         }
 
+        if (adaptersInput.layerzero.shouldDeploy) {
+            layerZeroAdapter = LayerZeroAdapter(
+                create3(
+                    generateSalt("layerZeroAdapter"),
+                    abi.encodePacked(
+                        type(LayerZeroAdapter).creationCode,
+                        abi.encode(
+                            multiAdapter, adaptersInput.layerzero.endpoint, adaptersInput.layerzero.delegate, batcher
+                        )
+                    )
+                )
+            );
+        }
+
         batcher.engageAdapters(_adaptersReport());
 
         if (adaptersInput.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
         if (adaptersInput.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
+        if (adaptersInput.layerzero.shouldDeploy) register("layerZeroAdapter", address(layerZeroAdapter));
     }
 
     function _postDeployAdapters(AdaptersActionBatcher batcher) internal {
@@ -107,13 +138,14 @@ contract AdaptersDeployer is CommonDeployer {
     }
 
     function _adaptersReport() internal view returns (AdaptersReport memory) {
-        return AdaptersReport(_commonReport(), wormholeAdapter, axelarAdapter);
+        return AdaptersReport(_commonReport(), wormholeAdapter, axelarAdapter, layerZeroAdapter);
     }
 
     function noAdaptersInput() public pure returns (AdaptersInput memory) {
         return AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: false, relayer: address(0)}),
-            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)})
+            axelar: AxelarInput({shouldDeploy: false, gateway: address(0), gasService: address(0)}),
+            layerzero: LayerZeroInput({shouldDeploy: false, endpoint: address(0), delegate: address(0)})
         });
     }
 }

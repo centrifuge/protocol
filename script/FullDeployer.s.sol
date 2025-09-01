@@ -7,6 +7,7 @@ import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpoke
 import {
     WormholeInput,
     AxelarInput,
+    LayerZeroInput,
     AdaptersInput,
     AdaptersDeployer,
     AdaptersActionBatcher
@@ -92,10 +93,10 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
         require(address(contractUpdater) == 0x8dD5a3d4e9ec54388dAd23B8a1f3B2159B2f2D85);
         require(address(routerEscrow) == 0xB86B6AE94E6d05AAc086665534A73fee557EE9F6);
         require(address(globalEscrow) == 0x43d51be0B6dE2199A2396bA604114d24383F91E9);
-        require(address(asyncRequestManager) == 0x58d57896EBbF000c293327ADf33689D0a7Fd3d9A);
+        require(address(asyncRequestManager) == 0xf06f89A1b6C601235729A689595571B7455Dd433);
         require(address(syncManager) == 0x0D82d9fa76CFCd6F4cc59F053b2458665C6CE773);
-        require(address(asyncVaultFactory) == 0xE01Ce2e604CCe985A06FA4F4bCD17f1F08417BF3);
-        require(address(syncDepositVaultFactory) == 0x3568184784E8ACCaacF51A7F710a3DE0144E4f29);
+        require(address(asyncVaultFactory) == 0xb47E57b4D477FF80c42dB8B02CB5cb1a74b5D20a);
+        require(address(syncDepositVaultFactory) == 0x00E3c7EE9Bbc98B9Cb4Cc2c06fb211c1Bb199Ee5);
         require(address(vaultRouter) == 0xdbCcee499563D4AC2D3788DeD3acb14FB92B175D);
         require(address(freezeOnlyHook) == 0xBb7ABFB0E62dfb36e02CeeCDA59ADFD71f50c88e);
         require(address(fullRestrictionsHook) == 0xa2C98F0F76Da0C97039688CA6280d082942d0b48);
@@ -154,6 +155,11 @@ contract FullDeployer is HubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
                 shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.axelar.deploy"),
                 gateway: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gateway"),
                 gasService: _parseJsonAddressOrDefault(config, "$.adapters.axelar.gasService")
+            }),
+            layerzero: LayerZeroInput({
+                shouldDeploy: _parseJsonBoolOrDefault(config, "$.adapters.layerzero.deploy"),
+                endpoint: _parseJsonAddressOrDefault(config, "$.adapters.layerzero.endpoint"),
+                delegate: _parseJsonAddressOrDefault(config, "$.adapters.layerzero.delegate")
             })
         });
 

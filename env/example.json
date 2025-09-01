@@ -22,6 +22,12 @@
             "gateway": "0x...",
             "gasService": "0x...",
             "deploy": false
+        },
+        "layerzero": {
+            "deploy": false,
+            "endpoint": "",
+            "delegate": "",
+            "layerZeroEid": ""
         }
     },
     "contracts": {},

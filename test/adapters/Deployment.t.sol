@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
 
+import {ILayerZeroEndpointV2} from "../../src/common/interfaces/adapters/ILayerZeroAdapter.sol";
 import {IWormholeRelayer, IWormholeDeliveryProvider} from "../../src/common/interfaces/adapters/IWormholeAdapter.sol";
 
 import {
@@ -10,7 +11,8 @@ import {
     AdaptersActionBatcher,
     AdaptersInput,
     WormholeInput,
-    AxelarInput
+    AxelarInput,
+    LayerZeroInput
 } from "../../script/AdaptersDeployer.s.sol";
 
 import "forge-std/Test.sol";
@@ -23,10 +25,14 @@ contract AdaptersDeploymentInputTest is Test {
     address immutable AXELAR_GATEWAY = makeAddr("AxelarGateway");
     address immutable AXELAR_GAS_SERVICE = makeAddr("AxelarGasService");
 
+    address immutable LAYERZERO_ENDPOINT = makeAddr("LayerZeroAdapter");
+    address immutable LAYERZERO_DELEGATE = makeAddr("LayerZeroDelegate");
+
     function _adaptersInput() internal view returns (AdaptersInput memory) {
         return AdaptersInput({
             wormhole: WormholeInput({shouldDeploy: true, relayer: WORMHOLE_RELAYER}),
-            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE})
+            axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
+            layerzero: LayerZeroInput({shouldDeploy: true, endpoint: LAYERZERO_ENDPOINT, delegate: LAYERZERO_DELEGATE})
         });
     }
 }
@@ -35,6 +41,7 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
     function setUp() public {
         AdaptersActionBatcher batcher = new AdaptersActionBatcher();
         _mockRealWormholeContracts();
+        _mockLayerZeroEndpoint();
         deployAdapters(_commonInput(), _adaptersInput(), batcher);
         removeAdaptersDeployerAccess(batcher);
     }
@@ -50,6 +57,14 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
             WORMHOLE_DELIVERY_PROVIDER,
             abi.encodeWithSelector(IWormholeDeliveryProvider.chainId.selector),
             abi.encode(WORMHOLE_CHAIN_ID)
+        );
+    }
+
+    function _mockLayerZeroEndpoint() private {
+        vm.mockCall(
+            LAYERZERO_ENDPOINT,
+            abi.encodeWithSelector(ILayerZeroEndpointV2.setDelegate.selector, LAYERZERO_DELEGATE),
+            abi.encode()
         );
     }
 
@@ -81,5 +96,21 @@ contract AdaptersDeploymentTest is AdaptersDeployer, CommonDeploymentInputTest, 
         assertEq(address(axelarAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(axelarAdapter.axelarGateway()), AXELAR_GATEWAY);
         assertEq(address(axelarAdapter.axelarGasService()), AXELAR_GAS_SERVICE);
+    }
+
+    function testLayerZeroAdapter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(adminSafe));
+
+        assertEq(layerZeroAdapter.wards(address(root)), 1);
+        assertEq(layerZeroAdapter.wards(address(guardian)), 1);
+        assertEq(layerZeroAdapter.wards(address(adminSafe)), 1);
+        assertEq(layerZeroAdapter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(layerZeroAdapter.entrypoint()), address(multiAdapter));
+        assertEq(address(layerZeroAdapter.endpoint()), LAYERZERO_ENDPOINT);
     }
 }
