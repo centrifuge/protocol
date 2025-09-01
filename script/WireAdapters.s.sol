@@ -5,6 +5,7 @@ import {Guardian} from "../src/common/Guardian.sol";
 import {IAdapter} from "../src/common/interfaces/IAdapter.sol";
 import {IAxelarAdapter} from "../src/common/interfaces/adapters/IAxelarAdapter.sol";
 import {IWormholeAdapter} from "../src/common/interfaces/adapters/IWormholeAdapter.sol";
+import {ILayerZeroAdapter} from "../src/common/interfaces/adapters/ILayerZeroAdapter.sol";
 
 import "forge-std/Script.sol";
 
@@ -120,7 +121,26 @@ contract WireAdapters is Script {
                 }
             }
 
-            // TODO: Add Wire LayerZero
+            // Wire LayerZeroAdapter
+            if (localLayerZeroAddr != address(0)) {
+                try vm.parseJsonAddress(remoteConfig, "$.contracts.layerZeroAdapter") returns (
+                    address remoteLayerZeroAddr
+                ) {
+                    uint32 remoteLayerZeroEid =
+                        uint32(vm.parseJsonUint(remoteConfig, "$.adapters.layerzero.layerZeroEid"));
+                    ILayerZeroAdapter layerZeroAdapter = ILayerZeroAdapter(localLayerZeroAddr);
+                    layerZeroAdapter.file("sources", remoteLayerZeroEid, remoteCentrifugeId, remoteLayerZeroAddr);
+                    layerZeroAdapter.file("destinations", remoteCentrifugeId, remoteLayerZeroEid, remoteLayerZeroAddr);
+
+                    console.log("Wired LayerZeroAdapter from", localNetwork, "to", remoteNetwork);
+                } catch {
+                    console.log(
+                        "Failed to wire LayerZero.",
+                        "No LayerZeroAdapter contract found (not deployed yet?) in config for network ",
+                        remoteNetwork
+                    );
+                }
+            }
         }
         vm.stopBroadcast();
     }
