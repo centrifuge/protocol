@@ -49,18 +49,6 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     /// === Categorized Issues === ///
 
-    // // forge test --match-test test_property_sum_of_minted_equals_total_supply_5 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed, probably due to not updating correctly for
-    // sync
-    // // deposits
-    // function test_property_sum_of_minted_equals_total_supply_5() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
-
-    //     shortcut_deposit_sync(1, 5421521);
-
-    //     property_sum_of_minted_equals_total_supply();
-    // }
-
     // // forge test --match-test test_property_sum_of_shares_received_8 -vvv
     // // NOTE: looks like an issue with ghost tracking variables that needs to be fixed
     // function test_property_sum_of_shares_received_8() public {
