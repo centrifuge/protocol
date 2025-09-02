@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
+import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
@@ -19,17 +20,12 @@ import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/U
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
 contract QueueManager is IQueueManager, IUpdateContract {
     using CastLib for *;
+    using BitmapLib for *;
 
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
 
-    struct ShareClassState {
-        uint64 minDelay;
-        uint64 lastSync;
-        uint128 extraGasLimit;
-    }
-
-    mapping(PoolId => mapping(ShareClassId => ShareClassState)) public shareClassState;
+    mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
@@ -48,7 +44,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
         if (kind == uint8(UpdateContractType.UpdateQueue)) {
             UpdateContractMessageLib.UpdateContractUpdateQueue memory m =
                 UpdateContractMessageLib.deserializeUpdateContractUpdateQueue(payload);
-            ShareClassState storage sc = shareClassState[poolId][scId];
+            ShareClassQueueState storage sc = scQueueState[poolId][scId];
             sc.minDelay = m.minDelay;
             sc.extraGasLimit = m.extraGasLimit;
             emit UpdateQueueConfig(poolId, scId, m.minDelay, m.extraGasLimit);
@@ -61,11 +57,9 @@ contract QueueManager is IQueueManager, IUpdateContract {
     // Sync
     //----------------------------------------------------------------------------------------------
 
-    /// @dev It is the caller's responsibility to ensure all asset IDs have a non-zero delta,
-    ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
-    ///      get synced as well.
+    /// @inheritdoc IQueueManager
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
-        ShareClassState storage sc = shareClassState[poolId][scId];
+        ShareClassQueueState storage sc = scQueueState[poolId][scId];
         require(
             sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
         );
@@ -73,39 +67,45 @@ contract QueueManager is IQueueManager, IUpdateContract {
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
         require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
 
-        bool maybeSubmitShares = delta > 0 && assetIds.length >= queuedAssetCounter;
-        uint256 submissions = assetIds.length;
-        uint32 actualSubmissions = 0;
-        bytes[] memory cs = new bytes[](maybeSubmitShares ? submissions + 1 : submissions);
+        require(assetIds.length <= 256, TooManyAssets()); // Bitmap limit
 
-        for (uint256 i; i < submissions; i++) {
-            require(
-                TransientStorageLib.tloadBool(keccak256(abi.encode("assetSeen", assetIds[i]))) == false,
-                DuplicateAsset()
-            );
-            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
-            if (deposits == 0 && withdrawals == 0) {
-                // noop by just reading a property
-                // doing a noop call instead of reverting, to prevent DoS
-                cs[i] = abi.encodeWithSelector(balanceSheet.root.selector);
-            } else {
-                cs[i] = abi.encodeWithSelector(
-                    balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], sc.extraGasLimit
-                );
-                actualSubmissions++;
+        // Deduplicate and validate using bitmap for valid indices
+        uint256 validBitmap = 0; // Each bit represents if that index is valid
+        uint256 validCount = 0;
+
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            bytes32 key = bytes32(uint256(AssetId.unwrap(assetIds[i])));
+            if (TransientStorageLib.tloadBool(key)) {
+                continue; // Skip duplicate
             }
-            TransientStorageLib.tstore(keccak256(abi.encode("assetSeen", assetIds[i])), true);
+            TransientStorageLib.tstore(key, true);
+
+            // Check if valid
+            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
+            if (deposits > 0 || withdrawals > 0) {
+                validBitmap = validBitmap.withBit(i, true);
+                validCount++;
+            }
         }
 
-        if (maybeSubmitShares) {
-            if (actualSubmissions < queuedAssetCounter) {
-                // We didn't actually submit all queued assets, so don't submit shares
-                cs[submissions] = abi.encodeWithSelector(balanceSheet.root.selector);
-            } else {
-                cs[submissions] =
-                    abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, sc.extraGasLimit);
-                sc.lastSync = uint64(block.timestamp);
+        // Build exactly-sized array
+        bool submitShares = delta > 0 && validCount >= queuedAssetCounter;
+        bytes[] memory cs = new bytes[](validCount + (submitShares ? 1 : 0));
+
+        uint256 csIndex = 0;
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            if (validBitmap.getBit(i)) {
+                // Check if index i is valid
+                cs[csIndex++] = abi.encodeWithSelector(
+                    balanceSheet.submitQueuedAssets.selector, poolId, scId, assetIds[i], sc.extraGasLimit
+                );
             }
+        }
+
+        if (submitShares) {
+            cs[validCount] =
+                abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, sc.extraGasLimit);
+            sc.lastSync = uint64(block.timestamp);
         }
 
         IMulticall(address(balanceSheet)).multicall(cs);

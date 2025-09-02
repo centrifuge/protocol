@@ -115,7 +115,7 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerBaseTest {
         );
 
         (uint64 updatedMinDelay, uint64 lastSync, uint128 updatedExtraGasLimit) =
-            queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+            queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(updatedMinDelay, minDelay);
         assertEq(lastSync, 0);
         assertEq(updatedExtraGasLimit, extraGasLimit);
@@ -159,14 +159,13 @@ contract QueueManagerSyncFailureTests is QueueManagerBaseTest {
     }
 
     /// forge-config: default.isolate = true
-    function testSyncWithDuplicateAssets() public {
+    function testSyncWithTooManyAssets() public {
         depositSync(vault1, user, DEFAULT_AMOUNT);
 
-        AssetId[] memory assetIds = new AssetId[](2);
+        AssetId[] memory assetIds = new AssetId[](257);
         assetIds[0] = assetId1;
-        assetIds[1] = assetId1; // Duplicate
 
-        vm.expectRevert(IQueueManager.DuplicateAsset.selector);
+        vm.expectRevert(IQueueManager.TooManyAssets.selector);
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
     }
 }
@@ -206,7 +205,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -230,10 +229,17 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
             );
         }
 
+        // Expect submitQueuedShares not to be called
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, 0),
+            0
+        );
+
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -258,7 +264,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -333,10 +339,17 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         assetIds[0] = assetId2;
         assetIds[1] = assetId3;
 
+        // Expect submitQueuedShares not to be called
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, 0),
+            0
+        );
+
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was not updated
-        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, 0);
 
         // Check that there are still queued shares and assets
@@ -370,7 +383,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
 
         // Check that lastSync was updated
-        (, uint64 lastSync,) = queueManager.shareClassState(POOL_A, defaultTypedShareClassId);
+        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);
     }
 
@@ -406,6 +419,26 @@ contract QueueManagerSyncSuccessTests is QueueManagerBaseTest {
             abi.encodeWithSelector(
                 balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit
             )
+        );
+
+        queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
+    }
+
+    /// forge-config: default.isolate = true
+    function testSyncWithDuplicateAssets() public {
+        depositSync(vault1, user, DEFAULT_AMOUNT);
+
+        AssetId[] memory assetIds = new AssetId[](2);
+        assetIds[0] = assetId1;
+        assetIds[1] = assetId1; // Duplicate
+
+        // Expect call to submitQueuedAssets only once
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(
+                balanceSheet.submitQueuedAssets.selector, POOL_A, defaultTypedShareClassId, assetId1, 0
+            ),
+            1
         );
 
         queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);

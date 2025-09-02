@@ -13,8 +13,21 @@ interface IQueueManager {
     error NotContractUpdater();
     error NoUpdates();
     error MinDelayNotElapsed();
-    error DuplicateAsset();
+    error TooManyAssets();
     error NoUpdateForAsset();
 
+    struct ShareClassQueueState {
+        uint64 minDelay;
+        uint64 lastSync;
+        uint128 extraGasLimit;
+    }
+
+    /// @notice Sync queued assets and shares for a given pool and share class
+    /// @param poolId the pool ID
+    /// @param scId the share class ID
+    /// @param assetIds the asset IDs to sync
+    /// @dev It is the caller's responsibility to ensure all asset IDs have a non-zero delta,
+    ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
+    ///      get synced as well.
     function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external;
 }
