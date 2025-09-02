@@ -14,14 +14,8 @@ contract ValuationsDeploymentTest is ValuationsDeployer, CommonDeploymentInputTe
         removeValuationsDeployerAccess(batcher);
     }
 
-    function testIdentityValuation(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-
-        assertEq(identityValuation.wards(address(root)), 1);
-        assertEq(identityValuation.wards(nonWard), 0);
-
+    function testIdentityValuation() public view {
         // dependencies set correctly
-        assertEq(address(identityValuation.erc6909()), address(hubRegistry));
+        assertEq(address(identityValuation.hubRegistry()), address(hubRegistry));
     }
 }

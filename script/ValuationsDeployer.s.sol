@@ -14,13 +14,9 @@ struct ValuationsReport {
 }
 
 contract ValuationsActionBatcher is HubActionBatcher {
-    function engageValuations(ValuationsReport memory report) public onlyDeployer {
-        report.identityValuation.rely(address(report.hub.common.root));
-    }
+    function engageValuations(ValuationsReport memory report) public onlyDeployer {}
 
-    function revokeValuations(ValuationsReport memory report) public onlyDeployer {
-        report.identityValuation.deny(address(this));
-    }
+    function revokeValuations(ValuationsReport memory report) public onlyDeployer {}
 }
 
 contract ValuationsDeployer is HubDeployer {
@@ -37,7 +33,7 @@ contract ValuationsDeployer is HubDeployer {
         identityValuation = IdentityValuation(
             create3(
                 generateSalt("identityValuation"),
-                abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry))
             )
         );
 

@@ -15,26 +15,19 @@ import {IHub} from "../hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
+///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
-///         If a price is fed with the pool currency as the quote asset, the holding value is updated.
 /// @dev    To set up, add a price feeder using hub.updateContract(), set this contract as the valuation
 ///         for one or more assets, and set this contract as a hub manager, so it can call
 ///         hub.updateHoldingValue().
 contract OracleValuation is IOracleValuation {
-    event UpdatePrice(
-        PoolId indexed poolId, ShareClassId scId, AssetId indexed base, AssetId indexed quote, D18 newPrice
-    );
-
-    error NotFeeder();
-    error NotHubManager();
-
     IHub public immutable hub;
     address public immutable contractUpdater;
     IHubRegistry public immutable hubRegistry;
     uint16 public immutable localCentrifugeId;
 
     mapping(PoolId => mapping(address => bool)) public feeder;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => mapping(AssetId quote => D18)))) public price;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => D18))) public price;
 
     constructor(
         IHub hub_,
@@ -57,19 +50,23 @@ contract OracleValuation is IOracleValuation {
     // TODO: updateContract to update price manager
     // Check poolId.centrifugeId() == localCentrifugeId, since this is only intended to be used on hub chains
 
-    function setPrice(PoolId poolId, ShareClassId scId, AssetId base, AssetId quote, D18 newPrice) external {
+    function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
         require(feeder[poolId][msg.sender], NotFeeder());
 
-        price[poolId][scId][base][quote] = newPrice;
-        if (quote == hubRegistry.currency(poolId)) hub.updateHoldingValue(poolId, scId, base);
+        price[poolId][scId][assetId] = newPrice;
+        hub.updateHoldingValue(poolId, scId, assetId);
 
-        emit UpdatePrice(poolId, scId, base, quote, newPrice);
+        emit UpdatePrice(poolId, scId, assetId, newPrice);
     }
 
     /// @inheritdoc IValuation
-    function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {
+    function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
+        external
+        view
+        returns (uint128 quoteAmount)
+    {
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(base.raw()), hubRegistry.decimals(quote.raw()), price[]
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price[poolId][scId][assetId]
         );
     }
 }
