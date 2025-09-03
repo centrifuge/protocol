@@ -21,30 +21,13 @@ AssetId constant C18 = AssetId.wrap(18);
 
 contract TestIdentityValuation is Test {
     address hubRegistry = makeAddr("hubRegistry");
-    IdentityValuation valuation =
-        new IdentityValuation(IHubRegistry(hubRegistry));
+    IdentityValuation valuation = new IdentityValuation(IHubRegistry(hubRegistry));
 
     function setUp() public {
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSignature("decimals(uint128)", C6),
-            abi.encode(6)
-        );
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSignature("decimals(uint128)", C18),
-            abi.encode(18)
-        );
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSignature("decimals(uint64)", POOL_A),
-            abi.encode(6)
-        );
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSignature("decimals(uint64)", POOL_B),
-            abi.encode(18)
-        );
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint128)", C6), abi.encode(6));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint128)", C18), abi.encode(18));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint64)", POOL_A), abi.encode(6));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint64)", POOL_B), abi.encode(18));
     }
 
     function testSameDecimals() public view {

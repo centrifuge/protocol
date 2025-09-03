@@ -42,7 +42,10 @@ contract ValuationsDeployer is HubDeployer {
         oracleValuation = OracleValuation(
             create3(
                 generateSalt("oracleValuation"),
-                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hubRegistry))
+                abi.encodePacked(
+                    type(OracleValuation).creationCode,
+                    abi.encode(hub, address(batcher), hubRegistry, input.centrifugeId, address(batcher))
+                )
             )
         );
 
