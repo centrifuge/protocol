@@ -32,7 +32,11 @@ contract MockValuation is IValuation {
     }
 
     /// @inheritdoc IValuation
-    function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount) external view returns (uint128 quoteAmount) {
+    function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
+        external
+        view
+        returns (uint128 quoteAmount)
+    {
         Price memory price_ = price[poolId][scId][assetId];
         require(price_.isValid, "Price not set");
 

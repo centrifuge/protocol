@@ -22,4 +22,7 @@ interface IOracleValuation is IValuation {
     error NotFeeder();
     error NotHubManager();
     error PriceNotSet();
+
+    function updateFeeder(PoolId poolId, address feeder_, bool canFeed) external;
+    function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external;
 }

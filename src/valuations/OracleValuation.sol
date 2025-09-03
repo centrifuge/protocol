@@ -42,14 +42,21 @@ contract OracleValuation is IOracleValuation {
         localCentrifugeId = localCentrifugeId_;
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IOracleValuation
     function updateFeeder(PoolId poolId, address feeder_, bool canFeed) external {
         require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
         feeder[poolId][feeder_] = canFeed;
     }
 
-    // TODO: updateContract to update price manager
-    // Check poolId.centrifugeId() == localCentrifugeId, since this is only intended to be used on hub chains
+    //----------------------------------------------------------------------------------------------
+    // Update price
+    //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc IOracleValuation
     function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
         require(feeder[poolId][msg.sender], NotFeeder());
 
@@ -58,6 +65,10 @@ contract OracleValuation is IOracleValuation {
 
         emit UpdatePrice(poolId, scId, assetId, newPrice);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Read price
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IValuation
     function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
