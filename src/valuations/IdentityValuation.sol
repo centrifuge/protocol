@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {IIdentityValuation} from "./interfaces/IIdentityValuation.sol";
 
 import {d18} from "../misc/types/D18.sol";
-import {IERC6909Decimals} from "../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";

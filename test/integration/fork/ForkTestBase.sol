@@ -5,8 +5,6 @@ import {ERC20} from "../../../src/misc/ERC20.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {MockValuation} from "../../common/mocks/MockValuation.sol";
-
 import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
