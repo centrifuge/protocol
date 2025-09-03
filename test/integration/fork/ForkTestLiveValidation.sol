@@ -42,6 +42,12 @@ interface AsyncRequestManagerV3_0_1Like {
     function vault(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (address vault);
 }
 
+/// @notice Interface for MultiAdapter V3.0
+interface MultiAdapterV3_0Like {
+    function quorum(uint16 centrifugeId) external view returns (uint8);
+    function adapters(uint16 centrifugeId, uint256 id) external view returns (IAdapter);
+}
+
 /// @title ForkTestLiveValidation
 /// @notice Contract for validating live contract permissions and state
 /// @dev Inherits from ForkTestAsyncInvestments for investment flows and VM labeling.
@@ -580,18 +586,19 @@ contract ForkTestLiveValidation is ForkTestAsyncInvestments {
         bool sourceSupportsAxelar = localCentrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         bool targetSupportsAxelar = centrifugeId != IntegrationConstants.PLUME_CENTRIFUGE_ID;
         uint8 expectedQuorum = (sourceSupportsAxelar && targetSupportsAxelar) ? 2 : 1;
+        MultiAdapterV3_0Like multiAdapterContractV3_0 = MultiAdapterV3_0Like(address(multiAdapterContract));
 
         // Verify quorum matches expected adapter count
-        uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId, PoolId.wrap(0));
+        uint8 actualQuorum = multiAdapterContractV3_0.quorum(centrifugeId);
         assertEq(actualQuorum, expectedQuorum);
 
         // Verify first adapter is always Wormhole (primary)
-        IAdapter primaryAdapter = multiAdapterContract.adapters(centrifugeId, PoolId.wrap(0), 0);
+        IAdapter primaryAdapter = multiAdapterContractV3_0.adapters(centrifugeId, 0);
         assertEq(address(primaryAdapter), wormholeAdapter);
 
         if (expectedQuorum == STANDARD_QUORUM) {
             // Verify second adapter is Axelar
-            IAdapter secondaryAdapter = multiAdapterContract.adapters(centrifugeId, PoolId.wrap(0), 1);
+            IAdapter secondaryAdapter = multiAdapterContractV3_0.adapters(centrifugeId, 1);
             assertEq(address(secondaryAdapter), axelarAdapter);
         }
     }
