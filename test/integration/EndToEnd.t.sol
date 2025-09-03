@@ -489,8 +489,9 @@ contract EndToEndFlows is EndToEndUtils {
         D18 assetPrice,
         D18 sharePrice
     ) internal virtual {
-        vm.prank(FEEDER);
+        vm.startPrank(FEEDER);
         hub.oracleValuation.setPrice(poolId, shareClassId, assetId, assetPrice);
+        vm.stopPrank();
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);

@@ -29,13 +29,7 @@ contract OracleValuation is IOracleValuation {
     mapping(PoolId => mapping(address => bool)) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public price;
 
-    constructor(
-        IHub hub_,
-        address contractUpdater_,
-        IHubRegistry hubRegistry_,
-        uint16 localCentrifugeId_,
-        address deployer
-    ) {
+    constructor(IHub hub_, address contractUpdater_, IHubRegistry hubRegistry_, uint16 localCentrifugeId_) {
         hub = hub_;
         contractUpdater = contractUpdater_;
         hubRegistry = hubRegistry_;

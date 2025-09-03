@@ -22,7 +22,7 @@ contract IdentityValuation is IIdentityValuation {
     }
 
     /// @inheritdoc IValuation
-    function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
+    function getQuote(PoolId poolId, ShareClassId, AssetId assetId, uint128 baseAmount)
         external
         view
         returns (uint128 quoteAmount)

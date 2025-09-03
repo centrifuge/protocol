@@ -289,7 +289,6 @@ contract TestCases is BaseTest {
         D18 sharePrice = d18(100, 1);
         D18 identityPrice = d18(1, 1);
         D18 poolPerEurPrice = d18(4, 1);
-        AssetId poolCurrency = hubRegistry.currency(poolId);
 
         valuation.setPrice(poolId, scId, EUR_STABLE_C2, poolPerEurPrice);
 
