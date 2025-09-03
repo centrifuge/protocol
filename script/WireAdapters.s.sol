@@ -67,7 +67,7 @@ contract WireAdapters is Script {
 
             // Register ALL adapters for this destination chain
             IGuardian guardian = IGuardian(vm.parseJsonAddress(localConfig, "$.contracts.guardian"));
-            guardian.setAdapters(remoteCentrifugeId, adapters);
+            guardian.setAdapters(remoteCentrifugeId, adapters, address(0));
             console.log("Registered MultiAdapter(", localNetwork, ") for", remoteNetwork);
 
             // Wire WormholeAdapter

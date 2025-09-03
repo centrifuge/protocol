@@ -34,6 +34,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     event File(bytes32 indexed what, address addr);
     event File(bytes32 indexed what, uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
 
+    event SetRecoveryAddress(PoolId poolId, address recoverer);
+
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
     event SendPayload(
@@ -52,8 +54,6 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
         bytes32 adapterData
     );
 
-    event InitiateRecovery(uint16 centrifugeId, bytes32 payloadHash, IAdapter adapter);
-    event DisputeRecovery(uint16 centrifugeId, bytes32 payloadHash, IAdapter adapter);
     event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
@@ -77,14 +77,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when the contract tries to handle a payload from a non message adapter.
     error NonPayloadAdapter();
 
-    /// @notice Dispatched when the contract tries to recover a recovery message, which is not allowed.
-    error RecoveryPayloadRecovered();
-
-    /// @notice Dispatched when a recovery message is executed without being initiated.
-    error RecoveryNotInitiated();
-
     /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
-    error RecoveryChallengePeriodNotEnded();
+    error RecovererNotAllowed();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
@@ -100,17 +94,10 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     function file(bytes32 what, uint16 centrifugeId, PoolId poolId, IAdapter[] calldata value) external;
 
     /// @notice Initiate recovery of a payload.
-    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
+    function setRecoveryAddress(PoolId poolId, address payloadHash) external;
 
-    /// @notice Dispute recovery of a payload.
-    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
-
-    /// @notice Execute message recovery. After the challenge period, the recovery can be executed.
-    ///         If a malign adapter initiates message recovery,
-    ///         governance can dispute and immediately cancel the recovery, using any other valid adapter.
-    ///
-    ///         Only 1 recovery can be outstanding per message hash. If multiple adapters fail at the same time,
-    ///         these will need to be recovered serially (increasing the challenge period for each failed adapter).
+    /// @notice Execute message as it were sent by the passed adapter,
+    /// If multiple adapters fail at the same time, these will need to be recovered serially
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered

@@ -23,12 +23,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     PoolId public constant GLOBAL_ID = PoolId.wrap(0);
     uint8 public constant PRIMARY_ADAPTER_ID = 1;
-    uint256 public constant RECOVERY_CHALLENGE_PERIOD = 7 days;
 
     uint16 public immutable localCentrifugeId;
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
+    mapping(PoolId => address) public recoverer;
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
@@ -92,6 +92,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
         }
 
         emit File(what, centrifugeId, poolId, addresses);
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function setRecoveryAddress(PoolId poolId, address recoverer_) external auth {
+        recoverer[poolId] = recoverer_;
+        emit SetRecoveryAddress(poolId, recoverer_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -170,31 +176,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash)
-        external
-        auth
-    {
-        require(_adapterDetails[centrifugeId][poolId][adapter].id != 0, InvalidAdapter());
-        recoveries[centrifugeId][poolId][adapter][payloadHash] = block.timestamp + RECOVERY_CHALLENGE_PERIOD;
-        emit InitiateRecovery(centrifugeId, payloadHash, adapter);
-    }
-
-    /// @inheritdoc IMultiAdapter
-    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external auth {
-        require(recoveries[centrifugeId][poolId][adapter][payloadHash] != 0, RecoveryNotInitiated());
-        delete recoveries[centrifugeId][poolId][adapter][payloadHash];
-        emit DisputeRecovery(centrifugeId, payloadHash, adapter);
-    }
-
-    /// @inheritdoc IMultiAdapter
     function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
-        bytes32 payloadHash = keccak256(payload);
-        uint256 recovery = recoveries[centrifugeId][poolId][adapter][payloadHash];
-
-        require(recovery != 0, RecoveryNotInitiated());
-        require(recovery <= block.timestamp, RecoveryChallengePeriodNotEnded());
-
-        delete recoveries[centrifugeId][poolId][adapter][payloadHash];
+        require(msg.sender == recoverer[poolId], RecovererNotAllowed());
         _handle(centrifugeId, payload, adapter);
         emit ExecuteRecovery(centrifugeId, payload, adapter);
     }

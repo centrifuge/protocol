@@ -19,6 +19,7 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {AccountId} from "../common/types/AccountId.sol";
 import {IAdapter} from "../common/interfaces/IAdapter.sol";
 import {IGateway} from "../common/interfaces/IGateway.sol";
+import {IMultiAdapter} from "../common/interfaces/IMultiAdapter.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
@@ -647,26 +648,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters, bytes32 recoverer) external {
         _isManager(poolId);
 
-        //multiAdapter.initiateRecovery(centrifugeId, poolId, adapter, payloadHash);
-        // TODO
-    }
-
-    /// @inheritdoc IHub
-    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external {
-        _isManager(poolId);
-
-        //multiAdapter.disputeRecovery(centrifugeId, PoolId.wrap(0), adapter, payloadHash);
-        // TODO
-    }
-
-    /// @inheritdoc IHub
-    function setPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
-        _isManager(poolId);
-
-        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, adapters);
+        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, adapters, recoverer);
     }
 
     //----------------------------------------------------------------------------------------------

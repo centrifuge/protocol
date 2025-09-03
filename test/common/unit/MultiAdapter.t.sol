@@ -105,6 +105,7 @@ contract MultiAdapterTest is Test {
 
     address immutable ANY = makeAddr("ANY");
     address immutable REFUND = makeAddr("REFUND");
+    address immutable RECOVERER = makeAddr("RECOVERER");
 
     function _mockAdapter(IAdapter adapter, bytes memory message, uint256 estimate, bytes32 adapterData) internal {
         vm.mockCall(
@@ -229,6 +230,20 @@ contract MultiAdapterTestFileAdapters is MultiAdapterTest {
 
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
+    }
+}
+
+contract MultiAdapterTestSetRecoveryAddress is MultiAdapterTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+    }
+
+    function testSetRecoveryAddress() public {
+        vm.expectEmit();
+        emit IMultiAdapter.SetRecoveryAddress(POOL_A, RECOVERER);
+        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
     }
 }
 
@@ -454,87 +469,40 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestInitiateRecovery is MultiAdapterTest {
-    bytes32 constant PAYLOAD_HASH = bytes32("1");
-
-    function testErrInvalidAdapter() public {
-        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-    }
-
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-    }
-
-    function testInitiateRecovery() public {
-        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, oneAdapter);
-
-        vm.expectEmit();
-        emit IMultiAdapter.InitiateRecovery(REMOTE_CENT_ID, PAYLOAD_HASH, payloadAdapter);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-
-        assertEq(
-            multiAdapter.recoveries(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH),
-            block.timestamp + multiAdapter.RECOVERY_CHALLENGE_PERIOD()
-        );
-    }
-}
-
-contract MultiAdapterTestDisputeRecovery is MultiAdapterTest {
-    bytes32 constant PAYLOAD_HASH = bytes32("1");
-
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-    }
-
-    function testErrRecoveryNotInitiated() public {
-        vm.expectRevert(IMultiAdapter.RecoveryNotInitiated.selector);
-        multiAdapter.disputeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-    }
-
-    function testDisputeRecovery() public {
-        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, oneAdapter);
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-
-        vm.expectEmit();
-        emit IMultiAdapter.DisputeRecovery(REMOTE_CENT_ID, PAYLOAD_HASH, payloadAdapter);
-        multiAdapter.disputeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH);
-
-        assertEq(multiAdapter.recoveries(REMOTE_CENT_ID, POOL_A, payloadAdapter, PAYLOAD_HASH), 0);
-    }
-}
-
 contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
-    function testErrRecoveryNotInitiated() public {
-        vm.expectRevert(IMultiAdapter.RecoveryNotInitiated.selector);
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
-    }
-
-    function testErrRecoveryChallengePeriodNotEnded() public {
-        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, oneAdapter);
-
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, keccak256(MESSAGE_1));
-
+    function testErrRecovererNotAllowed() public {
         vm.prank(ANY);
-        vm.expectRevert(IMultiAdapter.RecoveryChallengePeriodNotEnded.selector);
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        vm.expectRevert(IMultiAdapter.RecovererNotAllowed.selector);
+        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
     }
 
     function testExecuteRecovery() public {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, oneAdapter);
+        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
 
-        multiAdapter.initiateRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, keccak256(MESSAGE_1));
-
-        vm.warp(multiAdapter.RECOVERY_CHALLENGE_PERIOD() + 1);
-
-        vm.prank(ANY);
+        vm.prank(RECOVERER);
         emit IMultiAdapter.ExecuteRecovery(REMOTE_CENT_ID, MESSAGE_1, payloadAdapter);
         multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
 
+        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+    }
+
+    function testExecuteRecoveryWithProofs() public {
+        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
+        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
+
+        vm.startPrank(RECOVERER);
+
+        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
+
+        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, proofAdapter1, proof);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
+
+        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, proofAdapter2, proof);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1); // executed!
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 }

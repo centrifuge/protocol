@@ -138,6 +138,7 @@ contract EndToEndDeployment is Test {
     address immutable BSM = makeAddr("BSM");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
+    address immutable RECOVERER = makeAddr("RECOVERER");
 
     uint128 constant USDC_AMOUNT_1 = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -223,7 +224,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, RECOVERER);
         vm.stopPrank();
     }
 

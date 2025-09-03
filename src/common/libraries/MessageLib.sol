@@ -74,7 +74,7 @@ library MessageLib {
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
-        (11   << uint8(MessageType.InitiateSetPoolAdapters) * 8) +
+        (43   << uint8(MessageType.InitiateSetPoolAdapters) * 8) +
         (9   << uint8(MessageType.ExecuteSetPoolAdapters) * 8) +
         (0   << uint8(MessageType._Placeholder7) * 8) +
         (0   << uint8(MessageType._Placeholder8) * 8) +
@@ -134,7 +134,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.RequestCallback)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.InitiateSetPoolAdapters)) {
-            length += message.toUint16(9) * 32; // message with variable length
+            length += message.toUint16(41) * 32; // message with variable length
         }
     }
 
@@ -266,6 +266,7 @@ library MessageLib {
 
     struct InitiateSetPoolAdapters {
         uint64 poolId;
+        bytes32 recoverer;
         bytes32[] adapterList;
     }
 
@@ -276,18 +277,19 @@ library MessageLib {
     {
         require(messageType(data) == MessageType.InitiateSetPoolAdapters, UnknownMessageType());
 
-        uint16 length = data.toUint16(9);
+        uint16 length = data.toUint16(41);
         bytes32[] memory adapterList = new bytes32[](length);
         for (uint256 i; i < length; i++) {
-            adapterList[i] = data.toBytes32(11 + i * 32);
+            adapterList[i] = data.toBytes32(43 + i * 32);
         }
 
-        return InitiateSetPoolAdapters({poolId: data.toUint64(1), adapterList: adapterList});
+        return
+            InitiateSetPoolAdapters({poolId: data.toUint64(1), recoverer: data.toBytes32(9), adapterList: adapterList});
     }
 
     function serialize(InitiateSetPoolAdapters memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.InitiateSetPoolAdapters, t.poolId, t.adapterList.length.toUint16(), t.adapterList
+            MessageType.InitiateSetPoolAdapters, t.poolId, t.recoverer, t.adapterList.length.toUint16(), t.adapterList
         );
     }
 

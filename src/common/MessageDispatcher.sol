@@ -538,9 +538,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendInitiateSetPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external {
+    function sendInitiateSetPoolAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] memory adapters,
+        bytes32 recoverer
+    ) external {
         if (centrifugeId == localCentrifugeId) {
             multiAdapter.file("adapters", centrifugeId, poolId, adapters);
+            multiAdapter.setRecoveryAddress(poolId, recoverer.toAddress());
         } else {
             bytes32[] memory adapterList = new bytes32[](adapters.length);
             for (uint256 i; i < adapters.length; i++) {
@@ -548,7 +554,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             }
             gateway.send(
                 centrifugeId,
-                MessageLib.InitiateSetPoolAdapters({poolId: poolId.raw(), adapterList: adapterList}).serialize()
+                MessageLib.InitiateSetPoolAdapters({
+                    poolId: poolId.raw(),
+                    recoverer: recoverer,
+                    adapterList: adapterList
+                }).serialize()
             );
         }
     }

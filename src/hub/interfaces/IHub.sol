@@ -363,11 +363,7 @@ interface IHub {
     /// @notice Perform an accounting entries update.
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 
-    function setPoolAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters) external;
-
-    /// @notice Initiate recovery of a payload.
-    function initiateRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
-
-    /// @notice Dispute recovery of a payload.
-    function disputeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes32 payloadHash) external;
+    /// @notice Configure adapters for a pool in another chain.
+    /// @param recoverer address used to recover messages in the specified chain
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters, bytes32 recoverer) external;
 }

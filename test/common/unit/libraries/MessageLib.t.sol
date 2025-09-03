@@ -218,12 +218,15 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
-    function testInitiateSetPoolAdapters(uint64 poolId, bytes32[] memory adapterList) public pure {
+    function testInitiateSetPoolAdapters(uint64 poolId, bytes32 recoverer, bytes32[] memory adapterList) public pure {
+        vm.assume(adapterList.length <= 20);
+
         MessageLib.InitiateSetPoolAdapters memory a =
-            MessageLib.InitiateSetPoolAdapters({poolId: poolId, adapterList: adapterList});
+            MessageLib.InitiateSetPoolAdapters({poolId: poolId, recoverer: recoverer, adapterList: adapterList});
         MessageLib.InitiateSetPoolAdapters memory b = MessageLib.deserializeInitiateSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
+        assertEq(a.recoverer, b.recoverer);
         assertEq(a.adapterList, b.adapterList);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());

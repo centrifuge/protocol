@@ -204,6 +204,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
             multiAdapter.file("adapters", centrifugeId, PoolId.wrap(m.poolId), adapters);
+            multiAdapter.setRecoveryAddress(PoolId.wrap(m.poolId), m.recoverer.toAddress());
         } else {
             revert InvalidMessage(uint8(kind));
         }
