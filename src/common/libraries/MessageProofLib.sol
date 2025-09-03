@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 
 library MessageProofLib {

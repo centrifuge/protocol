@@ -5,8 +5,8 @@ import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {ShareClassId} from "../types/ShareClassId.sol";
 import {IAdapter} from "../interfaces/IAdapter.sol";
+import {ShareClassId} from "../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {

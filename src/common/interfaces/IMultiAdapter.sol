@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;

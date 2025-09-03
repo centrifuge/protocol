@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
-import {PoolId} from "../../../src/common/types/PoolId.sol";
 
+import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {MessageProofLib} from "../../../src/common/libraries/MessageProofLib.sol";
