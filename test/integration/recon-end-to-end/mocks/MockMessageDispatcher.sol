@@ -254,14 +254,12 @@ contract MockMessageDispatcher {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        uint128 amount,
+        ISpokeMessageSender.UpdateData calldata data,
         D18 pricePoolPerAsset,
-        bool isIncrease,
-        bool isSnapshot,
-        uint64 nonce
+        uint128 extraGasLimit
     ) external {
         hub.updateHoldingAmount(
-            localCentrifugeId, poolId, scId, assetId, amount, pricePoolPerAsset, isIncrease, isSnapshot, nonce
+            localCentrifugeId, poolId, scId, assetId, data.netAmount, pricePoolPerAsset, data.isIncrease, data.isSnapshot, data.nonce
         );
     }
 

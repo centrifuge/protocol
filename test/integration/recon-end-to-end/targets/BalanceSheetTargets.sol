@@ -38,19 +38,22 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         _trackPoolAndShareClass(poolId, scId);
         _trackAsset(assetId);
         
+        // Update queue ghost variables
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Track asset counter for Queue State Consistency properties
+        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        if (prevDeposits == 0 && prevWithdrawals == 0) {
+            ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
+        }
+        
         balanceSheet.deposit(poolId, scId, vault.asset(), tokenId, amount);
 
         sumOfManagerDeposits[vault.asset()] += amount;
         
-        // Update queue ghost variables
-        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         ghost_assetQueueDeposits[assetKey] += amount;
     }
 
-    // NOTE: removed because not useful for fuzzing
-    // function balanceSheet_file(bytes32 what, address data) public updateGhosts asActor {
-    //     balanceSheet.file(what, data);
-    // }
 
     function balanceSheet_issue(uint128 shares) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
@@ -166,12 +169,19 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
         
+        // Update queue ghost variables
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Track asset counter for Queue State Consistency properties
+        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        if (prevDeposits == 0 && prevWithdrawals == 0) {
+            ghost_assetCounterPerAsset[assetKey] = 1; // Asset queue becomes non-empty
+        }
+        
         balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount);
 
         sumOfManagerWithdrawals[vault.asset()] += amount;
         
-        // Update queue ghost variables
-        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         ghost_assetQueueWithdrawals[assetKey] += amount;
     }
 
@@ -193,12 +203,20 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vault.scId();
         AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
         
-        // Track nonce before submission
+        // Track nonce monotonicity for Queue State Consistency properties
         bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        
+        // Get current nonce to track monotonicity
+        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        ghost_previousNonce[shareKey] = currentNonce; // Store previous nonce
+        
         ghost_assetQueueNonce[assetKey]++;
         
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
+        
+        // Mark asset queue as empty after submission
+        ghost_assetCounterPerAsset[assetKey] = 0;
     }
     
     function balanceSheet_submitQueuedShares(uint128 extraGasLimit) public updateGhosts asActor {
@@ -206,8 +224,13 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         
-        // Track nonce before submission
+        // Track nonce monotonicity for Queue State Consistency properties
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+        
+        // Get current nonce to track monotonicity
+        (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        ghost_previousNonce[shareKey] = currentNonce; // Store previous nonce
+        
         ghost_shareQueueNonce[shareKey]++;
         
         balanceSheet.submitQueuedShares(poolId, scId, extraGasLimit);

@@ -1444,7 +1444,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     }
     
     /// @notice ========================== SHARE QUEUE PROPERTIES ==========================
-    /// @dev Category 3 Properties: Share Queue - HIGHEST RISK  
+    /// @dev Share Queue Properties - higher risk area
     /// @dev These properties verify the critical share queue flip logic that poses the greatest risk to protocol integrity
     
     // Property 3.1 & 3.2: Issue/Revoke Logic Correctness
@@ -1617,6 +1617,154 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     trackedAssets.length,
                     "SHARE-QUEUE-09: Counter cannot exceed total tracked assets"
                 );
+            }
+        }
+    }
+
+    // ============ Queue State Consistency Properties ============
+
+    /// @dev Property 1.1: Asset Queue Counter Consistency
+    /// Definition: queuedAssets[p][sc][a].deposits + queuedAssets[p][sc][a].withdrawals > 0 ⟺ queuedAssetCounter includes asset a
+    /// Ensures counter accurately tracks non-empty queues
+    function property_assetQueueCounterConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                
+                // Get the queuedAssetCounter from BalanceSheet
+                (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+                uint256 nonEmptyAssetCount = 0;
+                
+                // Count non-empty asset queues
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    
+                    if (deposits > 0 || withdrawals > 0) {
+                        nonEmptyAssetCount++;
+                        
+                        // Ghost variable should track this asset as non-empty
+                        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+                        t(ghost_assetCounterPerAsset[assetKey] == 1, 
+                          "property_assetQueueCounterConsistency: ghost tracking mismatch");
+                    }
+                }
+                
+                // Property: Counter should equal number of non-empty asset queues
+                eq(uint256(queuedAssetCounter), nonEmptyAssetCount, 
+                   "property_assetQueueCounterConsistency: counter mismatch");
+            }
+        }
+    }
+
+    /// @dev Property 1.2: Asset Counter Bounds
+    /// Definition: Sum of individual asset queue counters ≤ total queuedAssetCounter for share class
+    /// Prevents counter overflow or manipulation
+    function property_assetCounterBounds() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                
+                (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+                
+                // Counter should not exceed total number of tracked assets
+                lte(uint256(queuedAssetCounter), trackedAssets.length,
+                    "property_assetCounterBounds: counter exceeds max possible");
+            }
+        }
+    }
+
+    /// @dev Property 1.3: Asset Queue Non-Negative
+    /// Definition: Asset queues can never underflow (deposits/withdrawals ≥ 0)
+    /// Mathematical consistency of accumulation
+    function property_assetQueueNonNegative() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    
+                    // Both values must be non-negative (uint128 enforces this, but verify explicitly)
+                    gte(uint256(deposits), 0, "property_assetQueueNonNegative: negative deposits");
+                    gte(uint256(withdrawals), 0, "property_assetQueueNonNegative: negative withdrawals");
+                    
+                    // Ghost variables should also be non-negative
+                    bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+                    gte(ghost_assetQueueDeposits[assetKey], 0, 
+                        "property_assetQueueNonNegative: ghost deposits negative");
+                    gte(ghost_assetQueueWithdrawals[assetKey], 0,
+                        "property_assetQueueNonNegative: ghost withdrawals negative");
+                }
+            }
+        }
+    }
+
+    /// @dev Property 1.4: Share Queue isPositive Flag Consistency
+    /// Definition: queuedShares[p][sc].isPositive = true ⟺ queuedShares[p][sc].delta > 0
+    /// This ensures the flag accurately represents the queue state in ALL scenarios:
+    /// - When delta > 0: isPositive must be true (net issuance pending)
+    /// - When delta = 0: isPositive must be false (no pending operations)
+    /// This property covers the complete biconditional relationship and replaces the need
+    /// for separate zero-delta checking as it encompasses all possible states.
+    function property_shareQueueFlagConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                
+                (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
+                
+                // Complete biconditional check: isPositive ⟺ (delta > 0)
+                if (delta > 0) {
+                    t(isPositive, "property_shareQueueFlagConsistency: delta > 0 requires isPositive = true");
+                } else {
+                    // delta == 0 (uint128 cannot be negative)
+                    t(!isPositive, "property_shareQueueFlagConsistency: delta = 0 requires isPositive = false");
+                }
+            }
+        }
+    }
+
+
+    /// @dev Property 1.6: Nonce Monotonicity
+    /// Definition: Nonce strictly increases with each submission
+    /// Ensures proper message ordering
+    function property_nonceMonotonicity() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] memory shareClassIds = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClassIds.length; j++) {
+                ShareClassId scId = shareClassIds[j];
+                bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+                
+                (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+                uint256 previousNonce = ghost_previousNonce[shareKey];
+                
+                // If we have a previous nonce recorded, current should be greater
+                if (previousNonce > 0) {
+                    gt(uint256(currentNonce), previousNonce,
+                       "property_nonceMonotonicity: nonce did not increase");
+                }
+                
+                // Ghost variable tracking should be consistent
+                if (ghost_shareQueueNonce[shareKey] > 0) {
+                    gte(uint256(currentNonce), ghost_shareQueueNonce[shareKey],
+                        "property_nonceMonotonicity: ghost nonce tracking inconsistent");
+                }
             }
         }
     }

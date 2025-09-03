@@ -226,4 +226,135 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Call balanceSheet_deposit with test values
         balanceSheet_deposit(tokenId, depositAmount);
     }
+
+    function test_balanceSheet_issue_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue shares - verify no revert
+        balanceSheet_issue(100e18);
+    }
+
+    function test_balanceSheet_revoke_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue shares first
+        balanceSheet_issue(200e18);
+        
+        // Approve and revoke
+        IBaseVault vault = IBaseVault(_getVault());
+        vm.startPrank(_getActor());
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        balanceSheet_revoke(100e18);
+    }
+
+    function test_balanceSheet_withdraw_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Deposit first
+        asset_approve(address(balanceSheet), 200e18);
+        balanceSheet_deposit(0, 200e18);
+        
+        // Withdraw
+        balanceSheet_withdraw(0, 100e18);
+    }
+
+    function test_balanceSheet_submitQueuedShares_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Queue some shares
+        balanceSheet_issue(100e18);
+        
+        // Submit queued shares
+        balanceSheet_submitQueuedShares(0);
+    }
+
+    function test_balanceSheet_submitQueuedAssets_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        // Queue some assets
+        asset_approve(address(balanceSheet), 100e18);
+        balanceSheet_deposit(0, 100e18);
+        
+        // Submit queued assets
+        balanceSheet_submitQueuedAssets(0);
+    }
+
+    function test_queue_issue_revoke_sequence() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Issue initial batch
+        balanceSheet_issue(200e18);
+        
+        // Approve for revocations
+        IBaseVault vault = IBaseVault(_getVault());
+        vm.startPrank(_getActor());
+        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        // Execute sequence
+        balanceSheet_revoke(50e18);
+        balanceSheet_issue(75e18);
+        balanceSheet_revoke(100e18);
+    }
+
+    function test_queue_deposit_withdraw_sequence() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true);
+        
+        // Set prices
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        spoke_updateMember(type(uint64).max);
+        
+        // Approve for all operations
+        asset_approve(address(balanceSheet), 1000e18);
+        
+        // Execute sequence
+        balanceSheet_deposit(0, 200e18);
+        balanceSheet_withdraw(0, 50e18);
+        balanceSheet_deposit(0, 100e18);
+    }
 }

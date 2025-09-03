@@ -173,6 +173,10 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
     mapping(bytes32 => uint256) public ghost_assetQueueNonce; // Track nonce progression per asset
 
+    // Ghost variables for Queue State Consistency properties
+    mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // Per-asset counter tracking (non-empty asset queues)
+    mapping(bytes32 => uint256) public ghost_previousNonce; // Previous nonce value to verify monotonicity
+
     // Before/After state tracking for ShareQueueProperties
     mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
     mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
