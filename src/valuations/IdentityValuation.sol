@@ -8,8 +8,8 @@ import {IERC6909Decimals} from "../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";

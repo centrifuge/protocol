@@ -6,8 +6,8 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
