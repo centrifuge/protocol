@@ -65,8 +65,11 @@ contract OracleValuation is IOracleValuation {
         view
         returns (uint128 quoteAmount)
     {
+        Price memory price_ = price[poolId][scId][assetId];
+        require(price_.isValid, PriceNotSet());
+
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price[poolId][scId][assetId].value
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price_.value
         );
     }
 }

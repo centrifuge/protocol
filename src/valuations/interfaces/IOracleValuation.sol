@@ -21,4 +21,5 @@ interface IOracleValuation is IValuation {
 
     error NotFeeder();
     error NotHubManager();
+    error PriceNotSet();
 }
