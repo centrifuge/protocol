@@ -671,6 +671,175 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         
         console2.log("All BalanceSheet queue properties pass on initial state");
     }
+
+    /// @dev Test Property 2.6: Reserve/Unreserve Balance Integrity
+    /// @notice Tests reserve operations maintain strict balance consistency
+    function test_property_reserveUnreserveBalanceIntegrity_comprehensive() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 28, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        MockERC20 assetToken = MockERC20(vault.asset());
+        
+        assetToken.mint(address(this), 20000e18);
+        assetToken.approve(address(balanceSheet), type(uint256).max);
+        
+        // Test Scenario 1: Initial deposit to establish balance
+        balanceSheet_deposit(0, 10000e18);
+        
+        // Get initial balances - assume no initial reserves
+        uint128 initialAvailable = balanceSheet.availableBalanceOf(
+            vault.poolId(), vault.scId(), vault.asset(), 0
+        );
+        
+        // Test Scenario 2: Single reserve operation
+        balanceSheet_reserve(0, 2000e18);
+        
+        assertEq(
+            balanceSheet.availableBalanceOf(vault.poolId(), vault.scId(), vault.asset(), 0),
+            initialAvailable - 2000e18, 
+            "Available should decrease by 2000e18"
+        );
+        
+        property_reserveUnreserveBalanceIntegrity();
+        
+        // Test Scenario 3: Multiple reserve operations
+        balanceSheet_reserve(0, 1500e18);
+        balanceSheet_reserve(0, 1000e18);
+        property_reserveUnreserveBalanceIntegrity();
+        
+        // Test Scenario 4: Partial unreserve
+        balanceSheet_unreserve(0, 1000e18);
+        property_reserveUnreserveBalanceIntegrity();
+        
+        // Test Scenario 5: Complete unreserve  
+        balanceSheet_unreserve(0, 3500e18);
+        property_reserveUnreserveBalanceIntegrity();
+        
+        console2.log("Reserve/Unreserve Balance Integrity: All scenarios validated");
+    }
+
+    /// @dev Test Property 2.4: Escrow Balance Sufficiency
+    /// @notice Tests balance sufficiency under various stress conditions
+    function test_property_escrowBalanceSufficiency_comprehensive() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 26, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        MockERC20 assetToken = MockERC20(vault.asset());
+        
+        // Fund the test
+        assetToken.mint(address(this), 10000e18);
+        assetToken.approve(address(balanceSheet), type(uint256).max);
+        
+        // Test Scenario 1: Build up balance and verify sufficiency
+        balanceSheet_deposit(0, 5000e18);
+        property_escrowBalanceSufficiency();
+        
+        // Test Scenario 2: Reserve portion and check available balance sufficiency
+        balanceSheet_reserve(0, 2000e18);
+        uint128 available = balanceSheet.availableBalanceOf(
+            vault.poolId(), 
+            vault.scId(), 
+            vault.asset(), 
+            0
+        );
+        assertEq(available, 3000e18, "Available should be 3000e18 after reserve");
+        
+        // Test Scenario 3: Queue withdrawals up to available limit (1000e18 available after 2000e18 reserved)
+        balanceSheet_withdraw(0, 1000e18);
+        property_escrowBalanceSufficiency();
+        
+        // Test Scenario 4: Unreserve and verify increased availability
+        balanceSheet_unreserve(0, 1000e18);
+        available = balanceSheet.availableBalanceOf(
+            vault.poolId(),
+            vault.scId(), 
+            vault.asset(),
+            0
+        );
+        assertEq(available, 3000e18, "Available should remain same after unreserve (withdraw reduces total, not reserved)");
+        
+        // Test Scenario 5: Additional deposit and complex operations
+        balanceSheet_deposit(0, 3000e18);
+        balanceSheet_reserve(0, 2000e18);
+        balanceSheet_withdraw(0, 1500e18);
+        
+        // Final validation
+        property_escrowBalanceSufficiency();
+        
+        console2.log("Escrow Balance Sufficiency: All stress scenarios passed");
+    }
+
+    /// @dev Test Phase 3: Authorization Boundary Enforcement
+    /// @notice Simplified test to validate property function works 
+    function test_property_authorizationBoundaryEnforcement_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 32, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        
+        // Fund test with assets
+        MockERC20 assetToken = MockERC20(vault.asset());
+        assetToken.mint(address(this), 10000e18);
+        assetToken.approve(address(balanceSheet), type(uint256).max);
+        
+        // Perform some authorized operations (as address(this) is authorized)
+        balanceSheet_deposit(0, 1000e18);
+        balanceSheet_noteDeposit(0, 500e18);
+        balanceSheet_reserve(0, 200e18);
+        balanceSheet_unreserve(0, 100e18);
+        
+        // Property should pass (no unauthorized operations recorded)
+        property_authorizationBoundaryEnforcement();
+        
+        console2.log("Authorization Boundary Enforcement: Basic validation passed");
+    }
+
+    /// @dev Test Phase 4: Share Transfer Restrictions
+    /// @notice Simplified test to validate property function works 
+    function test_property_shareTransferRestrictions_basic() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 34, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        MockERC20 assetToken = MockERC20(vault.asset());
+        
+        // Fund test
+        assetToken.mint(address(this), 10000e18);
+        assetToken.approve(address(balanceSheet), type(uint256).max);
+        
+        // Deposit assets to create shares for transfer
+        balanceSheet_deposit(0, 5000e18);
+        balanceSheet_issue(1000e18);
+        
+        // Test normal transfer (should work)
+        address normalUser = address(0x5001);
+        balanceSheet_transferSharesFrom(normalUser, 100e18);
+        
+        // Validate property
+        property_shareTransferRestrictions();
+        
+        console2.log("Share Transfer Restrictions: Basic validation passed");
+    }
     
     /// @dev Test complete deposit and claim flow with queue tracking
     /// @notice Verifies end-to-end async deposit flow with ghost variable tracking
@@ -730,5 +899,13 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         // Call relevant properties to validate end-to-end consistency
         property_assetQueueCounterConsistency();
         property_shareQueueFlagConsistency();
+    }
+}
+
+/// @dev Mock contract for testing endorsed contract functionality
+contract MockEndorsedContract {
+    /// @dev Simple contract that can receive share tokens but should be blocked from transferring
+    function onERC20Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC20Received.selector;
     }
 }

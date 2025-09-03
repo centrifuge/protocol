@@ -177,6 +177,41 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // Per-asset counter tracking (non-empty asset queues)
     mapping(bytes32 => uint256) public ghost_previousNonce; // Previous nonce value to verify monotonicity
 
+    // === PHASE 1: RESERVE/UNRESERVE BALANCE INTEGRITY GHOST VARIABLES ===
+    mapping(bytes32 => uint256) public ghost_totalReserveOperations;
+    mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
+    mapping(bytes32 => uint256) public ghost_netReserved;
+    mapping(bytes32 => uint256) public ghost_maxReserved;
+    mapping(bytes32 => bool) public ghost_reserveOverflow;
+    mapping(bytes32 => bool) public ghost_reserveUnderflow;
+    mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
+
+    // === PHASE 2: ESCROW BALANCE SUFFICIENCY GHOST VARIABLES ===
+    mapping(bytes32 => uint256) public ghost_escrowTotalBalance;
+    mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
+    mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
+    mapping(bytes32 => uint256) public ghost_pendingWithdrawalQueue;
+    mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
+    mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
+
+    // === PHASE 3: AUTHORIZATION BOUNDARY ENFORCEMENT GHOST VARIABLES ===
+    enum AuthLevel { NONE, MANAGER, WARD }
+    mapping(address => AuthLevel) public ghost_authorizationLevel;
+    mapping(bytes32 => uint256) public ghost_unauthorizedAttempts;
+    mapping(bytes32 => uint256) public ghost_privilegedOperationCount;
+    mapping(bytes32 => address) public ghost_lastAuthorizedCaller;
+    mapping(address => uint256) public ghost_authorizationChanges;
+    mapping(bytes32 => bool) public ghost_authorizationBypass;
+
+    // === PHASE 4: SHARE TRANSFER RESTRICTIONS GHOST VARIABLES ===
+    mapping(address => bool) public ghost_isEndorsedContract;
+    mapping(bytes32 => uint256) public ghost_endorsedTransferAttempts;
+    mapping(bytes32 => uint256) public ghost_blockedEndorsedTransfers;
+    mapping(bytes32 => uint256) public ghost_validTransferCount;
+    mapping(bytes32 => address) public ghost_lastTransferFrom;
+    mapping(bytes32 => address) public ghost_lastTransferTo;
+    mapping(address => uint256) public ghost_endorsementChanges;
+
     // Before/After state tracking for ShareQueueProperties
     mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
     mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
@@ -475,5 +510,85 @@ abstract contract Setup is
             }
         }
         trackedAssets.push(assetId);
+    }
+
+    // === PHASE 3: AUTHORIZATION HELPER FUNCTIONS ===
+    
+    /// @notice Track authorization for a caller performing privileged operation
+    function _trackAuthorization(address caller, PoolId poolId) internal {
+        bytes32 key = keccak256(abi.encode(poolId));
+        
+        // Check actual authorization
+        bool isWard = balanceSheet.wards(caller) == 1;
+        bool isManager = balanceSheet.manager(poolId, caller);
+        
+        // Update ghost tracking
+        if (isWard) {
+            ghost_authorizationLevel[caller] = AuthLevel.WARD;
+        } else if (isManager) {
+            ghost_authorizationLevel[caller] = AuthLevel.MANAGER;
+        } else {
+            ghost_authorizationLevel[caller] = AuthLevel.NONE;
+            ghost_unauthorizedAttempts[key]++;
+        }
+        
+        if (isWard || isManager) {
+            ghost_privilegedOperationCount[key]++;
+            ghost_lastAuthorizedCaller[key] = caller;
+        }
+    }
+    
+    /// @notice Check and record authorization level changes
+    function _checkAndRecordAuthChange(address user) internal {
+        AuthLevel oldLevel = ghost_authorizationLevel[user];
+        AuthLevel newLevel = AuthLevel.NONE;
+        
+        // Check all pools for manager permissions - simplified for testing
+        // In a full implementation, this would check all tracked pools
+        if (balanceSheet.wards(user) == 1) {
+            newLevel = AuthLevel.WARD;
+        } else {
+            // Check if user is manager for any tracked pool
+            for (uint256 i = 0; i < activePools.length; i++) {
+                if (balanceSheet.manager(activePools[i], user)) {
+                    newLevel = AuthLevel.MANAGER;
+                    break;
+                }
+            }
+        }
+        
+        if (oldLevel != newLevel) {
+            ghost_authorizationChanges[user]++;
+            ghost_authorizationLevel[user] = newLevel;
+        }
+    }
+
+    // === PHASE 4: ENDORSEMENT HELPER FUNCTIONS ===
+    
+    /// @dev Check if an address is an endorsed contract
+    function _isEndorsedContract(address addr) internal view returns (bool) {
+        // Check if address is endorsed by root
+        return root.endorsed(addr);
+    }
+
+    /// @dev Track transfer attempts for endorsement validation
+    function _trackEndorsedTransfer(address from, address to, PoolId poolId, ShareClassId scId) internal {
+        bytes32 key = keccak256(abi.encode(poolId, scId));
+        
+        // Track transfer details
+        ghost_lastTransferFrom[key] = from;
+        ghost_lastTransferTo[key] = to;
+        
+        // Check if from is endorsed
+        if (_isEndorsedContract(from)) {
+            ghost_endorsedTransferAttempts[key]++;
+            ghost_isEndorsedContract[from] = true;
+        }
+        
+        // Track system contracts as implicitly endorsed
+        if (from == address(balanceSheet) || from == address(spoke) || from == address(hub)) {
+            ghost_isEndorsedContract[from] = true;
+            ghost_endorsedTransferAttempts[key]++;
+        }
     }
 }

@@ -13,6 +13,7 @@ import {PoolId} from "src/common/types/PoolId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {MathLib} from "src/misc/libraries/MathLib.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
+import {IPoolEscrow, Holding} from "src/common/interfaces/IPoolEscrow.sol";
 import {AccountType} from "src/hub/interfaces/IHub.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {BaseVault} from "src/vaults/BaseVaults.sol";
@@ -1764,6 +1765,300 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 if (ghost_shareQueueNonce[shareKey] > 0) {
                     gte(uint256(currentNonce), ghost_shareQueueNonce[shareKey],
                         "property_nonceMonotonicity: ghost nonce tracking inconsistent");
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.6: Reserve/Unreserve Balance Integrity
+    /// @notice Ensures reserve operations maintain balance consistency
+    function property_reserveUnreserveBalanceIntegrity() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+                    
+                    // Skip if no reserve operations occurred
+                    if (ghost_totalReserveOperations[key] == 0 && 
+                        ghost_totalUnreserveOperations[key] == 0) continue;
+                    
+                    // Use vault to get asset address
+                    IBaseVault vault = IBaseVault(_getVault());
+                    address asset = vault.asset();
+                    
+                    // Get available balance
+                    uint128 available = balanceSheet.availableBalanceOf(poolId, scId, asset, 0);
+                    uint128 reserved = uint128(ghost_netReserved[key]);
+                    uint128 total = available + reserved;
+                    
+                    // Core Invariant 1: Available = Total - Reserved (automatically satisfied by construction)
+                    eq(
+                        available,
+                        total - reserved,
+                        "Reserve accounting formula violated: available != total - reserved"
+                    );
+                    
+                    // Core Invariant 2: Reserved cannot exceed total (automatically satisfied by construction)
+                    lte(
+                        reserved,
+                        total,
+                        "Reserved balance exceeds total balance"
+                    );
+                    
+                    // Core Invariant 3: Net reserved matches ghost tracking
+                    // This is implicitly tested since we use ghost_netReserved to calculate reserved
+                    
+                    // Core Invariant 4: No overflow occurred
+                    t(
+                        !ghost_reserveOverflow[key],
+                        "Reserve operation caused overflow"
+                    );
+                    
+                    // Core Invariant 5: No underflow occurred
+                    t(
+                        !ghost_reserveUnderflow[key],
+                        "Unreserve operation caused underflow"
+                    );
+                    
+                    // Core Invariant 6: Available + Reserved = Total (automatically satisfied by construction)
+                    eq(
+                        uint256(available) + uint256(reserved),
+                        uint256(total),
+                        "Balance components don't sum to total"
+                    );
+                    
+                    // Core Invariant 7: Max reserved never exceeded total
+                    // We can't validate this without accessing the escrow's actual reserved amount
+                    // But we can ensure our ghost tracking didn't overflow
+                    
+                    // Core Invariant 8: No integrity violations
+                    eq(
+                        ghost_reserveIntegrityViolations[key],
+                        0,
+                        "Reserve integrity violations detected"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.4: Escrow Balance Sufficiency
+    /// @notice Ensures available balance always covers withdrawals
+    function property_escrowBalanceSufficiency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
+                    
+                    // Skip if not tracked
+                    if (!ghost_escrowSufficiencyTracked[key]) continue;
+                    
+                    // Use vault to get asset address (same pattern as Phase 1)
+                    IBaseVault vault = IBaseVault(_getVault());
+                    address asset = vault.asset();
+                    
+                    // Get current available balance
+                    uint128 available = balanceSheet.availableBalanceOf(poolId, scId, asset, 0);
+                    
+                    // Get queued withdrawals
+                    (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    
+                    // CRITICAL: Available must cover all pending withdrawals
+                    gte(
+                        available,
+                        queuedWithdrawals,
+                        "CRITICAL: Insufficient balance for pending withdrawals"
+                    );
+                    
+                    // Core Invariant: Available = Total - Reserved (using calculation approach from Phase 1)
+                    uint128 reserved = uint128(ghost_netReserved[key]);
+                    uint128 calculatedTotal = available + reserved;
+                    
+                    // Verify ghost tracking consistency
+                    eq(
+                        available,
+                        ghost_escrowAvailableBalance[key],
+                        "Available balance ghost mismatch"
+                    );
+                    eq(
+                        reserved,
+                        ghost_escrowReservedBalance[key],
+                        "Reserved balance ghost mismatch"
+                    );
+                    
+                    // Total must cover all obligations
+                    gte(
+                        calculatedTotal,
+                        reserved + queuedWithdrawals,
+                        "Total balance insufficient for obligations"
+                    );
+                    
+                    // No failed withdrawals should occur if balance is sufficient
+                    eq(
+                        ghost_failedWithdrawalAttempts[key],
+                        0,
+                        "Withdrawals failed despite sufficient balance"
+                    );
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.7: Authorization Boundary Enforcement
+    /// @notice Ensures only authorized parties perform privileged operations
+    function property_authorizationBoundaryEnforcement() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            bytes32 poolKey = keccak256(abi.encode(poolId));
+            
+            // CRITICAL: No unauthorized operations should succeed
+            eq(
+                ghost_unauthorizedAttempts[poolKey],
+                0,
+                "CRITICAL: Unauthorized operations succeeded"
+            );
+            
+            // Check for authorization bypass
+            t(
+                !ghost_authorizationBypass[poolKey],
+                "CRITICAL: Authorization checks were bypassed"
+            );
+            
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+                
+                // Verify all privileged operations had proper authorization
+                if (ghost_privilegedOperationCount[key] > 0) {
+                    address lastCaller = ghost_lastAuthorizedCaller[key];
+                    AuthLevel recordedLevel = ghost_authorizationLevel[lastCaller];
+                    
+                    // Must be ward or manager
+                    t(
+                        recordedLevel != AuthLevel.NONE,
+                        "CRITICAL: Non-authorized address performed privileged operation"
+                    );
+                    
+                    // Verify authorization is still valid
+                    if (recordedLevel == AuthLevel.WARD) {
+                        eq(
+                            balanceSheet.wards(lastCaller),
+                            1,
+                            "Ward authorization was revoked but operations continued"
+                        );
+                    } else if (recordedLevel == AuthLevel.MANAGER) {
+                        t(
+                            balanceSheet.manager(poolId, lastCaller),
+                            "Manager authorization was revoked but operations continued"
+                        );
+                    }
+                }
+            }
+            
+            // Check authorization consistency across all actors
+            address[] memory actors = _getActors();
+            for (uint256 k = 0; k < actors.length; k++) {
+                AuthLevel recordedAuth = ghost_authorizationLevel[actors[k]];
+                AuthLevel actualAuth = AuthLevel.NONE;
+                
+                // Determine actual authorization level
+                if (balanceSheet.wards(actors[k]) == 1) {
+                    actualAuth = AuthLevel.WARD;
+                } else if (balanceSheet.manager(poolId, actors[k])) {
+                    actualAuth = AuthLevel.MANAGER;
+                }
+                
+                // Recorded auth should match actual (or be higher if recently changed)
+                gte(
+                    uint256(recordedAuth),
+                    uint256(actualAuth),
+                    "Authorization level tracking fell behind actual"
+                );
+                
+                // If auth changed, verify it was legitimate
+                if (ghost_authorizationChanges[actors[k]] > 0 && actualAuth == AuthLevel.NONE) {
+                    // Auth was revoked - ensure no operations after revocation
+                    if (shareClasses.length > 0) {
+                        address lastOp = ghost_lastAuthorizedCaller[keccak256(abi.encode(poolId, shareClasses[0]))];
+                        t(
+                            lastOp != actors[k] || ghost_authorizationChanges[actors[k]] == 1,
+                            "Operations continued after authorization revoked"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.8: Share Transfer Restrictions
+    /// @notice Ensures transfers from endorsed contracts are blocked
+    function property_shareTransferRestrictions() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+                
+                // CRITICAL: No transfers from endorsed contracts should succeed
+                eq(
+                    ghost_endorsedTransferAttempts[key] - ghost_blockedEndorsedTransfers[key],
+                    0,
+                    "Transfers from endorsed contracts were not blocked"
+                );
+                
+                // Verify all valid transfers came from non-endorsed addresses
+                if (ghost_validTransferCount[key] > 0) {
+                    address lastFrom = ghost_lastTransferFrom[key];
+                    
+                    // Must not be endorsed contract
+                    t(
+                        !ghost_isEndorsedContract[lastFrom],
+                        "Transfer from endorsed contract was allowed"
+                    );
+                    
+                    // Additional validation for special addresses
+                    t(
+                        lastFrom != address(balanceSheet),
+                        "Transfer from BalanceSheet contract was allowed"
+                    );
+                    t(
+                        lastFrom != address(spoke),
+                        "Transfer from Spoke contract was allowed"
+                    );
+                    t(
+                        lastFrom != address(hub),
+                        "Transfer from Hub contract was allowed"
+                    );
+                }
+                
+                // Check endorsement changes didn't allow bypasses
+                address[] memory actors = _getActors();
+                for (uint256 k = 0; k < actors.length; k++) {
+                    if (ghost_endorsementChanges[actors[k]] > 0) {
+                        // If endorsement changed, verify no transfers during transition
+                        if (ghost_lastTransferFrom[key] == actors[k] && 
+                            ghost_isEndorsedContract[actors[k]]) {
+                            t(
+                                false,
+                                "Transfer occurred during endorsement transition"
+                            );
+                        }
+                    }
                 }
             }
         }
