@@ -1865,7 +1865,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     // Skip if not tracked
                     if (!ghost_escrowSufficiencyTracked[key]) continue;
                     
-                    // Use vault to get asset address (same pattern as Phase 1)
+                    // Use vault to get asset address
                     IBaseVault vault = IBaseVault(_getVault());
                     address asset = vault.asset();
                     
@@ -1875,14 +1875,14 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     // Get queued withdrawals
                     (, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
                     
-                    // CRITICAL: Available must cover all pending withdrawals
+                    // Available must cover all pending withdrawals
                     gte(
                         available,
                         queuedWithdrawals,
-                        "CRITICAL: Insufficient balance for pending withdrawals"
+                        "Insufficient balance for pending withdrawals"
                     );
                     
-                    // Core Invariant: Available = Total - Reserved (using calculation approach from Phase 1)
+                    // Core Invariant: Available = Total - Reserved
                     uint128 reserved = uint128(ghost_netReserved[key]);
                     uint128 calculatedTotal = available + reserved;
                     
@@ -1923,17 +1923,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             PoolId poolId = activePools[i];
             bytes32 poolKey = keccak256(abi.encode(poolId));
             
-            // CRITICAL: No unauthorized operations should succeed
+            // No unauthorized operations should succeed
             eq(
                 ghost_unauthorizedAttempts[poolKey],
                 0,
-                "CRITICAL: Unauthorized operations succeeded"
+                "Unauthorized operations succeeded"
             );
             
             // Check for authorization bypass
             t(
                 !ghost_authorizationBypass[poolKey],
-                "CRITICAL: Authorization checks were bypassed"
+                "Authorization checks were bypassed"
             );
             
             ShareClassId[] storage shareClasses = activeShareClasses[poolId];
@@ -1949,7 +1949,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                     // Must be ward or manager
                     t(
                         recordedLevel != AuthLevel.NONE,
-                        "CRITICAL: Non-authorized address performed privileged operation"
+                        "Non-authorized address performed privileged operation"
                     );
                     
                     // Verify authorization is still valid
@@ -2014,7 +2014,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = keccak256(abi.encode(poolId, scId));
                 
-                // CRITICAL: No transfers from endorsed contracts should succeed
+                // No transfers from endorsed contracts should succeed
                 eq(
                     ghost_endorsedTransferAttempts[key] - ghost_blockedEndorsedTransfers[key],
                     0,
@@ -2057,6 +2057,335 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                                 false,
                                 "Transfer occurred during endorsement transition"
                             );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property 2.1: Share Token Supply Consistency
+    /// @notice Ensures total supply always equals sum of balances
+    function property_shareTokenSupplyConsistency() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 key = keccak256(abi.encode(poolId, scId));
+                
+                // Skip if no operations occurred
+                if (!ghost_supplyOperationOccurred[key]) continue;
+                
+                try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
+                    uint256 actualSupply = shareToken.totalSupply();
+                    
+                    // Check 1: Ghost tracking matches actual supply
+                    eq(
+                        actualSupply, 
+                        ghost_totalShareSupply[key], 
+                        "Share supply mismatch - ghost diverged from actual"
+                    );
+                    
+                    // Check 2: Sum of balances equals total supply
+                    address[] memory actors = _getActors();
+                    uint256 calculatedSum = 0;
+                    for (uint256 k = 0; k < actors.length; k++) {
+                        uint256 balance = shareToken.balanceOf(actors[k]);
+                        calculatedSum += balance;
+                        
+                        // Verify individual balance tracking
+                        eq(
+                            balance,
+                            ghost_individualBalances[key][actors[k]],
+                            "Individual balance tracking mismatch"
+                        );
+                    }
+                    
+                    // Allow 1 wei tolerance per actor for rounding
+                    uint256 tolerance = actors.length;
+                    gte(
+                        actualSupply + tolerance,
+                        calculatedSum,
+                        "Supply less than sum of balances"
+                    );
+                    lte(
+                        actualSupply,
+                        calculatedSum + tolerance,
+                        "Supply exceeds sum of balances"
+                    );
+                    
+                    // Check 3: Mint/burn events match supply changes
+                    uint256 expectedSupply = ghost_supplyMintEvents[key] - ghost_supplyBurnEvents[key];
+                    eq(
+                        actualSupply,
+                        expectedSupply,
+                        "Supply doesn't match mint/burn history"
+                    );
+                } catch Error(string memory reason) {
+                    if (ghost_supplyOperationOccurred[key]) {
+                        t(false, string.concat("Share token unexpectedly missing: ", reason));
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Asset-Share Proportionality on Deposits
+    /// Ensures that when assets are deposited, shares are issued proportionally based on current exchange rates
+    /// This prevents unbacked share creation that could dilute existing holders
+    function property_assetShareProportionalityDeposits() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                
+                // Iterate through all tracked assets for this pool/shareClass
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+                    
+                    // Skip if no deposit proportionality tracking occurred
+                    if (!ghost_depositProportionalityTracked[assetKey]) continue;
+                    
+                    uint256 cumulativeAssets = ghost_cumulativeAssetsDeposited[assetKey];
+                    uint256 cumulativeShares = ghost_cumulativeSharesIssuedForDeposits[assetKey];
+                    uint256 avgExchangeRate = ghost_depositExchangeRate[assetKey];
+                    
+                    // Skip if no meaningful deposits occurred
+                    if (cumulativeAssets == 0) continue;
+                    
+                    // Calculate expected shares based on average exchange rate
+                    // expectedShares = cumulativeAssets * avgExchangeRate / 1e18
+                    uint256 expectedShares = (cumulativeAssets * avgExchangeRate) / 1e18;
+                    
+                    // Check proportionality with 0.1% tolerance
+                    uint256 tolerance = (expectedShares * 1) / 1000; // 0.1%
+                    if (tolerance == 0) tolerance = 1; // Minimum 1 wei tolerance
+                    
+                    // Verify shares issued are within tolerance of expected
+                    gte(
+                        cumulativeShares + tolerance,
+                        expectedShares,
+                        "Insufficient shares issued for deposits - potential asset loss"
+                    );
+                    lte(
+                        cumulativeShares,
+                        expectedShares + tolerance,
+                        "Excess shares issued for deposits - potential dilution attack"
+                    );
+                    
+                    // Verify exchange rate consistency with current prices
+                    try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 currentPrice) {
+                        uint256 currentRate = D18.unwrap(currentPrice);
+                        
+                        // Allow 1% variance in exchange rate for market fluctuations
+                        uint256 rateVariance = (avgExchangeRate * 10) / 1000; // 1%
+                        if (rateVariance == 0) rateVariance = 1;
+                        
+                        gte(
+                            currentRate + rateVariance,
+                            avgExchangeRate,
+                            "Exchange rate deviated significantly from deposit average"
+                        );
+                        lte(
+                            currentRate,
+                            avgExchangeRate + rateVariance,
+                            "Exchange rate deviated significantly from deposit average"
+                        );
+                    } catch {
+                        // Price fetch failed, skip current price validation
+                    }
+                    
+                    // Note: Escrow verification omitted due to stack depth constraints
+                    // The deposit/issue proportionality check is the primary validation
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Asset-Share Proportionality on Withdrawals  
+    /// Ensures that when assets are withdrawn, they are proportional to shares revoked based on current exchange rates
+    /// This prevents extracting more value than share ownership represents and maintains fairness across redemptions
+    function property_assetShareProportionalityWithdrawals() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                
+                // Iterate through all tracked assets for this pool/shareClass
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+                    
+                    // Skip if no withdrawals tracked for this combination
+                    if (!ghost_withdrawalProportionalityTracked[assetKey]) continue;
+                    
+                    uint256 cumulativeWithdrawn = ghost_cumulativeAssetsWithdrawn[assetKey];
+                    uint256 cumulativeRevoked = ghost_cumulativeSharesRevokedForWithdrawals[assetKey];
+                    
+                    // Only validate if we have both withdrawals and revocations
+                    if (cumulativeWithdrawn > 0 && cumulativeRevoked > 0) {
+                        
+                        // Core Invariant 1: Get current prices for proportionality validation
+                        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
+                            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+                                
+                                // Skip validation if either price is 0 (uninitialized state)
+                                if (D18.unwrap(pricePerShare) == 0 || D18.unwrap(pricePerAsset) == 0) {
+                                    continue;
+                                }
+                                
+                                // Calculate expected assets for the revoked shares at current prices
+                                uint256 expectedAssets = (cumulativeRevoked * D18.unwrap(pricePerShare)) / D18.unwrap(pricePerAsset);
+                                
+                                // Allow 0.1% tolerance for proportionality
+                                uint256 tolerance = (expectedAssets * 1) / 1000;
+                                
+                                // Core Invariant 2: Withdrawn assets should be proportional to revoked shares
+                                gte(
+                                    cumulativeWithdrawn + tolerance,
+                                    expectedAssets,
+                                    "Insufficient assets withdrawn for shares revoked"
+                                );
+                                lte(
+                                    cumulativeWithdrawn,
+                                    expectedAssets + tolerance,
+                                    "Excessive assets withdrawn for shares revoked"
+                                );
+                                
+                                // Core Invariant 3: Withdrawals cannot exceed total deposits
+                                lte(
+                                    cumulativeWithdrawn,
+                                    ghost_cumulativeAssetsDeposited[assetKey],
+                                    "Withdrew more than total deposited"
+                                );
+                                
+                                // Core Invariant 4: Exchange rate consistency check (if multiple operations)
+                                if (ghost_withdrawalOperationCount[assetKey] > 1) {
+                                    uint256 currentRate = (cumulativeWithdrawn * 1e18) / cumulativeRevoked;
+                                    uint256 avgRate = ghost_withdrawalExchangeRate[assetKey];
+                                    
+                                    // Calculate percentage difference
+                                    uint256 rateDiff = currentRate > avgRate
+                                        ? ((currentRate - avgRate) * 100) / avgRate
+                                        : ((avgRate - currentRate) * 100) / avgRate;
+                                    
+                                    // Allow up to 1% variance in exchange rates across operations
+                                    lte(
+                                        rateDiff,
+                                        1,
+                                        "Withdrawal exchange rate variance exceeds 1%"
+                                    );
+                                }
+                                
+                            } catch {
+                                // Asset price fetch failed, skip current price validation
+                            }
+                        } catch {
+                            // Share price fetch failed, skip current price validation
+                        }
+                        
+                        // Note: Escrow balance validation omitted due to stack depth constraints
+                        // The withdrawal/revocation proportionality check is the primary validation
+                    }
+                }
+            }
+        }
+    }
+
+    /// @dev Property: Price Consistency During Operations
+    /// @notice Ensures prices remain stable during normal operations, with deviations only during admin overrides
+    function property_priceConsistencyDuringOperations() public {
+        for (uint256 i = 0; i < activePools.length; i++) {
+            PoolId poolId = activePools[i];
+            ShareClassId[] storage shareClasses = activeShareClasses[poolId];
+            
+            for (uint256 j = 0; j < shareClasses.length; j++) {
+                ShareClassId scId = shareClasses[j];
+                bytes32 shareKey = keccak256(abi.encode(poolId, scId));
+                
+                // Skip if admin override occurred
+                if (ghost_priceOverrideOccurred[shareKey]) continue;
+                
+                // Check share price stability if snapshot exists
+                if (ghost_priceShareSnapshot[shareKey] > 0) {
+                    try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 currentPrice) {
+                        uint256 snapshot = ghost_priceShareSnapshot[shareKey];
+                        uint256 currentRaw = D18.unwrap(currentPrice);
+                        
+                        // Skip if current price is zero (uninitialized state)
+                        if (currentRaw == 0) continue;
+                        
+                        // Calculate deviation in basis points (100 = 1%)
+                        uint256 deviation;
+                        if (currentRaw > snapshot) {
+                            deviation = ((currentRaw - snapshot) * 10000) / snapshot;
+                        } else {
+                            deviation = ((snapshot - currentRaw) * 10000) / snapshot;
+                        }
+                        
+                        // Max 100 basis points (1%) deviation allowed for normal operations
+                        lte(
+                            deviation,
+                            100,
+                            "Share price deviation exceeds 1% during normal operations"
+                        );
+                        
+                        // Track max deviation for monitoring
+                        if (deviation > ghost_maxPriceDeviation[shareKey]) {
+                            ghost_maxPriceDeviation[shareKey] = deviation;
+                        }
+                    } catch {
+                        // Price may be invalid, skip validation
+                    }
+                }
+                
+                // Check asset price stability for all tracked assets
+                for (uint256 k = 0; k < trackedAssets.length; k++) {
+                    AssetId assetId = trackedAssets[k];
+                    bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+                    
+                    if (ghost_priceAssetSnapshot[assetKey] > 0 && 
+                        !ghost_priceOverrideOccurred[assetKey]) {
+                        
+                        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) 
+                            returns (D18 currentPrice) {
+                            uint256 snapshot = ghost_priceAssetSnapshot[assetKey];
+                            uint256 currentRaw = D18.unwrap(currentPrice);
+                            
+                            // Skip if current price is zero (uninitialized state)
+                            if (currentRaw == 0) continue;
+                            
+                            uint256 deviation;
+                            if (currentRaw > snapshot) {
+                                deviation = ((currentRaw - snapshot) * 10000) / snapshot;
+                            } else {
+                                deviation = ((snapshot - currentRaw) * 10000) / snapshot;
+                            }
+                            
+                            // Different tolerance based on operation type
+                            uint256 maxDeviation = ghost_lastOperationType[assetKey] == OperationType.NORMAL 
+                                ? 100  // 1% for normal operations
+                                : 1000; // 10% for admin operations
+                            
+                            lte(
+                                deviation,
+                                maxDeviation,
+                                "Asset price deviation exceeds threshold"
+                            );
+                            
+                            // Track max deviation
+                            if (deviation > ghost_maxPriceDeviation[assetKey]) {
+                                ghost_maxPriceDeviation[assetKey] = deviation;
+                            }
+                        } catch {
+                            // Price may be invalid, skip validation
                         }
                     }
                 }

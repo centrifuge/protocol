@@ -177,7 +177,7 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // Per-asset counter tracking (non-empty asset queues)
     mapping(bytes32 => uint256) public ghost_previousNonce; // Previous nonce value to verify monotonicity
 
-    // === PHASE 1: RESERVE/UNRESERVE BALANCE INTEGRITY GHOST VARIABLES ===
+    // Reserve/unreserve balance integrity tracking
     mapping(bytes32 => uint256) public ghost_totalReserveOperations;
     mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
     mapping(bytes32 => uint256) public ghost_netReserved;
@@ -186,7 +186,7 @@ abstract contract Setup is
     mapping(bytes32 => bool) public ghost_reserveUnderflow;
     mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
 
-    // === PHASE 2: ESCROW BALANCE SUFFICIENCY GHOST VARIABLES ===
+    // Escrow balance sufficiency tracking
     mapping(bytes32 => uint256) public ghost_escrowTotalBalance;
     mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
     mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
@@ -194,7 +194,7 @@ abstract contract Setup is
     mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
     mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
 
-    // === PHASE 3: AUTHORIZATION BOUNDARY ENFORCEMENT GHOST VARIABLES ===
+    // Authorization boundary enforcement tracking
     enum AuthLevel { NONE, MANAGER, WARD }
     mapping(address => AuthLevel) public ghost_authorizationLevel;
     mapping(bytes32 => uint256) public ghost_unauthorizedAttempts;
@@ -203,7 +203,7 @@ abstract contract Setup is
     mapping(address => uint256) public ghost_authorizationChanges;
     mapping(bytes32 => bool) public ghost_authorizationBypass;
 
-    // === PHASE 4: SHARE TRANSFER RESTRICTIONS GHOST VARIABLES ===
+    // Share transfer restrictions tracking
     mapping(address => bool) public ghost_isEndorsedContract;
     mapping(bytes32 => uint256) public ghost_endorsedTransferAttempts;
     mapping(bytes32 => uint256) public ghost_blockedEndorsedTransfers;
@@ -211,6 +211,36 @@ abstract contract Setup is
     mapping(bytes32 => address) public ghost_lastTransferFrom;
     mapping(bytes32 => address) public ghost_lastTransferTo;
     mapping(address => uint256) public ghost_endorsementChanges;
+
+    // Share token supply consistency tracking
+    mapping(bytes32 => uint256) public ghost_totalShareSupply;
+    mapping(bytes32 => mapping(address => uint256)) public ghost_individualBalances;
+    mapping(bytes32 => uint256) public ghost_supplyMintEvents;
+    mapping(bytes32 => uint256) public ghost_supplyBurnEvents;
+    mapping(bytes32 => bool) public ghost_supplyOperationOccurred;
+
+    // Asset-share proportionality tracking for deposits
+    mapping(bytes32 => uint256) public ghost_cumulativeAssetsDeposited;
+    mapping(bytes32 => uint256) public ghost_cumulativeSharesIssuedForDeposits;
+    mapping(bytes32 => uint256) public ghost_depositExchangeRate;
+    mapping(bytes32 => uint256) public ghost_depositOperationCount;
+    mapping(bytes32 => bool) public ghost_depositProportionalityTracked;
+
+    // Asset-share proportionality tracking for withdrawals
+    mapping(bytes32 => uint256) public ghost_cumulativeAssetsWithdrawn;
+    mapping(bytes32 => uint256) public ghost_cumulativeSharesRevokedForWithdrawals;
+    mapping(bytes32 => uint256) public ghost_withdrawalExchangeRate;
+    mapping(bytes32 => uint256) public ghost_withdrawalOperationCount;
+    mapping(bytes32 => bool) public ghost_withdrawalProportionalityTracked;
+
+    // Price consistency tracking during operations
+    mapping(bytes32 => uint256) public ghost_priceAssetSnapshot;
+    mapping(bytes32 => uint256) public ghost_priceShareSnapshot;
+    mapping(bytes32 => bool) public ghost_priceOverrideOccurred;
+    mapping(bytes32 => uint256) public ghost_priceCheckpointBlock;
+    mapping(bytes32 => uint256) public ghost_maxPriceDeviation;
+    enum OperationType { NORMAL, ADMIN_OVERRIDE }
+    mapping(bytes32 => OperationType) public ghost_lastOperationType;
 
     // Before/After state tracking for ShareQueueProperties
     mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
@@ -512,7 +542,7 @@ abstract contract Setup is
         trackedAssets.push(assetId);
     }
 
-    // === PHASE 3: AUTHORIZATION HELPER FUNCTIONS ===
+    // Authorization helper functions
     
     /// @notice Track authorization for a caller performing privileged operation
     function _trackAuthorization(address caller, PoolId poolId) internal {
@@ -563,7 +593,7 @@ abstract contract Setup is
         }
     }
 
-    // === PHASE 4: ENDORSEMENT HELPER FUNCTIONS ===
+    // Endorsement helper functions
     
     /// @dev Check if an address is an endorsed contract
     function _isEndorsedContract(address addr) internal view returns (bool) {

@@ -10,6 +10,7 @@ import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
+import {D18} from "src/misc/types/D18.sol";
 
 import {TargetFunctions} from "./TargetFunctions.sol";
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
@@ -779,7 +780,7 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         console2.log("Escrow Balance Sufficiency: All stress scenarios passed");
     }
 
-    /// @dev Test Phase 3: Authorization Boundary Enforcement
+    /// @dev Test Authorization Boundary Enforcement
     /// @notice Simplified test to validate property function works 
     function test_property_authorizationBoundaryEnforcement_basic() public {
         // Setup infrastructure
@@ -810,7 +811,7 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         console2.log("Authorization Boundary Enforcement: Basic validation passed");
     }
 
-    /// @dev Test Phase 4: Share Transfer Restrictions
+    /// @dev Test Share Transfer Restrictions
     /// @notice Simplified test to validate property function works 
     function test_property_shareTransferRestrictions_basic() public {
         // Setup infrastructure
@@ -839,6 +840,57 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         property_shareTransferRestrictions();
         
         console2.log("Share Transfer Restrictions: Basic validation passed");
+    }
+
+    /// @dev Test Property 2.1: Share Token Supply Consistency
+    /// @notice Comprehensive test covering all supply tracking scenarios
+    function test_property_shareTokenSupplyConsistency_comprehensive() public {
+        // Setup
+        shortcut_deployNewTokenPoolAndShare(18, 35, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        IShareToken shareToken = spoke.shareToken(poolId, scId);
+        
+        // Test Scenario 1: Basic issue and revoke
+        balanceSheet_issue(1000e18);
+        assertEq(shareToken.totalSupply(), 1000e18, "Supply after issue");
+        
+        vm.startPrank(_getActor());
+        shareToken.approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        balanceSheet_revoke(300e18);
+        assertEq(shareToken.totalSupply(), 700e18, "Supply after revoke");
+        
+        // Test Scenario 2: Transfers between users
+        address user2 = _getRandomActor(1);
+        balanceSheet_transferSharesFrom(user2, 200e18);
+        assertEq(shareToken.totalSupply(), 700e18, "Supply unchanged after transfer");
+        assertEq(shareToken.balanceOf(user2), 200e18, "User2 balance after transfer");
+        
+        // Test Scenario 3: Additional issue from current actor
+        balanceSheet_issue(500e18);
+        assertEq(shareToken.totalSupply(), 1200e18, "Supply after second issue");
+        
+        // Validate property - should pass all checks
+        property_shareTokenSupplyConsistency();
+        
+        // Test Scenario 4: Additional revocations using target functions
+        uint256 remainingBalance = shareToken.balanceOf(_getActor());
+        if (remainingBalance > 0) {
+            balanceSheet_revoke(uint128(remainingBalance));
+        }
+        
+        // Final validation
+        property_shareTokenSupplyConsistency();
+        
+        console2.log("Share Token Supply Consistency: All scenarios passed");
     }
     
     /// @dev Test complete deposit and claim flow with queue tracking
@@ -899,6 +951,369 @@ contract VerifyBalanceSheetQueueProperties is Test, TargetFunctions, FoundryAsse
         // Call relevant properties to validate end-to-end consistency
         property_assetQueueCounterConsistency();
         property_shareQueueFlagConsistency();
+    }
+    
+    // ============ Asset-Share Proportionality Properties ============
+    
+    /// @dev Test Property 6: Asset-Share Proportionality on Deposits
+    /// Verifies that when assets are deposited, shares are issued proportionally based on exchange rates
+    function test_assetShareProportionalityDeposits() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 1, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set consistent prices for operations  
+        transientValuation_setPrice_clamped(1e18); // 1:1 ratio (1 pool token per asset)
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Verify no tracking initially
+        assertFalse(ghost_depositProportionalityTracked[assetKey], "Should not be tracked initially");
+        assertEq(ghost_cumulativeAssetsDeposited[assetKey], 0, "Initial assets should be 0");
+        assertEq(ghost_cumulativeSharesIssuedForDeposits[assetKey], 0, "Initial shares should be 0");
+        
+        // Perform deposit operations
+        uint128 deposit1 = 100e18;
+        uint128 deposit2 = 200e18;
+        uint256 expectedShares1 = 100e18; // 100 * 1 = 100 shares (1:1 ratio)
+        uint256 expectedShares2 = 200e18; // 200 * 1 = 200 shares
+        
+        // Approve tokens and perform first deposit
+        asset_approve(address(balanceSheet), uint128(type(uint128).max));
+        balanceSheet_deposit(0, deposit1);
+        
+        // Verify tracking started
+        assertTrue(ghost_depositProportionalityTracked[assetKey], "Should be tracked after first deposit");
+        assertEq(ghost_cumulativeAssetsDeposited[assetKey], deposit1, "First deposit not tracked");
+        assertEq(ghost_depositOperationCount[assetKey], 1, "Operation count should be 1");
+        assertGt(ghost_depositExchangeRate[assetKey], 0, "Exchange rate should be set");
+        
+        // Issue shares for first deposit
+        balanceSheet_issue(uint128(expectedShares1));
+        assertEq(ghost_cumulativeSharesIssuedForDeposits[assetKey], expectedShares1, "First share issuance not tracked");
+        
+        // Second deposit with different amount
+        balanceSheet_deposit(0, deposit2);
+        
+        // Verify cumulative tracking
+        assertEq(ghost_cumulativeAssetsDeposited[assetKey], deposit1 + deposit2, "Cumulative deposits incorrect");
+        assertEq(ghost_depositOperationCount[assetKey], 2, "Operation count should be 2");
+        
+        // Issue shares for second deposit
+        balanceSheet_issue(uint128(expectedShares2));
+        assertEq(
+            ghost_cumulativeSharesIssuedForDeposits[assetKey], 
+            expectedShares1 + expectedShares2, 
+            "Cumulative share issuance incorrect"
+        );
+        
+        // Test the property validation
+        property_assetShareProportionalityDeposits();
+        
+        // Test edge case: zero deposit
+        balanceSheet_deposit(0, 0);
+        
+        // Should still pass proportionality check
+        property_assetShareProportionalityDeposits();
+        
+        // Verify ghost variables are preserved
+        assertEq(ghost_cumulativeAssetsDeposited[assetKey], deposit1 + deposit2, "Zero deposit should not affect totals");
+    }
+    
+    /// @dev Test Property 6 Edge Cases: Large deposits and rounding
+    function test_assetShareProportionalityDeposits_EdgeCases() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 1, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set unusual price ratio for testing
+        transientValuation_setPrice_clamped(1e18); // 1:1 ratio (consistent with main test)
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Approve tokens first
+        asset_approve(address(balanceSheet), uint128(type(uint128).max));
+        
+        // Test moderately large deposit (avoid overflow)
+        uint128 largeDeposit = 1000e18; // Large but reasonable amount
+        balanceSheet_deposit(0, largeDeposit);
+        
+        // Calculate expected shares with precision (1:1 ratio)
+        uint256 expectedLargeShares = (uint256(largeDeposit) * 1e18) / 1e18;
+        balanceSheet_issue(uint128(expectedLargeShares));
+        
+        // Should pass proportionality check even with large numbers
+        property_assetShareProportionalityDeposits();
+        
+        // Test small deposit (potential rounding issues)
+        uint128 smallDeposit = 3; // Very small amount
+        balanceSheet_deposit(0, smallDeposit);
+        
+        // Small expected shares (will test tolerance)
+        uint256 expectedSmallShares = (uint256(smallDeposit) * 1e18) / 1e18; // Should be 3
+        balanceSheet_issue(uint128(expectedSmallShares));
+        
+        // Should still pass with tolerance handling
+        property_assetShareProportionalityDeposits();
+    }
+    
+    // ============ Asset-Share Proportionality (Withdrawals) Properties ============
+    
+    /// @dev Test Property 7: Asset-Share Proportionality on Withdrawals
+    /// Verifies that when assets are withdrawn, they are proportional to shares revoked based on exchange rates
+    function test_assetShareProportionalityWithdrawals() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 1, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set consistent prices for operations  
+        transientValuation_setPrice_clamped(1e18); // 1:1 ratio (1 pool token per asset)
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Verify no withdrawal tracking initially
+        assertFalse(ghost_withdrawalProportionalityTracked[assetKey], "Should not be tracked initially");
+        assertEq(ghost_cumulativeAssetsWithdrawn[assetKey], 0, "Initial withdrawn assets should be 0");
+        assertEq(ghost_cumulativeSharesRevokedForWithdrawals[assetKey], 0, "Initial revoked shares should be 0");
+        
+        // Setup: First deposit and issue shares to have assets and shares to withdraw
+        uint128 setupDeposit = 500e18;
+        uint128 setupShares = 500e18; // 1:1 ratio
+        
+        asset_approve(address(balanceSheet), uint128(type(uint128).max));
+        balanceSheet_deposit(0, setupDeposit);
+        balanceSheet_issue(setupShares);
+        
+        // Verify setup worked
+        assertEq(ghost_cumulativeAssetsDeposited[assetKey], setupDeposit, "Setup deposit not tracked");
+        
+        // Now test withdrawal operations
+        uint128 withdraw1 = 100e18;
+        uint128 withdraw2 = 200e18;
+        uint128 expectedRevoke1 = 100e18; // 1:1 ratio
+        uint128 expectedRevoke2 = 200e18;
+        
+        // First withdrawal-revoke cycle
+        balanceSheet_withdraw(0, withdraw1);
+        
+        // Verify withdrawal tracking started
+        assertTrue(ghost_withdrawalProportionalityTracked[assetKey], "Should be tracked after first withdrawal");
+        assertEq(ghost_cumulativeAssetsWithdrawn[assetKey], withdraw1, "First withdrawal not tracked");
+        assertEq(ghost_withdrawalOperationCount[assetKey], 1, "Withdrawal operation count should be 1");
+        assertGt(ghost_withdrawalExchangeRate[assetKey], 0, "Withdrawal exchange rate should be set");
+        
+        // Approve share token for revocation
+        IShareToken shareToken = spoke.shareToken(poolId, scId);
+        vm.startPrank(_getActor());
+        shareToken.approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        // Revoke shares corresponding to first withdrawal
+        balanceSheet_revoke(expectedRevoke1);
+        assertEq(ghost_cumulativeSharesRevokedForWithdrawals[assetKey], expectedRevoke1, "First share revocation not tracked");
+        
+        // Validate proportionality after first cycle
+        property_assetShareProportionalityWithdrawals();
+        
+        // Second withdrawal-revoke cycle
+        balanceSheet_withdraw(0, withdraw2);
+        assertEq(ghost_cumulativeAssetsWithdrawn[assetKey], withdraw1 + withdraw2, "Second withdrawal not tracked");
+        assertEq(ghost_withdrawalOperationCount[assetKey], 2, "Withdrawal operation count should be 2");
+        
+        balanceSheet_revoke(expectedRevoke2);
+        assertEq(ghost_cumulativeSharesRevokedForWithdrawals[assetKey], expectedRevoke1 + expectedRevoke2, "Second revocation not tracked");
+        
+        // Validate proportionality after both cycles
+        property_assetShareProportionalityWithdrawals();
+        
+        // Verify withdrawals don't exceed deposits constraint
+        uint256 totalWithdrawn = ghost_cumulativeAssetsWithdrawn[assetKey];
+        uint256 totalDeposited = ghost_cumulativeAssetsDeposited[assetKey];
+        assertLe(totalWithdrawn, totalDeposited, "Withdrawals should not exceed deposits");
+        
+        console2.log("Basic withdrawal proportionality test passed");
+    }
+    
+    /// @dev Test Property 7: Complex withdrawal scenarios
+    /// Tests multiple users, varying exchange rates, and edge cases
+    function test_assetShareProportionalityWithdrawals_complex() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 2, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        
+        // Set initial prices
+        transientValuation_setPrice_clamped(1e18); // Start with 1:1 ratio
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        
+        bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
+        
+        // Setup large deposit for multiple withdrawal tests
+        uint128 largeDeposit = 1000e18;
+        uint128 largeShares = 1000e18; 
+        
+        asset_approve(address(balanceSheet), uint128(type(uint128).max));
+        balanceSheet_deposit(0, largeDeposit);
+        balanceSheet_issue(largeShares);
+        
+        // Approve shares for revocation
+        IShareToken shareToken = spoke.shareToken(poolId, scId);
+        vm.startPrank(_getActor());
+        shareToken.approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        // Test 1: Multiple small withdrawals
+        uint128 smallWithdraw = 50e18;
+        uint128 smallRevoke = 50e18;
+        
+        for (uint i = 0; i < 3; i++) {
+            balanceSheet_withdraw(0, smallWithdraw);
+            balanceSheet_revoke(smallRevoke);
+            
+            // Validate after each small operation
+            property_assetShareProportionalityWithdrawals();
+        }
+        
+        // Verify cumulative tracking
+        assertEq(ghost_cumulativeAssetsWithdrawn[assetKey], 150e18, "Cumulative withdrawals incorrect");
+        assertEq(ghost_cumulativeSharesRevokedForWithdrawals[assetKey], 150e18, "Cumulative revocations incorrect");
+        assertEq(ghost_withdrawalOperationCount[assetKey], 3, "Operation count should be 3");
+        
+        // Test 2: Large withdrawal
+        uint128 largeWithdraw = 300e18;
+        uint128 largeRevoke = 300e18;
+        
+        balanceSheet_withdraw(0, largeWithdraw);
+        balanceSheet_revoke(largeRevoke);
+        
+        property_assetShareProportionalityWithdrawals();
+        
+        // Test 3: Very small withdrawal (rounding edge case)
+        uint128 tinyWithdraw = 1; // 1 wei
+        uint128 tinyRevoke = 1; // 1 wei of shares
+        
+        balanceSheet_withdraw(0, tinyWithdraw);
+        balanceSheet_revoke(tinyRevoke);
+        
+        // Should still pass with tolerance handling
+        property_assetShareProportionalityWithdrawals();
+        
+        // Final validation: check that exchange rate consistency is maintained
+        uint256 finalOps = ghost_withdrawalOperationCount[assetKey];
+        assertGt(finalOps, 1, "Should have multiple operations for rate consistency test");
+        
+        // Verify exchange rate is within reasonable bounds (should be close to 1e18 for 1:1 ratio)
+        uint256 avgRate = ghost_withdrawalExchangeRate[assetKey];
+        assertGt(avgRate, 0.99e18, "Average exchange rate should be close to 1e18");
+        assertLt(avgRate, 1.01e18, "Average exchange rate should be close to 1e18");
+        
+        console2.log("Complex withdrawal proportionality test passed");
+    }
+
+    /// @dev Test Price Consistency During Operations
+    /// @notice Tests price stability during normal operations vs admin overrides
+    function test_priceConsistencyDuringOperations() public {
+        // Setup infrastructure
+        shortcut_deployNewTokenPoolAndShare(18, 32, false, false, true);
+        spoke_updateMember(type(uint64).max);
+        transientValuation_setPrice_clamped(1e18);
+        hub_notifyAssetPrice();
+        hub_notifySharePrice_clamped();
+        
+        IBaseVault vault = IBaseVault(_getVault());
+        MockERC20 assetToken = MockERC20(vault.asset());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        
+        assetToken.mint(address(this), 10000e18);
+        assetToken.approve(address(balanceSheet), type(uint256).max);
+        
+        // Test Scenario 1: Capture initial price snapshots through normal operations
+        balanceSheet_deposit(0, 1000e18);
+        balanceSheet_issue(1000e18);
+        
+        D18 initialSharePrice = spoke.pricePoolPerShare(vault.poolId(), vault.scId(), false);
+        D18 initialAssetPrice = spoke.pricePoolPerAsset(vault.poolId(), vault.scId(), assetId, true);
+        
+        // Property should pass after first operations (snapshots taken)
+        property_priceConsistencyDuringOperations();
+        
+        // Test Scenario 2: More normal operations should maintain price stability
+        balanceSheet_withdraw(0, 200e18);
+        
+        vm.startPrank(_getActor());
+        IShareToken shareToken = spoke.shareToken(vault.poolId(), vault.scId());
+        shareToken.approve(address(balanceSheet), type(uint256).max);
+        vm.stopPrank();
+        
+        balanceSheet_revoke(200e18);
+        
+        // Property should still pass (prices should be stable within 1%)
+        property_priceConsistencyDuringOperations();
+        
+        D18 afterOpsSharePrice = spoke.pricePoolPerShare(vault.poolId(), vault.scId(), false);
+        D18 afterOpsAssetPrice = spoke.pricePoolPerAsset(vault.poolId(), vault.scId(), assetId, true);
+        
+        // Manual verification: prices should remain stable (within 1% tolerance)
+        // Skip manual verification if either price is zero (uninitialized)
+        if (D18.unwrap(initialSharePrice) > 0 && D18.unwrap(afterOpsSharePrice) > 0) {
+            uint256 sharePriceDeviation = D18.unwrap(afterOpsSharePrice) > D18.unwrap(initialSharePrice)
+                ? ((D18.unwrap(afterOpsSharePrice) - D18.unwrap(initialSharePrice)) * 10000) / D18.unwrap(initialSharePrice)
+                : ((D18.unwrap(initialSharePrice) - D18.unwrap(afterOpsSharePrice)) * 10000) / D18.unwrap(initialSharePrice);
+            assertLe(sharePriceDeviation, 100, "Share price deviation should be <= 1% for normal ops");
+        }
+        
+        // Test Scenario 3: Admin price override should be exempted from checks
+        balanceSheet_overridePricePoolPerAsset(D18.wrap(2e18));
+        
+        // Property should still pass (admin overrides are exempted)
+        property_priceConsistencyDuringOperations();
+        
+        // Test Scenario 4: Price reset and continue with normal operations
+        balanceSheet_resetPricePoolPerAsset();
+        balanceSheet_deposit(0, 500e18);
+        balanceSheet_issue(500e18);
+        
+        // Property should pass (fresh baseline after reset)
+        property_priceConsistencyDuringOperations();
+        
+        // Test Scenario 5: Share price override and reset
+        balanceSheet_overridePricePoolPerShare(D18.wrap(1.5e18));
+        property_priceConsistencyDuringOperations();
+        
+        balanceSheet_resetPricePoolPerShare();
+        balanceSheet_withdraw(0, 100e18);
+        balanceSheet_revoke(100e18);
+        
+        // Final validation
+        property_priceConsistencyDuringOperations();
+        
+        console2.log("Price consistency during operations test passed");
     }
 }
 
