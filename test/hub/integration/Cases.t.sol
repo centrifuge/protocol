@@ -48,7 +48,7 @@ contract TestCases is BaseTest {
         hub.createAccount(poolId, GAIN_ACCOUNT, false);
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         if (withInitialization) {
-            valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(1, 1));
+            valuation.setPrice(poolId, scId, USDC_C2, d18(1, 1));
             hub.initializeHolding(
                 poolId, scId, USDC_C2, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
             );
@@ -251,7 +251,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(11, 10));
+        valuation.setPrice(poolId, scId, USDC_C2, d18(11, 10));
         hub.updateHoldingValue(poolId, scId, USDC_C2);
 
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 440 * poolDecimals);
@@ -259,7 +259,7 @@ contract TestCases is BaseTest {
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 40 * poolDecimals);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
-        valuation.setPrice(USDC_C2, hubRegistry.currency(poolId), d18(8, 10));
+        valuation.setPrice(poolId, scId, USDC_C2, d18(8, 10));
         hub.updateHoldingValue(poolId, scId, USDC_C2);
 
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 320 * poolDecimals);
@@ -291,7 +291,7 @@ contract TestCases is BaseTest {
         D18 poolPerEurPrice = d18(4, 1);
         AssetId poolCurrency = hubRegistry.currency(poolId);
 
-        valuation.setPrice(EUR_STABLE_C2, poolCurrency, poolPerEurPrice);
+        valuation.setPrice(poolId, scId, EUR_STABLE_C2, poolPerEurPrice);
 
         vm.startPrank(FM);
         hub.updateSharePrice(poolId, scId, sharePrice);

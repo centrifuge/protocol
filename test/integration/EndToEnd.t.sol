@@ -481,7 +481,7 @@ contract EndToEndFlows is EndToEndUtils {
         D18 assetPrice,
         D18 sharePrice
     ) internal virtual {
-        hub.valuation.setPrice(assetId, USD_ID, assetPrice);
+        hub.valuation.setPrice(poolId, shareClassId, assetId, assetPrice);
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
