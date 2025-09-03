@@ -349,7 +349,7 @@ contract MockCentrifugeChain is Test {
     }
 
     function execute(bytes memory message) public {
-        bytes memory proof = MessageProofLib.serializeMessageProof(keccak256(message));
+        bytes memory proof = MessageProofLib.createMessageProof(message.messagePoolId(), keccak256(message));
         for (uint256 i = 0; i < adapters.length; i++) {
             AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
         }

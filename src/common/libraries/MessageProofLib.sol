@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {PoolId} from "../types/PoolId.sol";
 
 library MessageProofLib {
     using BytesLib for bytes;
@@ -10,12 +11,17 @@ library MessageProofLib {
 
     error UnknownMessageProofType();
 
-    function deserializeMessageProof(bytes memory data) internal pure returns (bytes32) {
+    function proofPoolId(bytes memory data) internal pure returns (PoolId) {
         require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
-        return data.toBytes32(1);
+        return PoolId.wrap(data.toUint64(1));
     }
 
-    function serializeMessageProof(bytes32 hash) internal pure returns (bytes memory) {
-        return abi.encodePacked(MESSAGE_PROOF_ID, hash);
+    function proofHash(bytes memory data) internal pure returns (bytes32) {
+        require(data.toUint8(0) == MESSAGE_PROOF_ID, UnknownMessageProofType());
+        return data.toBytes32(9);
+    }
+
+    function createMessageProof(PoolId poolId, bytes32 hash) internal pure returns (bytes memory) {
+        return abi.encodePacked(MESSAGE_PROOF_ID, poolId, hash);
     }
 }

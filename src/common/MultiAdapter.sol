@@ -54,7 +54,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function file(bytes32 what, address instance) external auth {
         if (what == "gateway") gateway = IMessageHandler(instance);
-        if (what == "messageProperties") messageProperties = IMessageProperties(instance);
+        else if (what == "messageProperties") messageProperties = IMessageProperties(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
@@ -104,17 +104,25 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
+
+        PoolId poolId;
+        if (isMessageProof) poolId = payload.proofPoolId();
+        else poolId = messageProperties.messagePoolId(payload);
+
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
+
+        // If adapters not configured per pool, then assume it's received by a global adapters
+        if (adapter.id == 0) adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
+
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
         bytes32 payloadHash;
-        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
         if (isMessageProof) {
             require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
 
-            payloadHash = payload.deserializeMessageProof();
+            payloadHash = payload.proofHash();
             bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
             emit HandleProof(centrifugeId, payloadId, payloadHash, adapter_);
         } else {
@@ -218,7 +226,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
         // payload is now the proof (to avoid stack too deep issue)
-        payload = payloadHash.serializeMessageProof();
+        payload = MessageProofLib.createMessageProof(poolId, payloadHash);
         for (uint256 i = 1; i < adapters_.length; i++) {
             cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
             adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
@@ -236,7 +244,11 @@ contract MultiAdapter is Auth, IMultiAdapter {
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
         IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
-        bytes memory proof = keccak256(payload).serializeMessageProof();
+
+        // If adapters not configured per pool, then use the global adapters
+        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
+
+        bytes memory proof = MessageProofLib.createMessageProof(poolId, keccak256(payload));
 
         for (uint256 i; i < adapters_.length; i++) {
             total += adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit);

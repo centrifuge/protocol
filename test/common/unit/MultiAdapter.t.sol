@@ -40,10 +40,12 @@ contract MockMessageProperties is IMessageProperties {
     function messagePoolIdPayment(bytes calldata message) external pure returns (PoolId) {}
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        bytes memory prefix = message[0:6];
-        if (keccak256(prefix) == keccak256("POOL_0")) return POOL_0;
-        if (keccak256(prefix) == keccak256("POOL_A")) return POOL_A;
-        revert("Unreachable: message never asked for pool");
+        if (message.length >= 6) {
+            bytes memory prefix = message[0:6];
+            if (keccak256(prefix) == keccak256("POOL_A")) return POOL_A;
+            revert("Unreachable: message with pool but not POOL_A");
+        }
+        return PoolId.wrap(0);
     }
 }
 
@@ -55,9 +57,9 @@ contract MultiAdapterExt is MultiAdapter {
     constructor(
         uint16 localCentrifugeId_,
         IMessageHandler gateway_,
-        IMessageProperties messageProperties,
+        IMessageProperties messageProperties_,
         address deployer
-    ) MultiAdapter(localCentrifugeId_, gateway, messageProperties, deployer) {}
+    ) MultiAdapter(localCentrifugeId_, gateway_, messageProperties_, deployer) {}
 
     function adapterDetails(uint16 centrifugeId, PoolId poolId, IAdapter adapter)
         public
@@ -88,7 +90,8 @@ contract MultiAdapterTest is Test {
 
     bytes constant MESSAGE_1 = "POOL_A: Message 1";
     bytes constant MESSAGE_2 = "POOL_A: Message 2";
-    bytes constant MESSAGE_POOL_0 = "POOL_0: Message";
+    bytes constant PROOF_1 = "1POOL_A";
+    bytes constant MESSAGE_POOL_0 = "Message";
 
     IAdapter payloadAdapter = IAdapter(makeAddr("PayloadAdapter"));
     IAdapter proofAdapter1 = IAdapter(makeAddr("ProofAdapter1"));
@@ -130,12 +133,12 @@ contract MultiAdapterTest is Test {
         threeAdapters.push(payloadAdapter);
         threeAdapters.push(proofAdapter1);
         threeAdapters.push(proofAdapter2);
-        multiAdapter.file("gateway", address(gateway));
     }
 
     function testConstructor() public view {
         assertEq(multiAdapter.localCentrifugeId(), LOCAL_CENT_ID);
         assertEq(address(multiAdapter.gateway()), address(gateway));
+        assertEq(address(multiAdapter.messageProperties()), address(messageProperties));
     }
 }
 
@@ -151,11 +154,18 @@ contract MultiAdapterTestFile is MultiAdapterTest {
         multiAdapter.file("unknown", address(1));
     }
 
-    function testMultiAdapterFile() public {
+    function testMultiAdapterFileGateway() public {
         vm.expectEmit();
         emit IMultiAdapter.File("gateway", address(23));
         multiAdapter.file("gateway", address(23));
         assertEq(address(multiAdapter.gateway()), address(23));
+    }
+
+    function testMultiAdapterFileMessageProperties() public {
+        vm.expectEmit();
+        emit IMultiAdapter.File("messageProperties", address(23));
+        multiAdapter.file("messageProperties", address(23));
+        assertEq(address(multiAdapter.messageProperties()), address(23));
     }
 }
 
@@ -227,11 +237,11 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
     function testErrInvalidAdapter() public {
         vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, new bytes(0));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
     }
 
     function testErrEmptyMessage() public {
-        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, oneAdapter);
+        multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_0, oneAdapter);
 
         vm.prank(address(payloadAdapter));
         vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
@@ -243,7 +253,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(payloadAdapter));
         vm.expectRevert(IMultiAdapter.NonProofAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
+        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1)));
     }
 
     function testErrNonProofAdapterWithOneAdapter() public {
@@ -251,7 +261,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(payloadAdapter));
         vm.expectRevert(IMultiAdapter.NonProofAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.serializeMessageProof(bytes32("1")));
+        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1)));
     }
 
     function testErrNonPayloadAdapter() public {
@@ -279,7 +289,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
         bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
 
         vm.prank(address(payloadAdapter));
@@ -309,7 +319,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
         vm.prank(address(payloadAdapter));
         multiAdapter.handle(REMOTE_CENT_ID, message);
@@ -339,7 +349,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
         vm.prank(address(payloadAdapter));
         multiAdapter.handle(REMOTE_CENT_ID, message);
@@ -349,7 +359,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, proof);
 
         bytes memory batch2 = MESSAGE_2;
-        bytes memory proof2 = keccak256(MESSAGE_2).serializeMessageProof();
+        bytes memory proof2 = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_2));
 
         vm.prank(address(payloadAdapter));
         multiAdapter.handle(REMOTE_CENT_ID, batch2);
@@ -372,7 +382,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
         vm.prank(address(proofAdapter1));
         multiAdapter.handle(REMOTE_CENT_ID, proof);
@@ -394,7 +404,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
         vm.prank(address(payloadAdapter));
         multiAdapter.handle(REMOTE_CENT_ID, message);
@@ -428,7 +438,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
         vm.prank(address(payloadAdapter));
         multiAdapter.handle(REMOTE_CENT_ID, message);
@@ -547,7 +557,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         multiAdapter.file("adapters", REMOTE_CENT_ID, POOL_A, threeAdapters);
 
         bytes memory message = MESSAGE_1;
-        bytes memory proof = keccak256(MESSAGE_1).serializeMessageProof();
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
         bytes32 batchHash = keccak256(MESSAGE_1);
         bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
 
