@@ -144,7 +144,7 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, price);
 
-        (D18 storedValue, bool isValid) = valuation.price(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), price.raw());
         assertTrue(isValid);
     }
@@ -157,7 +157,7 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, zeroPrice);
 
-        (D18 storedValue, bool isValid) = valuation.price(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), 0);
         assertTrue(isValid); // Should be valid even with zero price
     }
@@ -176,13 +176,13 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         // Set first price
         _setPrice(POOL_A, SC_1, C6, price1);
-        (D18 storedValue1, bool isValid1) = valuation.price(POOL_A, SC_1, C6);
+        (D18 storedValue1, bool isValid1) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue1.raw(), price1.raw());
         assertTrue(isValid1);
 
         // Update with second price
         _setPrice(POOL_A, SC_1, C6, price2);
-        (D18 storedValue2, bool isValid2) = valuation.price(POOL_A, SC_1, C6);
+        (D18 storedValue2, bool isValid2) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue2.raw(), price2.raw());
         assertTrue(isValid2);
     }
@@ -297,8 +297,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_A, SC_1, C18, priceC18);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceC6, bool isValidC6) = valuation.price(POOL_A, SC_1, C6);
-        (D18 storedPriceC18, bool isValidC18) = valuation.price(POOL_A, SC_1, C18);
+        (D18 storedPriceC6, bool isValidC6) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceC18, bool isValidC18) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
 
         assertEq(storedPriceC6.raw(), priceC6.raw());
         assertTrue(isValidC6);
@@ -315,8 +315,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_A, SC_2, C6, priceSC2);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceSC1, bool isValidSC1) = valuation.price(POOL_A, SC_1, C6);
-        (D18 storedPriceSC2, bool isValidSC2) = valuation.price(POOL_A, SC_2, C6);
+        (D18 storedPriceSC1, bool isValidSC1) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceSC2, bool isValidSC2) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
 
         assertEq(storedPriceSC1.raw(), priceSC1.raw());
         assertTrue(isValidSC1);
@@ -335,8 +335,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_B, SC_1, C6, pricePoolB);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceA, bool isValidA) = valuation.price(POOL_A, SC_1, C6);
-        (D18 storedPriceB, bool isValidB) = valuation.price(POOL_B, SC_1, C6);
+        (D18 storedPriceA, bool isValidA) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceB, bool isValidB) = valuation.pricePoolPerAsset(POOL_B, SC_1, C6);
 
         assertEq(storedPriceA.raw(), pricePoolA.raw());
         assertTrue(isValidA);
@@ -359,7 +359,7 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, maxPrice);
 
-        (D18 storedValue, bool isValid) = valuation.price(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), maxPrice.raw());
         assertTrue(isValid);
     }
@@ -389,9 +389,9 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
         valuation.setPrice(POOL_A, SC_2, C6, price3);
 
         // Verify all prices were set
-        (D18 storedPrice1,) = valuation.price(POOL_A, SC_1, C6);
-        (D18 storedPrice2,) = valuation.price(POOL_A, SC_1, C18);
-        (D18 storedPrice3,) = valuation.price(POOL_A, SC_2, C6);
+        (D18 storedPrice1,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPrice2,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
+        (D18 storedPrice3,) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
 
         assertEq(storedPrice1.raw(), price1.raw());
         assertEq(storedPrice2.raw(), price2.raw());
