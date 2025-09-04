@@ -25,7 +25,7 @@ contract OracleValuation is IOracleValuation {
     IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => mapping(address => bool)) public feeder;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public price;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
     constructor(IHub hub_, IHubRegistry hubRegistry_) {
         hub = hub_;
@@ -51,7 +51,7 @@ contract OracleValuation is IOracleValuation {
     function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
         require(feeder[poolId][msg.sender], NotFeeder());
 
-        price[poolId][scId][assetId] = Price(newPrice, true);
+        pricePoolPerAsset[poolId][scId][assetId] = Price(newPrice, true);
         hub.updateHoldingValue(poolId, scId, assetId);
 
         emit UpdatePrice(poolId, scId, assetId, newPrice);
@@ -67,11 +67,11 @@ contract OracleValuation is IOracleValuation {
         view
         returns (uint128 quoteAmount)
     {
-        Price memory price_ = price[poolId][scId][assetId];
-        require(price_.isValid, PriceNotSet());
+        Price memory price = pricePoolPerAsset[poolId][scId][assetId];
+        require(price.isValid, PriceNotSet());
 
         return PricingLib.convertWithPrice(
-            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price_.value
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price.value
         );
     }
 }
