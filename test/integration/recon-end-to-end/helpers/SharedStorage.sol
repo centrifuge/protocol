@@ -86,7 +86,7 @@ abstract contract SharedStorage {
      */
     mapping(address => uint256) sumOfTransfersOut;
 
-    // Global-1  
+    // Global-1
     mapping(address => uint256) sumOfClaimedCancelledDeposits;
     // Global-2
     mapping(address => uint256) sumOfClaimedCancelledRedeemShares;
@@ -131,7 +131,6 @@ abstract contract SharedStorage {
      *         - asyncRequests_triggerRedeemRequest
      */
     mapping(address => uint256) sumOfRedeemRequests;
-
 
     mapping(address asset => uint256) sumOfSyncDepositsAsset;
     mapping(address share => uint256) sumOfSyncDepositsShare;

@@ -118,7 +118,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
     /// @dev Property: maxDeposit should decrease by the amount deposited
     /// @dev Property: depositing maxDeposit blocks the user from depositing more
     /// @dev Property: depositing maxDeposit does not increase the pendingDeposit
-/// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
+    /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
     // TODO(wischli): Add back statelessTest modifier after optimizer run
     function asyncVault_maxDeposit(uint64 poolEntropy, uint32 scEntropy, uint256 depositAmount) public {
         uint256 maxDepositBefore = IBaseVault(_getVault()).maxDeposit(_getActor());
@@ -240,7 +240,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         } catch {
             // Determine vault type for proper validation
             bool isAsyncVault = IBaseVault(_getVault()).vaultKind() == VaultKind.Async;
-            
+
             if (isAsyncVault) {
                 _validateAsyncMintFailure(mintAmount);
             } else {
@@ -286,7 +286,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         } catch {
             // Determine vault type for proper validation
             bool isAsyncVault = IBaseVault(_getVault()).vaultKind() == VaultKind.Async;
-            
+
             if (isAsyncVault) {
                 _validateAsyncWithdrawFailure(withdrawAmount);
             } else {
@@ -634,8 +634,12 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         if (!depositPrice.isZero()) {
             VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(_getVault()));
             uint128 sharesUp = PricingLib.assetToShareAmount(
-                IBaseVault(_getVault()).share(), vaultDetails.asset, vaultDetails.tokenId, 
-                depositAmount.toUint128(), depositPrice, MathLib.Rounding.Up
+                IBaseVault(_getVault()).share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                depositAmount.toUint128(),
+                depositPrice,
+                MathLib.Rounding.Up
             );
 
             if (sharesUp > maxMintState) {
@@ -644,26 +648,29 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             }
         }
 
-        // Check pending cancellation  
+        // Check pending cancellation
         (,,,,,,,, bool pendingCancel,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
         if (pendingCancel) {
             console2.log("Deposit failed - pending cancellation");
             return;
         }
-        
+
         t(false, "Async vault deposit failed for unknown reason");
     }
 
     /// @dev Helper to validate async vault mint failures
     function _validateAsyncMintFailure(uint256 mintAmount) internal {
-        (,, D18 depositPrice,,,,,,,) =
-            asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
         if (!depositPrice.isZero()) {
             VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(_getVault()));
             uint256 assetsRequired = PricingLib.shareToAssetAmount(
-                IBaseVault(_getVault()).share(), mintAmount.toUint128(), 
-                vaultDetails.asset, vaultDetails.tokenId, depositPrice, MathLib.Rounding.Up
+                IBaseVault(_getVault()).share(),
+                mintAmount.toUint128(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                depositPrice,
+                MathLib.Rounding.Up
             );
 
             uint256 maxDepositCurrent = IBaseVault(_getVault()).maxDeposit(_getActor());
@@ -685,15 +692,18 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
 
     /// @dev Helper to validate async vault withdraw failures
     function _validateAsyncWithdrawFailure(uint256 withdrawAmount) internal {
-        (,,, D18 redeemPrice,,,,,,) =
-            asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
+        (,,, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
 
         if (!redeemPrice.isZero()) {
             // Calculate shares required for the withdraw using exact AsyncRequestManager logic
             VaultDetails memory vaultDetails = spoke.vaultDetails(IBaseVault(_getVault()));
             uint128 sharesRequired = PricingLib.assetToShareAmount(
-                IBaseVault(_getVault()).share(), vaultDetails.asset, vaultDetails.tokenId, 
-                withdrawAmount.toUint128(), redeemPrice, MathLib.Rounding.Up
+                IBaseVault(_getVault()).share(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                withdrawAmount.toUint128(),
+                redeemPrice,
+                MathLib.Rounding.Up
             );
 
             // Check if shares would exceed maxRedeem
@@ -710,7 +720,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
             console2.log("Withdraw failed - pending cancellation");
             return;
         }
-        
+
         t(false, "Async vault withdraw failed for unknown reason");
     }
 }

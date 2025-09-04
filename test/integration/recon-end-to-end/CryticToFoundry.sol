@@ -30,7 +30,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // Helper functions to handle bytes calldata parameters
-    function hub_updateRestriction_wrapper(uint16 /* chainId */) external {
+    function hub_updateRestriction_wrapper(uint16 /* chainId */ ) external {
         // TODO: Fix bytes calldata issue - skipping for now
         // hub_updateRestriction(chainId, "");
     }
@@ -41,8 +41,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_crytic -vvv
-    function test_crytic() public {
-    }
+    function test_crytic() public {}
 
     /// === Potential Issues === ///
 

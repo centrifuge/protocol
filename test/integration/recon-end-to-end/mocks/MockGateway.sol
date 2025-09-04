@@ -202,7 +202,7 @@ contract MockGateway {
     }
 
     // Mock implementation of failedMessages
-    function failedMessages(uint16 /* centrifugeId */, bytes32 /* messageHash */) public view returns (uint256) {
+    function failedMessages(uint16, /* centrifugeId */ bytes32 /* messageHash */ ) public view returns (uint256) {
         return _failedMessagesReturn_0;
     }
 
@@ -232,7 +232,7 @@ contract MockGateway {
     }
 
     // Mock implementation of subsidy
-    function subsidy(uint64 /* arg0 */) public view returns (uint96, address) {
+    function subsidy(uint64 /* arg0 */ ) public view returns (uint96, address) {
         return (_subsidyReturn_0, _subsidyReturn_1);
     }
 
@@ -242,12 +242,12 @@ contract MockGateway {
     }
 
     // Mock implementation of underpaid
-    function underpaid(uint16 /* centrifugeId */, bytes32 /* batchHash */) public view returns (uint128, uint128) {
+    function underpaid(uint16, /* centrifugeId */ bytes32 /* batchHash */ ) public view returns (uint128, uint128) {
         return (_underpaidReturn_0, _underpaidReturn_1);
     }
 
     // Mock implementation of wards
-    function wards(address /* arg0 */) public view returns (uint256) {
+    function wards(address /* arg0 */ ) public view returns (uint256) {
         return _wardsReturn_0;
     }
 }

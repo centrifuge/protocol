@@ -63,8 +63,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestDeposit(assets, to, _getActor()) {
             // ghost tracking
-            userRequestDeposited[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][to] +=
-                assets;
+            userRequestDeposited[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][to]
+            += assets;
             sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
             requestDepositAssets[to][IBaseVault(_getVault()).asset()] += assets;
 
@@ -152,7 +152,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             requestRedeemShares[to][vault.share()] += shares;
             userRequestRedeemed[vault.scId()][spoke.vaultDetails(vault).assetId][to] += shares;
 
-            userRequestRedeemedAssets[vault.scId()][spoke.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
+            userRequestRedeemedAssets[vault.scId()][spoke.vaultDetails(vault).assetId][to] +=
+                vault.convertToAssets(shares);
 
             (uint128 pending, uint32 lastUpdate) =
                 shareClassManager.redeemRequest(vault.scId(), spoke.vaultDetails(vault).assetId, to.toBytes32());

@@ -663,8 +663,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
 
         // get the pending and approved deposit amounts for the current epoch
-        (, uint128 approvedAssetAmount,,,,) =
-            shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
+        (, uint128 approvedAssetAmount,,,,) = shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
 
         uint128 totalPendingUserDeposit;
         for (uint256 k = 0; k < _actors.length; k++) {
@@ -695,8 +694,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 pendingRedeem = shareClassManager.pendingRedeem(scId, assetId);
 
         // get the pending and approved redeem amounts for the current epoch
-        (, uint128 approvedShareAmount,,,,) =
-            shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId);
+        (, uint128 approvedShareAmount,,,,) = shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId);
 
         uint128 totalPendingUserRedeem;
         for (uint256 k = 0; k < _actors.length; k++) {

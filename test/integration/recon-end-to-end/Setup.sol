@@ -217,7 +217,9 @@ abstract contract Setup is
         root.endorse(address(globalEscrow));
 
         balanceSheet = new BalanceSheet(root, address(this));
-        fullRestrictions = new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this));
+        fullRestrictions = new FullRestrictions(
+            address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this)
+        );
         asyncRequestManager = new AsyncRequestManager(globalEscrow, address(this));
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
@@ -228,18 +230,18 @@ abstract contract Setup is
         // Create TokenRecoverer for MessageDispatcher
         tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
-        
+
         // Add missing TokenRecoverer permissions (matching CommonDeployer)
         tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
 
         // Create real MessageDispatcher with local forwarding
         messageDispatcher = new MessageDispatcher(
-            CENTRIFUGE_CHAIN_ID,  // localCentrifugeId = 1 for same-chain testing
+            CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
             IRoot(address(root)),
             IGateway(address(gateway)),
             tokenRecoverer,
-            address(this)  // deployer
+            address(this) // deployer
         );
 
         // set dependencies
@@ -254,7 +256,7 @@ abstract contract Setup is
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-        
+
         balanceSheet.file("gateway", address(gateway));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
@@ -318,24 +320,24 @@ abstract contract Setup is
         shareClassManager.rely(address(hubHelpers));
         // Hub needs permission to call HubHelpers functions
         hubHelpers.rely(address(hub));
-        
+
         // Add missing HubHelpers permissions (matching HubDeployer)
         hubHelpers.rely(address(messageDispatcher));
 
         hub.rely(address(messageDispatcher));
-        
+
         // Add missing Gateway permission for Hub (matching HubDeployer)
         gateway.rely(address(hub));
 
         // MessageDispatcher needs auth permissions to call protected functions
         spoke.rely(address(messageDispatcher));
         balanceSheet.rely(address(messageDispatcher));
-        
+
         // Spoke, balanceSheet, and hub need permission to call MessageDispatcher
         messageDispatcher.rely(address(spoke));
         messageDispatcher.rely(address(balanceSheet));
         messageDispatcher.rely(address(hub));
-        
+
         // Add missing MessageDispatcher permissions (matching HubDeployer)
         messageDispatcher.rely(address(root));
         messageDispatcher.rely(address(hubHelpers));
@@ -347,7 +349,7 @@ abstract contract Setup is
         messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
-        
+
         // Add missing HubHelpers file configuration (matching HubDeployer)
         hubHelpers.file("hub", address(hub));
     }
@@ -428,7 +430,7 @@ abstract contract Setup is
 
         // Rely gateway
         spoke.rely(address(gateway));
-        
+
         // Add missing Gateway permissions (matching CommonDeployer)
         gateway.rely(address(messageDispatcher));
 

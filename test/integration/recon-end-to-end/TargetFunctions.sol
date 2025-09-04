@@ -190,7 +190,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_request_deposit(
-        uint64 /* pricePoolPerShare */,
+        uint64, /* pricePoolPerShare */
         uint128 priceValuation,
         uint256 amount,
         uint256 toEntropy
@@ -255,7 +255,7 @@ abstract contract TargetFunctions is
         uint64 pricePoolPerShare,
         uint128 priceValuation,
         uint256 amount,
-        uint128 /* navPerShare */,
+        uint128, /* navPerShare */
         uint256 toEntropy
     ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
@@ -362,7 +362,7 @@ abstract contract TargetFunctions is
         shortcut_claim_redemption(shares, toEntropy);
     }
 
-    function shortcut_cancel_redeem_clamped(uint256 shares, uint128 /* navPerShare */, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_clamped(uint256 shares, uint128, /* navPerShare */ uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);

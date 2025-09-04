@@ -315,7 +315,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         syncManager_setValuation(valuation);
     }
 
-    function hub_updateSharePrice(uint64 /* poolIdAsUint */, uint128 /* scIdAsUint */, uint128 navPoolPerShare)
+    function hub_updateSharePrice(uint64, /* poolIdAsUint */ uint128, /* scIdAsUint */ uint128 navPoolPerShare)
         public
         updateGhosts
     {
@@ -386,7 +386,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     }
 
     function hub_updateJournal_clamped(
-        uint64 /* poolEntropy */,
+        uint64, /* poolEntropy */
         uint8 accountToUpdate,
         uint128 debitAmount,
         uint128 creditAmount
