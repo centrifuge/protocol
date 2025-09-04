@@ -33,6 +33,7 @@ contract HubDeploymentTest is HubDeployer, CommonDeploymentInputTest {
         assertEq(address(hub.holdings()), address(holdings));
         assertEq(address(hub.hubHelpers()), address(hubHelpers));
         assertEq(address(hub.accounting()), address(accounting));
+        assertEq(address(hub.multiAdapter()), address(multiAdapter));
         assertEq(address(hub.shareClassManager()), address(shareClassManager));
         assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(address(hub.poolEscrowFactory()), address(poolEscrowFactory));

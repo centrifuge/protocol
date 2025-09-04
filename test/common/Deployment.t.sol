@@ -89,7 +89,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(messageDispatcher.root()), address(root));
         assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
-        assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
         assertEq(messageDispatcher.localCentrifugeId(), CENTRIFUGE_ID);
     }
 

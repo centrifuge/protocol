@@ -8,6 +8,8 @@ import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {AccountId} from "../../../src/common/types/AccountId.sol";
 import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IMultiAdapter} from "../../../src/common/interfaces/IMultiAdapter.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
@@ -35,10 +37,11 @@ contract TestCommon is Test {
     IHubHelpers immutable hubHelpers = IHubHelpers(makeAddr("HubHelpers"));
     IHoldings immutable holdings = IHoldings(makeAddr("Holdings"));
     IAccounting immutable accounting = IAccounting(makeAddr("Accounting"));
+    IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
-    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, scm, address(this));
+    Hub hub = new Hub(gateway, holdings, hubHelpers, accounting, hubRegistry, multiAdapter, scm, address(this));
 
     function setUp() public {
         vm.mockCall(
@@ -198,6 +201,9 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), address(0), bytes32(0));
 
         vm.stopPrank();
     }

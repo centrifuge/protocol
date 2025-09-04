@@ -82,7 +82,6 @@ contract CommonActionBatcher {
         report.gateway.file("processor", address(report.messageProcessor));
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
-        report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
     }
 

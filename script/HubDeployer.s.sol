@@ -153,6 +153,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
                         address(hubHelpers),
                         address(accounting),
                         address(hubRegistry),
+                        address(multiAdapter),
                         address(shareClassManager),
                         batcher
                     )

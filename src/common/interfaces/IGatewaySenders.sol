@@ -10,6 +10,8 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
+    error CanNotBeSentLocally();
+
     function localCentrifugeId() external view returns (uint16);
 }
 
@@ -134,7 +136,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendInitiateSetPoolAdapters(
         uint16 centrifugeId,
         PoolId poolId,
-        IAdapter[] memory adapters,
+        bytes32[] memory adapters,
         bytes32 recoverer
     ) external;
 }
