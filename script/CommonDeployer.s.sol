@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
+import {CreateXScript} from "./utils/CreateXScript.sol";
 
 import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
@@ -12,8 +13,6 @@ import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
-
-import {CreateXScript} from "./utils/CreateXScript.sol";
 
 import "forge-std/Script.sol";
 
