@@ -243,9 +243,7 @@ contract GuardianTestSetAdapter is GuardianTest {
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSignature(
-                "file(bytes32,uint16,PoolId,IAdapter[])", bytes32("adapters"), CENTRIFUGE_ID, POOL_0, adapters
-            ),
+            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters),
             abi.encode()
         );
 

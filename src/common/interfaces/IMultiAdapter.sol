@@ -32,8 +32,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     }
 
     event File(bytes32 indexed what, address addr);
-    event File(bytes32 indexed what, uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
 
+    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
     event SetRecoveryAddress(PoolId poolId, address recoverer);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
@@ -88,10 +88,9 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Used to update an array of addresses ( state variable ) on very rare occasions.
     /// @dev    Currently it is used to update the supported adapters.
-    /// @param  what The name of the variable to be updated.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  value New addresses.
-    function file(bytes32 what, uint16 centrifugeId, PoolId poolId, IAdapter[] calldata value) external;
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata value) external;
 
     /// @notice Initiate recovery of a payload.
     function setRecoveryAddress(PoolId poolId, address payloadHash) external;

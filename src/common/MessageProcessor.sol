@@ -203,7 +203,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
-            multiAdapter.file("adapters", centrifugeId, PoolId.wrap(m.poolId), adapters);
+            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters);
             multiAdapter.setRecoveryAddress(PoolId.wrap(m.poolId), m.recoverer.toAddress());
         } else {
             revert InvalidMessage(uint8(kind));

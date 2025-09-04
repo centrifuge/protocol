@@ -545,7 +545,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32 recoverer
     ) external {
         if (centrifugeId == localCentrifugeId) {
-            multiAdapter.file("adapters", centrifugeId, poolId, adapters);
+            multiAdapter.setAdapters(centrifugeId, poolId, adapters);
             multiAdapter.setRecoveryAddress(poolId, recoverer.toAddress());
         } else {
             bytes32[] memory adapterList = new bytes32[](adapters.length);

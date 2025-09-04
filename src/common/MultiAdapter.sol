@@ -61,37 +61,32 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function file(bytes32 what, uint16 centrifugeId, PoolId poolId, IAdapter[] calldata addresses) external auth {
-        if (what == "adapters") {
-            uint8 quorum_ = addresses.length.toUint8();
-            require(quorum_ != 0, EmptyAdapterSet());
-            require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata addresses) external auth {
+        uint8 quorum_ = addresses.length.toUint8();
+        require(quorum_ != 0, EmptyAdapterSet());
+        require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
 
-            // Increment session id to reset pending votes
-            uint256 numAdapters = adapters[centrifugeId][poolId].length;
-            uint64 sessionId = numAdapters > 0
-                ? _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]].activeSessionId + 1
-                : 0;
+        // Increment session id to reset pending votes
+        uint256 numAdapters = adapters[centrifugeId][poolId].length;
+        uint64 sessionId = numAdapters > 0
+            ? _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]].activeSessionId + 1
+            : 0;
 
-            // Disable old adapters
-            for (uint8 i; i < numAdapters; i++) {
-                delete _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][i]];
-            }
-
-            // Enable new adapters, setting quorum to number of adapters
-            for (uint8 j; j < quorum_; j++) {
-                require(_adapterDetails[centrifugeId][poolId][addresses[j]].id == 0, NoDuplicatesAllowed());
-
-                // Ids are assigned sequentially starting at 1
-                _adapterDetails[centrifugeId][poolId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
-            }
-
-            adapters[centrifugeId][poolId] = addresses;
-        } else {
-            revert FileUnrecognizedParam();
+        // Disable old adapters
+        for (uint8 i; i < numAdapters; i++) {
+            delete _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][i]];
         }
 
-        emit File(what, centrifugeId, poolId, addresses);
+        // Enable new adapters, setting quorum to number of adapters
+        for (uint8 j; j < quorum_; j++) {
+            require(_adapterDetails[centrifugeId][poolId][addresses[j]].id == 0, NoDuplicatesAllowed());
+
+            // Ids are assigned sequentially starting at 1
+            _adapterDetails[centrifugeId][poolId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+        }
+
+        adapters[centrifugeId][poolId] = addresses;
+        emit SetAdapters(centrifugeId, poolId, addresses);
     }
 
     /// @inheritdoc IMultiAdapter
