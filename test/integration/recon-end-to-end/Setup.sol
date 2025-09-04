@@ -227,21 +227,18 @@ abstract contract Setup is
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
-        // Create TokenRecoverer for MessageDispatcher
+
         tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
-
-        // Add missing TokenRecoverer permissions (matching CommonDeployer)
         tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
 
-        // Create real MessageDispatcher with local forwarding
         messageDispatcher = new MessageDispatcher(
             CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
             IRoot(address(root)),
             IGateway(address(gateway)),
             tokenRecoverer,
-            address(this) // deployer
+            address(this)
         );
 
         // set dependencies
