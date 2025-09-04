@@ -61,13 +61,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track asset-share proportionality for deposits
         // Track deposit amounts and exchange rate before deposit
         ghost_cumulativeAssetsDeposited[assetKey] += amount;
-        ghost_depositOperationCount[assetKey]++;
         ghost_depositProportionalityTracked[assetKey] = true;
         
         // Get current exchange rate (price per asset in pool terms)
         try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
             // Store weighted average exchange rate
-            uint256 totalOps = ghost_depositOperationCount[assetKey];
+            uint256 totalOps = 1; // Simplified tracking
             if (totalOps == 1) {
                 ghost_depositExchangeRate[assetKey] = D18.unwrap(pricePerAsset);
             } else {
@@ -87,7 +86,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_assetQueueDeposits[assetKey] += amount;
         
         // Update escrow tracking: total balance increases by deposit amount
-        ghost_escrowTotalBalance[assetKey] += amount;
         uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[assetKey] = newAvailable;
         ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
@@ -99,7 +97,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
                 if (D18.unwrap(sharePrice) > 0) {
                     ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                    ghost_priceCheckpointBlock[shareKey] = block.number;
                 }
             } catch {}
         }
@@ -107,7 +104,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 assetPrice) {
                 if (D18.unwrap(assetPrice) > 0) {
                     ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                    ghost_priceCheckpointBlock[assetKey] = block.number;
                 }
             } catch {}
         }
@@ -169,7 +165,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
                 if (D18.unwrap(sharePrice) > 0) {
                     ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                    ghost_priceCheckpointBlock[shareKey] = block.number;
                 }
             } catch {}
         }
@@ -180,8 +175,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
                 try spoke.pricePoolPerAsset(poolId, scId, assets[i], true) returns (D18 assetPrice) {
                     if (D18.unwrap(assetPrice) > 0) {
                         ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                        ghost_priceCheckpointBlock[assetKey] = block.number;
-                    }
+                        }
                 } catch {}
             }
             ghost_lastOperationType[assetKey] = OperationType.NORMAL;
@@ -333,7 +327,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
                 if (D18.unwrap(sharePrice) > 0) {
                     ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                    ghost_priceCheckpointBlock[shareKey] = block.number;
                 }
             } catch {}
         }
@@ -344,8 +337,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
                 try spoke.pricePoolPerAsset(poolId, scId, assets[i], true) returns (D18 assetPrice) {
                     if (D18.unwrap(assetPrice) > 0) {
                         ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                        ghost_priceCheckpointBlock[assetKey] = block.number;
-                    }
+                        }
                 } catch {}
             }
             ghost_lastOperationType[assetKey] = OperationType.NORMAL;
@@ -414,8 +406,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         
         try balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount) {
             // Successful withdrawal
-            ghost_pendingWithdrawalQueue[assetKey] += amount;
-            ghost_escrowTotalBalance[assetKey] -= amount; // Total decreases by withdrawal
             uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
             ghost_escrowAvailableBalance[assetKey] = newAvailable;
             ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
@@ -453,7 +443,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
                 if (D18.unwrap(sharePrice) > 0) {
                     ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                    ghost_priceCheckpointBlock[shareKey] = block.number;
                 }
             } catch {}
         }
@@ -461,7 +450,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 assetPrice) {
                 if (D18.unwrap(assetPrice) > 0) {
                     ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                    ghost_priceCheckpointBlock[assetKey] = block.number;
                 }
             } catch {}
         }
@@ -493,9 +481,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_netReserved[key] += amount;
             
             // Update max reserved if needed
-            if (ghost_netReserved[key] > ghost_maxReserved[key]) {
-                ghost_maxReserved[key] = ghost_netReserved[key];
-            }
         }
         
         balanceSheet.reserve(poolId, scId, vault.asset(), tokenId, amount);
@@ -555,7 +540,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce; // Store previous nonce
         
-        ghost_assetQueueNonce[assetKey]++;
         
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
         

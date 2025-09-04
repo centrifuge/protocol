@@ -163,7 +163,9 @@ abstract contract Setup is
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
 
-    // Ghost variables for queue tracking (Step 1.1)
+    // ============================================
+    // ======= SHARE QUEUE GHOST VARIABLES ========
+    // ============================================
     mapping(bytes32 => int256) public ghost_netSharePosition; // Net share position (positive for issuance, negative for revocation)
     mapping(bytes32 => uint256) public ghost_flipCount; // Count of position flips between issuance and revocation
     mapping(bytes32 => uint256) public ghost_totalIssued; // Total shares issued cumulatively
@@ -171,30 +173,27 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
     mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
     mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
-    mapping(bytes32 => uint256) public ghost_assetQueueNonce; // Track nonce progression per asset
-
-    // Ghost variables for Queue State Consistency properties
     mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // Per-asset counter tracking (non-empty asset queues)
     mapping(bytes32 => uint256) public ghost_previousNonce; // Previous nonce value to verify monotonicity
+    
+    // Before/after state tracking for share queues
+    mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
+    mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
+    mapping(bytes32 => uint64) public before_nonce; // Nonce before operation
 
-    // Reserve/unreserve balance integrity tracking
+    // ============================================
+    // ======= RESERVE GHOST VARIABLES ===========
+    // ============================================
     mapping(bytes32 => uint256) public ghost_totalReserveOperations;
     mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
     mapping(bytes32 => uint256) public ghost_netReserved;
-    mapping(bytes32 => uint256) public ghost_maxReserved;
     mapping(bytes32 => bool) public ghost_reserveOverflow;
     mapping(bytes32 => bool) public ghost_reserveUnderflow;
     mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
 
-    // Escrow balance sufficiency tracking
-    mapping(bytes32 => uint256) public ghost_escrowTotalBalance;
-    mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
-    mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
-    mapping(bytes32 => uint256) public ghost_pendingWithdrawalQueue;
-    mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
-    mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
-
-    // Authorization boundary enforcement tracking
+    // ============================================
+    // ==== AUTHORIZATION GHOST VARIABLES =========
+    // ============================================
     enum AuthLevel { NONE, MANAGER, WARD }
     mapping(address => AuthLevel) public ghost_authorizationLevel;
     mapping(bytes32 => uint256) public ghost_unauthorizedAttempts;
@@ -203,50 +202,58 @@ abstract contract Setup is
     mapping(address => uint256) public ghost_authorizationChanges;
     mapping(bytes32 => bool) public ghost_authorizationBypass;
 
-    // Share transfer restrictions tracking
+    // ============================================
+    // === TRANSFER RESTRICTION GHOST VARIABLES ===
+    // ============================================
     mapping(address => bool) public ghost_isEndorsedContract;
     mapping(bytes32 => uint256) public ghost_endorsedTransferAttempts;
     mapping(bytes32 => uint256) public ghost_blockedEndorsedTransfers;
     mapping(bytes32 => uint256) public ghost_validTransferCount;
     mapping(bytes32 => address) public ghost_lastTransferFrom;
-    mapping(bytes32 => address) public ghost_lastTransferTo;
     mapping(address => uint256) public ghost_endorsementChanges;
 
-    // Share token supply consistency tracking
+    // ============================================
+    // === SUPPLY CONSISTENCY GHOST VARIABLES =====
+    // ============================================
     mapping(bytes32 => uint256) public ghost_totalShareSupply;
     mapping(bytes32 => mapping(address => uint256)) public ghost_individualBalances;
     mapping(bytes32 => uint256) public ghost_supplyMintEvents;
     mapping(bytes32 => uint256) public ghost_supplyBurnEvents;
     mapping(bytes32 => bool) public ghost_supplyOperationOccurred;
 
-    // Asset-share proportionality tracking for deposits
+    // ============================================
+    // === ASSET PROPORTIONALITY GHOST VARIABLES ==
+    // ============================================
+    // Deposit proportionality tracking
     mapping(bytes32 => uint256) public ghost_cumulativeAssetsDeposited;
     mapping(bytes32 => uint256) public ghost_cumulativeSharesIssuedForDeposits;
     mapping(bytes32 => uint256) public ghost_depositExchangeRate;
-    mapping(bytes32 => uint256) public ghost_depositOperationCount;
     mapping(bytes32 => bool) public ghost_depositProportionalityTracked;
-
-    // Asset-share proportionality tracking for withdrawals
+    
+    // Withdrawal proportionality tracking
     mapping(bytes32 => uint256) public ghost_cumulativeAssetsWithdrawn;
     mapping(bytes32 => uint256) public ghost_cumulativeSharesRevokedForWithdrawals;
     mapping(bytes32 => uint256) public ghost_withdrawalExchangeRate;
     mapping(bytes32 => uint256) public ghost_withdrawalOperationCount;
     mapping(bytes32 => bool) public ghost_withdrawalProportionalityTracked;
 
-    // Price consistency tracking during operations
+    // ============================================
+    // === PRICE CONSISTENCY GHOST VARIABLES ======
+    // ============================================
     mapping(bytes32 => uint256) public ghost_priceAssetSnapshot;
     mapping(bytes32 => uint256) public ghost_priceShareSnapshot;
     mapping(bytes32 => bool) public ghost_priceOverrideOccurred;
-    mapping(bytes32 => uint256) public ghost_priceCheckpointBlock;
     mapping(bytes32 => uint256) public ghost_maxPriceDeviation;
     enum OperationType { NORMAL, ADMIN_OVERRIDE }
     mapping(bytes32 => OperationType) public ghost_lastOperationType;
 
-    // Before/After state tracking for ShareQueueProperties
-    mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
-    mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
-    mapping(bytes32 => uint32) public before_queuedAssetCounter; // Asset counter before operation
-    mapping(bytes32 => uint64) public before_nonce; // Nonce before operation
+    // ============================================
+    // ===== ESCROW SUFFICIENCY TRACKING ==========
+    // ============================================
+    mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
+    mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
+    mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
+    mapping(bytes32 => uint256) public ghost_failedWithdrawalAttempts;
 
     // Pool tracking for property iteration
     PoolId[] public activePools; // All created pools
@@ -494,7 +501,6 @@ abstract contract Setup is
         
         before_shareQueueDelta[key] = delta;
         before_shareQueueIsPositive[key] = isPositive;
-        before_queuedAssetCounter[key] = queuedAssetCounter;
         before_nonce[key] = nonce;
     }
 
@@ -607,7 +613,6 @@ abstract contract Setup is
         
         // Track transfer details
         ghost_lastTransferFrom[key] = from;
-        ghost_lastTransferTo[key] = to;
         
         // Check if from is endorsed
         if (_isEndorsedContract(from)) {
