@@ -13,7 +13,7 @@ import {MessageProcessor} from "../src/common/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
-import {CreateXScript} from "createx-forge/script/CreateXScript.sol";
+import {CreateXScript} from "./utils/CreateXScript.sol";
 
 import "forge-std/Script.sol";
 
