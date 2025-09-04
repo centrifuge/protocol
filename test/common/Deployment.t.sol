@@ -80,6 +80,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
+        vm.assume(nonWard != address(guardian));
 
         assertEq(messageDispatcher.wards(address(root)), 1);
         assertEq(messageDispatcher.wards(address(guardian)), 1);
@@ -119,10 +120,12 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(gateway));
+        vm.assume(nonWard != address(messageProcessor));
 
         assertEq(multiAdapter.wards(address(root)), 1);
         assertEq(multiAdapter.wards(address(guardian)), 1);
         assertEq(multiAdapter.wards(address(gateway)), 1);
+        assertEq(multiAdapter.wards(address(messageProcessor)), 1);
         assertEq(multiAdapter.wards(nonWard), 0);
 
         // dependencies set correctly

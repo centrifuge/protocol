@@ -158,4 +158,16 @@ contract HubDeploymentCommonExtTest is HubDeploymentTest {
         // dependencies set correctly
         assertEq(address(guardian.hub()), address(hub));
     }
+
+    function testMultiAdapterExt(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(guardian)); // From common
+        vm.assume(nonWard != address(gateway)); // from common
+        vm.assume(nonWard != address(messageProcessor)); // from common
+        vm.assume(nonWard != address(hub));
+
+        assertEq(multiAdapter.wards(address(hub)), 1);
+        assertEq(multiAdapter.wards(nonWard), 0);
+    }
 }

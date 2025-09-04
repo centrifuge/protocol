@@ -70,6 +70,7 @@ contract CommonActionBatcher {
         report.multiAdapter.rely(address(report.root));
         report.multiAdapter.rely(address(report.guardian));
         report.multiAdapter.rely(address(report.gateway));
+        report.multiAdapter.rely(address(report.messageProcessor));
         report.messageDispatcher.rely(address(report.root));
         report.messageDispatcher.rely(address(report.guardian));
         report.messageProcessor.rely(address(report.root));
