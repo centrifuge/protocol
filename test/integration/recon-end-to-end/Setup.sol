@@ -233,19 +233,9 @@ abstract contract Setup is
     // Withdrawal proportionality tracking
     mapping(bytes32 => uint256) public ghost_cumulativeAssetsWithdrawn;
     mapping(bytes32 => uint256) public ghost_cumulativeSharesRevokedForWithdrawals;
-    mapping(bytes32 => uint256) public ghost_withdrawalExchangeRate;
-    mapping(bytes32 => uint256) public ghost_withdrawalOperationCount;
     mapping(bytes32 => bool) public ghost_withdrawalProportionalityTracked;
 
     // ============================================
-    // === PRICE CONSISTENCY GHOST VARIABLES ======
-    // ============================================
-    mapping(bytes32 => uint256) public ghost_priceAssetSnapshot;
-    mapping(bytes32 => uint256) public ghost_priceShareSnapshot;
-    mapping(bytes32 => bool) public ghost_priceOverrideOccurred;
-    mapping(bytes32 => uint256) public ghost_maxPriceDeviation;
-    enum OperationType { NORMAL, ADMIN_OVERRIDE }
-    mapping(bytes32 => OperationType) public ghost_lastOperationType;
 
     // ============================================
     // ===== ESCROW SUFFICIENCY TRACKING ==========

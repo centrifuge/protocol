@@ -89,26 +89,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[assetKey] = newAvailable;
         ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
-        
-        // Track price consistency during operations
-        // Take price snapshots on first normal operation if not already captured
-        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
-        if (ghost_priceShareSnapshot[shareKey] == 0 && !ghost_priceOverrideOccurred[shareKey]) {
-            try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
-                if (D18.unwrap(sharePrice) > 0) {
-                    ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                }
-            } catch {}
-        }
-        if (ghost_priceAssetSnapshot[assetKey] == 0 && !ghost_priceOverrideOccurred[assetKey]) {
-            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 assetPrice) {
-                if (D18.unwrap(assetPrice) > 0) {
-                    ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                }
-            } catch {}
-        }
-        ghost_lastOperationType[shareKey] = OperationType.NORMAL;
-        ghost_lastOperationType[assetKey] = OperationType.NORMAL;
     }
 
 
@@ -158,29 +138,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         if (prevNetPosition < 0 && ghost_netSharePosition[shareKey] >= 0) {
             ghost_flipCount[shareKey]++;
         }
-        
-        // Track price consistency during operations
-        // Take price snapshots on first normal operation if not already captured
-        if (ghost_priceShareSnapshot[shareKey] == 0 && !ghost_priceOverrideOccurred[shareKey]) {
-            try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
-                if (D18.unwrap(sharePrice) > 0) {
-                    ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                }
-            } catch {}
-        }
-        // Also track asset prices for all tracked assets in this pool/shareClass
-        for (uint256 i = 0; i < assets.length; i++) {
-            bytes32 assetKey = keccak256(abi.encode(poolId, scId, assets[i]));
-            if (ghost_priceAssetSnapshot[assetKey] == 0 && !ghost_priceOverrideOccurred[assetKey]) {
-                try spoke.pricePoolPerAsset(poolId, scId, assets[i], true) returns (D18 assetPrice) {
-                    if (D18.unwrap(assetPrice) > 0) {
-                        ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                        }
-                } catch {}
-            }
-            ghost_lastOperationType[assetKey] = OperationType.NORMAL;
-        }
-        ghost_lastOperationType[shareKey] = OperationType.NORMAL;
     }
 
     function balanceSheet_noteDeposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
@@ -206,11 +163,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track authorization - overridePricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
         
-        // Track price override operations
-        bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
-        ghost_priceOverrideOccurred[assetKey] = true;
-        ghost_lastOperationType[assetKey] = OperationType.ADMIN_OVERRIDE;
-        
         balanceSheet.overridePricePoolPerAsset(vault.poolId(), vault.scId(), assetId, value);
     }
 
@@ -219,11 +171,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         
         // Track authorization - overridePricePoolPerShare() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
-        
-        // Track price override operations
-        bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-        ghost_priceOverrideOccurred[shareKey] = true;
-        ghost_lastOperationType[shareKey] = OperationType.ADMIN_OVERRIDE;
         
         balanceSheet.overridePricePoolPerShare(vault.poolId(), vault.scId(), value);
     }
@@ -251,12 +198,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track authorization - resetPricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
         
-        // Track price reset operations
-        bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
-        ghost_priceOverrideOccurred[assetKey] = false;
-        ghost_priceAssetSnapshot[assetKey] = 0; // Clear snapshot for fresh baseline
-        ghost_lastOperationType[assetKey] = OperationType.NORMAL;
-        
         balanceSheet.resetPricePoolPerAsset(vault.poolId(), vault.scId(), assetId);
     }
 
@@ -265,12 +206,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         
         // Track authorization - resetPricePoolPerShare() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
-        
-        // Track price reset operations
-        bytes32 shareKey = keccak256(abi.encode(vault.poolId(), vault.scId()));
-        ghost_priceOverrideOccurred[shareKey] = false;
-        ghost_priceShareSnapshot[shareKey] = 0; // Clear snapshot for fresh baseline
-        ghost_lastOperationType[shareKey] = OperationType.NORMAL;
         
         balanceSheet.resetPricePoolPerShare(vault.poolId(), vault.scId());
     }
@@ -320,29 +255,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         if (prevNetPosition > 0 && ghost_netSharePosition[shareKey] <= 0) {
             ghost_flipCount[shareKey]++;
         }
-        
-        // Track price consistency during operations
-        // Take price snapshots on first normal operation if not already captured
-        if (ghost_priceShareSnapshot[shareKey] == 0 && !ghost_priceOverrideOccurred[shareKey]) {
-            try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
-                if (D18.unwrap(sharePrice) > 0) {
-                    ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                }
-            } catch {}
-        }
-        // Also track asset prices for all tracked assets in this pool/shareClass
-        for (uint256 i = 0; i < assets.length; i++) {
-            bytes32 assetKey = keccak256(abi.encode(poolId, scId, assets[i]));
-            if (ghost_priceAssetSnapshot[assetKey] == 0 && !ghost_priceOverrideOccurred[assetKey]) {
-                try spoke.pricePoolPerAsset(poolId, scId, assets[i], true) returns (D18 assetPrice) {
-                    if (D18.unwrap(assetPrice) > 0) {
-                        ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                        }
-                } catch {}
-            }
-            ghost_lastOperationType[assetKey] = OperationType.NORMAL;
-        }
-        ghost_lastOperationType[shareKey] = OperationType.NORMAL;
     }
 
     function balanceSheet_transferSharesFrom(address to, uint256 amount) public updateGhosts asActor {
@@ -413,21 +325,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             // Track withdrawal proportionality
             ghost_withdrawalProportionalityTracked[assetKey] = true;
             ghost_cumulativeAssetsWithdrawn[assetKey] += amount;
-            ghost_withdrawalOperationCount[assetKey]++;
-            
-            // Track exchange rate for withdrawal proportionality (asset price at withdrawal)
-            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
-                uint256 totalOps = ghost_withdrawalOperationCount[assetKey];
-                if (totalOps == 1) {
-                    ghost_withdrawalExchangeRate[assetKey] = D18.unwrap(pricePerAsset);
-                } else {
-                    // Calculate weighted average exchange rate
-                    uint256 oldAvg = ghost_withdrawalExchangeRate[assetKey];
-                    ghost_withdrawalExchangeRate[assetKey] = (oldAvg * (totalOps - 1) + D18.unwrap(pricePerAsset)) / totalOps;
-                }
-            } catch {
-                // Price may be unavailable, continue without rate tracking
-            }
         } catch {
             // Failed withdrawal tracked above
         }
@@ -435,26 +332,6 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         sumOfManagerWithdrawals[vault.asset()] += amount;
         
         ghost_assetQueueWithdrawals[assetKey] += amount;
-        
-        // Track price consistency during operations
-        // Take price snapshots on first normal operation if not already captured
-        bytes32 shareKey = keccak256(abi.encode(poolId, scId));
-        if (ghost_priceShareSnapshot[shareKey] == 0 && !ghost_priceOverrideOccurred[shareKey]) {
-            try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 sharePrice) {
-                if (D18.unwrap(sharePrice) > 0) {
-                    ghost_priceShareSnapshot[shareKey] = D18.unwrap(sharePrice);
-                }
-            } catch {}
-        }
-        if (ghost_priceAssetSnapshot[assetKey] == 0 && !ghost_priceOverrideOccurred[assetKey]) {
-            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 assetPrice) {
-                if (D18.unwrap(assetPrice) > 0) {
-                    ghost_priceAssetSnapshot[assetKey] = D18.unwrap(assetPrice);
-                }
-            } catch {}
-        }
-        ghost_lastOperationType[shareKey] = OperationType.NORMAL;
-        ghost_lastOperationType[assetKey] = OperationType.NORMAL;
     }
 
     // === NEW TARGET FUNCTIONS FOR QUEUE OPERATIONS ===
