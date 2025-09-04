@@ -58,7 +58,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
         // Connect Chain A to Chain C (spoke 2)
         adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
-        _wire(deployA, CENTRIFUGE_ID_C, adapterAToC);
+        _setAdapter(deployA, CENTRIFUGE_ID_C, adapterAToC);
 
         adapterCToA.setEndpoint(adapterAToC);
         adapterAToC.setEndpoint(adapterCToA);

@@ -642,7 +642,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external {
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        payable
+    {
         _isManager(poolId);
 
         accounting.unlock(poolId);
@@ -658,7 +661,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         bytes32[] memory remoteAdapters,
         address localRecoverer,
         bytes32 remoteRecoverer
-    ) external {
+    ) external payable payTransaction {
         _isManager(poolId);
 
         sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);

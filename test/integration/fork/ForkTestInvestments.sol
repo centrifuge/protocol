@@ -11,6 +11,7 @@ import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
 import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
+import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
@@ -383,6 +384,7 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            multiAdapter: MultiAdapter(IntegrationConstants.MULTI_ADAPTER),
             gasService: GasService(IntegrationConstants.GAS_SERVICE),
             hubRegistry: HubRegistry(IntegrationConstants.HUB_REGISTRY),
             accounting: Accounting(IntegrationConstants.ACCOUNTING),
@@ -399,6 +401,7 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            multiAdapter: MultiAdapter(IntegrationConstants.MULTI_ADAPTER),
             balanceSheet: BalanceSheet(IntegrationConstants.BALANCE_SHEET),
             spoke: Spoke(IntegrationConstants.SPOKE),
             router: VaultRouter(IntegrationConstants.ROUTER),

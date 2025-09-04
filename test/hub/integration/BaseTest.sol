@@ -60,21 +60,13 @@ contract BaseTest is HubDeployer, Test {
         vm.startPrank(address(batcher));
 
         cv = new MockVaults(CHAIN_CV, multiAdapter);
-        _wire(CHAIN_CV, cv);
+        IAdapter[] memory adapters = new IAdapter[](1);
+        adapters[0] = cv;
+        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters);
 
         valuation = new MockValuation(hubRegistry);
 
         vm.stopPrank();
-    }
-
-    function _wire(uint16 centrifugeId, IAdapter adapter) internal {
-        IAuth(address(adapter)).rely(address(root));
-        IAuth(address(adapter)).rely(address(guardian));
-        IAuth(address(adapter)).deny(address(this));
-
-        IAdapter[] memory adapters = new IAdapter[](1);
-        adapters[0] = adapter;
-        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters);
     }
 
     function setUp() public virtual {

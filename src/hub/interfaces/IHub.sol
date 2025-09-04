@@ -361,7 +361,9 @@ interface IHub {
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Perform an accounting entries update.
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        payable;
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
@@ -378,5 +380,5 @@ interface IHub {
         bytes32[] memory remoteAdapters,
         address localRecoverer,
         bytes32 remoteRecoverer
-    ) external;
+    ) external payable;
 }

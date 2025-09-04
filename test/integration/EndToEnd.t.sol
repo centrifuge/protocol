@@ -18,6 +18,7 @@ import {MockValuation} from "../common/mocks/MockValuation.sol";
 
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
+import {MultiAdapter} from "../../src/common/MultiAdapter.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
@@ -88,6 +89,7 @@ contract EndToEndDeployment is Test {
         Root root;
         Guardian guardian;
         Gateway gateway;
+        MultiAdapter multiAdapter;
         GasService gasService;
         // Hub
         HubRegistry hubRegistry;
@@ -107,6 +109,7 @@ contract EndToEndDeployment is Test {
         Root root;
         Guardian guardian;
         Gateway gateway;
+        MultiAdapter multiAdapter;
         // Vaults
         BalanceSheet balanceSheet;
         Spoke spoke;
@@ -171,6 +174,8 @@ contract EndToEndDeployment is Test {
     D18 currentAssetPrice = IntegrationConstants.identityPrice();
     D18 currentSharePrice = IntegrationConstants.identityPrice();
 
+    bool constant DIFFERENT_CHAINS = false;
+
     //----------------------------------------------------------------------------------------------
     // Test Setup & Infrastructure
     //----------------------------------------------------------------------------------------------
@@ -194,6 +199,7 @@ contract EndToEndDeployment is Test {
             root: deployA.root(),
             guardian: deployA.guardian(),
             gateway: deployA.gateway(),
+            multiAdapter: deployA.multiAdapter(),
             gasService: deployA.gasService(),
             hubRegistry: deployA.hubRegistry(),
             accounting: deployA.accounting(),
@@ -214,13 +220,7 @@ contract EndToEndDeployment is Test {
         vm.label(address(adapterBToA), "AdapterBToA");
     }
 
-    function _wire(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
-        vm.startPrank(address(deploy));
-        IAuth(address(adapter)).rely(address(deploy.root()));
-        IAuth(address(adapter)).rely(address(deploy.guardian()));
-        IAuth(address(adapter)).deny(address(deploy));
-        vm.stopPrank();
-
+    function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
@@ -246,7 +246,7 @@ contract EndToEndDeployment is Test {
         deploy.deployFull(commonInput, deploy.noAdaptersInput(), batcher);
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));
-        _wire(deploy, remoteCentrifugeId, adapter);
+        _setAdapter(deploy, remoteCentrifugeId, adapter);
 
         deploy.removeFullDeployerAccess(batcher);
     }
@@ -258,6 +258,7 @@ contract EndToEndDeployment is Test {
         s_.root = deploy.root();
         s_.guardian = deploy.guardian();
         s_.gateway = deploy.gateway();
+        s_.multiAdapter = deploy.multiAdapter();
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
         s_.router = deploy.vaultRouter();
@@ -1277,5 +1278,30 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     /// forge-config: default.isolate = true
     function testUpdateAccountingAfterRedeem_AfterSyncDeposit(bool sameChain) public {
         _testUpdateAccountingAfterRedeem(sameChain, false);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAdaptersPerPool() public {
+        _setSpoke(DIFFERENT_CHAINS);
+        _createPool();
+
+        LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+
+        poolAdapterAToB.setEndpoint(poolAdapterBToA);
+        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = poolAdapterAToB;
+
+        bytes32[] memory remoteAdapters = new bytes32[](1);
+        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(
+            s.centrifugeId, POOL_A, localAdapters, remoteAdapters, RECOVERER, RECOVERER.toBytes32()
+        );
+
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
     }
 }
