@@ -5,8 +5,6 @@ import {ERC20} from "../../../src/misc/ERC20.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {MockValuation} from "../../common/mocks/MockValuation.sol";
-
 import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
@@ -35,6 +33,7 @@ import {FreezeOnly} from "../../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
 
+import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Test.sol";
@@ -76,7 +75,7 @@ contract ForkTestBase is EndToEndFlows {
             shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
             hub: Hub(IntegrationConstants.HUB),
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
-            valuation: MockValuation(address(0)), // Fork tests don't use dynamic pricing
+            oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
             snapshotHook: MockSnapshotHook(address(0)) // Fork tests don't use snapshot hooks
         });
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {HubDeployer, HubReport, HubActionBatcher} from "./HubDeployer.s.sol";
 
+import {OracleValuation} from "../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Script.sol";
@@ -14,17 +15,14 @@ struct ValuationsReport {
 }
 
 contract ValuationsActionBatcher is HubActionBatcher {
-    function engageValuations(ValuationsReport memory report) public onlyDeployer {
-        report.identityValuation.rely(address(report.hub.common.root));
-    }
+    function engageValuations(ValuationsReport memory report) public onlyDeployer {}
 
-    function revokeValuations(ValuationsReport memory report) public onlyDeployer {
-        report.identityValuation.deny(address(this));
-    }
+    function revokeValuations(ValuationsReport memory report) public onlyDeployer {}
 }
 
 contract ValuationsDeployer is HubDeployer {
     IdentityValuation public identityValuation;
+    OracleValuation public oracleValuation;
 
     function deployValuations(CommonInput memory input, ValuationsActionBatcher batcher) public {
         _preDeployValuations(input, batcher);
@@ -37,13 +35,19 @@ contract ValuationsDeployer is HubDeployer {
         identityValuation = IdentityValuation(
             create3(
                 generateSalt("identityValuation"),
-                abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry, batcher))
+                abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry))
             )
         );
 
-        batcher.engageValuations(_valuationsReport());
+        oracleValuation = OracleValuation(
+            create3(
+                generateSalt("oracleValuation"),
+                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry))
+            )
+        );
 
         register("identityValuation", address(identityValuation));
+        register("oracleValuation", address(oracleValuation));
     }
 
     function _postDeployValuations(ValuationsActionBatcher batcher) internal {
