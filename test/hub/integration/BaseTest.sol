@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
