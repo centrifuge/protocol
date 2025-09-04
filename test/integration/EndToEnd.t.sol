@@ -28,7 +28,7 @@ import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
-import {VaultUpdateKind} from "../../src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageType} from "../../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
@@ -1303,5 +1303,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         );
 
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+
+        assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
     }
 }
