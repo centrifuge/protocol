@@ -4,23 +4,21 @@ pragma solidity 0.8.28;
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 
+import {INAVManagerFactory} from "./interfaces/INAVManagerFactory.sol";
+import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
+import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 import {AccountId, withCentrifugeId} from "../common/types/AccountId.sol";
 
 import {IHub} from "../hub/interfaces/IHub.sol";
 import {IAccounting} from "../hub/interfaces/IAccounting.sol";
 
-interface INAVHook {
-    /// @notice Callback when there is a new net asset value (NAV) on a specific network.
-    function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, D18 netAssetValue) external;
-}
-
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
-contract NAVManager is Auth, ISnapshotHook {
+contract NAVManager is Auth, INAVManager {
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
@@ -177,5 +175,25 @@ contract NAVManager is Auth, ISnapshotHook {
 
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 4);
+    }
+}
+
+contract NavManagerFactory is INAVManagerFactory {
+    address public immutable contractUpdater;
+    IHub public immutable hub;
+
+    constructor(address contractUpdater_, IHub hub_) {
+        contractUpdater = contractUpdater_;
+        hub = hub_;
+    }
+
+    /// @inheritdoc INAVManagerFactory
+    function newManager(PoolId poolId) external returns (INAVManager) {
+        require(hub.hubRegistry().exists(poolId), InvalidPoolId());
+
+        NAVManager manager = new NAVManager{salt: bytes32(uint256(poolId.raw()))}(poolId, hub, contractUpdater);
+
+        emit DeployNavManager(poolId, address(manager));
+        return INAVManager(manager);
     }
 }

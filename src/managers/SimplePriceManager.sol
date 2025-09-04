@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {INAVHook} from "./NAVManager.sol";
+import {INAVHook} from "./interfaces/INavManager.sol";
+import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
@@ -14,15 +15,8 @@ import {MAX_MESSAGE_COST} from "../common/interfaces/IGasService.sol";
 import {IHub} from "../hub/interfaces/IHub.sol";
 import {IShareClassManager} from "../hub/interfaces/IShareClassManager.sol";
 
-struct NetworkMetrics {
-    D18 netAssetValue;
-    uint128 issuance;
-}
-
 /// @notice Share price calculation manager for single share class pools.
-contract SimplePriceManager is Auth, INAVHook {
-    error InvalidShareClassCount();
-
+contract SimplePriceManager is Auth, ISimplePriceManager {
     PoolId public immutable poolId;
     ShareClassId public immutable scId;
 

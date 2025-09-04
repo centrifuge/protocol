@@ -45,6 +45,7 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
+import {INAVHook} from "../../src/managers/interfaces/INAVManager.sol";
 import {NAVManager} from "../../src/managers/NAVManager.sol";
 import {SimplePriceManager} from "../../src/managers/SimplePriceManager.sol";
 
@@ -360,7 +361,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub, address(this));
-        h.navManager.setNAVHook(priceManager);
+        h.navManager.setNAVHook(INAVHook(address(priceManager)));
 
         h.hub.updateHubManager(POOL_A, address(h.navManager), true);
         h.hub.updateHubManager(POOL_A, address(priceManager), true);
