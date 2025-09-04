@@ -129,7 +129,7 @@ abstract contract BeforeAfter is Setup {
             (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
             // accountValue is only set if the account has been updated
             if(lastUpdated != 0) {
-                (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
                 _before.ghostAccountValue[poolId][accountId] = accountValue;
             }
         }
@@ -177,7 +177,7 @@ abstract contract BeforeAfter is Setup {
             (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
             // accountValue is only set if the account has been updated
             if(lastUpdated != 0) {
-                (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+                (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
                 _after.ghostAccountValue[poolId][accountId] = accountValue;
             }
         }

@@ -30,7 +30,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // Helper functions to handle bytes calldata parameters
-    function hub_updateRestriction_wrapper(uint16 chainId) external {
+    function hub_updateRestriction_wrapper(uint16 /* chainId */) external {
         // TODO: Fix bytes calldata issue - skipping for now
         // hub_updateRestriction(chainId, "");
     }

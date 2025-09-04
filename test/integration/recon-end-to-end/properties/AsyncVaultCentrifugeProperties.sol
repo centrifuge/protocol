@@ -151,7 +151,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         try IBaseVault(_getVault()).deposit(depositAmount, _getActor()) returns (uint256 shares) {
             console2.log(" === After Depositing: Max Deposit === ");
             uint256 maxDepositAfter = IBaseVault(_getVault()).maxDeposit(_getActor());
-            uint256 difference = maxDepositBefore - depositAmount;
 
             // === Enhanced PoolEscrow-aware maxDeposit Property ===
             // Update escrow state after the deposit operation
@@ -201,7 +200,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = AssetId.wrap(_getAssetId());
-        (uint32 latestDepositApproval,,,) = shareClassManager.epochId(scId, assetId);
 
         // === PoolEscrow State Analysis Before Mint ===
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(poolId, scId);
@@ -267,7 +265,6 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         PoolId poolId = Helpers.getRandomPoolId(_getPools(), poolEntropy);
         ShareClassId scId = Helpers.getRandomShareClassIdForPool(shareClassManager, poolId, scEntropy);
         AssetId assetId = AssetId.wrap(_getAssetId());
-        (, uint32 latestRedeemApproval,,) = shareClassManager.epochId(scId, assetId);
 
         vm.prank(_getActor());
         try IBaseVault(_getVault()).withdraw(withdrawAmount, _getActor(), _getActor()) returns (uint256 shares) {
@@ -318,7 +315,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         try IBaseVault(_getVault()).redeem(redeemAmount, _getActor(), _getActor()) returns (uint256 assets) {
             console2.log(" === After maxRedeem === ");
             uint256 maxRedeemAfter = IBaseVault(_getVault()).maxRedeem(_getActor());
-            uint256 difference = maxRedeemBefore - redeemAmount;
+            // uint256 difference = maxRedeemBefore - redeemAmount; // Unused
             uint256 shares = IBaseVault(_getVault()).convertToShares(assets);
 
             // console2.log("difference:", difference);
@@ -588,7 +585,7 @@ abstract contract AsyncVaultCentrifugeProperties is Setup, Asserts, AsyncVaultPr
         uint256 maxValueAfter,
         uint256 operationAmount,
         PoolEscrowState memory state
-    ) internal view {
+    ) internal pure {
         console2.log(string.concat("=== PoolEscrow Analysis (", operationName, ") ==="));
         console2.log(
             "Available balance before/after: %d / %d", state.availableBalanceBefore, state.availableBalanceAfter

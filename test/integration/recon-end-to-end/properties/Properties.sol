@@ -518,7 +518,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
 
         IBaseVault vault = IBaseVault(_getVault());
         ShareClassId scId = vault.scId();
-        PoolId poolId = vault.poolId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
         for (uint256 i; i < actors.length; i++) {
@@ -638,7 +637,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// epochInvestAmounts[..].approvedAssetAmount
     function property_total_pending_and_approved() public {
         IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -658,7 +656,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_sum_pending_user_deposit_geq_total_pending_deposit() public {
         address[] memory _actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -666,7 +663,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 pendingDeposit = shareClassManager.pendingDeposit(scId, assetId);
 
         // get the pending and approved deposit amounts for the current epoch
-        (uint128 pendingAssetAmount, uint128 approvedAssetAmount,,,,) =
+        (, uint128 approvedAssetAmount,,,,) =
             shareClassManager.epochInvestAmounts(scId, assetId, nowDepositEpoch);
 
         uint128 totalPendingUserDeposit;
@@ -690,7 +687,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     function property_sum_pending_user_redeem_geq_total_pending_redeem() public {
         address[] memory _actors = _getActors();
         IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
+        // PoolId poolId = vault.poolId(); // Unused
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -698,7 +695,7 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         uint128 pendingRedeem = shareClassManager.pendingRedeem(scId, assetId);
 
         // get the pending and approved redeem amounts for the current epoch
-        (, uint128 approvedShareAmount, uint128 payoutAssetAmount,,,) =
+        (, uint128 approvedShareAmount,,,,) =
             shareClassManager.epochRedeemAmounts(scId, assetId, redeemEpochId);
 
         uint128 totalPendingUserRedeem;
@@ -967,7 +964,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     /// pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {
         IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
@@ -1018,17 +1014,17 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // the queue isn't enabled
         return;
 
-        (uint128 totalIssuance,) = shareClassManager.metrics(scId);
-
-        uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
-            + sumOfSyncDepositsShare[vault.share()];
-        uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
-        console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
-        console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
-        console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
-        console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
-        console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
-        lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
+        // Unreachable code commented out to fix compiler warnings
+        // (uint128 totalIssuance,) = shareClassManager.metrics(scId);
+        // uint256 minted = issuedHubShares[poolId][scId][assetId] + issuedBalanceSheetShares[poolId][scId]
+        //     + sumOfSyncDepositsShare[vault.share()];
+        // uint256 burned = revokedHubShares[poolId][scId][assetId] + revokedBalanceSheetShares[poolId][scId];
+        // console2.log("issuedHubShares:", issuedHubShares[poolId][scId][assetId]);
+        // console2.log("issuedBalanceSheetShares:", issuedBalanceSheetShares[poolId][scId]);
+        // console2.log("sumOfSyncDepositsShare:", sumOfSyncDepositsShare[vault.share()]);
+        // console2.log("revokedHubShares:", revokedHubShares[poolId][scId][assetId]);
+        // console2.log("revokedBalanceSheetShares:", revokedBalanceSheetShares[poolId][scId]);
+        // lte(totalIssuance, minted - burned, "total issuance is > issuedHubShares + issuedBalanceSheetShares");
     }
 
     function property_additions_dont_cause_ppfs_loss() public {

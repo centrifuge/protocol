@@ -113,7 +113,7 @@ abstract contract Setup is
     // CROSS CHAIN
     uint16 CENTRIFUGE_CHAIN_ID = 1;
     uint256 REQUEST_ID = 0; // LP request ID is always 0
-    bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224);
+    // bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224); // Unused
 
     /// === Hub === ///
     Accounting accounting;

@@ -55,7 +55,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         return _poolId;
     }
 
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor returns (PoolId poolId) {
+    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor returns (PoolId /* poolId */) {
         AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy);
 
         hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
@@ -149,7 +149,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(vault, actor);
         
         // Execute with ACCURATE cancellation tracking
-        (uint128 paymentShareAmount, uint128 payoutAssetAmount, uint128 cancelledShareAmount) = 
+        (uint128 paymentShareAmount, , uint128 cancelledShareAmount) = 
             _executeNotifyRedeem(investor, maxClaims);
         
         // Update ghost variables with ACCURATE values

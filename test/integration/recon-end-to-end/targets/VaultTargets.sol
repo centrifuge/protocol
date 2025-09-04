@@ -126,7 +126,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function vault_requestDeposit_clamped(uint256 assets, uint256 toEntropy) public {
         assets = between(assets, 0, MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor()));
-        address to = _getRandomActor(toEntropy);
 
         vault_requestDeposit(assets, toEntropy);
     }
@@ -358,7 +357,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // for sync vaults, deposits are fulfilled and claimed immediately
         if (!isAsyncVault) {
             if (pendingBefore >= pendingAfter) {
-                sumOfFulfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
+                sumOfFulfilledDeposits[vault.share()] += shares;
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             }
             executedInvestments[vault.share()] += shares;
@@ -437,7 +436,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             sumOfSyncDepositsShare[vault.share()] += shares;
             if (pendingBefore >= pendingAfter) {
-                sumOfFulfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
+                sumOfFulfilledDeposits[vault.share()] += shares;
                 sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
             }
             executedInvestments[vault.share()] += shares;
@@ -506,7 +505,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
-        address to = _getRandomActor(toEntropy);
+        // address to = _getRandomActor(toEntropy); // Unused
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
         // Bal b4
