@@ -14,14 +14,10 @@ import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
 import {BeforeAfter} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 
-
 // Target functions that are effectively inherited from the Actor and AssetManagers
 // Once properly standardized, managers will expose these by default
 // Keeping them out makes your project more custom
-abstract contract ManagerTargets is
-    BaseTargetFunctions,
-    Properties
-{
+abstract contract ManagerTargets is BaseTargetFunctions, Properties {
     /// @dev Start acting as another actor
     function switch_actor(uint256 entropy) public {
         _switchActor(entropy);
@@ -80,6 +76,8 @@ abstract contract ManagerTargets is
         address poolEscrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
         require(to != address(globalEscrow) && to != poolEscrow, "Cannot mint to globalEscrow or poolEscrow");
+        console2.log("asset_mint to", to);
+        console2.log("asset_mint asset", _getAsset());
         MockERC20(_getAsset()).mint(to, amt);
     }
 }

@@ -64,7 +64,8 @@ abstract contract ReconShareClassManager {
     /// @notice Switches the current share class based on the entropy
     /// @param entropy The entropy to choose a random share class in the set for switching
     function _switchShareClassId(uint256 entropy) internal {
-        bytes16 target = bytes16(_shareClassIds.at(entropy % _shareClassIds.length()));
+        bytes32[] memory values = _shareClassIds.values();
+        bytes16 target = bytes16(values[entropy % values.length]);
         __shareClassId = target;
     }
 }
