@@ -57,7 +57,8 @@ abstract contract ReconShareManager {
     /// @notice Switches the current shareToken based on the entropy
     /// @param entropy The entropy to choose a random shareToken in the array for switching
     function _switchShareToken(uint256 entropy) internal {
-        address shareToken = _shareTokens.at(entropy % _shareTokens.length());
+        address[] memory shareTokens = _shareTokens.values();
+        address shareToken = shareTokens[entropy % shareTokens.length];
         __shareToken = shareToken;
     }
 }
