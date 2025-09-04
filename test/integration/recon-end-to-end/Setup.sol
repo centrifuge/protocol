@@ -274,8 +274,8 @@ abstract contract Setup is
 
     function setupHub() internal {
         hubRegistry = new HubRegistry(address(this));
-        transientValuation = new MockValuation(IERC6909Decimals(address(hubRegistry)));
-        identityValuation = new IdentityValuation(IERC6909Decimals(address(hubRegistry)), address(this));
+        transientValuation = new MockValuation(hubRegistry);
+        identityValuation = new IdentityValuation(hubRegistry);
         mockAdapter = new MockAdapter(CENTRIFUGE_CHAIN_ID, IMessageHandler(address(gateway)));
         mockAccountValue = new MockAccountValue();
 
