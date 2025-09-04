@@ -32,9 +32,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
-    mapping(
-        uint16 centrifugeId => mapping(PoolId => mapping(IAdapter => mapping(bytes32 payloadHash => uint256 timestamp)))
-    ) public recoveries;
 
     constructor(
         uint16 localCentrifugeId_,

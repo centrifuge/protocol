@@ -170,7 +170,7 @@ contract MultiAdapterTestFile is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestFileAdapters is MultiAdapterTest {
+contract MultiAdapterTestSetAdapters is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -197,7 +197,7 @@ contract MultiAdapterTestFileAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, duplicatedAdapters);
     }
 
-    function testMultiAdapterFileAdapters() public {
+    function testMultiAdapterSetAdapters() public {
         vm.expectEmit();
         emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
@@ -215,7 +215,7 @@ contract MultiAdapterTestFileAdapters is MultiAdapterTest {
         }
     }
 
-    function testMultiAdapterFileAdaptersAdvanceSession() public {
+    function testMultiAdapterSetAdaptersAdvanceSession() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
 

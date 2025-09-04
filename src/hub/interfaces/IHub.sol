@@ -363,7 +363,10 @@ interface IHub {
     /// @notice Perform an accounting entries update.
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
 
-    /// @notice Configure adapters for a pool in another chain.
-    /// @param recoverer address used to recover messages in the specified chain
+    /// @notice Configure adapters for a pool in another chain. Pool related message will go by these adapters.
+    /// @param centrifugeId chain where to perform the adapter configuration.
+    /// @param poolId pool associated to this configutation.
+    /// @param adapters addresses to configure. This addresses correspond to already deployed adapters.
+    /// @param recoverer address used to recover messages in the specified chain.
     function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] memory adapters, bytes32 recoverer) external;
 }
