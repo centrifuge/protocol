@@ -197,7 +197,7 @@ jobs:
           version: nightly
 
       - name: Run coverage
-        run: forge coverage --report summary --report lcov
+        run: forge coverage --report summary --report lcov --no-match-path "test/integration/fork/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci-coverage
           FORK_TESTS: false

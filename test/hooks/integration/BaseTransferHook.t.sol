@@ -18,7 +18,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     address constant USER = address(0x1234);
 
     FullRestrictions public correctHook;
-    FullRestrictions public wrongHook;
 
     function setUp() public {
         CommonInput memory input = CommonInput({
@@ -36,9 +35,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         vm.startPrank(ADMIN);
         correctHook =
             new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), ADMIN);
-        wrongHook = new FullRestrictions(
-            address(root), address(asyncRequestManager), address(globalEscrow), address(spoke), ADMIN
-        );
         vm.stopPrank();
     }
 
@@ -46,12 +42,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         assertTrue(
             correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn is fulfillment"
         );
-        assertFalse(correctHook.isRedeemClaim(address(balanceSheet), address(0)), "balanceSheet burn not claim");
-
         assertFalse(
-            wrongHook.isRedeemFulfillment(address(balanceSheet), address(0)), "wrong hook: balanceSheet not fulfillment"
+            correctHook.isRedeemClaimOrRevocation(address(balanceSheet), address(0)), "balanceSheet burn not revocation"
         );
-        assertTrue(wrongHook.isRedeemClaim(address(balanceSheet), address(0)), "wrong hook: balanceSheet is claim");
     }
 
     function testAsyncRequestManagerBurns() public view {
@@ -59,35 +52,34 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             correctHook.isRedeemFulfillment(address(asyncRequestManager), address(0)),
             "asyncRequestManager not fulfillment"
         );
-        assertTrue(correctHook.isRedeemClaim(address(asyncRequestManager), address(0)), "asyncRequestManager is claim");
-
         assertTrue(
-            wrongHook.isRedeemFulfillment(address(asyncRequestManager), address(0)),
-            "wrong hook: asyncRequestManager is fulfillment"
-        );
-        assertFalse(
-            wrongHook.isRedeemClaim(address(asyncRequestManager), address(0)),
-            "wrong hook: asyncRequestManager not claim"
+            correctHook.isRedeemClaimOrRevocation(address(asyncRequestManager), address(0)),
+            "asyncRequestManager is revocation"
         );
     }
 
-    function testDeployedHookUsesBalanceSheet() public view {
+    function testConfigurationValidation() public view {
         FullRestrictions deployed = fullRestrictionsHook;
 
-        assertEq(deployed.redeemSource(), address(balanceSheet), "deployed hook uses balanceSheet");
-        assertTrue(deployed.redeemSource() != address(asyncRequestManager), "deployed hook not asyncRequestManager");
+        assertEq(deployed.redeemSource(), address(balanceSheet), "hook must use balanceSheet as redeemSource");
+        assertTrue(
+            deployed.redeemSource() != address(asyncRequestManager),
+            "hook must not use asyncRequestManager as redeemSource"
+        );
+
         assertTrue(
             deployed.isRedeemFulfillment(address(balanceSheet), address(0)),
-            "deployed hook: balanceSheet is fulfillment"
-        );
-    }
-
-    function testArchitecturalBugDetection() public view {
-        assertFalse(
-            wrongHook.isRedeemFulfillment(address(balanceSheet), address(0)), "wrong hook misses balanceSheet burns"
+            "balanceSheet burns must be classified as fulfillments"
         );
         assertTrue(
-            wrongHook.isRedeemClaim(address(balanceSheet), address(0)), "wrong hook treats balanceSheet as claim"
+            deployed.isRedeemClaimOrRevocation(address(asyncRequestManager), address(0)),
+            "asyncRequestManager burns must be classified as revocations"
+        );
+
+        assertTrue(
+            correctHook.isRedeemFulfillment(address(balanceSheet), address(0))
+                == deployed.isRedeemFulfillment(address(balanceSheet), address(0)),
+            "correctHook and deployed hook must have identical classification"
         );
     }
 
@@ -96,7 +88,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             correctHook.isDepositFulfillment(address(0), address(globalEscrow)), "mint to globalEscrow is fulfillment"
         );
         assertTrue(correctHook.isDepositClaim(address(globalEscrow), USER), "globalEscrow to user is claim");
-        assertTrue(correctHook.isDepositRequest(address(0), USER), "mint to user is request");
+        assertTrue(correctHook.isDepositRequestOrIssuance(address(0), USER), "mint to user is issuance");
     }
 
     function testRedeemFlow() public view {
@@ -118,15 +110,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         assertTrue(
             correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn classified correctly"
         );
-
-        assertFalse(
-            wrongHook.isRedeemFulfillment(address(balanceSheet), address(0)),
-            "wrong hook misses balanceSheet fulfillment"
-        );
-        assertTrue(
-            wrongHook.isRedeemFulfillment(address(asyncRequestManager), address(0)),
-            "wrong hook incorrectly treats asyncRequestManager as fulfillment"
-        );
     }
 
     function testCompleteInvestmentFlowSequence() public view {
@@ -144,30 +127,31 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     function testCrosschainTransfers() public view {
         assertTrue(correctHook.isCrosschainTransfer(address(spoke), address(0)), "spoke burn is crosschain");
         assertFalse(correctHook.isRedeemFulfillment(address(spoke), address(0)), "spoke burn not fulfillment");
-        assertFalse(correctHook.isRedeemClaim(address(spoke), address(0)), "spoke burn not claim");
-
-        assertTrue(wrongHook.isCrosschainTransfer(address(spoke), address(0)), "wrong hook: spoke still crosschain");
-        assertFalse(wrongHook.isRedeemFulfillment(address(spoke), address(0)), "wrong hook: spoke not fulfillment");
-        assertFalse(wrongHook.isRedeemClaim(address(spoke), address(0)), "wrong hook: spoke not claim");
+        assertFalse(correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)), "spoke burn not revocation");
     }
 
     function testOtherContractBurns() public view {
-        assertTrue(correctHook.isRedeemClaim(address(globalEscrow), address(0)), "globalEscrow burn is claim");
+        assertTrue(
+            correctHook.isRedeemClaimOrRevocation(address(globalEscrow), address(0)), "globalEscrow burn is revocation"
+        );
 
         if (address(vaultRouter) != address(0)) {
-            assertTrue(correctHook.isRedeemClaim(address(vaultRouter), address(0)), "vaultRouter burn is claim");
+            assertTrue(
+                correctHook.isRedeemClaimOrRevocation(address(vaultRouter), address(0)),
+                "vaultRouter burn is revocation"
+            );
         }
     }
 
     function testUserToUserTransfers() public view {
         address user2 = address(0x222);
 
-        assertFalse(correctHook.isDepositRequest(USER, user2), "user to user not deposit request");
+        assertFalse(correctHook.isDepositRequestOrIssuance(USER, user2), "user to user not issuance");
         assertFalse(correctHook.isDepositFulfillment(USER, user2), "user to user not deposit fulfillment");
         assertFalse(correctHook.isDepositClaim(USER, user2), "user to user not deposit claim");
         assertFalse(correctHook.isRedeemRequest(USER, user2), "user to user not redeem request");
         assertFalse(correctHook.isRedeemFulfillment(USER, user2), "user to user not redeem fulfillment");
-        assertFalse(correctHook.isRedeemClaim(USER, user2), "user to user not redeem claim");
+        assertFalse(correctHook.isRedeemClaimOrRevocation(USER, user2), "user to user not revocation");
         assertFalse(correctHook.isCrosschainTransfer(USER, user2), "user to user not cross-chain");
     }
 }

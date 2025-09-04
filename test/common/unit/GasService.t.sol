@@ -22,7 +22,7 @@ contract GasServiceTest is Test {
         vm.assume(message.length > 0);
         vm.assume(message.messageCode() > 0);
         vm.assume(
-            message.messageCode() < uint8(MessageType._Placeholder5)
+            message.messageCode() < uint8(MessageType._Placeholder7)
                 || message.messageCode() > uint8(MessageType._Placeholder15)
         );
         vm.assume(message.messageCode() <= uint8(type(MessageType).max));
