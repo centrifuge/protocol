@@ -28,7 +28,6 @@ contract OracleValuationTest is Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = 2023;
 
     address hub = address(new IsContract());
-    address contractUpdater = makeAddr("contractUpdater");
     address hubRegistry = address(new IsContract());
     address poolManager = makeAddr("poolManager");
     address feeder = makeAddr("feeder");
@@ -68,7 +67,7 @@ contract OracleValuationTest is Test {
     }
 
     function _deployValuation() internal {
-        valuation = new OracleValuation(IHub(hub), contractUpdater, IHubRegistry(hubRegistry), LOCAL_CENTRIFUGE_ID);
+        valuation = new OracleValuation(IHub(hub), IHubRegistry(hubRegistry));
     }
 
     function _enableFeeder(PoolId poolId, address feeder_) internal {
@@ -85,19 +84,17 @@ contract OracleValuationTest is Test {
 contract OracleValuationConstructorTests is OracleValuationTest {
     function testConstructorSetsImmutables() public view {
         assertEq(address(valuation.hub()), hub);
-        assertEq(valuation.contractUpdater(), contractUpdater);
         assertEq(address(valuation.hubRegistry()), hubRegistry);
-        assertEq(valuation.localCentrifugeId(), LOCAL_CENTRIFUGE_ID);
     }
 }
 
 contract OracleValuationUpdateFeederTests is OracleValuationTest {
     function testUpdateFeederSuccess() public {
+        vm.expectEmit(true, true, true, true);
+        emit IOracleValuation.UpdateFeeder(POOL_A, feeder, true);
+
         vm.prank(poolManager);
         valuation.updateFeeder(POOL_A, feeder, true);
-
-        vm.expectEmit(true, true, true);
-        emit IOracleValuation.UpdateFeeder(POOL_A, feeder, true);
 
         assertTrue(valuation.feeder(POOL_A, feeder));
     }

@@ -40,6 +40,7 @@ contract OracleValuation is IOracleValuation {
     function updateFeeder(PoolId poolId, address feeder_, bool canFeed) external {
         require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
         feeder[poolId][feeder_] = canFeed;
+        emit UpdateFeeder(poolId, feeder_, canFeed);
     }
 
     //----------------------------------------------------------------------------------------------
