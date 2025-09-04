@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 import {CreateXScript} from "./utils/CreateXScript.sol";
+import {JsonRegistry} from "./utils/JsonRegistry.s.sol";
 
 import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";

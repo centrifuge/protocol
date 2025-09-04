@@ -33,7 +33,7 @@ abstract contract CreateXScript is Script {
             vm.label(CREATEX_ADDRESS, "CreateX");
             return;
         }
-        
+
         if (!isCreateXDeployed()) {
             deployCreateX();
             if (!isCreateXDeployed()) revert("\u001b[91m Could not deploy CreateX! \u001b[0m");
