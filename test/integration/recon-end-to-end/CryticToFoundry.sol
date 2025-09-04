@@ -65,13 +65,13 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
 
     // // forge test --match-test test_property_escrow_share_balance_12 -vvv
     // // NOTE: issue with ghost tracking variables that needs to be fixed
-    // function test_property_escrow_share_balance_12() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true);
+    function test_property_escrow_share_balance_12() public {
+        shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true);
 
-    //     shortcut_deposit_queue_cancel(0, 1, 1, 1, 1, 0);
+        shortcut_deposit_queue_cancel(0, 1, 1, 1, 1, 0);
 
-    //     property_escrow_share_balance();
-    // }
+        property_escrow_share_balance();
+    }
 
     // // forge test --match-test test_property_sum_of_pending_redeem_request_15 -vvv
     // // NOTE: issue with ghost tracking variables that needs to be fixed

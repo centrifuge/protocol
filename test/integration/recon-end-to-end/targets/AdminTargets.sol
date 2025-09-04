@@ -175,6 +175,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
         uint256 escrowShareDelta = escrowSharesAfter - escrowSharesBefore;
         executedInvestments[_getShareToken()] += escrowShareDelta;
+        sumOfFulfilledDeposits[_getShareToken()] += escrowShareDelta;
         issuedHubShares[poolId][scId][assetId] += issuedShareAmount;
 
         // TODO: Refactor this to work with new issuance update logic
