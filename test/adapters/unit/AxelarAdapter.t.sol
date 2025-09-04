@@ -70,7 +70,7 @@ contract AxelarAdapterTestBase is Test {
 }
 
 contract AxelarAdapterTestWire is AxelarAdapterTestBase {
-    function testFileErrNotAuthorized() public {
+    function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
         adapter.wire(CENTRIFUGE_CHAIN_ID, AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);

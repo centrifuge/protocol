@@ -29,4 +29,4 @@ function eq(AssetId a, AssetId b) pure returns (bool) {
     return a.raw() == b.raw();
 }
 
-using {isNull, raw, centrifugeId, eq} for AssetId global;
+using {isNull, raw, centrifugeId, eq as ==} for AssetId global;

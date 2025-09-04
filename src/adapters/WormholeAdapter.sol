@@ -44,6 +44,7 @@ contract WormholeAdapter is Auth, IWormholeAdapter {
     function wire(uint16 centrifugeId, uint16 wormholeId, address adapter) external auth {
         sources[wormholeId] = WormholeSource(centrifugeId, adapter);
         destinations[centrifugeId] = WormholeDestination(wormholeId, adapter);
+        emit Wire(centrifugeId, wormholeId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
