@@ -70,15 +70,15 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         hub_createAccount(poolId.raw(), LOSS_ACCOUNT, IS_DEBIT_NORMAL);
         hub_createAccount(poolId.raw(), GAIN_ACCOUNT, IS_DEBIT_NORMAL);
         hub_initializeHolding(
-            poolId.raw(), scId.raw(), identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
+            poolId.raw(), uint128(scId.raw()), identityValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, LOSS_ACCOUNT, GAIN_ACCOUNT
         );
 
         // request deposit
-        hub_depositRequest(poolId.raw(), scId.raw(), INVESTOR_AMOUNT);
+        hub_depositRequest(poolId.raw(), uint128(scId.raw()), INVESTOR_AMOUNT);
 
         uint32 depositEpochId = shareClassManager.nowDepositEpoch(scId, assetId);
-        hub_approveDeposits(poolId.raw(), scId.raw(), assetId.raw(), depositEpochId, APPROVED_INVESTOR_AMOUNT);
-        hub_issueShares(poolId.raw(), scId.raw(), assetId.raw(), depositEpochId, NAV_PER_SHARE);
+        hub_approveDeposits(poolId.raw(), uint128(scId.raw()), assetId.raw(), depositEpochId, APPROVED_INVESTOR_AMOUNT);
+        hub_issueShares(poolId.raw(), uint128(scId.raw()), assetId.raw(), depositEpochId, NAV_PER_SHARE);
 
         // claim deposit
         hub_notifyDeposit(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
@@ -90,12 +90,12 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
         (poolId, scId) = test_request_deposit();
 
         // request redemption
-        hub_redeemRequest(poolId.raw(), scId.raw(), assetId.raw(), SHARE_AMOUNT);
+        hub_redeemRequest(poolId.raw(), uint128(scId.raw()), assetId.raw(), SHARE_AMOUNT);
 
         // executed via the PoolRouter
         uint32 redeemEpochId = shareClassManager.nowRedeemEpoch(scId, assetId);
-        hub_approveRedeems(poolId.raw(), scId.raw(), assetId.raw(), redeemEpochId, APPROVED_SHARE_AMOUNT);
-        hub_revokeShares(poolId.raw(), scId.raw(), redeemEpochId, APPROVED_SHARE_AMOUNT);
+        hub_approveRedeems(poolId.raw(), uint128(scId.raw()), assetId.raw(), redeemEpochId, APPROVED_SHARE_AMOUNT);
+        hub_revokeShares(poolId.raw(), uint128(scId.raw()), redeemEpochId, APPROVED_SHARE_AMOUNT);
 
         // claim redemption
         hub_notifyRedeem(poolId.raw(), scId.raw(), assetId.raw(), MAX_CLAIMS);
@@ -124,7 +124,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             18, ISO_CODE, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE
         );
 
-        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, scId.raw(), SC_HOOK);
+        hub_notifyShareClass(poolId.raw(), CENTIFUGE_CHAIN_ID, uint128(scId.raw()), uint256(SC_HOOK));
     }
 
     function test_shortcut_deposit_claim_and_cancel() public {
@@ -152,9 +152,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             18, ISO_CODE, SC_SALT, true, INVESTOR_AMOUNT, APPROVED_INVESTOR_AMOUNT, NAV_PER_SHARE
         );
 
-        hub_redeemRequest(poolId.raw(), scId.raw(), ISO_CODE, SHARE_AMOUNT);
+        hub_redeemRequest(poolId.raw(), uint128(scId.raw()), ISO_CODE, SHARE_AMOUNT);
 
-        hub_cancelRedeemRequest(poolId.raw(), scId.raw());
+        hub_cancelRedeemRequest(poolId.raw(), uint128(scId.raw()));
     }
 
     function test_shortcut_notify_share_class() public {

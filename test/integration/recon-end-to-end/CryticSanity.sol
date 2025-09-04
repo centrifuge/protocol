@@ -62,7 +62,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         // price needs to be set in valuation before calling updatePricePoolPerShare
         transientValuation_setPrice_clamped(1e18);
-        hub_updateSharePrice(vault.poolId().raw(), vault.scId().raw(), 1e18);
+        hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), 1e18);
 
         hub_notifyAssetPrice();
         hub_notifySharePrice_clamped();
