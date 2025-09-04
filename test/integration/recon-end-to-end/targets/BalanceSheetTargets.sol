@@ -144,7 +144,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - noteDeposit() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -158,7 +158,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - overridePricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
@@ -193,7 +193,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - resetPricePoolPerAsset() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
@@ -293,7 +293,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - withdraw() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -334,13 +334,15 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_assetQueueWithdrawals[assetKey] += amount;
     }
 
-    // === NEW TARGET FUNCTIONS FOR QUEUE OPERATIONS ===
+    // ===============================
+    // QUEUE OPERATIONS
+    // ===============================
     
     function balanceSheet_reserve(uint256 tokenId, uint128 amount) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId; // Proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - reserve() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -373,7 +375,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId; // Proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - unreserve() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -404,7 +406,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spoke.vaultDetails(vault).assetId;  // Fixed: Use proper asset ID resolution
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
         
         // Track authorization - submitQueuedAssets() requires authOrManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -415,7 +417,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         
         // Get current nonce to track monotonicity
         (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
-        ghost_previousNonce[shareKey] = currentNonce; // Store previous nonce
+        ghost_previousNonce[shareKey] = currentNonce;
         
         
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit);
@@ -437,7 +439,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         
         // Get current nonce to track monotonicity
         (,, uint32 queuedAssetCounter, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
-        ghost_previousNonce[shareKey] = currentNonce; // Store previous nonce
+        ghost_previousNonce[shareKey] = currentNonce;
         
         ghost_shareQueueNonce[shareKey]++;
         

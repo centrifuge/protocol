@@ -39,7 +39,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
 
-    // == SENTINEL == //
+    // ===============================
+    // SENTINEL
+    // ===============================
     /// Sentinel properties are used to flag that coverage was reached
     // These can be useful during development, but may also be kept at latest stages
     // They indicate that salient state transitions have happened, which can be helpful at all stages of development
@@ -57,7 +59,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         eq(IShareToken(vault.share()).balanceOf(_getActor()), 0, "token.balanceOf(getActor()) != 0");
     }
 
-    // == VAULT == //
+    // ===============================
+    // VAULT
+    // ===============================
 
     /// @dev Property: Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares
     function property_sum_of_shares_received() public tokenIsSet {
@@ -200,7 +204,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    // == SHARE CLASS TOKENS == //
+    // ===============================
+    // SHARE CLASS TOKENS
+    // ===============================
 
     /// @dev Property: Sum of balances equals total supply
     function property_sum_of_balances() public tokenIsSet {
@@ -632,7 +638,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
     //     }
     // }
 
-    /// === HUB === ///
+    // ===============================
+    // HUB
+    // ===============================
 
     /// @dev Property: The total pending asset amount pendingDeposit[..] is always >= the approved asset
     /// epochInvestAmounts[..].approvedAssetAmount
@@ -1217,7 +1225,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         // lte(differenceShare, 1, "sumRedeemApprovedShares - totalPaymentShareAmount difference is greater than 1");
     }
 
-    /// === ZERO PRICE PROPERTIES === ///
+    // ===============================
+    // ZERO PRICE PROPERTIES
+    // ===============================
 
     /// @dev Property: When price is zero, no shares should be issued
     function property_zeroPrice_noShareIssuance() public {
@@ -1228,7 +1238,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    /// === DOOMSDAY TESTS === ///
+    // ===============================
+    // DOOMSDAY TESTS
+    // ===============================
 
     /// @dev Property: pricePerShare never changes after a user operation
     function doomsday_pricePerShare_never_changes_after_user_operation() public {
@@ -1273,7 +1285,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         AssetId assetId = spoke.vaultDetails(vault).assetId;
         hub.updateSharePrice(poolId, scId, D18.wrap(0));
 
-        // === CONVERSION FUNCTION TESTS === //
+        // ===============================
+        // CONVERSION FUNCTION TESTS
+        // ===============================
         try vault.convertToShares(1e18) returns (uint256 shares) {
             eq(shares, 0, "convertToShares should return 0 at zero price");
         } catch {
@@ -1292,7 +1306,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             t(false, "pricePerShare should not panic at zero price");
         }
 
-        // === VAULT OPERATION TESTS === //
+        // ===============================
+        // VAULT OPERATION TESTS
+        // ===============================
         try vault.maxDeposit(_getActor()) returns (uint256 max) {
             eq(max, 0, "maxDeposit handled zero price");
         } catch {
@@ -1317,7 +1333,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
             t(false, "maxWithdraw shout not revert at zero price");
         }
 
-        // === SHARE CLASS MANAGER OPERATIONS === //
+        // ===============================
+        // SHARE CLASS MANAGER OPERATIONS
+        // ===============================
         uint32 nowIssueEpoch = shareClassManager.nowIssueEpoch(scId, assetId);
         try shareClassManager.issueShares(poolId, scId, assetId, nowIssueEpoch, D18.wrap(0)) returns (
             uint128 issued, uint128, uint128
@@ -1339,7 +1357,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    // === OPTIMIZATION TESTS === //
+    // ===============================
+    // OPTIMIZATION TESTS
+    // ===============================
 
     /// @dev Optimization test to increase the difference between totalAssets and actualAssets is greater than 1 share
     function optimize_totalAssets_solvency() public view returns (int256) {
@@ -1373,7 +1393,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         return maxRedeemLess;
     }
 
-    /// === HELPERS === ///
+    // ===============================
+    // HELPERS
+    // ===============================
 
     /// @dev Lists out all system addresses, used to check that no dust is left behind
     /// NOTE: A more advanced dust check would have 100% of actors withdraw, to ensure that the sum of operations is
@@ -1437,7 +1459,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         gte(cachedTotal, totalShareSent[asset], " _decreaseTotalShareSent Overflow");
     }
 
-    /// @notice ========================== SHARE QUEUE PROPERTIES ==========================
+    // ===============================
+    // SHARE QUEUE PROPERTIES
+    // ===============================
     /// @dev Share Queue Properties - higher risk area
     /// @dev These properties verify the critical share queue flip logic that poses the greatest risk to protocol
     /// integrity
@@ -1599,7 +1623,9 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
         }
     }
 
-    // ============ Queue State Consistency Properties ============
+    // ===============================
+    // QUEUE STATE CONSISTENCY PROPERTIES
+    // ===============================
 
     /// @dev Property 1.1: Asset Queue Counter Consistency
     /// Definition: queuedAssets[p][sc][a].deposits + queuedAssets[p][sc][a].withdrawals > 0 ⟺ queuedAssetCounter
@@ -2206,9 +2232,6 @@ abstract contract Properties is BeforeAfter, Asserts, AsyncVaultCentrifugeProper
                                     ghost_cumulativeAssetsDeposited[assetKey],
                                     "Withdrew more than total deposited"
                                 );
-
-                                // REMOVED: Arbitrary 1% exchange rate variance check
-                                // Will be replaced with monotonic properties to ensure fairness
                             } catch {
                                 // Asset price fetch failed, skip current price validation
                             }

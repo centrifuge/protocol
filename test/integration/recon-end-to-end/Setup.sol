@@ -165,9 +165,9 @@ abstract contract Setup is
     mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint256))) revokedHubShares;
     mapping(PoolId poolId => mapping(ShareClassId scId => uint256)) revokedBalanceSheetShares;
 
-    // ============================================
-    // ======= SHARE QUEUE GHOST VARIABLES ========
-    // ============================================
+    // ===============================
+    // SHARE QUEUE GHOST VARIABLES
+    // ===============================
     mapping(bytes32 => int256) public ghost_netSharePosition; // Net share position (positive for issuance, negative for revocation)
     mapping(bytes32 => uint256) public ghost_flipCount; // Count of position flips between issuance and revocation
     mapping(bytes32 => uint256) public ghost_totalIssued; // Total shares issued cumulatively
@@ -175,17 +175,17 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_assetQueueDeposits; // Cumulative deposits in asset queue
     mapping(bytes32 => uint256) public ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
     mapping(bytes32 => uint256) public ghost_shareQueueNonce; // Track nonce progression for share queue
-    mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // Per-asset counter tracking (non-empty asset queues)
-    mapping(bytes32 => uint256) public ghost_previousNonce; // Previous nonce value to verify monotonicity
+    mapping(bytes32 => uint256) public ghost_assetCounterPerAsset; // For non-empty asset queues
+    mapping(bytes32 => uint256) public ghost_previousNonce; // To verify monotonicity
     
     // Before/after state tracking for share queues
-    mapping(bytes32 => uint128) public before_shareQueueDelta; // Delta before operation
-    mapping(bytes32 => bool) public before_shareQueueIsPositive; // isPositive flag before operation
-    mapping(bytes32 => uint64) public before_nonce; // Nonce before operation
+    mapping(bytes32 => uint128) public before_shareQueueDelta;
+    mapping(bytes32 => bool) public before_shareQueueIsPositive;
+    mapping(bytes32 => uint64) public before_nonce;
 
-    // ============================================
-    // ======= RESERVE GHOST VARIABLES ===========
-    // ============================================
+    // ===============================
+    // RESERVE GHOST VARIABLES
+    // ===============================
     mapping(bytes32 => uint256) public ghost_totalReserveOperations;
     mapping(bytes32 => uint256) public ghost_totalUnreserveOperations;
     mapping(bytes32 => uint256) public ghost_netReserved;
@@ -193,9 +193,9 @@ abstract contract Setup is
     mapping(bytes32 => bool) public ghost_reserveUnderflow;
     mapping(bytes32 => uint256) public ghost_reserveIntegrityViolations;
 
-    // ============================================
-    // ==== AUTHORIZATION GHOST VARIABLES =========
-    // ============================================
+    // ===============================
+    // AUTHORIZATION GHOST VARIABLES
+    // ===============================
     enum AuthLevel { NONE, MANAGER, WARD }
     mapping(address => AuthLevel) public ghost_authorizationLevel;
     mapping(bytes32 => uint256) public ghost_unauthorizedAttempts;
@@ -204,9 +204,9 @@ abstract contract Setup is
     mapping(address => uint256) public ghost_authorizationChanges;
     mapping(bytes32 => bool) public ghost_authorizationBypass;
 
-    // ============================================
-    // === TRANSFER RESTRICTION GHOST VARIABLES ===
-    // ============================================
+    // ===============================
+    // TRANSFER RESTRICTION GHOST VARIABLES
+    // ===============================
     mapping(address => bool) public ghost_isEndorsedContract;
     mapping(bytes32 => uint256) public ghost_endorsedTransferAttempts;
     mapping(bytes32 => uint256) public ghost_blockedEndorsedTransfers;
@@ -214,18 +214,18 @@ abstract contract Setup is
     mapping(bytes32 => address) public ghost_lastTransferFrom;
     mapping(address => uint256) public ghost_endorsementChanges;
 
-    // ============================================
-    // === SUPPLY CONSISTENCY GHOST VARIABLES =====
-    // ============================================
+    // ===============================
+    // SUPPLY CONSISTENCY GHOST VARIABLES
+    // ===============================
     mapping(bytes32 => uint256) public ghost_totalShareSupply;
     mapping(bytes32 => mapping(address => uint256)) public ghost_individualBalances;
     mapping(bytes32 => uint256) public ghost_supplyMintEvents;
     mapping(bytes32 => uint256) public ghost_supplyBurnEvents;
     mapping(bytes32 => bool) public ghost_supplyOperationOccurred;
 
-    // ============================================
-    // === ASSET PROPORTIONALITY GHOST VARIABLES ==
-    // ============================================
+    // ===============================
+    // ASSET PROPORTIONALITY GHOST VARIABLES
+    // ===============================
     // Deposit proportionality tracking
     mapping(bytes32 => uint256) public ghost_cumulativeAssetsDeposited;
     mapping(bytes32 => uint256) public ghost_cumulativeSharesIssuedForDeposits;
@@ -237,11 +237,9 @@ abstract contract Setup is
     mapping(bytes32 => uint256) public ghost_cumulativeSharesRevokedForWithdrawals;
     mapping(bytes32 => bool) public ghost_withdrawalProportionalityTracked;
 
-    // ============================================
-
-    // ============================================
-    // ===== ESCROW SUFFICIENCY TRACKING ==========
-    // ============================================
+    // ===============================
+    // ESCROW SUFFICIENCY TRACKING
+    // ===============================
     mapping(bytes32 => uint256) public ghost_escrowReservedBalance;
     mapping(bytes32 => uint256) public ghost_escrowAvailableBalance;
     mapping(bytes32 => bool) public ghost_escrowSufficiencyTracked;
@@ -314,21 +312,18 @@ abstract contract Setup is
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
-        // Create TokenRecoverer for MessageDispatcher
+
         tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
         Root(address(root)).rely(address(tokenRecoverer));
-
-        // Add missing TokenRecoverer permissions (matching CommonDeployer)
         tokenRecoverer.rely(address(root));
         tokenRecoverer.rely(address(messageDispatcher));
 
-        // Create real MessageDispatcher with local forwarding
         messageDispatcher = new MessageDispatcher(
             CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
             IRoot(address(root)),
             IGateway(address(gateway)),
             tokenRecoverer,
-            address(this) // deployer
+            address(this)
         );
 
         // set dependencies
@@ -526,13 +521,14 @@ abstract contract Setup is
         balanceSheet.rely(address(messageDispatcher));
     }
 
-    // Helper functions for ShareQueueProperties
+    // ===============================
+    // HELPER FUNCTIONS FOR SHARE QUEUE PROPERTIES
+    // ===============================
 
     /// @notice Capture share queue state before operation
     function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
         bytes32 key = _poolShareKey(poolId, scId);
         
-        // Direct call - no try-catch needed for public mapping getter
         (
             uint128 delta,
             bool isPositive,

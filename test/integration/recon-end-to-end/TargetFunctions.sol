@@ -53,7 +53,9 @@ abstract contract TargetFunctions is
 {
     bool hasDoneADeploy;
 
-    /// === Canaries === ///
+    // ═══════════════════════════════════════════════════════════════
+    // CANARIES
+    // ═══════════════════════════════════════════════════════════════
     function canary_doesTokenGetDeployed() public view returns (bool) {
         if (RECON_TOGGLE_CANARY_TESTS) {
             return _getAssets().length < 10;
@@ -78,7 +80,9 @@ abstract contract TargetFunctions is
         return true;
     }
 
-    /// === Shortcut Functions === ///
+    // ═══════════════════════════════════════════════════════════════
+    // SHORTCUT FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════
     /// @dev This is the main system setup function done like this to explore more possible states
     /// @dev Deploy new asset, add asset to pool, deploy share class, deploy vault
     function shortcut_deployNewTokenPoolAndShare(
@@ -402,7 +406,9 @@ abstract contract TargetFunctions is
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
-    /// === POOL ADMIN SHORTCUTS === ///
+    // ═══════════════════════════════════════════════════════════════
+    // POOL ADMIN SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════
     function shortcut_approve_and_issue_shares(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
         public
     {
@@ -415,7 +421,9 @@ abstract contract TargetFunctions is
         hub_revokeShares(epochId, navPerShare);
     }
 
-    /// === SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS) === ///
+    // ═══════════════════════════════════════════════════════════════
+    // SAFE APPROVAL SHORTCUTS (WITH EXPLICIT REVERTS)
+    // ═══════════════════════════════════════════════════════════════
     function shortcut_approve_and_issue_shares_safe(uint128 maxApproval, uint32 nowDepositEpochId, uint128 navPerShare)
         public
     {
@@ -438,14 +446,16 @@ abstract contract TargetFunctions is
         hub_revokeShares(epochId, navPerShare);
     }
 
-    /// === Transient Valuation === ///
+    // ═══════════════════════════════════════════════════════════════
+    // TRANSIENT VALUATION
+    // ═══════════════════════════════════════════════════════════════
     function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
         IBaseVault vault = IBaseVault(_getVault());
         if (address(vault) == address(0)) return;
-        
+
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        
+
         transientValuation.setPrice(poolId, scId, base, D18.wrap(price));
     }
 
@@ -471,7 +481,6 @@ abstract contract TargetFunctions is
 
     /// @dev Set non-zero price with proper clamping for realistic testing
     function hub_setPriceNonZero_clamped(uint256 price) public asAdmin {
-        // Simple clamping logic to replace bound()
         if (price == 0) price = 1;
         if (price > type(uint128).max) price = type(uint128).max;
 
@@ -487,6 +496,7 @@ abstract contract TargetFunctions is
     /// @dev Set price to realistic range for testing normal operations
     function hub_setPriceRealistic_clamped(uint256 price) public asAdmin {
         // Clamp to realistic DeFi price range (0.001 to 1,000,000)
+        // TODO: @Reviewer, is this range too restrictive?
         if (price < 1e15) price = 1e15;
         if (price > 1e24) price = 1e24;
 
