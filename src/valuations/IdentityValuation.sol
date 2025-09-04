@@ -4,21 +4,30 @@ pragma solidity 0.8.28;
 import {IIdentityValuation} from "./interfaces/IIdentityValuation.sol";
 
 import {d18} from "../misc/types/D18.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {IERC6909Decimals} from "../misc/interfaces/IERC6909.sol";
 
+import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
-import {BaseValuation} from "../common/BaseValuation.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 
-contract IdentityValuation is BaseValuation, IIdentityValuation {
-    using MathLib for *;
+import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 
-    constructor(IERC6909Decimals erc6909, address deployer) BaseValuation(erc6909, deployer) {}
+contract IdentityValuation is IIdentityValuation {
+    IHubRegistry public immutable hubRegistry;
+
+    constructor(IHubRegistry hubRegistry_) {
+        hubRegistry = hubRegistry_;
+    }
 
     /// @inheritdoc IValuation
-    function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {
-        return PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), d18(1e18));
+    function getQuote(PoolId poolId, ShareClassId, AssetId assetId, uint128 baseAmount)
+        external
+        view
+        returns (uint128 quoteAmount)
+    {
+        return PricingLib.convertWithPrice(
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), d18(1e18)
+        );
     }
 }

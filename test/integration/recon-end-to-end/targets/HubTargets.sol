@@ -10,6 +10,7 @@ import {console2} from "forge-std/console2.sol";
 
 // Dependencies
 import {Hub} from "src/hub/Hub.sol";
+import {IHubHelpers} from "src/hub/interfaces/IHubHelpers.sol";
 import {IShareClassManager} from "src/hub/interfaces/IShareClassManager.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
@@ -18,6 +19,8 @@ import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
 import {CastLib} from "src/misc/libraries/CastLib.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {IHubMessageSender} from "src/common/interfaces/IGatewaySenders.sol";
 
 // Test Utils
 import {Helpers} from "test/integration/recon-end-to-end/utils/Helpers.sol";
@@ -25,6 +28,9 @@ import {BeforeAfter, OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 
 abstract contract HubTargets is BaseTargetFunctions, Properties {
+    // ═══════════════════════════════════════════════════════════════
+    // TARGET FUNCTIONS - Public entry points for invariant testing
+    // ═══════════════════════════════════════════════════════════════
     uint128 constant GAS = MAX_MESSAGE_COST;
 
     /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
@@ -48,7 +54,11 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         return _poolId;
     }
 
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor returns (PoolId poolId) {
+    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy)
+        public
+        asActor
+        returns (PoolId /* poolId */ )
+    {
         AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy);
 
         hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
@@ -56,78 +66,92 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their
-    /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the redeem
+    /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the deposit
+    ///
+    /// @notice Deposit Flow Tracking:
+    /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
+    /// - Tracks maxMint changes for symmetry with redeem flow
+    /// - Uses hubHelpers.notifyDeposit() return values for reliable state tracking
+    /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
+        // Setup vault context and investor
+        IBaseVault vault = IBaseVault(_getVault());
         bytes32 investor = CastLib.toBytes32(_getActor());
-        uint32 maxClaimsBound = shareClassManager.maxDepositClaims(
-            IBaseVault(_getVault()).scId(), investor, spoke.vaultDetails(IBaseVault(_getVault())).assetId
-        );
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+
+        // Calculate and bound max claims
+        uint32 maxClaimsBound = shareClassManager.maxDepositClaims(vault.scId(), investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
-        (uint128 pendingBeforeSCM,) = shareClassManager.depositRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-        (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        (, uint128 cancelledAmountBefore) = shareClassManager.queuedDepositRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
+        // Capture validation state if needed
+        bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
+        uint128 pendingBeforeSCM;
+        uint256 maxMintBefore;
+        if (hasClaimedAll) {
+            (pendingBeforeSCM,, maxMintBefore) = _captureDepositStateBefore(investor);
+        }
+
+        // Capture state for ghost variables
+        address actor = _getActor();
+        (,,,, uint128 pendingBeforeARM,,,,,) = asyncRequestManager.investments(vault, actor);
+
+        // Execute with ACCURATE cancellation tracking
+        (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount, uint128 cancelledAssetAmount) =
+            _executeNotifyDeposit(investor, maxClaims);
+
+        // Update ghost variables with ACCURATE values
+        _updateDepositGhostVariables(
+            pendingBeforeARM,
+            totalPayoutShareAmount,
+            totalPaymentAssetAmount,
+            cancelledAssetAmount // Now this is ACCURATE!
         );
 
-        hub.notifyDeposit(
-            IBaseVault(_getVault()).poolId(),
-            IBaseVault(_getVault()).scId(),
-            spoke.vaultDetails(IBaseVault(_getVault())).assetId,
-            investor,
-            maxClaims
-        );
-
-        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-        (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(IBaseVault(_getVault()), _getActor());
-        (uint32 depositEpochId,,,) = shareClassManager.epochId(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId
-        );
-        (, uint128 cancelledAmountAfter) = shareClassManager.queuedDepositRequest(
-            IBaseVault(_getVault()).scId(), spoke.vaultDetails(IBaseVault(_getVault())).assetId, investor
-        );
-
-        uint128 cancelDelta = cancelledAmountBefore - cancelledAmountAfter; // cancelled decreases if it was claimed
-        sumOfFullfilledDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeARM - pendingAfterARM); // fulfillments
-            // are handled in the AsyncRequestManager
-        sumOfClaimedDeposits[IBaseVault(_getVault()).share()] += (pendingBeforeSCM - pendingAfterSCM); // claims are
-            // handled in the ShareClassManager
-        userDepositProcessed[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
-        )] += (pendingBeforeSCM - pendingAfterSCM);
-        userCancelledDeposits[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][_getActor(
-        )] += cancelDelta;
-
-        // precondition: lastUpdate doesn't change if there's no claim actually made
-        if (maxClaims == maxClaimsBound && maxClaims > 0) {
-            // nowDepositEpoch = depositEpochId + 1
-            eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch1");
+        // Handle validation or continuation
+        if (hasClaimedAll) {
+            _validateDepositClaimComplete(investor, pendingBeforeSCM, maxMintBefore, totalPaymentAssetAmount);
         } else if (maxClaimsBound > 0) {
-            // Continue claiming until all epochs are processed
+            // Continue claiming remaining epochs
             hub_notifyDeposit(1);
         }
     }
 
     /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their
-    /// depositRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
+    /// redeemRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
+    ///
+    /// @notice Redeem Flow Tracking:
+    /// - Tracks claimable withdrawal deltas (investorClaimableAfter - investorClaimableBefore)
+    /// - Tracks share balance changes (investorSharesBefore vs investorSharesAfter)
+    /// - Uses hubHelpers.notifyRedeem() return values for reliable state tracking
+    /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
+        // Setup vault context and investor
         IBaseVault vault = IBaseVault(_getVault());
-        ShareClassId scId = vault.scId();
+        bytes32 investor = CastLib.toBytes32(_getActor());
         AssetId assetId = spoke.vaultDetails(vault).assetId;
-        address actor = _getActor();
-        bytes32 investor = CastLib.toBytes32(actor);
-        
-        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(scId, investor, assetId);
+
+        // Calculate and bound max claims
+        uint32 maxClaimsBound = shareClassManager.maxRedeemClaims(vault.scId(), investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
 
-        _executeNotifyRedeem(vault, scId, assetId, actor, investor, maxClaims);
-        
-        if (maxClaims == maxClaimsBound && maxClaims > 0) {
-            _validateNotifyRedeemProperties(scId, assetId, investor);
-        } else if (maxClaimsBound > 0) {
+        // Capture state for ghost variables
+        address actor = _getActor();
+        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(vault, actor);
+
+        // Execute with ACCURATE cancellation tracking
+        (uint128 paymentShareAmount,, uint128 cancelledShareAmount) = _executeNotifyRedeem(investor, maxClaims);
+
+        // Update ghost variables with ACCURATE values
+        _updateRedeemGhostVariables(
+            investorClaimableBefore,
+            asyncRequestManager.maxWithdraw(vault, actor),
+            paymentShareAmount,
+            cancelledShareAmount // Now this is ACCURATE!
+        );
+
+        // Continue claiming remaining epochs if needed
+        bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
+        if (!hasClaimedAll && maxClaimsBound > 0) {
             hub_notifyRedeem(1);
         }
     }
@@ -198,5 +222,246 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         asAdmin
     {
         hub.updateBalanceSheetManager{value: GAS}(chainId, PoolId.wrap(poolId), CastLib.toBytes32(manager), enable);
+    }
+
+    /// === Helper Functions === ///
+
+    /// @dev Helper to determine if all available epochs have been claimed
+    /// @param maxClaims Number of claims to process
+    /// @param maxClaimsBound Maximum claims allowed
+    /// @return True if all epochs have been claimed
+    function _hasClaimedAllEpochs(uint32 maxClaims, uint32 maxClaimsBound) private pure returns (bool) {
+        return maxClaims == maxClaimsBound && maxClaims > 0;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // STATE CAPTURE FUNCTIONS - Before/after state tracking
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @return pendingBeforeSCM Pending deposit amount in ShareClassManager
+    /// @return pendingBeforeARM Pending deposit amount in AsyncRequestManager
+    /// @return maxMintBefore Maximum mint capacity before claim
+    function _captureDepositStateBefore(bytes32 investor)
+        private
+        view
+        returns (uint128 pendingBeforeSCM, uint128 pendingBeforeARM, uint256 maxMintBefore)
+    {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+
+        // Capture ShareClassManager pending state
+        (pendingBeforeSCM,) = shareClassManager.depositRequest(vault.scId(), assetId, investor);
+
+        // Capture AsyncRequestManager pending state (5th return value is pending)
+        (,,,, pendingBeforeARM,,,,,) = asyncRequestManager.investments(vault, _getActor());
+
+        // Capture maxMint capacity before claim
+        maxMintBefore = asyncRequestManager.maxMint(vault, _getActor());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GHOST VARIABLE UPDATES - Tracking for invariant properties
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @dev Updates all ghost variables after deposit claim
+    /// @param pendingBeforeARM Pending amount in AsyncRequestManger before claim
+    /// @param totalPayoutShareAmount Total shares paid out from claim
+    /// @param totalPaymentAssetAmount Total assets used for payment
+    /// @param cancelledAssetAmount Amount of assets cancelled
+    function _updateDepositGhostVariables(
+        uint128 pendingBeforeARM,
+        uint128 totalPayoutShareAmount,
+        uint128 totalPaymentAssetAmount,
+        uint128 cancelledAssetAmount
+    ) private {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        ShareClassId scId = vault.scId();
+        address actor = _getActor();
+
+        // Get pending after for fulfilled calculation
+        (,,,, uint128 pendingAfterARM,,,,,) = asyncRequestManager.investments(vault, actor);
+
+        // Update fulfilled deposits (Spoke pending delta) - with underflow protection
+        if (pendingBeforeARM >= pendingAfterARM) {
+            sumOfFulfilledDeposits[vault.share()] += (pendingBeforeARM - pendingAfterARM);
+        }
+
+        // Update claimed deposits
+        sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
+
+        // Update user-specific processing
+        userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
+
+        // Update cancellation tracking
+        userCancelledDeposits[scId][assetId][actor] += cancelledAssetAmount;
+        sumOfClaimedCancelledDeposits[vault.asset()] += cancelledAssetAmount;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // VALIDATION FUNCTIONS - Assertion checks
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @dev Validates deposit claim completion when all epochs are claimed
+    /// @param investor The investor's address as bytes32
+    /// @param pendingBeforeSCM Pending amount in SCM before claim
+    /// @param maxMintBefore Maximum mint capacity before claim
+    /// @param totalPaymentAssetAmount Total assets used for payment
+    function _validateDepositClaimComplete(
+        bytes32 investor,
+        uint128 pendingBeforeSCM,
+        uint256 maxMintBefore,
+        uint128 totalPaymentAssetAmount
+    ) private {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        ShareClassId scId = vault.scId();
+
+        // Get state after claim for validation
+        (uint128 pendingAfterSCM, uint32 lastUpdate) = shareClassManager.depositRequest(scId, assetId, investor);
+
+        // Get epoch information
+        (uint32 depositEpochId,,,) = shareClassManager.epochId(scId, assetId);
+
+        // Check if cancellation is queued
+        (bool isCancellingAfter,) = shareClassManager.queuedDepositRequest(scId, assetId, investor);
+
+        // Get maxMint after for comparison
+        uint256 maxMintAfter = asyncRequestManager.maxMint(vault, _getActor());
+
+        // Assertion 1: Validate epoch update
+        eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
+
+        // Assertion 2: No cancellation should be queued after claiming
+        t(!isCancellingAfter, "queued cancellation post claiming should not be possible");
+
+        // Assertion 3: Validate pending reduction (with underflow protection)
+        uint128 pendingDelta = pendingBeforeSCM >= pendingAfterSCM ? pendingBeforeSCM - pendingAfterSCM : 0;
+        gte(
+            pendingDelta,
+            totalPaymentAssetAmount,
+            "pending delta should be greater (if cancel queued) or equal to the payment asset amount"
+        );
+
+        // Assertion 4: Validate maxMint reduction (with underflow protection)
+        uint256 expectedMaxMint = maxMintBefore >= totalPaymentAssetAmount ? maxMintBefore - totalPaymentAssetAmount : 0;
+        gte(maxMintAfter, expectedMaxMint, "maxMint should decrease by at most the payment asset amount after claiming");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // EXECUTION HELPERS - Core logic for notify operations
+    // ═══════════════════════════════════════════════════════════════
+
+    /// @dev Executes deposit claim with accurate cancellation tracking
+    /// @notice Replicates Hub.sol logic: processes claims then sends callback
+    /// @param investor The investor's address as bytes32
+    /// @param maxClaims Maximum claims to process
+    /// @return totalPaymentAssetAmount Amount of assets used for payment
+    /// @return totalPayoutShareAmount Amount of shares paid out
+    /// @return cancelledAssetAmount Amount of assets cancelled (accurate)
+    function _executeNotifyDeposit(bytes32 investor, uint32 maxClaims)
+        private
+        returns (uint128 totalPaymentAssetAmount, uint128 totalPayoutShareAmount, uint128 cancelledAssetAmount)
+    {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        (totalPayoutShareAmount, totalPaymentAssetAmount, cancelledAssetAmount) =
+            hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
+
+        // Replicate Hub's callback sending logic
+        if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
+            bytes memory message = RequestCallbackMessageLib.serialize(
+                RequestCallbackMessageLib.FulfilledDepositRequest({
+                    investor: investor,
+                    fulfilledAssetAmount: totalPaymentAssetAmount,
+                    fulfilledShareAmount: totalPayoutShareAmount,
+                    cancelledAssetAmount: cancelledAssetAmount
+                })
+            );
+
+            hub.sender().sendRequestCallback(
+                poolId,
+                scId,
+                assetId,
+                message,
+                0 // extraGasLimit
+            );
+        }
+
+        return (totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount);
+    }
+
+    /// @dev Updates all ghost variables after redeem claim
+    /// @param investorClaimableBefore Claimable amount before claim
+    /// @param investorClaimableAfter Claimable amount after claim
+    /// @param paymentShareAmount Total shares used for payment
+    /// @param cancelledShareAmount Amount of shares cancelled
+    function _updateRedeemGhostVariables(
+        uint256 investorClaimableBefore,
+        uint256 investorClaimableAfter,
+        uint128 paymentShareAmount,
+        uint128 cancelledShareAmount
+    ) private {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        ShareClassId scId = vault.scId();
+        address actor = _getActor();
+
+        // Update withdrawable tracking (claimable delta) - with underflow protection
+        if (investorClaimableAfter >= investorClaimableBefore) {
+            sumOfWithdrawable[vault.asset()] += (investorClaimableAfter - investorClaimableBefore);
+        }
+
+        // Update user-specific redemption processing
+        userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
+
+        // Update cancellation tracking
+        userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
+        sumOfClaimedCancelledRedeemShares[vault.share()] += cancelledShareAmount;
+    }
+
+    /// @dev Executes redeem claim with accurate cancellation tracking
+    /// @notice Replicates Hub.sol logic: processes claims then sends callback
+    /// @param investor The investor's address as bytes32
+    /// @param maxClaims Maximum claims to process
+    /// @return paymentShareAmount Amount of shares used for payment
+    /// @return payoutAssetAmount Amount of assets paid out
+    /// @return cancelledShareAmount Amount of shares cancelled (accurate)
+    function _executeNotifyRedeem(bytes32 investor, uint32 maxClaims)
+        private
+        returns (uint128 paymentShareAmount, uint128 payoutAssetAmount, uint128 cancelledShareAmount)
+    {
+        IBaseVault vault = IBaseVault(_getVault());
+        AssetId assetId = spoke.vaultDetails(vault).assetId;
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        (payoutAssetAmount, paymentShareAmount, cancelledShareAmount) =
+            hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
+
+        // Replicate Hub's callback sending logic
+        if (paymentShareAmount > 0 || cancelledShareAmount > 0) {
+            bytes memory message = RequestCallbackMessageLib.serialize(
+                RequestCallbackMessageLib.FulfilledRedeemRequest({
+                    investor: investor,
+                    fulfilledAssetAmount: payoutAssetAmount,
+                    fulfilledShareAmount: paymentShareAmount,
+                    cancelledShareAmount: cancelledShareAmount
+                })
+            );
+
+            hub.sender().sendRequestCallback(
+                poolId,
+                scId,
+                assetId,
+                message,
+                0 // extraGasLimit
+            );
+        }
+
+        return (paymentShareAmount, payoutAssetAmount, cancelledShareAmount);
     }
 }

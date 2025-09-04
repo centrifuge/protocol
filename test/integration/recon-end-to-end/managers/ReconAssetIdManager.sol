@@ -64,7 +64,8 @@ abstract contract ReconAssetIdManager {
     /// @notice Switches the current assetId based on the entropy
     /// @param entropy The entropy to choose a random assetId in the set for switching
     function _switchAssetId(uint256 entropy) internal {
-        uint128 target = uint128(_assetIds.at(entropy % _assetIds.length()));
+        uint256[] memory assetIds = _assetIds.values();
+        uint128 target = uint128(assetIds[entropy % assetIds.length]);
         __assetId = target;
     }
 }

@@ -259,7 +259,7 @@ contract HubHelpers is Auth, IHubHelpers {
         AssetId poolCurrency = hubRegistry.currency(poolId);
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset = valuation.getQuote(assetUnitAmount, assetId, poolCurrency);
+        uint128 poolAmountPerAsset = valuation.getQuote(poolId, scId, assetId, assetUnitAmount);
 
         // Retrieve price by normalizing by pool denomination
         return d18(poolAmountPerAsset, poolUnitAmount);

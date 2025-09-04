@@ -57,7 +57,8 @@ abstract contract ReconVaultManager {
     /// @notice Switches the current vault based on the entropy
     /// @param entropy The entropy to choose a random vault in the array for switching
     function _switchVault(uint256 entropy) internal {
-        address vault = _vaults.at(entropy % _vaults.length());
+        address[] memory vaults = _vaults.values();
+        address vault = vaults[entropy % vaults.length];
         __vault = vault;
     }
 }

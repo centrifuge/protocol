@@ -22,12 +22,11 @@ enum OpType {
     GENERIC, // generic operations can be performed by both users and admins
     ADMIN, // admin operations can only be performed by admins
     BATCH, // batch operations that make multiple calls in one transaction
-    NOTIFY, 
-    ADD, 
-    REMOVE, 
+    NOTIFY,
+    ADD,
+    REMOVE,
     UPDATE
 }
-
 
 abstract contract BeforeAfter is Setup {
     struct PriceVars {
@@ -50,16 +49,16 @@ abstract contract BeforeAfter is Setup {
         uint128 ghostDebited;
         uint128 ghostCredited;
         address vault;
-
-        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => D18 pricePoolPerAsset))) pricePoolPerAsset;
+        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => D18 pricePoolPerAsset)))
+            pricePoolPerAsset;
         mapping(PoolId poolId => mapping(ShareClassId scId => D18 pricePoolPerShare)) pricePoolPerShare;
         mapping(address investor => AsyncInvestmentState) investments;
         mapping(ShareClassId scId => mapping(AssetId payoutAssetId => mapping(bytes32 investor => UserOrder pending)))
             ghostRedeemRequest;
-        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue))) ghostHolding;
+        mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => uint128 assetAmountValue)))
+            ghostHolding;
         mapping(PoolId poolId => mapping(AccountId accountId => uint128 accountValue)) ghostAccountValue;
         mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) ghostEpochId;
-        
         // global ghost variable only updated as needed
         mapping(address vault => mapping(address investor => PriceVars)) investorsGlobals;
     }
@@ -82,7 +81,7 @@ abstract contract BeforeAfter is Setup {
         _;
         __after();
 
-        if(op == OpType.NOTIFY) {
+        if (op == OpType.NOTIFY) {
             __globals();
         }
     }
@@ -102,7 +101,7 @@ abstract contract BeforeAfter is Setup {
         _before.vault = address(_getVault());
 
         // if the vault isn't deployed, these values can't be updated
-        if(address(_getVault()) == address(0)) {
+        if (address(_getVault()) == address(0)) {
             return;
         }
 
@@ -111,25 +110,28 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
-        (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
-        _before.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
+        (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) =
+            shareClassManager.epochId(scId, assetId);
+        _before.ghostEpochId[scId][assetId] =
+            EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
         (, _before.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
-        
+
         // loop over all actors
         address[] memory _actors = _getActors();
         for (uint256 k = 0; k < _actors.length; k++) {
             bytes32 actor = CastLib.toBytes32(_actors[k]);
             (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
-            _before.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
+            _before.ghostRedeemRequest[scId][assetId][actor] =
+                UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
         }
 
         // loop over all account types defined in IHub::AccountType
-        for(uint8 kind = 0; kind < 6; kind++) {
+        for (uint8 kind = 0; kind < 6; kind++) {
             AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-            (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
+            (,,, uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
             // accountValue is only set if the account has been updated
-            if(lastUpdated != 0) {
-                (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+            if (lastUpdated != 0) {
+                (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
                 _before.ghostAccountValue[poolId][accountId] = accountValue;
             }
         }
@@ -153,7 +155,7 @@ abstract contract BeforeAfter is Setup {
         _after.vault = address(_getVault());
 
         // if the vault isn't deployed, these values can't be updated
-        if(address(_getVault()) == address(0)) {
+        if (address(_getVault()) == address(0)) {
             return;
         }
 
@@ -162,25 +164,28 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = AssetId.wrap(_getAssetId());
 
-        (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) = shareClassManager.epochId(scId, assetId);
-        _after.ghostEpochId[scId][assetId] = EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
+        (uint32 depositEpochId, uint32 redeemEpochId, uint32 issueEpochId, uint32 revokeEpochId) =
+            shareClassManager.epochId(scId, assetId);
+        _after.ghostEpochId[scId][assetId] =
+            EpochId({deposit: depositEpochId, redeem: redeemEpochId, issue: issueEpochId, revoke: revokeEpochId});
         (, _after.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
-        
+
         // loop over all actors
         address[] memory _actors = _getActors();
         for (uint256 k = 0; k < _actors.length; k++) {
             bytes32 actor = CastLib.toBytes32(_actors[k]);
             (uint128 pendingRedeem, uint32 lastUpdate) = shareClassManager.redeemRequest(scId, assetId, actor);
-            _after.ghostRedeemRequest[scId][assetId][actor] = UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
+            _after.ghostRedeemRequest[scId][assetId][actor] =
+                UserOrder({pending: pendingRedeem, lastUpdate: lastUpdate});
         }
 
         // loop over all account types defined in IHub::AccountType
-        for(uint8 kind = 0; kind < 6; kind++) {
+        for (uint8 kind = 0; kind < 6; kind++) {
             AccountId accountId = holdings.accountId(poolId, scId, assetId, kind);
-            (,,,uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
+            (,,, uint64 lastUpdated,) = accounting.accounts(poolId, accountId);
             // accountValue is only set if the account has been updated
-            if(lastUpdated != 0) {
-                (bool isPositive, uint128 accountValue) = accounting.accountValue(poolId, accountId);
+            if (lastUpdated != 0) {
+                (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
                 _after.ghostAccountValue[poolId][accountId] = accountValue;
             }
         }
@@ -194,10 +199,12 @@ abstract contract BeforeAfter is Setup {
         address actor = _getActor();
 
         // Conditionally Update max | Always works on zero
-        _after.investorsGlobals[vault][actor].maxDepositPrice = depositPrice > _after.investorsGlobals[vault][actor].maxDepositPrice
+        _after.investorsGlobals[vault][actor].maxDepositPrice = depositPrice
+            > _after.investorsGlobals[vault][actor].maxDepositPrice
             ? depositPrice
             : _after.investorsGlobals[vault][actor].maxDepositPrice;
-        _after.investorsGlobals[vault][actor].maxRedeemPrice = redeemPrice > _after.investorsGlobals[vault][actor].maxRedeemPrice
+        _after.investorsGlobals[vault][actor].maxRedeemPrice = redeemPrice
+            > _after.investorsGlobals[vault][actor].maxRedeemPrice
             ? redeemPrice
             : _after.investorsGlobals[vault][actor].maxRedeemPrice;
 
@@ -211,18 +218,21 @@ abstract contract BeforeAfter is Setup {
         }
 
         // Conditional update after zero
-        _after.investorsGlobals[vault][actor].minDepositPrice = depositPrice < _after.investorsGlobals[vault][actor].minDepositPrice
+        _after.investorsGlobals[vault][actor].minDepositPrice = depositPrice
+            < _after.investorsGlobals[vault][actor].minDepositPrice
             ? depositPrice
             : _after.investorsGlobals[vault][actor].minDepositPrice;
-        _after.investorsGlobals[vault][actor].minRedeemPrice = redeemPrice < _after.investorsGlobals[vault][actor].minRedeemPrice
+        _after.investorsGlobals[vault][actor].minRedeemPrice = redeemPrice
+            < _after.investorsGlobals[vault][actor].minRedeemPrice
             ? redeemPrice
             : _after.investorsGlobals[vault][actor].minRedeemPrice;
     }
 
     /// === HELPER FUNCTIONS === ///
-    
+
     function _getDepositAndRedeemPrice() internal view returns (uint256, uint256) {
-        (,, D18 depositPrice, D18 redeemPrice,,,,,,) = asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
+        (,, D18 depositPrice, D18 redeemPrice,,,,,,) =
+            asyncRequestManager.investments(IBaseVault(address(_getVault())), address(_getActor()));
 
         return (depositPrice.raw(), redeemPrice.raw());
     }
@@ -244,7 +254,7 @@ abstract contract BeforeAfter is Setup {
                 bool pendingCancelDepositRequest,
                 bool pendingCancelRedeemRequest
             ) = asyncRequestManager.investments(IBaseVault(address(_getVault())), actors[i]);
-            
+
             _structToUpdate.investments[actors[i]] = AsyncInvestmentState(
                 maxMint,
                 maxWithdraw,
@@ -263,20 +273,23 @@ abstract contract BeforeAfter is Setup {
     function _updateValuesIfNonZero(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        if(_getShareToken() != address(0)) {
+        if (_getShareToken() != address(0)) {
             _structToUpdate.escrowTrancheTokenBalance = MockERC20(_getShareToken()).balanceOf(address(globalEscrow));
             _structToUpdate.totalShareSupply = MockERC20(_getShareToken()).totalSupply();
         }
 
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowAssetBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
-            _structToUpdate.poolEscrowAssetBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId())));
+            _structToUpdate.escrowAssetBalance =
+                MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(globalEscrow));
+            _structToUpdate.poolEscrowAssetBalance = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(
+                address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()))
+            );
             _structToUpdate.actualAssets = MockERC20(IBaseVault(_getVault()).asset()).balanceOf(address(_getVault()));
         }
     }
 
     function _priceAssetNonZero(bool before) internal {
-        if(address(_getVault()) == address(0)) {
+        if (address(_getVault()) == address(0)) {
             return;
         }
 
@@ -291,7 +304,7 @@ abstract contract BeforeAfter is Setup {
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
             bool invalidPrice = checkError(reason, "InvalidPrice()");
-            if(shareTokenDoesNotExist || invalidPrice) {
+            if (shareTokenDoesNotExist || invalidPrice) {
                 _structToUpdate.totalAssets = 0;
                 return;
             } else {
@@ -301,7 +314,7 @@ abstract contract BeforeAfter is Setup {
     }
 
     function _priceShareNonZero(bool before) internal {
-        if(address(_getVault()) == address(0)) {
+        if (address(_getVault()) == address(0)) {
             return;
         }
 
@@ -315,7 +328,7 @@ abstract contract BeforeAfter is Setup {
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
             bool invalidPrice = checkError(reason, "InvalidPrice()");
-            if(shareTokenDoesNotExist || invalidPrice) {
+            if (shareTokenDoesNotExist || invalidPrice) {
                 _structToUpdate.pricePerShare = 0;
                 return;
             } else {

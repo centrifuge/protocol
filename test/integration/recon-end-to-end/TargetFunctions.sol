@@ -13,7 +13,7 @@ import {AsyncVault} from "src/vaults/AsyncVault.sol";
 import {ShareToken} from "src/spoke/ShareToken.sol";
 import {FullRestrictions} from "src/hooks/FullRestrictions.sol";
 import {ShareClassId} from "src/common/types/ShareClassId.sol";
-import {PoolId} from "src/common/types/PoolId.sol";
+import {PoolId, newPoolId} from "src/common/types/PoolId.sol";
 import {AssetId} from "src/common/types/AssetId.sol";
 import {D18} from "src/misc/types/D18.sol";
 import {IBaseVault} from "src/vaults/interfaces/IBaseVault.sol";
@@ -21,6 +21,8 @@ import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 import {IValuation} from "src/common/interfaces/IValuation.sol";
 import {PoolEscrow} from "src/common/PoolEscrow.sol";
 import {MAX_MESSAGE_COST} from "src/common/interfaces/IGasService.sol";
+import {RequestCallbackMessageLib} from "src/common/libraries/RequestCallbackMessageLib.sol";
+import {CastLib} from "src/misc/libraries/CastLib.sol";
 
 // Component
 import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
@@ -112,7 +114,7 @@ abstract contract TargetFunctions is
 
         // 2. Deploy new pool and register it
         {
-            _poolId = PoolId.wrap(POOL_ID_COUNTER);
+            _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
             hub_createPool(_poolId.raw(), _getActor(), _getAssetId());
 
             spoke_addPool();
@@ -188,7 +190,7 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_request_deposit(
-        uint64 pricePoolPerShare,
+        uint64, /* pricePoolPerShare */
         uint128 priceValuation,
         uint256 amount,
         uint256 toEntropy
@@ -237,14 +239,15 @@ abstract contract TargetFunctions is
         uint128 navPerShare,
         uint256 toEntropy
     ) public {
-        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
+        // Request 2x amount to ensure sufficient pending after claiming the approved amount
+        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
 
         uint32 depositEpoch =
             shareClassManager.nowDepositEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
         shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
 
         hub_notifyDeposit(MAX_CLAIMS);
-
         vault_deposit(amount);
     }
 
@@ -252,7 +255,7 @@ abstract contract TargetFunctions is
         uint64 pricePoolPerShare,
         uint128 priceValuation,
         uint256 amount,
-        uint128 navPerShare,
+        uint128, /* navPerShare */
         uint256 toEntropy
     ) public {
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount, toEntropy);
@@ -308,7 +311,18 @@ abstract contract TargetFunctions is
     }
 
     function shortcut_queue_redemption(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
-        vault_requestRedeem(shares, toEntropy);
+        // Clamp shares to user's actual share balance to prevent insufficient balance errors
+        IBaseVault vault = IBaseVault(_getVault());
+        uint256 userShareBalance = MockERC20(address(vault.share())).balanceOf(_getActor());
+
+        // Request 2x shares to ensure sufficient pending after claiming the approved amount
+        // But clamp to available balance
+        uint256 requestShares = shares * 2;
+        if (requestShares > userShareBalance) {
+            requestShares = userShareBalance;
+        }
+
+        vault_requestRedeem(requestShares, toEntropy);
 
         uint32 redeemEpoch =
             shareClassManager.nowRedeemEpoch(ShareClassId.wrap(_getShareClassId()), AssetId.wrap(_getAssetId()));
@@ -348,7 +362,7 @@ abstract contract TargetFunctions is
         shortcut_claim_redemption(shares, toEntropy);
     }
 
-    function shortcut_cancel_redeem_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+    function shortcut_cancel_redeem_clamped(uint256 shares, uint128, /* navPerShare */ uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(IBaseVault(_getVault()).share())).balanceOf(_getActor()) + 1);
         vault_requestRedeem(shares, toEntropy);
@@ -434,16 +448,6 @@ abstract contract TargetFunctions is
         AssetId assetId = AssetId.wrap(_getAssetId());
 
         transientValuation_setPrice(assetId, AssetId.wrap(_getAssetId()), price);
-    }
-
-    /// === Permission Functions === ///
-    // TODO: can probably remove these
-    function root_scheduleRely(address target) public asAdmin {
-        root.scheduleRely(target);
-    }
-
-    function root_cancelRely(address target) public asAdmin {
-        root.cancelRely(target);
     }
 
     // === PRICE CONTROL HANDLERS === //

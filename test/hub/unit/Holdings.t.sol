@@ -45,7 +45,7 @@ contract TestCommon is Test {
     function mockGetQuote(IValuation valuation, uint128 baseAmount, uint128 quoteAmount) public {
         vm.mockCall(
             address(valuation),
-            abi.encodeWithSelector(IValuation.getQuote.selector, uint256(baseAmount), ASSET_A, POOL_CURRENCY),
+            abi.encodeWithSelector(IValuation.getQuote.selector, POOL_A, SC_1, ASSET_A, uint256(baseAmount)),
             abi.encode(uint256(quoteAmount))
         );
     }

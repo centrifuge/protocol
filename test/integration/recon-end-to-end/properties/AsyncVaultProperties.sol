@@ -10,7 +10,6 @@ import {IAsyncVault} from "src/vaults/interfaces/IAsyncVault.sol";
 import {IERC20Metadata} from "src/misc/interfaces/IERC20.sol";
 import {IShareToken} from "src/spoke/interfaces/IShareToken.sol";
 
-
 /// @dev ERC-7540 Properties
 /// TODO: Make pointers with Reverts
 /// TODO: Make pointer to Vault Like Contract for re-usability

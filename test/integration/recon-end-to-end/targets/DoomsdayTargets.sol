@@ -21,8 +21,8 @@ import {Properties} from "../properties/Properties.sol";
 import {OpType} from "../BeforeAfter.sol";
 
 abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
-    
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
+    /// precision
     /// @dev Property: user should always be able to deposit less than maxMint
     function doomsday_deposit(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
@@ -35,8 +35,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
-            if(assets < maxMintAsAssets && !isFrozen && isMember) {
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            if (assets < maxMintAsAssets && !isFrozen && isMember) {
                 t(false, "cant deposit less than maxMint");
             }
         }
@@ -50,7 +50,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         lte(sharesReceived, expectedSharesReceived, "sharesReceived > expectedSharesReceived");
     }
 
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
+    /// precision
     /// @dev Property: user should always be able to mint less than maxMint
     function doomsday_mint(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
@@ -62,8 +63,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsSpent = assets;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
-            if(shares < maxMint && !isFrozen && isMember) {
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            if (shares < maxMint && !isFrozen && isMember) {
                 t(false, "cant mint less than maxMint");
             }
         }
@@ -76,7 +77,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         lte(assetsAsShares, expectedSharesReceived, "assetsAsShares > expectedSharesReceived");
     }
 
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
+    /// precision
     /// @dev Property: user should always be able to redeem less than maxWithdraw
     function doomsday_redeem(uint256 shares) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
@@ -89,21 +91,23 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             assetsReceived = assets;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
-            if(shares < maxWithdrawAsShares && !isFrozen && isMember) {
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            if (shares < maxWithdrawAsShares && !isFrozen && isMember) {
                 t(false, "cant redeem less than maxWithdraw");
             }
         }
         uint256 assetsAsShares = IBaseVault(_getVault()).convertToShares(assetsReceived);
 
         uint256 expectedAssets = (shares * ppfsBefore) + (10 ** IShareToken(_getShareToken()).decimals());
-        uint256 expectedAssetsAsShares = (IBaseVault(_getVault()).convertToAssets(shares) / ppfsBefore) - (10 ** IShareToken(_getShareToken()).decimals());
+        uint256 expectedAssetsAsShares = (IBaseVault(_getVault()).convertToAssets(shares) / ppfsBefore)
+            - (10 ** IShareToken(_getShareToken()).decimals());
 
         lte(assetsReceived, expectedAssets, "assetsReceived > expectedAssets");
         gte(assetsAsShares, expectedAssetsAsShares, "assetsAsShares < expectedAssetsAsShares");
     }
 
-    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision
+    /// @dev Property: user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare -
+    /// precision
     /// @dev Property: user should always be able to withdraw less than maxWithdraw
     function doomsday_withdraw(uint256 assets) public statelessTest {
         uint256 ppfsBefore = BaseVault(_getVault()).pricePerShare();
@@ -116,8 +120,8 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
             sharesReceived = shares;
         } catch {
             bool isFrozen = fullRestrictions.isFrozen(_getVault(), _getActor());
-            (bool isMember, ) = fullRestrictions.isMember(_getShareToken(), _getActor());
-            if(assets < maxWithdraw && !isFrozen && isMember) {
+            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), _getActor());
+            if (assets < maxWithdraw && !isFrozen && isMember) {
                 t(false, "cant withdraw less than maxWithdraw");
             }
         }

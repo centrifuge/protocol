@@ -1,39 +1,47 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {D18} from "../../../src/misc/types/D18.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
-import {IERC6909Decimals} from "../../../src/misc/interfaces/IERC6909.sol";
 
+import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {BaseValuation} from "../../../src/common/BaseValuation.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
+import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
+
+import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 
 struct Price {
     D18 value;
-    bool valid;
+    bool isValid;
 }
 
-contract MockValuation is BaseValuation {
+contract MockValuation is IValuation {
     using MathLib for *;
 
-    constructor(IERC6909Decimals erc6909) BaseValuation(erc6909, msg.sender) {}
+    IHubRegistry hubRegistry;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public price;
 
-    mapping(AssetId base => mapping(AssetId quote => Price)) public price;
+    constructor(IHubRegistry hubRegistry_) {
+        hubRegistry = hubRegistry_;
+    }
 
-    function setPrice(AssetId base, AssetId quote, D18 price_) external {
-        price[base][quote] = Price(price_, true);
-        D18 reciprocal = (price_.raw() != 0) ? price_.reciprocal() : d18(0);
-        price[quote][base] = Price(reciprocal, true);
+    function setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) external {
+        price[poolId][scId][assetId] = Price(newPrice, true);
     }
 
     /// @inheritdoc IValuation
-    function getQuote(uint128 baseAmount, AssetId base, AssetId quote) external view returns (uint128 quoteAmount) {
-        Price memory price_ = price[base][quote];
-        require(price_.valid, "Price not set");
+    function getQuote(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 baseAmount)
+        external
+        view
+        returns (uint128 quoteAmount)
+    {
+        Price memory price_ = price[poolId][scId][assetId];
+        require(price_.isValid, "Price not set");
 
-        return
-            PricingLib.convertWithPrice(baseAmount, _getDecimals(base), _getDecimals(quote), price_.value).toUint128();
+        return PricingLib.convertWithPrice(
+            baseAmount, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), price_.value
+        );
     }
 }

@@ -63,8 +63,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IAsyncVault(_getVault()).requestDeposit(assets, to, _getActor()) {
             // ghost tracking
-            userRequestDeposited[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][to] +=
-                assets;
+            userRequestDeposited[IBaseVault(_getVault()).scId()][spoke.vaultDetails(IBaseVault(_getVault())).assetId][to]
+            += assets;
             sumOfDepositRequests[IBaseVault(_getVault()).asset()] += assets;
             requestDepositAssets[to][IBaseVault(_getVault()).asset()] += assets;
 
@@ -126,7 +126,6 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
     function vault_requestDeposit_clamped(uint256 assets, uint256 toEntropy) public {
         assets = between(assets, 0, MockERC20(IBaseVault(_getVault()).asset()).balanceOf(_getActor()));
-        address to = _getRandomActor(toEntropy);
 
         vault_requestDeposit(assets, toEntropy);
     }
@@ -153,7 +152,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             requestRedeemShares[to][vault.share()] += shares;
             userRequestRedeemed[vault.scId()][spoke.vaultDetails(vault).assetId][to] += shares;
 
-            userRequestRedeemedAssets[vault.scId()][spoke.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
+            userRequestRedeemedAssets[vault.scId()][spoke.vaultDetails(vault).assetId][to] +=
+                vault.convertToAssets(shares);
 
             (uint128 pending, uint32 lastUpdate) =
                 shareClassManager.redeemRequest(vault.scId(), spoke.vaultDetails(vault).assetId, to.toBytes32());
@@ -357,8 +357,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // Processed Deposit | E-2 | Global-1
         // for sync vaults, deposits are fulfilled and claimed immediately
         if (!isAsyncVault) {
-            sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
-            sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            if (pendingBefore >= pendingAfter) {
+                sumOfFulfilledDeposits[vault.share()] += shares;
+                sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            }
             executedInvestments[vault.share()] += shares;
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
@@ -434,8 +436,10 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             sumOfSyncDepositsAsset[vault.asset()] += assets;
 
             sumOfSyncDepositsShare[vault.share()] += shares;
-            sumOfFullfilledDeposits[vault.share()] += (pendingBefore - pendingAfter);
-            sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            if (pendingBefore >= pendingAfter) {
+                sumOfFulfilledDeposits[vault.share()] += shares;
+                sumOfClaimedDeposits[vault.share()] += (pendingBefore - pendingAfter);
+            }
             executedInvestments[vault.share()] += shares;
         }
 
@@ -502,7 +506,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
     }
 
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
-        address to = _getRandomActor(toEntropy);
+        // address to = _getRandomActor(toEntropy); // Unused
         address escrow = address(poolEscrowFactory.escrow(IBaseVault(_getVault()).poolId()));
 
         // Bal b4

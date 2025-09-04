@@ -32,6 +32,9 @@ import {Hub} from "src/hub/Hub.sol";
 import {ShareClassManager} from "src/hub/ShareClassManager.sol";
 import {IdentityValuation} from "src/valuations/IdentityValuation.sol";
 import {MessageProcessor} from "src/common/MessageProcessor.sol";
+import {MessageDispatcher} from "src/common/MessageDispatcher.sol";
+import {IMessageDispatcher} from "src/common/interfaces/IMessageDispatcher.sol";
+import {TokenRecoverer} from "src/common/TokenRecoverer.sol";
 import {Root} from "src/common/Root.sol";
 import {MockAdapter} from "test/common/mocks/MockAdapter.sol";
 import {AccountId} from "src/common/types/AccountId.sol";
@@ -62,8 +65,6 @@ import {MockValuation} from "test/common/mocks/MockValuation.sol";
 
 // Test Utils
 import {SharedStorage} from "test/integration/recon-end-to-end/helpers/SharedStorage.sol";
-import {MockMessageProcessor} from "test/integration/recon-end-to-end/mocks/MockMessageProcessor.sol";
-import {MockMessageDispatcher} from "test/integration/recon-end-to-end/mocks/MockMessageDispatcher.sol";
 import {MockGateway} from "test/integration/recon-end-to-end/mocks/MockGateway.sol";
 import {MockAccountValue} from "test/integration/recon-end-to-end/mocks/MockAccountValue.sol";
 import {ReconPoolManager} from "test/integration/recon-end-to-end/managers/ReconPoolManager.sol";
@@ -99,7 +100,8 @@ abstract contract Setup is
     Escrow globalEscrow;
 
     // Mocks
-    MockMessageDispatcher messageDispatcher;
+    MessageDispatcher messageDispatcher;
+    TokenRecoverer tokenRecoverer;
     MockGateway gateway;
 
     // Clamping
@@ -111,7 +113,7 @@ abstract contract Setup is
     // CROSS CHAIN
     uint16 CENTRIFUGE_CHAIN_ID = 1;
     uint256 REQUEST_ID = 0; // LP request ID is always 0
-    bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224);
+    // bytes32 EVM_ADDRESS = bytes32(uint256(0x1234) << 224); // Unused
 
     /// === Hub === ///
     Accounting accounting;
@@ -302,7 +304,9 @@ abstract contract Setup is
         root.endorse(address(globalEscrow));
 
         balanceSheet = new BalanceSheet(root, address(this));
-        fullRestrictions = new FullRestrictions(address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this));
+        fullRestrictions = new FullRestrictions(
+            address(root), address(balanceSheet), address(globalEscrow), address(spoke), address(this)
+        );
         asyncRequestManager = new AsyncRequestManager(globalEscrow, address(this));
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
@@ -310,7 +314,22 @@ abstract contract Setup is
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spoke = new Spoke(tokenFactory, address(this));
-        messageDispatcher = new MockMessageDispatcher();
+        // Create TokenRecoverer for MessageDispatcher
+        tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
+        Root(address(root)).rely(address(tokenRecoverer));
+
+        // Add missing TokenRecoverer permissions (matching CommonDeployer)
+        tokenRecoverer.rely(address(root));
+        tokenRecoverer.rely(address(messageDispatcher));
+
+        // Create real MessageDispatcher with local forwarding
+        messageDispatcher = new MessageDispatcher(
+            CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
+            IRoot(address(root)),
+            IGateway(address(gateway)),
+            tokenRecoverer,
+            address(this) // deployer
+        );
 
         // set dependencies
         asyncRequestManager.file("spoke", address(spoke));
@@ -324,6 +343,8 @@ abstract contract Setup is
         balanceSheet.file("spoke", address(spoke));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
+
+        balanceSheet.file("gateway", address(gateway));
         poolEscrowFactory.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
         address[] memory tokenWards = new address[](2);
@@ -374,14 +395,39 @@ abstract contract Setup is
         shareClassManager.rely(address(hub));
         poolEscrowFactory.rely(address(hub));
 
+        // Add missing Root permissions (matching HubDeployer)
+        hubRegistry.rely(address(root));
+        holdings.rely(address(root));
+        accounting.rely(address(root));
+        shareClassManager.rely(address(root));
+        hub.rely(address(root));
+        hubHelpers.rely(address(root));
+
         accounting.rely(address(hubHelpers));
         shareClassManager.rely(address(hubHelpers));
         // Hub needs permission to call HubHelpers functions
         hubHelpers.rely(address(hub));
 
+        // Add missing HubHelpers permissions (matching HubDeployer)
+        hubHelpers.rely(address(messageDispatcher));
+
         hub.rely(address(messageDispatcher));
 
-        // shareClassManager.rely(address(this));
+        // Add missing Gateway permission for Hub (matching HubDeployer)
+        gateway.rely(address(hub));
+
+        // MessageDispatcher needs auth permissions to call protected functions
+        spoke.rely(address(messageDispatcher));
+        balanceSheet.rely(address(messageDispatcher));
+
+        // Spoke, balanceSheet, and hub need permission to call MessageDispatcher
+        messageDispatcher.rely(address(spoke));
+        messageDispatcher.rely(address(balanceSheet));
+        messageDispatcher.rely(address(hub));
+
+        // Add missing MessageDispatcher permissions (matching HubDeployer)
+        messageDispatcher.rely(address(root));
+        messageDispatcher.rely(address(hubHelpers));
 
         // set dependencies
         hub.file("sender", address(messageDispatcher));
@@ -389,8 +435,10 @@ abstract contract Setup is
 
         messageDispatcher.file("hub", address(hub));
         messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("requestManager", address(asyncRequestManager));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
+
+        // Add missing HubHelpers file configuration (matching HubDeployer)
+        hubHelpers.file("hub", address(hub));
     }
 
     /// === Helper Functions === ///
@@ -447,7 +495,7 @@ abstract contract Setup is
         balanceSheet.rely(address(asyncRequestManager));
         balanceSheet.rely(address(syncManager));
         balanceSheet.rely(address(messageDispatcher));
-
+        balanceSheet.rely(address(gateway));
         // Rely global escrow
         globalEscrow.rely(address(asyncRequestManager));
         globalEscrow.rely(address(syncManager));
@@ -469,6 +517,9 @@ abstract contract Setup is
 
         // Rely gateway
         spoke.rely(address(gateway));
+
+        // Add missing Gateway permissions (matching CommonDeployer)
+        gateway.rely(address(messageDispatcher));
 
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));

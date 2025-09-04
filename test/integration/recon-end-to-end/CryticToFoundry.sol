@@ -30,7 +30,7 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // Helper functions to handle bytes calldata parameters
-    function hub_updateRestriction_wrapper(uint16 chainId) external {
+    function hub_updateRestriction_wrapper(uint16 /* chainId */ ) external {
         // TODO: Fix bytes calldata issue - skipping for now
         // hub_updateRestriction(chainId, "");
     }
@@ -41,76 +41,9 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
     }
 
     // forge test --match-test test_crytic -vvv
-    function test_crytic() public {
-        // TODO: add failing property tests here for debugging
-    }
+    function test_crytic() public {}
 
     /// === Potential Issues === ///
 
     /// === Categorized Issues === ///
-
-    // // forge test --match-test test_property_sum_of_minted_equals_total_supply_5 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed, probably due to not updating correctly for
-    // sync
-    // // deposits
-    // function test_property_sum_of_minted_equals_total_supply_5() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, false);
-
-    //     shortcut_deposit_sync(1, 5421521);
-
-    //     property_sum_of_minted_equals_total_supply();
-    // }
-
-    // // forge test --match-test test_property_sum_of_shares_received_8 -vvv
-    // // NOTE: looks like an issue with ghost tracking variables that needs to be fixed
-    // function test_property_sum_of_shares_received_8() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true);
-
-    //     shortcut_deposit_queue_cancel(0, 1, 1, 1, 1, 0);
-
-    //     spoke_deployVault(true);
-
-    //     hub_notifyDeposit(1);
-
-    //     property_sum_of_shares_received();
-    // }
-
-    // // forge test --match-test test_property_escrow_share_balance_12 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed
-    // function test_property_escrow_share_balance_12() public {
-    //     shortcut_deployNewTokenPoolAndShare(0, 1, false, false, true);
-
-    //     shortcut_deposit_queue_cancel(0, 1, 1, 1, 1, 0);
-
-    //     property_escrow_share_balance();
-    // }
-
-    // // forge test --match-test test_property_sum_of_pending_redeem_request_15 -vvv
-    // // NOTE: issue with ghost tracking variables that needs to be fixed
-    // function test_property_sum_of_pending_redeem_request_15() public {
-    //     shortcut_deployNewTokenPoolAndShare(7, 1, true, false, false);
-
-    //     shortcut_mint_sync(5, 100002568647520682296840139972);
-
-    //     vault_requestRedeem_clamped(1, 1);
-
-    //     shortcut_redeem_and_claim(4, 1333562963727601499, 42450208829997526553514915981);
-
-    //     property_sum_of_pending_redeem_request();
-    // }
-
-    // // forge test --match-test test_property_totalAssets_solvency_17 -vvv
-    // // NOTE: pls check the property and see if it can ever actually hold,
-    // // it seems like the ability of the admin to pass in a high NAV can easily break this always by always changing
-    // the
-    // // share price
-    // function test_property_totalAssets_solvency_17() public {
-    //     shortcut_deployNewTokenPoolAndShare(13, 1, false, false, false);
-
-    //     shortcut_deposit_sync(1, 20);
-
-    //     balanceSheet_withdraw(0, 1);
-
-    //     property_totalAssets_solvency();
-    // }
 }

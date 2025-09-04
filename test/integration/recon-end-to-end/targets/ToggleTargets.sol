@@ -5,25 +5,25 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 import {Properties} from "test/integration/recon-end-to-end/properties/Properties.sol";
 
-abstract contract ToggleTargets is
-    BaseTargetFunctions,
-    Properties
-{
+abstract contract ToggleTargets is BaseTargetFunctions, Properties {
     /// === Helpers === ///
     /// @dev helper to toggle the isLiability boolean for testing
-    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too
+    /// deep error
     function toggle_IsLiability() public {
         IS_LIABILITY = !IS_LIABILITY;
     }
 
     /// @dev helper to toggle the isIncrease boolean for testing
-    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too
+    /// deep error
     function toggle_IsIncrease() public {
         IS_INCREASE = !IS_INCREASE;
     }
 
     /// @dev helper to toggle the accountToUpdate uint8 for testing
-    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too deep error
+    /// @dev this is defined like this because implementing it directly as a param in the functions throws a stack too
+    /// deep error
     function toggle_AccountToUpdate(uint8 accountToUpdate) public {
         ACCOUNT_TO_UPDATE = createdAccountIds[accountToUpdate % createdAccountIds.length];
     }
