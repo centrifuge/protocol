@@ -1,3 +1,9 @@
 forge-std/=lib/forge-std/src/
+@recon/=lib/setup-helpers/src/
 @chimera/=lib/chimera/src/
 createx-forge/=lib/createx-forge/
+chimera/=lib/chimera/src/
+ds-test/=lib/chimera/lib/forge-std/lib/ds-test/src/
+setup-helpers/=lib/setup-helpers/src/
+src/=src/
+test/=test/
