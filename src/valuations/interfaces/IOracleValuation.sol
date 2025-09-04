@@ -17,6 +17,7 @@ interface IOracleValuation is IValuation {
     }
 
     event UpdatePrice(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, D18 newPrice);
+    event UpdateFeeder(PoolId indexed poolId, address indexed feeder, bool canFeed);
 
     error NotFeeder();
     error NotHubManager();

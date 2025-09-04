@@ -96,6 +96,9 @@ contract OracleValuationUpdateFeederTests is OracleValuationTest {
         vm.prank(poolManager);
         valuation.updateFeeder(POOL_A, feeder, true);
 
+        vm.expectEmit(true, true, true);
+        emit IOracleValuation.UpdateFeeder(POOL_A, feeder, true);
+
         assertTrue(valuation.feeder(POOL_A, feeder));
     }
 
