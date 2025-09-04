@@ -450,16 +450,6 @@ abstract contract TargetFunctions is
         transientValuation_setPrice(assetId, AssetId.wrap(_getAssetId()), price);
     }
 
-    /// === Permission Functions === ///
-    // TODO: can probably remove these
-    function root_scheduleRely(address target) public asAdmin {
-        root.scheduleRely(target);
-    }
-
-    function root_cancelRely(address target) public asAdmin {
-        root.cancelRely(target);
-    }
-
     // === PRICE CONTROL HANDLERS === //
 
     /// @dev Force price to zero for testing zero-price scenarios
