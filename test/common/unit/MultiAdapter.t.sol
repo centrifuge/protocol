@@ -295,6 +295,16 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
+    function testMessageWithOneAdapterButPoolANoConfigured() public {
+        // POOL_A is not configured, and MESSAGE_1 comes from POOL_A, but it works because POOL_0 is the default
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter);
+
+        vm.prank(address(payloadAdapter));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+
+        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+    }
+
     function testMessageAndProofs() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
@@ -539,5 +549,54 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         vm.expectEmit();
         emit IMultiAdapter.SendProof(REMOTE_CENT_ID, payloadId, batchHash, proofAdapter2, ADAPTER_DATA_3);
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, message, GAS_LIMIT, REFUND);
+    }
+
+    function testSendMessageButPoolANotConfigured() public {
+        // POOL_A is not configured, and MESSAGE_1 is send from POOL_A, but it works because POOL_0 is the default
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter);
+
+        _mockAdapter(payloadAdapter, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+
+        uint256 cost = GAS_LIMIT + ADAPTER_ESTIMATE_1;
+        multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+    }
+}
+
+contract MultiAdapterTestEstimate is MultiAdapterTest {
+    using MessageProofLib for *;
+
+    function testEstimateNoAdapters() public view {
+        assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), 0);
+    }
+
+    function testEstimate() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
+
+        bytes memory message = MESSAGE_1;
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
+
+        _mockAdapter(payloadAdapter, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(proofAdapter1, proof, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(proofAdapter2, proof, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+
+        uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
+
+        assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
+    }
+
+    function testEstimateButPoolANotConfigured() public {
+        // POOL_A is not configured, and MESSAGE_1 is from POOL_A, but it works because POOL_0 is the default
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters);
+
+        bytes memory message = MESSAGE_1;
+        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
+
+        _mockAdapter(payloadAdapter, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(proofAdapter1, proof, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(proofAdapter2, proof, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+
+        uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
+
+        assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
     }
 }
