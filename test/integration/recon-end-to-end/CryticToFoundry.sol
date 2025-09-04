@@ -53,11 +53,17 @@ contract CryticToFoundry is Test, TargetFunctions, FoundryAsserts {
             0, 2143041919793394225184990517963364852588231435786230956613865713711501, false, false, false
         );
 
-        shortcut_request_deposit(
-            353266058244111273,
-            289,
-            2808225,
-            5649272889820275245471469757319427940817839515203893610656078129204693045992
+        spoke_linkVault_clamped();
+
+        hub_setHoldingAccountId(4370001, 255, 1524785992);
+
+        hub_notifyShareClass_clamped(uint256(bytes32(0)));
+
+        hub_createHolding_clamped(true, 42, 255, 200, 255);
+
+        balanceSheet_noteDeposit(
+            72471746956481084129564862480901384905404482248830751860681287593528932139081,
+            199442617378997895988140814992292323492
         );
 
         balanceSheet_issue(16959863524853505889821508051117429097);
