@@ -22,5 +22,6 @@ contract ValuationsDeploymentTest is ValuationsDeployer, CommonDeploymentInputTe
     function testOracleValuation() public view {
         // dependencies set correctly
         assertEq(address(oracleValuation.hubRegistry()), address(hubRegistry));
+        assertEq(address(oracleValuation.hub()), address(hub));
     }
 }
