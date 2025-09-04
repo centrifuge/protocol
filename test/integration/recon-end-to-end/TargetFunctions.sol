@@ -440,7 +440,13 @@ abstract contract TargetFunctions is
 
     /// === Transient Valuation === ///
     function transientValuation_setPrice(AssetId base, AssetId quote, uint128 price) public {
-        transientValuation.setPrice(base, quote, D18.wrap(price));
+        IBaseVault vault = IBaseVault(_getVault());
+        if (address(vault) == address(0)) return;
+        
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        
+        transientValuation.setPrice(poolId, scId, base, D18.wrap(price));
     }
 
     // set the price of the asset in the transient valuation for a given pool
