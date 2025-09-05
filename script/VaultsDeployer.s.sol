@@ -5,7 +5,6 @@ import {CommonInput} from "./CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
 import {Escrow} from "../src/misc/Escrow.sol";
-import {IEscrow} from "../src/misc/interfaces/IEscrow.sol";
 
 import {Spoke} from "../src/spoke/Spoke.sol";
 
@@ -53,6 +52,8 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         // Rely others
         report.routerEscrow.rely(address(report.vaultRouter));
         report.syncManager.rely(address(report.syncDepositVaultFactory));
+        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
+        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
 
         // Rely VaultRouter
         report.spoke.common.gateway.rely(address(report.vaultRouter));
@@ -108,8 +109,8 @@ contract VaultsDeployer is SpokeDeployer {
 
         asyncRequestManager = AsyncRequestManager(
             create3(
-                generateSalt("asyncRequestManager"),
-                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(IEscrow(globalEscrow), batcher))
+                generateSalt("asyncRequestManager-2"),
+                abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(globalEscrow, batcher))
             )
         );
 
@@ -128,7 +129,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                generateSalt("asyncVaultFactory"),
+                generateSalt("asyncVaultFactory-3"),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -137,7 +138,7 @@ contract VaultsDeployer is SpokeDeployer {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                generateSalt("syncDepositVaultFactory"),
+                generateSalt("syncDepositVaultFactory-3"),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)

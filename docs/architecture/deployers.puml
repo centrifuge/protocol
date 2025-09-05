@@ -11,6 +11,9 @@ class HubDeployer
 class SpokeDeployer
 class AdaptersDeployer
 
+class ValuationsDeployer
+class ExtendedHubDeployer
+
 class ManagersDeployer
 class VaultsDeployer
 class HooksDeployer
@@ -29,6 +32,9 @@ HubDeployer -up-|> CommonDeployer
 SpokeDeployer -up-|> CommonDeployer
 AdaptersDeployer -up-|> CommonDeployer
 
+ValuationsDeployer -up-|> HubDeployer
+ExtendedHubDeployer -up-|> ValuationsDeployer
+
 ManagersDeployer -up-|> SpokeDeployer
 VaultsDeployer -up-|> SpokeDeployer
 HooksDeployer -up-|> SpokeDeployer
@@ -37,7 +43,7 @@ ExtendedSpokeDeployer -up-|> ManagersDeployer
 ExtendedSpokeDeployer -up-|> VaultsDeployer
 ExtendedSpokeDeployer -up-|> HooksDeployer
 
-FullDeployer -up---|> HubDeployer
+FullDeployer -up-|> ExtendedHubDeployer
 FullDeployer -up-|> ExtendedSpokeDeployer
 FullDeployer -up---|> AdaptersDeployer
 

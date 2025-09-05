@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
+import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
+
 import {ERC20} from "../../src/misc/ERC20.sol";
 
 import {MockValuation} from "../common/mocks/MockValuation.sol";
@@ -20,10 +22,10 @@ import "forge-std/Test.sol";
 /// It assumes a full deployment in one chain.
 /// @dev NOTE. Use always LOCAL_CENTRIFUGE_ID when centrifugeId param is required
 contract CentrifugeIntegrationTest is FullDeployer, Test {
-    uint16 constant LOCAL_CENTRIFUGE_ID = 1;
+    uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
     address immutable ADMIN = address(adminSafe);
     address immutable FUNDED = address(this);
-    uint256 constant DEFAULT_SUBSIDY = 1 ether;
+    uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
 
     // Helper contracts
     MockValuation valuation;

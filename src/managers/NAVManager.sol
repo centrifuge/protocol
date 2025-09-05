@@ -54,7 +54,10 @@ contract NAVManager is Auth, INAVManager {
     // Account creation
     //----------------------------------------------------------------------------------------------
 
-    function initializeNetwork(uint16 centrifugeId) external auth {
+    function initializeNetwork(uint16 centrifugeId) external {
+        // TODO AUTH
+        // require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
+
         require(accountCounter[centrifugeId] == 0, AlreadyInitialized());
 
         hub.createAccount(poolId, equityAccount(centrifugeId), false);
@@ -65,7 +68,8 @@ contract NAVManager is Auth, INAVManager {
         accountCounter[centrifugeId] = 5;
     }
 
-    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external auth {
+    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external {
+        // TODO AUTH
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());
@@ -92,7 +96,8 @@ contract NAVManager is Auth, INAVManager {
         accountCounter[centrifugeId] = index + 1;
     }
 
-    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external auth {
+    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external {
+        // TODO AUTH
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());

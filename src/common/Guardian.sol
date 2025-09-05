@@ -6,11 +6,9 @@ import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
 import {IHubGuardianActions} from "./interfaces/IGuardianActions.sol";
-import {IMultiAdapter} from "./interfaces/adapters/IMultiAdapter.sol";
-import {IAxelarAdapter} from "./interfaces/adapters/IAxelarAdapter.sol";
-import {IWormholeAdapter} from "./interfaces/adapters/IWormholeAdapter.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
@@ -118,28 +116,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function wireAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
         multiAdapter.file("adapters", centrifugeId, adapters);
-    }
-
-    /// @inheritdoc IGuardian
-    function wireWormholeAdapter(IWormholeAdapter localAdapter, uint16 centrifugeId, uint16 wormholeId, address adapter)
-        external
-        onlySafe
-    {
-        localAdapter.file("sources", centrifugeId, wormholeId, adapter);
-        localAdapter.file("destinations", centrifugeId, wormholeId, adapter);
-    }
-
-    /// @inheritdoc IGuardian
-    function wireAxelarAdapter(
-        IAxelarAdapter localAdapter,
-        uint16 centrifugeId,
-        string calldata axelarId,
-        string calldata adapter
-    ) external onlySafe {
-        localAdapter.file("sources", axelarId, centrifugeId, adapter);
-        localAdapter.file("destinations", centrifugeId, axelarId, adapter);
     }
 
     //----------------------------------------------------------------------------------------------

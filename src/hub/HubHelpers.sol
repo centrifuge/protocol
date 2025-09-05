@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
+
 import {IHub, AccountType} from "./interfaces/IHub.sol";
 import {IAccounting} from "./interfaces/IAccounting.sol";
 import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
@@ -186,6 +188,7 @@ contract HubHelpers is Auth, IHubHelpers {
             RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
             uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
 
+            console2.log("cancelledAssetAmount", cancelledAssetAmount);
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledAssetAmount > 0) {
                 sender.sendRequestCallback(
@@ -259,7 +262,7 @@ contract HubHelpers is Auth, IHubHelpers {
         AssetId poolCurrency = hubRegistry.currency(poolId);
         uint128 assetUnitAmount = (10 ** hubRegistry.decimals(assetId.raw())).toUint128();
         uint128 poolUnitAmount = (10 ** hubRegistry.decimals(poolCurrency.raw())).toUint128();
-        uint128 poolAmountPerAsset = valuation.getQuote(assetUnitAmount, assetId, poolCurrency);
+        uint128 poolAmountPerAsset = valuation.getQuote(poolId, scId, assetId, assetUnitAmount);
 
         // Retrieve price by normalizing by pool denomination
         return d18(poolAmountPerAsset, poolUnitAmount);

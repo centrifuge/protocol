@@ -9,6 +9,8 @@ import {IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 library PricingLib {
     using MathLib for *;
 
+    error DivisionByZero();
+
     /// @dev Prices are fixed-point integers with 18 decimals
     uint8 internal constant PRICE_DECIMALS = 18;
 
@@ -180,7 +182,7 @@ library PricingLib {
         D18 priceBasePerQuote,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 quoteAmount) {
-        require(priceBasePerQuote.isNotZero(), "PricingLib/division-by-zero");
+        require(priceBasePerQuote.isNotZero(), DivisionByZero());
 
         if (baseDecimals == quoteDecimals) {
             return priceBasePerQuote.reciprocalMulUint256(baseAmount, rounding).toUint128();
@@ -206,7 +208,7 @@ library PricingLib {
         D18 priceDenominator,
         MathLib.Rounding rounding
     ) internal pure returns (uint128 quoteAmount) {
-        require(priceDenominator.isNotZero(), "PricingLib/division-by-zero");
+        require(priceDenominator.isNotZero(), DivisionByZero());
 
         return MathLib.mulDiv(
             priceNumerator.raw(),

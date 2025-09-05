@@ -54,9 +54,9 @@ contract HubRegistryMock {
     }
 
     function decimals(AssetId assetId) external pure returns (uint8) {
-        if (assetId.eq(USDC)) {
+        if (assetId == USDC) {
             return DECIMALS_USDC;
-        } else if (assetId.eq(OTHER_STABLE)) {
+        } else if (assetId == OTHER_STABLE) {
             return DECIMALS_OTHER_STABLE;
         } else {
             revert("IHubRegistry.decimals() - Unknown assetId");
@@ -131,9 +131,9 @@ abstract contract ShareClassManagerBaseTest is Test {
     }
 
     function _pricePoolPerAsset(AssetId assetId) internal pure returns (D18) {
-        if (assetId.eq(USDC)) {
+        if (assetId == USDC) {
             return d18(1, 1);
-        } else if (assetId.eq(OTHER_STABLE)) {
+        } else if (assetId == OTHER_STABLE) {
             return d18(1, OTHER_STABLE_PER_POOL);
         } else {
             revert("ShareClassManagerBaseTest._priceAssetPerPool() - Unknown assetId");

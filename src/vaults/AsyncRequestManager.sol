@@ -10,6 +10,8 @@ import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
 
+import {console2} from "forge-std/console2.sol";
+
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
@@ -24,6 +26,7 @@ import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../common/interfaces/IPoolEscrow.sol";
 import {ESCROW_HOOK_ID} from "../common/interfaces/ITransferHook.sol";
+import {IRequestManager} from "../common/interfaces/IRequestManager.sol";
 import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackType, RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
@@ -31,8 +34,6 @@ import {IVault} from "../spoke/interfaces/IVault.sol";
 import {IShareToken} from "../spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
 import {ISpoke, VaultDetails} from "../spoke/interfaces/ISpoke.sol";
-import {IVaultManager} from "../spoke/interfaces/IVaultManager.sol";
-import {IRequestManager} from "../spoke/interfaces/IRequestManager.sol";
 
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
@@ -50,7 +51,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     IBalanceSheet public balanceSheet;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
-    mapping(PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => IBaseVault vault))) public vault;
 
     constructor(IEscrow globalEscrow_, address deployer) Auth(deployer) {
         globalEscrow = globalEscrow_;
@@ -67,36 +67,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         emit File(what, data);
     }
 
-    /// @inheritdoc IVaultManager
-    function addVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
-        public
-        virtual
-        auth
-    {
-        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(0), VaultAlreadyExists());
-
-        vault[poolId][scId][assetId] = IBaseVault(address(vault_));
-        rely(address(vault_));
-
-        emit AddVault(poolId, scId, assetId, vault_);
-    }
-
-    /// @inheritdoc IVaultManager
-    function removeVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_, address asset_, uint256)
-        public
-        virtual
-        auth
-    {
-        require(IBaseVault(address(vault_)).asset() == asset_, AssetMismatch());
-        require(address(vault[poolId][scId][assetId]) == address(vault_), VaultDoesNotExist());
-
-        delete vault[poolId][scId][assetId];
-        deny(address(vault_));
-
-        emit RemoveVault(poolId, scId, assetId, vault_);
-    }
-
     //----------------------------------------------------------------------------------------------
     // Async investment handlers
     //----------------------------------------------------------------------------------------------
@@ -107,9 +77,10 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (bool)
     {
+        _checkIsLinked(vault_);
+
         uint128 assets_ = assets.toUint128();
         require(assets_ != 0, ZeroAmountNotAllowed());
-        require(spoke.isLinked(vault_), AssetNotAllowed());
         require(_canTransfer(vault_, address(0), controller, convertToShares(vault_, assets_)), TransferNotAllowed());
 
         AsyncInvestmentState storage state = investments[vault_][controller];
@@ -130,9 +101,10 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         address sender_,
         bool transfer
     ) public auth returns (bool) {
+        _checkIsLinked(vault_);
+
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmountNotAllowed());
-        require(spoke.isLinked(vault_), AssetNotAllowed());
         require(
             _canTransfer(vault_, owner, ESCROW_HOOK_ID, shares)
                 && _canTransfer(vault_, controller, ESCROW_HOOK_ID, shares),
@@ -155,6 +127,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IAsyncDepositManager
     function cancelDepositRequest(IBaseVault vault_, address controller, address) public auth {
+        _checkIsLinked(vault_);
+
         AsyncInvestmentState storage state = investments[vault_][controller];
         require(state.pendingDepositRequest > 0, NoPendingRequest());
         require(state.pendingCancelDepositRequest != true, CancellationIsPending());
@@ -165,6 +139,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IAsyncRedeemManager
     function cancelRedeemRequest(IBaseVault vault_, address controller, address) public auth {
+        _checkIsLinked(vault_);
+
         uint256 approximateSharesPayout = pendingRedeemRequest(vault_, controller);
         require(approximateSharesPayout > 0, NoPendingRequest());
         require(_canTransfer(vault_, address(0), controller, approximateSharesPayout), TransferNotAllowed());
@@ -198,6 +174,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
             revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount, D18.wrap(m.pricePoolPerShare));
         } else if (kind == uint8(RequestCallbackType.FulfilledDepositRequest)) {
             RequestCallbackMessageLib.FulfilledDepositRequest memory m = payload.deserializeFulfilledDepositRequest();
+            console2.log("RequestCallbackMessageLib.FulfilledDepositRequest", m.cancelledAssetAmount);
             fulfillDepositRequest(
                 poolId,
                 scId,
@@ -278,8 +255,10 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledAssets
     ) public auth {
-        IAsyncVault vault_ = IAsyncVault(address(vault[poolId][scId][assetId]));
+        IAsyncVault vault_ = IAsyncVault(address(spoke.vault(poolId, scId, assetId, this)));
         AsyncInvestmentState storage state = investments[vault_][user];
+
+        console2.log("fulfillDepositRequest cancelled", cancelledAssets);
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
         if (cancelledAssets > 0) {
@@ -311,7 +290,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         uint128 fulfilledShares,
         uint128 cancelledShares
     ) public auth {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vault[poolId][scId][assetId]));
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(spoke.vault(poolId, scId, assetId, this)));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -349,6 +328,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 shares)
     {
+        _checkIsLinked(vault_);
         require(assets <= _maxDeposit(vault_, controller), ExceedsMaxDeposit());
 
         AsyncInvestmentState storage state = investments[vault_][controller];
@@ -365,6 +345,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 assets)
     {
+        _checkIsLinked(vault_);
+
         AsyncInvestmentState storage state = investments[vault_][controller];
         uint128 shares_ = shares.toUint128();
 
@@ -393,6 +375,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 assets)
     {
+        _checkIsLinked(vault_);
         require(shares <= maxRedeem(vault_, controller), ExceedsMaxRedeem());
 
         AsyncInvestmentState storage state = investments[vault_][controller];
@@ -409,6 +392,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 shares)
     {
+        _checkIsLinked(vault_);
+
         AsyncInvestmentState storage state = investments[vault_][controller];
         uint128 assets_ = assets.toUint128();
         _processRedeem(state, assets_, assets_, vault_, receiver, controller);
@@ -461,6 +446,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 assets)
     {
+        _checkIsLinked(vault_);
+
         AsyncInvestmentState storage state = investments[vault_][controller];
         assets = state.claimableCancelDepositRequest;
         state.claimableCancelDepositRequest = 0;
@@ -483,6 +470,8 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         auth
         returns (uint256 shares)
     {
+        _checkIsLinked(vault_);
+
         AsyncInvestmentState storage state = investments[vault_][controller];
         shares = state.claimableCancelRedeemRequest;
         state.claimableCancelRedeemRequest = 0;
@@ -498,7 +487,7 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
 
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
-        assets = uint256(_maxDeposit(vault_, user));
+        assets = _maxDeposit(vault_, user);
         if (!_canTransfer(vault_, ESCROW_HOOK_ID, user, investments[vault_][user].maxMint)) return 0;
     }
 
@@ -606,11 +595,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
         return balanceSheet.escrow(poolId);
     }
 
-    /// @inheritdoc IVaultManager
-    function vaultByAssetId(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (IVault) {
-        return vault[poolId][scId][assetId];
-    }
-
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
@@ -665,5 +649,10 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
             : PricingLib.calculatePriceAssetPerShare(
                 shareToken, shares, vaultDetails.asset, vaultDetails.tokenId, assets, rounding
             );
+    }
+
+    /// @dev Here to reduce contract bytesize
+    function _checkIsLinked(IVault vault_) internal view {
+        require(spoke.isLinked(vault_), VaultNotLinked());
     }
 }

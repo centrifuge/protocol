@@ -3,13 +3,13 @@ pragma solidity >=0.5.0;
 
 import {IShareToken} from "./IShareToken.sol";
 import {IVault, VaultKind} from "./IVault.sol";
-import {IRequestManager} from "./IRequestManager.sol";
 
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {IRequestManager} from "../../common/interfaces/IRequestManager.sol";
 
 import {Price} from "../types/Price.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
@@ -17,14 +17,6 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 /// @dev Centrifuge pools
 struct Pool {
     uint256 createdAt;
-    mapping(ShareClassId scId => ShareClassDetails) shareClasses;
-}
-
-struct ShareClassAsset {
-    /// @dev Manager that can send requests, and handles the request callbacks.
-    IRequestManager manager;
-    /// @dev Number of linked vaults.
-    uint32 numVaults;
 }
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
@@ -32,9 +24,15 @@ struct ShareClassDetails {
     IShareToken shareToken;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
-    mapping(AssetId assetId => ShareClassAsset) asset;
-    /// @dev For each share class, we store the price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    mapping(address asset => mapping(uint256 tokenId => Price)) pricePoolPerAsset;
+}
+
+struct ShareClassAsset {
+    /// @dev Manager that can send requests, and handles the request callbacks.
+    IRequestManager manager;
+    /// @dev Number of linked vaults.
+    uint32 numVaults;
+    /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
+    Price pricePoolPerAsset;
 }
 
 struct VaultDetails {
@@ -58,6 +56,7 @@ struct AssetIdKey {
 interface ISpoke {
     event File(bytes32 indexed what, address data);
     event RegisterAsset(
+        uint16 centrifugeId,
         AssetId indexed assetId,
         address indexed asset,
         uint256 indexed tokenId,
@@ -86,10 +85,10 @@ interface ISpoke {
         ShareClassId indexed scId,
         address indexed asset,
         uint256 tokenId,
-        uint256 price,
+        D18 price,
         uint64 computedAt
     );
-    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, uint256 price, uint64 computedAt);
+    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
     event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
@@ -125,7 +124,6 @@ interface ISpoke {
     error UnknownVault();
     error UnknownAsset();
     error MalformedVaultUpdateMessage();
-    error UnknownToken();
     error InvalidFactory();
     error InvalidPrice();
     error AssetMissingDecimals();
@@ -139,6 +137,8 @@ interface ISpoke {
     error RequestManagerNotSet();
     error InvalidManager();
     error InvalidVault();
+    error AlreadyLinkedVault();
+    error AlreadyUnlinkedVault();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -212,7 +212,7 @@ interface ISpoke {
         external
         returns (IVault);
 
-    /// @notice Register a vault.
+    /// @dev Used only for migrations
     function registerVault(
         PoolId poolId,
         ShareClassId scId,
@@ -329,4 +329,11 @@ interface ISpoke {
         external
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
+
+    /// @notice Returns the address of the vault for a given pool, share class asset and requestManager
+    /// @param manager the request manager associated to the vault, if 0, then it correspond to a full sync vault.
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+        external
+        view
+        returns (IVault vault);
 }

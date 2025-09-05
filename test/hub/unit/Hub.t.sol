@@ -24,6 +24,7 @@ import "forge-std/Test.sol";
 
 contract TestCommon is Test {
     uint16 constant CHAIN_A = 23;
+    uint16 constant CHAIN_B = 24;
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
     AssetId constant ASSET_A = AssetId.wrap(3);
@@ -78,7 +79,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hub.initiateTransferShares(CHAIN_A, CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
+        hub.initiateTransferShares(CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0);
 
         vm.stopPrank();
     }

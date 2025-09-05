@@ -50,7 +50,7 @@ contract OnOfframpManager is IOnOfframpManager {
     function update(PoolId poolId_, ShareClassId scId_, bytes calldata payload) external {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == contractUpdater, NotSpoke());
+        require(msg.sender == contractUpdater, NotContractUpdater());
 
         uint8 kind = uint8(UpdateContractMessageLib.updateContractType(payload));
 
@@ -129,7 +129,7 @@ contract OnOfframpManagerFactory is IOnOfframpManagerFactory {
 
     /// @inheritdoc IOnOfframpManagerFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOfframpManager) {
-        require(address(balanceSheet.spoke().shareToken(poolId, scId)) != address(0), InvalidIds());
+        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
         OnOfframpManager manager = new OnOfframpManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
             poolId, scId, contractUpdater, balanceSheet

@@ -78,7 +78,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "holdings") holdings = IHoldings(data);
-        else if (what == "hubHelpers") hubHelpers = IHubHelpers(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else if (what == "gateway") gateway = IGateway(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
@@ -708,8 +707,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
     /// @inheritdoc IHubGatewayHandler
     function initiateTransferShares(
-        uint16 fromCentrifugeId,
-        uint16 toCentrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
@@ -718,14 +717,16 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external {
         _auth();
 
-        shareClassManager.updateShares(fromCentrifugeId, poolId, scId, amount, false);
-        shareClassManager.updateShares(toCentrifugeId, poolId, scId, amount, true);
+        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
+        shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
 
         ISnapshotHook hook = holdings.snapshotHook(poolId);
-        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId);
+        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId);
 
-        emit ForwardTransferShares(fromCentrifugeId, toCentrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(toCentrifugeId, poolId, scId, receiver, amount, extraGasLimit);
+        emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
+        sender.sendExecuteTransferShares(
+            originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
+        );
     }
 
     //----------------------------------------------------------------------------------------------

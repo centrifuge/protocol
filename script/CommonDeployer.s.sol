@@ -7,9 +7,9 @@ import {Root} from "../src/common/Root.sol";
 import {Gateway} from "../src/common/Gateway.sol";
 import {GasService} from "../src/common/GasService.sol";
 import {Guardian, ISafe} from "../src/common/Guardian.sol";
+import {MultiAdapter} from "../src/common/MultiAdapter.sol";
 import {TokenRecoverer} from "../src/common/TokenRecoverer.sol";
 import {MessageProcessor} from "../src/common/MessageProcessor.sol";
-import {MultiAdapter} from "../src/common/adapters/MultiAdapter.sol";
 import {MessageDispatcher} from "../src/common/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/common/factories/PoolEscrowFactory.sol";
 
@@ -122,10 +122,28 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
      * @return salt A deterministic salt based on contract name and optional VERSION
      */
     function generateSalt(string memory contractName) internal view returns (bytes32) {
+        bytes32 baseHash;
         if (version != bytes32(0)) {
-            return keccak256(abi.encodePacked(contractName, version));
+            bytes32 contractNameHash = keccak256(bytes(contractName));
+            // Special handling for v3.0.1 contracts that were deployed with version "3" instead of keccak256("3")
+            if (
+                version == keccak256(abi.encodePacked("3"))
+                    && (
+                        contractNameHash == keccak256(bytes("asyncRequestManager-2"))
+                            || contractNameHash == keccak256(bytes("syncDepositVaultFactory-2"))
+                            || contractNameHash == keccak256(bytes("asyncVaultFactory-2"))
+                    )
+            ) {
+                baseHash = keccak256(abi.encodePacked(contractName, bytes32(bytes("3"))));
+            } else {
+                baseHash = keccak256(abi.encodePacked(contractName, version));
+            }
+        } else {
+            baseHash = keccak256(abi.encodePacked(contractName));
         }
-        return keccak256(abi.encodePacked(contractName));
+
+        // NOTE: To avoid CreateX InvalidSalt issues, 21st byte needs to be 0
+        return bytes32(abi.encodePacked(bytes20(msg.sender), bytes1(0x0), bytes11(baseHash)));
     }
 
     function deployCommon(CommonInput memory input, CommonActionBatcher batcher) public {
@@ -206,14 +224,13 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 generateSalt("poolEscrowFactory"),
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(address(root), batcher))
+                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
         batcher.engageCommon(_commonReport());
 
         register("root", address(root));
-        // register("adminSafe", address(adminSafe)); => Already present in load_vars.sh and not needed to be registered
         register("guardian", address(guardian));
         register("gasService", address(gasService));
         register("gateway", address(gateway));
@@ -221,6 +238,7 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
         register("messageProcessor", address(messageProcessor));
         register("messageDispatcher", address(messageDispatcher));
         register("poolEscrowFactory", address(poolEscrowFactory));
+        register("tokenRecoverer", address(tokenRecoverer));
     }
 
     function _postDeployCommon(CommonActionBatcher batcher) internal {

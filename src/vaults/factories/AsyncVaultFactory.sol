@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Auth} from "../../misc/Auth.sol";
+import {Auth, IAuth} from "../../misc/Auth.sol";
 
 import {PoolId} from "../../common/types/PoolId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
@@ -34,10 +34,15 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         address[] calldata wards_
     ) public auth returns (IVault) {
         require(tokenId == 0, UnsupportedTokenId());
-        AsyncVault vault = new AsyncVault(poolId, scId, asset, token, root, asyncRequestManager);
+
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
+        AsyncVault vault = new AsyncVault{salt: salt}(poolId, scId, asset, token, root, asyncRequestManager);
 
         vault.rely(root);
         vault.rely(address(asyncRequestManager));
+
+        IAuth(address(asyncRequestManager)).rely(address(vault));
+
         uint256 wardsCount = wards_.length;
         for (uint256 i; i < wardsCount; i++) {
             vault.rely(wards_[i]);

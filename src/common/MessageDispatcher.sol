@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
 import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
+import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
@@ -147,20 +149,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 sharePrice)
-        external
-        auth
-    {
+    function sendNotifyPricePoolPerShare(uint16 chainId, PoolId poolId, ShareClassId scId, D18 price) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, sharePrice.raw(), timestamp);
+            spoke.updatePricePoolPerShare(poolId, scId, price, timestamp);
         } else {
             gateway.send(
                 chainId,
                 MessageLib.NotifyPricePoolPerShare({
                     poolId: poolId.raw(),
                     scId: scId.raw(),
-                    price: sharePrice.raw(),
+                    price: price.raw(),
                     timestamp: timestamp
                 }).serialize()
             );
@@ -171,7 +170,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendNotifyPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) external auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price.raw(), timestamp);
+            spoke.updatePricePoolPerAsset(poolId, scId, assetId, price, timestamp);
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -255,7 +254,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IHubMessageSender
     function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setRequestManager(poolId, scId, assetId, manager.toAddress());
+            spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
                 assetId.centrifugeId(),
@@ -390,26 +389,34 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IHubMessageSender
     function sendExecuteTransferShares(
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
     ) external auth {
-        if (centrifugeId == localCentrifugeId) {
+        if (targetCentrifugeId == localCentrifugeId) {
+            // Spoke chain X => Hub chain Y => Spoke chain Y
             spoke.executeTransferShares(poolId, scId, receiver, amount);
         } else {
+            bytes memory message = MessageLib.ExecuteTransferShares({
+                poolId: poolId.raw(),
+                scId: scId.raw(),
+                receiver: receiver,
+                amount: amount
+            }).serialize();
+
             gateway.setExtraGasLimit(extraGasLimit);
-            gateway.addUnpaidMessage(
-                centrifugeId,
-                MessageLib.ExecuteTransferShares({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    receiver: receiver,
-                    amount: amount
-                }).serialize()
-            );
+
+            if (originCentrifugeId == localCentrifugeId) {
+                // Spoke chain X => Hub chain X => Spoke chain Y: payment done directly on X
+                gateway.send(targetCentrifugeId, message);
+            } else {
+                // Spoke chain X => Hub chain Y => Spoke chain Z
+                gateway.addUnpaidMessage(targetCentrifugeId, message);
+            }
         }
     }
 
@@ -511,6 +518,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes calldata payload,
         uint128 extraGasLimit
     ) external auth {
+        console2.log("MessageDispatcher sendRequestCallback", assetId.centrifugeId() == localCentrifugeId);
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.requestCallback(poolId, scId, assetId, payload);
         } else {
