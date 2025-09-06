@@ -7,6 +7,7 @@ import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
+import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
@@ -69,7 +70,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimDeposit(poolId, scId, investor, assetId);
+                IHubRequestManager(hubRegistry.dependency("requestManager")).claimDeposit(poolId, scId, investor, assetId);
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
@@ -95,7 +96,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                shareClassManager.claimRedeem(poolId, scId, investor, assetId);
+                IHubRequestManager(hubRegistry.dependency("requestManager")).claimRedeem(poolId, scId, investor, assetId);
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
@@ -174,17 +175,18 @@ contract HubHelpers is Auth, IHubHelpers {
 
     /// @inheritdoc IHubHelpers
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
+        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency("requestManager"));
         uint8 kind = uint8(RequestMessageLib.requestType(payload));
 
         if (kind == uint8(RequestType.DepositRequest)) {
             RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
-            shareClassManager.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
+            requestManager.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
         } else if (kind == uint8(RequestType.RedeemRequest)) {
             RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
-            shareClassManager.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
+            requestManager.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
         } else if (kind == uint8(RequestType.CancelDepositRequest)) {
             RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
-            uint128 cancelledAssetAmount = shareClassManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
+            uint128 cancelledAssetAmount = requestManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledAssetAmount > 0) {
@@ -199,7 +201,7 @@ contract HubHelpers is Auth, IHubHelpers {
             }
         } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
             RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
-            uint128 cancelledShareAmount = shareClassManager.cancelRedeemRequest(poolId, scId, m.investor, assetId);
+            uint128 cancelledShareAmount = requestManager.cancelRedeemRequest(poolId, scId, m.investor, assetId);
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledShareAmount > 0) {

@@ -18,6 +18,7 @@ import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
+import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
@@ -436,7 +437,7 @@ contract EndToEndFlows is EndToEndUtils {
             LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
-            poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32()
+            poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32(), address(spoke.asyncRequestManager).toBytes32()
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
@@ -627,11 +628,12 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        uint32 depositEpochId = requestManager.nowDepositEpoch(shareClassId, assetId);
         hub.hub.approveDeposits{value: GAS}(poolId, shareClassId, assetId, depositEpochId, amount);
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+        uint32 issueEpochId = requestManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
         hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
     }
@@ -654,7 +656,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
+            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         // Store initial share balance for fork tests
@@ -849,8 +851,9 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
-        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        uint32 nowRedeemEpoch = requestManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 nowRevokeEpoch = requestManager.nowRevokeEpoch(shareClassId, assetId);
 
         // Handle live chain state: if redemptions have been approved but not revoked,
         // we need to revoke outstanding epochs before we can approve new ones
@@ -861,7 +864,7 @@ contract EndToEndFlows is EndToEndUtils {
                 hub.hub.revokeShares{value: GAS}(
                     poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
                 );
-                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+                nowRevokeEpoch = requestManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
         }
@@ -874,8 +877,9 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        uint32 nowDepositEpoch = requestManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 nowIssueEpoch = requestManager.nowIssueEpoch(shareClassId, assetId);
 
         // Handle live chain state: if deposits have been approved but not yet issued,
         // we need to issue outstanding epochs before we can approve new ones
@@ -886,7 +890,7 @@ contract EndToEndFlows is EndToEndUtils {
                 hub.hub.issueShares{value: GAS}(
                     poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
                 );
-                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
+                nowIssueEpoch = requestManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
         }
@@ -915,10 +919,11 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        uint32 redeemEpochId = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        uint32 redeemEpochId = requestManager.nowRedeemEpoch(shareClassId, assetId);
         hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
 
-        uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
+        uint32 revokeEpochId = requestManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
         hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
     }
@@ -941,7 +946,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
+            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         // Store initial asset balance for fork tests

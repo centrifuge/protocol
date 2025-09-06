@@ -4,35 +4,19 @@ pragma solidity 0.8.28;
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {
     IShareClassManager,
-    EpochInvestAmounts,
-    EpochRedeemAmounts,
-    UserOrder,
     ShareClassMetadata,
-    ShareClassMetrics,
-    QueuedOrder,
-    RequestType,
-    EpochId
+    ShareClassMetrics
 } from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import {D18, d18} from "../misc/types/D18.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {D18} from "../misc/types/D18.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId, newShareClassId} from "../common/types/ShareClassId.sol";
 
 /// @title  Share Class Manager
-/// @notice Manager for the share classes of a pool, and the core logic for tracking, approving, and fulfilling
-///         requests.
+/// @notice Manager for the share classes of a pool - handles share class creation, metadata, and share tracking
 contract ShareClassManager is Auth, IShareClassManager {
-    using MathLib for *;
-    using CastLib for *;
-    using BytesLib for bytes;
-
     IHubRegistry public immutable hubRegistry;
 
     // Share classes
@@ -48,7 +32,19 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Add share classes
+    // Events
+    //----------------------------------------------------------------------------------------------
+
+
+
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
+    error DecreaseMoreThanIssued();
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IShareClassManager
@@ -66,10 +62,6 @@ contract ShareClassManager is Auth, IShareClassManager {
 
         emit AddShareClass(poolId, scId_, index, name, symbol, salt);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Manage share classes
-    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IShareClassManager
     function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 navPoolPerShare) external auth {

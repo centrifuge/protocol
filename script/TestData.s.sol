@@ -17,6 +17,7 @@ import {VaultUpdateKind} from "../src/common/libraries/MessageLib.sol";
 import {Hub} from "../src/hub/Hub.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
+import {IHubRequestManager} from "../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../src/spoke/Spoke.sol";
 import {BalanceSheet} from "../src/spoke/BalanceSheet.sol";
@@ -101,7 +102,7 @@ contract TestData is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
-        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32(), address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
         // Add ADMIN as balance sheet manager to call submitQueuedAssets without going through the asyncRequestManager
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(admin).toBytes32(), true);
@@ -135,7 +136,8 @@ contract TestData is FullDeployer {
         vault.requestDeposit(1_000_000e6, msg.sender, msg.sender);
 
         // Fulfill deposit request
-        hub.approveDeposits(poolId, scId, assetId, shareClassManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
+        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency("requestManager"));
+        hub.approveDeposits(poolId, scId, assetId, requestManager.nowDepositEpoch(scId, assetId), 1_000_000e6);
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Withdraw principal
@@ -143,9 +145,9 @@ contract TestData is FullDeployer {
         balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS);
 
         // Issue and claim
-        hub.issueShares(poolId, scId, assetId, shareClassManager.nowIssueEpoch(scId, assetId), d18(1, 1), 0);
+        hub.issueShares(poolId, scId, assetId, requestManager.nowIssueEpoch(scId, assetId), d18(1, 1), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
-        uint32 maxClaims = shareClassManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
+        uint32 maxClaims = requestManager.maxDepositClaims(scId, msg.sender.toBytes32(), assetId);
         hub.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims);
         vault.mint(1_000_000e18, msg.sender);
 
@@ -170,8 +172,8 @@ contract TestData is FullDeployer {
         vault.requestRedeem(1_000_000e18, msg.sender, msg.sender);
 
         // Fulfill redeem request
-        hub.approveRedeems(poolId, scId, assetId, shareClassManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
-        hub.revokeShares(poolId, scId, assetId, shareClassManager.nowRevokeEpoch(scId, assetId), d18(11, 10), 0);
+        hub.approveRedeems(poolId, scId, assetId, requestManager.nowRedeemEpoch(scId, assetId), 1_000_000e18);
+        hub.revokeShares(poolId, scId, assetId, requestManager.nowRevokeEpoch(scId, assetId), d18(11, 10), 0);
         balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS);
         hub.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1);
 
@@ -229,7 +231,7 @@ contract TestData is FullDeployer {
         hub.notifyPool(poolId, centrifugeId);
         hub.notifyShareClass(poolId, scId, centrifugeId, address(redemptionRestrictionsHook).toBytes32());
 
-        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32());
+        hub.setRequestManager(poolId, scId, assetId, address(asyncRequestManager).toBytes32(), address(asyncRequestManager).toBytes32());
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(asyncRequestManager).toBytes32(), true);
         hub.updateBalanceSheetManager(centrifugeId, poolId, address(syncManager).toBytes32(), true);
 

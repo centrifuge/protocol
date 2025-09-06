@@ -30,6 +30,8 @@ interface IShareClassManager {
     );
     event UpdateMetadata(PoolId indexed poolId, ShareClassId indexed scId, string name, string symbol);
     event UpdateShareClass(PoolId indexed poolId, ShareClassId indexed scId, D18 navPoolPerShare);
+    event RemoteIssueShares(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount);
+    event RemoteRevokeShares(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount);
 
     /// Errors
     error InvalidMetadataSize();

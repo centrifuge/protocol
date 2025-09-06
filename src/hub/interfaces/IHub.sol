@@ -60,6 +60,9 @@ interface IHub {
     event ForwardTransferShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
+    event SetRequestManager(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bytes32 hubManager, bytes32 spokeManager
+    );
 
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
@@ -161,8 +164,10 @@ interface IHub {
     /// @notice Allow/disallow an account to interact as hub manager this pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
-    /// @notice Allow/disallow an account to interact as request manager
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external payable;
+    /// @notice Set request managers for both hub and spoke
+    /// @param hubManager Manager to be stored in hubRegistry using dependencies  
+    /// @param spokeManager Manager to be sent to the spoke chain
+    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 hubManager, bytes32 spokeManager) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)

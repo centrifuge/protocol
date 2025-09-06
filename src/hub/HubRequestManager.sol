@@ -3,16 +3,14 @@ pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {
-    IShareClassManager,
+    IHubRequestManager,
     EpochInvestAmounts,
     EpochRedeemAmounts,
     UserOrder,
-    ShareClassMetadata,
-    ShareClassMetrics,
     QueuedOrder,
     RequestType,
     EpochId
-} from "./interfaces/IShareClassManager.sol";
+} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
@@ -23,25 +21,16 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
-import {ShareClassId, newShareClassId} from "../common/types/ShareClassId.sol";
+import {ShareClassId} from "../common/types/ShareClassId.sol";
 
-/// @title  Share Class Manager
-/// @notice Manager for the share classes of a pool, and the core logic for tracking, approving, and fulfilling
-///         requests.
-contract ShareClassManager is Auth, IShareClassManager {
+/// @title  Hub Request Manager
+/// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
+contract HubRequestManager is Auth, IHubRequestManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
 
     IHubRegistry public immutable hubRegistry;
-
-    // Share classes
-    mapping(bytes32 salt => bool) public salts;
-    mapping(PoolId poolId => uint32) public shareClassCount;
-    mapping(ShareClassId scId => ShareClassMetrics) public metrics;
-    mapping(ShareClassId scId => ShareClassMetadata) public metadata;
-    mapping(PoolId poolId => mapping(ShareClassId => bool)) public shareClassIds;
-    mapping(ShareClassId scId => mapping(uint16 centrifugeId => uint128)) public issuance;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -75,73 +64,45 @@ contract ShareClassManager is Auth, IShareClassManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IShareClassManager
-    function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
-        external
-        auth
-        returns (ShareClassId scId_)
-    {
-        scId_ = previewNextShareClassId(poolId);
-
-        uint32 index = ++shareClassCount[poolId];
-        shareClassIds[poolId][scId_] = true;
-
-        _updateMetadata(scId_, name, symbol, salt);
-
-        emit AddShareClass(poolId, scId_, index, name, symbol, salt);
-    }
-
-    //----------------------------------------------------------------------------------------------
     // Incoming requests
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
         external
         auth
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, depositAssetId, RequestType.Deposit);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
         returns (uint128 cancelledAssetAmount)
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         allowForceDepositCancel[scId_][depositAssetId][investor] = true;
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
 
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function requestRedeem(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId payoutAssetId)
         external
         auth
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         // NOTE: Vaults ensure amount > 0
         _updatePending(poolId, scId_, amount, true, investor, payoutAssetId, RequestType.Redeem);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
         returns (uint128 cancelledShareAmount)
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         allowForceRedeemCancel[scId_][payoutAssetId][investor] = true;
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
 
@@ -152,7 +113,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function approveDeposits(
         PoolId poolId,
         ShareClassId scId_,
@@ -161,7 +122,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 approvedAssetAmount,
         D18 pricePoolPerAsset
     ) external auth returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(
             nowDepositEpochId == nowDepositEpoch(scId_, depositAssetId),
             EpochNotInSequence(nowDepositEpochId, nowDepositEpoch(scId_, depositAssetId))
@@ -199,7 +159,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         );
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function approveRedeems(
         PoolId poolId,
         ShareClassId scId_,
@@ -208,7 +168,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
     ) external auth returns (uint128 pendingShareAmount) {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(
             nowRedeemEpochId == nowRedeemEpoch(scId_, payoutAssetId),
             EpochNotInSequence(nowRedeemEpochId, nowRedeemEpoch(scId_, payoutAssetId))
@@ -232,7 +191,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         emit ApproveRedeems(poolId, scId_, payoutAssetId, nowRedeemEpochId, approvedShareAmount, pendingShareAmount);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function issueShares(
         PoolId poolId,
         ShareClassId scId_,
@@ -240,7 +199,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare
     ) external auth returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(nowIssueEpochId <= epochId[scId_][depositAssetId].deposit, EpochNotFound());
         require(
             nowIssueEpochId == nowIssueEpoch(scId_, depositAssetId),
@@ -280,7 +238,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         );
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function revokeShares(
         PoolId poolId,
         ShareClassId scId_,
@@ -288,7 +246,6 @@ contract ShareClassManager is Auth, IShareClassManager {
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare
     ) external auth returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(nowRevokeEpochId <= epochId[scId_][payoutAssetId].redeem, EpochNotFound());
         require(
             nowRevokeEpochId == nowRevokeEpoch(scId_, payoutAssetId),
@@ -332,54 +289,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         );
     }
 
-    /// @inheritdoc IShareClassManager
-    function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 navPoolPerShare) external auth {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
-        ShareClassMetrics storage m = metrics[scId_];
-        m.navPerShare = navPoolPerShare;
-        emit UpdateShareClass(poolId, scId_, navPoolPerShare);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function updateMetadata(PoolId poolId, ShareClassId scId_, string calldata name, string calldata symbol)
-        external
-        auth
-    {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
-        _updateMetadata(scId_, name, symbol, bytes32(0));
-
-        emit UpdateMetadata(poolId, scId_, name, symbol);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId_, uint128 amount, bool isIssuance)
-        external
-        auth
-    {
-        require(exists(poolId, scId_), ShareClassNotFound());
-        require(isIssuance || issuance[scId_][centrifugeId] >= amount, DecreaseMoreThanIssued());
-
-        uint128 newTotalIssuance =
-            isIssuance ? metrics[scId_].totalIssuance + amount : metrics[scId_].totalIssuance - amount;
-        metrics[scId_].totalIssuance = newTotalIssuance;
-
-        uint128 newIssuancePerNetwork =
-            isIssuance ? issuance[scId_][centrifugeId] + amount : issuance[scId_][centrifugeId] - amount;
-        issuance[scId_][centrifugeId] = newIssuancePerNetwork;
-
-        if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
-        else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
-    }
-
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
         returns (uint128 cancelledAssetAmount)
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
@@ -387,13 +302,12 @@ contract ShareClassManager is Auth, IShareClassManager {
         return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
         returns (uint128 cancelledShareAmount)
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
         require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
@@ -405,7 +319,7 @@ contract ShareClassManager is Auth, IShareClassManager {
     // Claiming methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function claimDeposit(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
         auth
@@ -416,8 +330,6 @@ contract ShareClassManager is Auth, IShareClassManager {
             bool canClaimAgain
         )
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         UserOrder storage userOrder = depositRequest[scId_][depositAssetId][investor];
         require(userOrder.pending > 0, NoOrderFound());
         require(userOrder.lastUpdate <= epochId[scId_][depositAssetId].issue, IssuanceRequired());
@@ -474,7 +386,7 @@ contract ShareClassManager is Auth, IShareClassManager {
         }
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function claimRedeem(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         public
         auth
@@ -485,8 +397,6 @@ contract ShareClassManager is Auth, IShareClassManager {
             bool canClaimAgain
         )
     {
-        require(exists(poolId, scId_), ShareClassNotFound());
-
         UserOrder storage userOrder = redeemRequest[scId_][payoutAssetId][investor];
         require(userOrder.pending > 0, NoOrderFound());
         require(userOrder.lastUpdate <= epochId[scId_][payoutAssetId].revoke, RevocationRequired());
@@ -547,42 +457,27 @@ contract ShareClassManager is Auth, IShareClassManager {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IShareClassManager
-    function previewNextShareClassId(PoolId poolId) public view returns (ShareClassId scId) {
-        return newShareClassId(poolId, shareClassCount[poolId] + 1);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function previewShareClassId(PoolId poolId, uint32 index) public pure returns (ShareClassId scId) {
-        return newShareClassId(poolId, index);
-    }
-
-    /// @inheritdoc IShareClassManager
-    function exists(PoolId poolId, ShareClassId scId_) public view returns (bool) {
-        return shareClassIds[poolId][scId_];
-    }
-
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function nowDepositEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].deposit + 1;
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function nowIssueEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].issue + 1;
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function nowRedeemEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].redeem + 1;
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function nowRevokeEpoch(ShareClassId scId_, AssetId depositAssetId) public view returns (uint32) {
         return epochId[scId_][depositAssetId].revoke + 1;
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function maxDepositClaims(ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         public
         view
@@ -591,13 +486,13 @@ contract ShareClassManager is Auth, IShareClassManager {
         return _maxClaims(depositRequest[scId_][depositAssetId][investor], epochId[scId_][depositAssetId].deposit);
     }
 
-    /// @inheritdoc IShareClassManager
+    /// @inheritdoc IHubRequestManager
     function maxRedeemClaims(ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         public
         view
         returns (uint32)
     {
-        return _maxClaims(redeemRequest[scId_][payoutAssetId][investor], epochId[scId_][payoutAssetId].redeem);
+        return _maxClaims(redeemRequest[scId_][payoutAssetId][investor], epochId[scId_][payoutAssetId].revoke);
     }
 
     function _maxClaims(UserOrder memory userOrder, uint32 lastEpoch) internal pure returns (uint32) {
@@ -612,31 +507,6 @@ contract ShareClassManager is Auth, IShareClassManager {
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
-
-    function _updateMetadata(ShareClassId scId_, string calldata name, string calldata symbol, bytes32 salt) internal {
-        uint256 nameLen = bytes(name).length;
-        require(nameLen > 0 && nameLen <= 128, InvalidMetadataName());
-
-        uint256 symbolLen = bytes(symbol).length;
-        require(symbolLen > 0 && symbolLen <= 32, InvalidMetadataSymbol());
-
-        ShareClassMetadata storage meta = metadata[scId_];
-
-        // Ensure that the salt is not being updated or is being set for the first time
-        require(
-            (salt == bytes32(0) && meta.salt != bytes32(0)) || (salt != bytes32(0) && meta.salt == bytes32(0)),
-            InvalidSalt()
-        );
-
-        if (salt != bytes32(0) && meta.salt == bytes32(0)) {
-            require(!salts[salt], AlreadyUsedSalt());
-            salts[salt] = true;
-            meta.salt = salt;
-        }
-
-        meta.name = name;
-        meta.symbol = symbol;
-    }
 
     function _postClaimUpdateQueued(
         PoolId poolId,
