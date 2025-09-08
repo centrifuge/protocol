@@ -664,10 +664,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external payable payTransaction {
         _isManager(poolId);
 
-        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);
-
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters);
         multiAdapter.setRecoveryAddress(poolId, localRecoverer);
+
+        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);
     }
 
     //----------------------------------------------------------------------------------------------

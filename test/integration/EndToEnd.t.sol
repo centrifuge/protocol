@@ -1314,6 +1314,16 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
+        // Hub -> Spoke message went through the pool adapter
         assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
+
+        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+
+        // Spoke -> Hub message went through the pool adapter
+        assertEq(uint8(poolAdapterBToA.receivedMessageTypes(0)), uint8(MessageType.UpdateShares));
     }
 }

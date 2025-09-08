@@ -86,6 +86,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
+        } else if (kind == MessageType.InitiateSetPoolAdapters) {
+            MessageLib.InitiateSetPoolAdapters memory m = message.deserializeInitiateSetPoolAdapters();
+            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
+            for (uint256 i; i < adapters.length; i++) {
+                adapters[i] = IAdapter(m.adapterList[i].toAddress());
+            }
+            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters);
+            multiAdapter.setRecoveryAddress(PoolId.wrap(m.poolId), m.recoverer.toAddress());
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
@@ -197,14 +205,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.MaxSharePriceAge) {
             MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
-        } else if (kind == MessageType.InitiateSetPoolAdapters) {
-            MessageLib.InitiateSetPoolAdapters memory m = message.deserializeInitiateSetPoolAdapters();
-            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
-            for (uint256 i; i < adapters.length; i++) {
-                adapters[i] = IAdapter(m.adapterList[i].toAddress());
-            }
-            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters);
-            multiAdapter.setRecoveryAddress(PoolId.wrap(m.poolId), m.recoverer.toAddress());
         } else {
             revert InvalidMessage(uint8(kind));
         }
