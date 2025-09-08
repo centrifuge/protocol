@@ -20,7 +20,7 @@ contract GasService is IGasService {
     uint128 public immutable cancelUpgrade;
     uint128 public immutable recoverTokens;
     uint128 public immutable registerAsset;
-    uint128 public immutable initiateSetPoolAdapters;
+    uint128 public immutable setPoolAdapters;
     uint128 public immutable executeSetPoolAdapters;
     uint128 public immutable request;
     uint128 public immutable notifyPool;
@@ -52,7 +52,7 @@ contract GasService is IGasService {
         cancelUpgrade = BASE_COST + 8861;
         recoverTokens = BASE_COST + 82906;
         registerAsset = BASE_COST + 34329;
-        initiateSetPoolAdapters = BASE_COST + 1000000; // TODO
+        setPoolAdapters = BASE_COST + 1000000; // TODO
         executeSetPoolAdapters = BASE_COST + 1000000; // TODO
         request = BASE_COST + 86084; // request deposit case
         notifyPool = BASE_COST + 1154806; // create escrow case
@@ -90,7 +90,7 @@ contract GasService is IGasService {
         if (kind == MessageType.CancelUpgrade) return cancelUpgrade;
         if (kind == MessageType.RecoverTokens) return recoverTokens;
         if (kind == MessageType.RegisterAsset) return registerAsset;
-        if (kind == MessageType.InitiateSetPoolAdapters) return initiateSetPoolAdapters;
+        if (kind == MessageType.SetPoolAdapters) return setPoolAdapters;
         if (kind == MessageType.ExecuteSetPoolAdapters) return executeSetPoolAdapters;
         if (kind == MessageType.Request) return request;
         if (kind == MessageType.NotifyPool) return notifyPool;

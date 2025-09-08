@@ -42,8 +42,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeInitiateSetPoolAdapters() public {
-        MessageLib.deserializeInitiateSetPoolAdapters(_prepareFor());
+    function testDeserializeSetPoolAdapters() public {
+        MessageLib.deserializeSetPoolAdapters(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -218,12 +218,12 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
-    function testInitiateSetPoolAdapters(uint64 poolId, bytes32 recoverer, bytes32[] memory adapterList) public pure {
+    function testSetPoolAdapters(uint64 poolId, bytes32 recoverer, bytes32[] memory adapterList) public pure {
         vm.assume(adapterList.length <= 20);
 
-        MessageLib.InitiateSetPoolAdapters memory a =
-            MessageLib.InitiateSetPoolAdapters({poolId: poolId, recoverer: recoverer, adapterList: adapterList});
-        MessageLib.InitiateSetPoolAdapters memory b = MessageLib.deserializeInitiateSetPoolAdapters(a.serialize());
+        MessageLib.SetPoolAdapters memory a =
+            MessageLib.SetPoolAdapters({poolId: poolId, recoverer: recoverer, adapterList: adapterList});
+        MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.recoverer, b.recoverer);

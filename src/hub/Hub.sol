@@ -667,7 +667,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters);
         multiAdapter.setRecoveryAddress(poolId, localRecoverer);
 
-        sender.sendInitiateSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);
+        sender.sendSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);
     }
 
     //----------------------------------------------------------------------------------------------

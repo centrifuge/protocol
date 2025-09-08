@@ -132,12 +132,8 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendInitiateSetPoolAdapters(
-        uint16 centrifugeId,
-        PoolId poolId,
-        bytes32[] memory adapters,
-        bytes32 recoverer
-    ) external;
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters, bytes32 recoverer)
+        external;
 }
 
 /// @notice Interface for dispatch-only gateway

@@ -86,8 +86,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
-        } else if (kind == MessageType.InitiateSetPoolAdapters) {
-            MessageLib.InitiateSetPoolAdapters memory m = message.deserializeInitiateSetPoolAdapters();
+        } else if (kind == MessageType.SetPoolAdapters) {
+            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
