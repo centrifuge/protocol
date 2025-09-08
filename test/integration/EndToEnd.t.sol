@@ -140,7 +140,7 @@ contract EndToEndDeployment is Test {
     address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
-    address immutable RECOVERER = makeAddr("RECOVERER");
+    address immutable MANAGER = makeAddr("MANAGER");
 
     uint128 constant USDC_AMOUNT_1 = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -173,7 +173,7 @@ contract EndToEndDeployment is Test {
     D18 currentAssetPrice = IntegrationConstants.identityPrice();
     D18 currentSharePrice = IntegrationConstants.identityPrice();
 
-    bool constant DIFFERENT_CHAINS = false;
+    bool constant IN_DIFFERENT_CHAINS = false;
 
     //----------------------------------------------------------------------------------------------
     // Test Setup & Infrastructure
@@ -223,7 +223,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, RECOVERER);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, MANAGER);
         vm.stopPrank();
     }
 
@@ -1292,7 +1292,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testAdaptersPerPool() public {
-        _setSpoke(DIFFERENT_CHAINS);
+        _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
 
         LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
@@ -1308,9 +1308,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(
-            s.centrifugeId, POOL_A, localAdapters, remoteAdapters, RECOVERER, RECOVERER.toBytes32()
-        );
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, MANAGER.toBytes32());
 
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 

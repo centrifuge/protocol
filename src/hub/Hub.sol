@@ -116,6 +116,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
         gateway.setRefundAddress(poolId, escrow);
+
+        multiAdapter.setManager(poolId, admin);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -659,15 +661,24 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         PoolId poolId,
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
-        address localRecoverer,
-        bytes32 remoteRecoverer
+        bytes32 remoteManager
     ) external payable payTransaction {
         _isManager(poolId);
 
         multiAdapter.setAdapters(centrifugeId, poolId, localAdapters);
-        multiAdapter.setRecoveryAddress(poolId, localRecoverer);
 
-        sender.sendSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteRecoverer);
+        sender.sendSetPoolAdapters(centrifugeId, poolId, remoteAdapters, remoteManager);
+    }
+
+    /// @inheritdoc IHub
+    function setAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 remoteManager)
+        external
+        payable
+        payTransaction
+    {
+        _isManager(poolId);
+
+        sender.sendSetPoolAdaptersManager(centrifugeId, poolId, remoteManager);
     }
 
     //----------------------------------------------------------------------------------------------

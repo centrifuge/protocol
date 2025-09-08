@@ -534,7 +534,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters, bytes32 recoverer)
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters, bytes32 manager)
         external
     {
         if (centrifugeId == localCentrifugeId) {
@@ -542,8 +542,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             gateway.send(
                 centrifugeId,
-                MessageLib.SetPoolAdapters({poolId: poolId.raw(), recoverer: recoverer, adapterList: adapters})
-                    .serialize()
+                MessageLib.SetPoolAdapters({poolId: poolId.raw(), manager: manager, adapterList: adapters}).serialize()
+            );
+        }
+    }
+
+    function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
+        if (centrifugeId == localCentrifugeId) {
+            revert CanNotBeSentLocally();
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.SetPoolAdaptersManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }

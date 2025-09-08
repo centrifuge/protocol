@@ -28,7 +28,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
-    mapping(PoolId => address) public recoverer;
+    mapping(PoolId => address) public manager;
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
@@ -87,9 +87,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function setRecoveryAddress(PoolId poolId, address recoverer_) external auth {
-        recoverer[poolId] = recoverer_;
-        emit SetRecoveryAddress(poolId, recoverer_);
+    function setManager(PoolId poolId, address manager_) external auth {
+        manager[poolId] = manager_;
+        emit SetManager(poolId, manager_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
-        require(msg.sender == recoverer[poolId], RecovererNotAllowed());
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
         _handle(centrifugeId, payload, adapter);
         emit ExecuteRecovery(centrifugeId, payload, adapter);
     }

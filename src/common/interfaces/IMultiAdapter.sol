@@ -34,7 +34,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     event File(bytes32 indexed what, address addr);
 
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
-    event SetRecoveryAddress(PoolId poolId, address recoverer);
+    event SetManager(PoolId poolId, address manager);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
@@ -77,8 +77,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when the contract tries to handle a payload from a non message adapter.
     error NonPayloadAdapter();
 
-    /// @notice Dispatched when a recovery message is executed without waiting the challenge period.
-    error RecovererNotAllowed();
+    /// @notice Dispatched when a recovery message is not executed from the manager.
+    error ManagerNotAllowed();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @param  what The name of the variable to be updated.
@@ -94,8 +94,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     /// @notice Configures a recovery address for a pool to later be able to call `executeRecovery()`.
     /// @param  poolId PoolId associated to the adapters
-    /// @param  recoverer address able to call to `executeRecovery()`
-    function setRecoveryAddress(PoolId poolId, address recoverer) external;
+    /// @param  manager address able to call to `executeRecovery()`
+    function setManager(PoolId poolId, address manager) external;
 
     /// @notice Execute message as it were sent by the passed adapter,
     ///         If multiple adapters fail at the same time, these will need to be recovered serially

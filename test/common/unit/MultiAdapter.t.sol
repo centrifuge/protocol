@@ -105,7 +105,7 @@ contract MultiAdapterTest is Test {
 
     address immutable ANY = makeAddr("ANY");
     address immutable REFUND = makeAddr("REFUND");
-    address immutable RECOVERER = makeAddr("RECOVERER");
+    address immutable MANAGER = makeAddr("MANAGER");
 
     function _mockAdapter(IAdapter adapter, bytes memory message, uint256 estimate, bytes32 adapterData) internal {
         vm.mockCall(
@@ -232,13 +232,13 @@ contract MultiAdapterTestSetRecoveryAddress is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+        multiAdapter.setManager(POOL_A, MANAGER);
     }
 
     function testSetRecoveryAddress() public {
         vm.expectEmit();
-        emit IMultiAdapter.SetRecoveryAddress(POOL_A, RECOVERER);
-        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+        emit IMultiAdapter.SetManager(POOL_A, MANAGER);
+        multiAdapter.setManager(POOL_A, MANAGER);
     }
 }
 
@@ -477,15 +477,15 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
     function testErrRecovererNotAllowed() public {
         vm.prank(ANY);
-        vm.expectRevert(IMultiAdapter.RecovererNotAllowed.selector);
+        vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
         multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
     }
 
     function testExecuteRecovery() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter);
-        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+        multiAdapter.setManager(POOL_A, MANAGER);
 
-        vm.prank(RECOVERER);
+        vm.prank(MANAGER);
         emit IMultiAdapter.ExecuteRecovery(REMOTE_CENT_ID, MESSAGE_1, payloadAdapter);
         multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
 
@@ -494,11 +494,11 @@ contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
 
     function testExecuteRecoveryWithProofs() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
-        multiAdapter.setRecoveryAddress(POOL_A, RECOVERER);
+        multiAdapter.setManager(POOL_A, MANAGER);
 
         bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
 
-        vm.startPrank(RECOVERER);
+        vm.startPrank(MANAGER);
 
         multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet

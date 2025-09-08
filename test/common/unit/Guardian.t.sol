@@ -24,7 +24,7 @@ contract GuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
-    address immutable RECOVERER = makeAddr("recoverer");
+    address immutable MANAGER = makeAddr("manager");
 
     uint16 constant CENTRIFUGE_ID = 1;
     PoolId constant POOL_0 = PoolId.wrap(0);
@@ -249,12 +249,12 @@ contract GuardianTestSetAdapter is GuardianTest {
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.setRecoveryAddress.selector, POOL_0, RECOVERER),
+            abi.encodeWithSelector(IMultiAdapter.setManager.selector, POOL_0, MANAGER),
             abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.setAdapters(CENTRIFUGE_ID, adapters, RECOVERER);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters, MANAGER);
     }
 
     function testSetAdaptersOnlySafe() public {
@@ -263,6 +263,6 @@ contract GuardianTestSetAdapter is GuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.setAdapters(CENTRIFUGE_ID, adapters, RECOVERER);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters, MANAGER);
     }
 }
