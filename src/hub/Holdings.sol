@@ -175,8 +175,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        uint128 currentAmountValue =
-            holding_.valuation.getQuote(holding_.assetAmount, assetId, hubRegistry.currency(poolId));
+        uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, holding_.assetAmount);
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
         diffValue =

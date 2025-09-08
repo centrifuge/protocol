@@ -13,8 +13,6 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
-import {MockValuation} from "../common/mocks/MockValuation.sol";
-
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
@@ -55,6 +53,7 @@ import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
@@ -98,7 +97,7 @@ contract EndToEndDeployment is Test {
         Hub hub;
         // Others
         IdentityValuation identityValuation;
-        MockValuation valuation;
+        OracleValuation oracleValuation;
         MockSnapshotHook snapshotHook;
     }
 
@@ -138,6 +137,7 @@ contract EndToEndDeployment is Test {
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
     address immutable BSM = makeAddr("BSM");
+    address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
     address immutable RECOVERER = makeAddr("RECOVERER");
@@ -206,7 +206,7 @@ contract EndToEndDeployment is Test {
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
             identityValuation: deployA.identityValuation(),
-            valuation: new MockValuation(deployA.hubRegistry()),
+            oracleValuation: deployA.oracleValuation(),
             snapshotHook: new MockSnapshotHook()
         });
 
@@ -427,7 +427,14 @@ contract EndToEndFlows is EndToEndUtils {
         hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
 
         hub.hub.initializeHolding(
-            poolId, shareClassId, assetId, hub.valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            poolId,
+            shareClassId,
+            assetId,
+            hub.oracleValuation,
+            ASSET_ACCOUNT,
+            EQUITY_ACCOUNT,
+            GAIN_ACCOUNT,
+            LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
             poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32()
@@ -454,6 +461,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+        h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
+        h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
         vm.stopPrank();
 
         // We also subsidize the hub
@@ -482,7 +491,9 @@ contract EndToEndFlows is EndToEndUtils {
         D18 assetPrice,
         D18 sharePrice
     ) internal virtual {
-        hub.valuation.setPrice(assetId, USD_ID, assetPrice);
+        vm.startPrank(FEEDER);
+        hub.oracleValuation.setPrice(poolId, shareClassId, assetId, assetPrice);
+        vm.stopPrank();
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
