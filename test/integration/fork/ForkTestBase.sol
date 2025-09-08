@@ -37,6 +37,7 @@ import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import {NAVManager} from "../../../src/managers/NAVManager.sol";
+import {SimplePriceManager} from "../../../src/managers/SimplePriceManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -78,7 +79,8 @@ contract ForkTestBase is EndToEndFlows {
             hub: Hub(IntegrationConstants.HUB),
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
             oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
-            navManager: NAVManager(address(0)) // Fork tests don't use snapshot hooks
+            navManager: NAVManager(address(0)), // Fork tests don't use snapshot hooks
+            priceManager: SimplePriceManager(payable(0)) // Fork tests doesn't use priceManager
         });
 
         forkSpoke = CSpoke({

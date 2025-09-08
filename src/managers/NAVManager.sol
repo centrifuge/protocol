@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
+
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 
@@ -19,11 +21,6 @@ import {IAccounting} from "../hub/interfaces/IAccounting.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is Auth, INAVManager {
-    error AlreadyInitialized();
-    error NotInitialized();
-    error ExceedsMaxAccounts();
-    error InvalidNAVHook();
-
     PoolId public immutable poolId;
 
     IHub public immutable hub;
@@ -121,23 +118,44 @@ contract NAVManager is Auth, INAVManager {
 
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
+        console2.log("NAVManager onSync");
         require(poolId == poolId_);
         require(msg.sender == holdings, NotAuthorized());
         require(address(navHook) != address(0), InvalidNAVHook());
 
         D18 netAssetValue_ = netAssetValue(centrifugeId);
+        console2.log("NAV", netAssetValue_.raw());
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
+        console2.log("NAVManager onSync done");
     }
 
-    function onTransfer(PoolId poolId_, ShareClassId scId_, uint16 fromCentrifugeId, uint16 toCentrifugeId) external {
-        // TODO
+    /// @inheritdoc ISnapshotHook
+    function onTransfer(
+        PoolId poolId_,
+        ShareClassId scId_,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 sharesTransferred
+    ) external {
+        require(poolId == poolId_);
+        require(msg.sender == address(hub), NotAuthorized());
+        require(address(navHook) != address(0), InvalidNAVHook());
+
+        navHook.onTransfer(poolId, scId_, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
     function updateHoldingValue(ShareClassId scId, AssetId assetId) external {
         hub.updateHoldingValue(poolId, scId, assetId);
     }
 
-    // TODO: setHoldingAccountId, updateHoldingValuation
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external {
+        hub.updateHoldingValuation(poolId, scId, assetId, valuation);
+    }
+
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external {
+        hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+    }
+
     // TODO: realize gain/loss to move to equity account
 
     //----------------------------------------------------------------------------------------------
@@ -151,6 +169,11 @@ contract NAVManager is Auth, INAVManager {
         (, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
         (, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
+
+        console2.log("Equity", equity);
+        console2.log("Gain", gain);
+        console2.log("Loss", loss);
+        console2.log("Liability", liability);
         return d18(equity) + d18(gain) - d18(loss) - d18(liability);
     }
 

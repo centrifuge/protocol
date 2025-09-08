@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {console2} from "forge-std/console2.sol";
 import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
@@ -221,6 +222,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         (, D18 poolPerShare) = shareClassManager.metrics(scId);
+
+        console2.log("Hub notifySharePrice", centrifugeId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, poolPerShare);
         sender.sendNotifyPricePoolPerShare(centrifugeId, poolId, scId, poolPerShare);
@@ -515,7 +518,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @inheritdoc IHub
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
-
+        console2.log("SCM updateSharePrice from Hub", navPoolPerShare.raw());
         shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
     }
 
@@ -685,6 +688,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
             hubHelpers.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
         }
 
+        console2.log("Updated holding", amount);
+
         holdings.setSnapshot(poolId, scId, centrifugeId, isSnapshot, nonce);
     }
 
@@ -721,7 +726,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
 
         ISnapshotHook hook = holdings.snapshotHook(poolId);
-        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId);
+        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
         sender.sendExecuteTransferShares(

@@ -11,10 +11,34 @@ import {IValuation} from "../../common/interfaces/IValuation.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param centrifugeId The Centrifuge ID of the network
+    /// @param netAssetValue The new net asset value
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, D18 netAssetValue) external;
+
+    /// @notice Handle transfer shares between networks
+    /// @param poolId The pool ID
+    /// @param scId The share class ID
+    /// @param fromCentrifugeId The source network Centrifuge ID
+    /// @param toCentrifugeId The destination network Centrifuge ID
+    /// @param sharesTransferred The amount of shares transferred
+    function onTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 sharesTransferred
+    ) external;
 }
 
 interface INAVManager is ISnapshotHook {
+    error MismatchedEpochs();
+    error AlreadyInitialized();
+    error NotInitialized();
+    error ExceedsMaxAccounts();
+    error InvalidNAVHook();
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -50,17 +74,11 @@ interface INAVManager is ISnapshotHook {
     // Price updates
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Handle transfer events between networks
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param fromCentrifugeId The source network Centrifuge ID
-    /// @param toCentrifugeId The destination network Centrifuge ID
-    function onTransfer(PoolId poolId, ShareClassId scId, uint16 fromCentrifugeId, uint16 toCentrifugeId) external;
-
     /// @notice Update the holding value for a specific asset
     /// @param scId The share class ID
     /// @param assetId The asset ID to update
     function updateHoldingValue(ShareClassId scId, AssetId assetId) external;
+
 
     //----------------------------------------------------------------------------------------------
     // Calculations

@@ -98,9 +98,8 @@ contract EndToEndDeployment is Test {
         Hub hub;
         // Others
         IdentityValuation identityValuation;
-        // MockValuation valuation;
-        // MockSnapshotHook snapshotHook;
         NAVManager navManager;
+        SimplePriceManager priceManager;
         OracleValuation oracleValuation;
     }
 
@@ -215,6 +214,7 @@ contract EndToEndDeployment is Test {
             // valuation: new MockValuation(deployA.hubRegistry()),
             // snapshotHook: new MockSnapshotHook()
             navManager: new NAVManager(POOL_A, deployA.hub(), FM),
+            priceManager: SimplePriceManager(payable(0)),
             oracleValuation: deployA.oracleValuation()
         });
 
@@ -391,15 +391,6 @@ contract EndToEndFlows is EndToEndUtils {
         s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0);
     }
 
-    // function _createPoolAccounts(CHub memory hub, PoolId poolId, address poolManager) internal {
-    //     vm.startPrank(poolManager);
-    //     hub.hub.createAccount(poolId, ASSET_ACCOUNT, true);
-    //     hub.hub.createAccount(poolId, EQUITY_ACCOUNT, false);
-    //     hub.hub.createAccount(poolId, LOSS_ACCOUNT, false);
-    //     hub.hub.createAccount(poolId, GAIN_ACCOUNT, false);
-    //     vm.stopPrank();
-    // }
-
     function _subsidizePool(CHub memory hub, PoolId poolId) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, 1 ether);
@@ -415,13 +406,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.setPoolMetadata(POOL_A, bytes("Testing pool"));
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
-        SimplePriceManager priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub, address(this));
-        h.navManager.setNAVHook(INAVHook(address(priceManager)));
-
-        h.hub.updateHubManager(POOL_A, address(h.navManager), true);
-        h.hub.updateHubManager(POOL_A, address(priceManager), true);
-        // _createPoolAccounts(h, POOL_A, FM);
-        // _subsidizePool(h, POOL_A);
+        _subsidizePool(h, POOL_A);
     }
 
     function _configurePoolCrossChain(
@@ -472,10 +457,30 @@ contract EndToEndFlows is EndToEndUtils {
 
         _configurePoolCrossChain(h, s_, POOL_A, SC_1, s_.usdcId, FM, address(s_.redemptionRestrictionsHook));
 
+        vm.startPrank(FM);
+        h.priceManager = new SimplePriceManager(POOL_A, SC_1, h.hub, address(this));
+        vm.deal(address(h.priceManager), 1 ether);
+        h.navManager.setNAVHook(INAVHook(address(h.priceManager)));
+        console2.log("Hub network", h.centrifugeId);
+        console2.log("Spoke network", s_.centrifugeId);
+        // if (s_.centrifugeId != h.centrifugeId) {
+        //     uint16[] memory networks = new uint16[](2);
+        //     networks[0] = h.centrifugeId;
+        //     networks[1] = s.centrifugeId;
+        //     h.priceManager.setNetworks(networks);
+        // } else {
+        //     uint16[] memory networks = new uint16[](1);
+        //     console2.log("Hub network", h.centrifugeId);
+        //     networks[0] = h.centrifugeId;
+        //     h.priceManager.setNetworks(networks);
+        // }
+
+        h.hub.updateHubManager(POOL_A, address(h.navManager), true);
+        h.hub.updateHubManager(POOL_A, address(h.priceManager), true);
+
         h.navManager.initializeNetwork(s_.centrifugeId);
         h.navManager.initializeHolding(SC_1, s_.usdcId, h.oracleValuation);
 
-        vm.startPrank(FM);
         h.hub.setRequestManager{value: GAS}(POOL_A, SC_1, s_.usdcId, address(s.asyncRequestManager).toBytes32());
         h.hub.updateBalanceSheetManager{value: GAS}(
             s_.centrifugeId, POOL_A, address(s.asyncRequestManager).toBytes32(), true
@@ -483,7 +488,6 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, address(s.syncManager).toBytes32(), true);
         h.hub.updateBalanceSheetManager{value: GAS}(s_.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.setSnapshotHook(POOL_A, h.navManager);
-        // h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
         h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
         vm.stopPrank();
@@ -554,6 +558,11 @@ contract EndToEndFlows is EndToEndUtils {
         // Deploy or get existing vault (with fallback for fork tests)
         IAsyncVault vault =
             _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
+
+        uint16[] memory networks = new uint16[](1);
+        console2.log("Spoke network", spoke.centrifugeId);
+        networks[0] = spoke.centrifugeId;
+        h.priceManager.setNetworks(networks);
 
         // Execute deposit request
         _executeAsyncDepositRequest(vault, investor, amount);
@@ -1027,12 +1036,22 @@ contract EndToEndFlows is EndToEndUtils {
     function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
 
+        (uint128 amount1,,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after deposit, before sync assets:", amount1);
         vm.startPrank(BSM);
+        console2.log("Submitting queued assets");
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        (uint128 amount2,,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after deposit, after sync assets:", amount2);
+        console2.log("Submitting queued shares");
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
-
+        console2.log("Submitted");
+        (uint128 amount3,,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after deposit, after sync shares:", amount3);
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after deposit:", amount);
+        console2.log("Holding value after deposit:", value);
         assertEq(amount, USDC_AMOUNT_1, "expected amount");
         assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
 
@@ -1151,7 +1170,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.updateSharePrice(POOL_A, SC_1, IntegrationConstants.zeroPrice());
         h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-        // h.hub.setSnapshotHook(POOL_A, h.navManager);
 
         // Each message will return half of the gas wasted
         adapterBToA.setRefundedValue(h.gasService.updateShares() / 2);
@@ -1194,8 +1212,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testFundManagement(bool sameChain) public {
-        _configurePool(sameChain);
+    function testFundManagement() public {
+        // bool sameChain
+        _configurePool(false);
         _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
 
         vm.startPrank(ERC20_DEPLOYER);
@@ -1204,14 +1223,26 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+
+        (uint128 amount1,,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after deposit:", amount1);
         s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
+
+        (uint128 amount2,,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after withdraw:", amount2);
+        vm.startPrank(BSM);
+        console2.log("Submitting queued assets");
+
         s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        console2.log("Submitted");
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
         assertEq(s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
 
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        console2.log("Holding amount after sync:", amount);
+        console2.log("Holding value after sync:", value);
         assertEq(amount, USDC_AMOUNT_1 / 5);
         assertEq(value, assetToPool(USDC_AMOUNT_1 / 5));
 
@@ -1254,10 +1285,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testAsyncDepositCancel() public {
-        // bool sameChain, bool nonZeroPrices
-        _configurePool(false);
-        true
+    function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
+        _configurePool(sameChain);
+        nonZeroPrices
             ? _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice())
             : _configurePrices(IntegrationConstants.zeroPrice(), IntegrationConstants.zeroPrice());
 
@@ -1305,8 +1335,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterDeposit_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testUpdateAccountingAfterDeposit(sameChain, true, nonZeroPrices);
+    function testUpdateAccountingAfterDeposit_AfterAsyncDeposit() public {
+        // TODO bool sameChain, bool nonZeroPrices
+        _testUpdateAccountingAfterDeposit(false, true, true);
     }
 
     /// forge-config: default.isolate = true

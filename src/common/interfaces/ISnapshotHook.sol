@@ -19,5 +19,11 @@ interface ISnapshotHook {
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
 
     /// @notice Callback when there is a cross-chain transfer leading to issuance updates
-    function onTransfer(PoolId poolId, ShareClassId scId, uint16 fromCentrifugeId, uint16 toCentrifugeId) external;
+    function onTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 sharesTransferred
+    ) external;
 }
