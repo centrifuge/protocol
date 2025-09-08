@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+import {IAdapter, IAdapterBlockSendingExt} from "./IAdapter.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for handling several adapters transparently
-interface IMultiAdapter is IAdapter, IMessageHandler {
+interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -35,6 +35,7 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
 
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
     event SetManager(PoolId poolId, address manager);
+    event EnableSending(uint16 centrifugeId, PoolId poolId, bool canSend);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
@@ -80,6 +81,9 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @notice Dispatched when a recovery message is not executed from the manager.
     error ManagerNotAllowed();
 
+    /// @notice Dispatched when the adapter is blocked for sending messages
+    error SendingBlocked();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
@@ -96,6 +100,12 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @param  poolId PoolId associated to the adapters
     /// @param  manager address able to call to `executeRecovery()`
     function setManager(PoolId poolId, address manager) external;
+
+    /// @notice Indicates if the adapter for a determined pool can send messages or not
+    /// @param  centrifugeId Chain where the adapter is configured for
+    /// @param  poolId PoolId associated to the adapters
+    /// @param  canSend If can send messages or not
+    function enableSending(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Execute message as it were sent by the passed adapter,
     ///         If multiple adapters fail at the same time, these will need to be recovered serially

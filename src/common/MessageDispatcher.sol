@@ -414,7 +414,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 gateway.send(targetCentrifugeId, message);
             } else {
                 // Spoke chain X => Hub chain Y => Spoke chain Z
-                gateway.addUnpaidMessage(targetCentrifugeId, message);
+                gateway.addUnpaidMessage(targetCentrifugeId, message, false);
             }
         }
     }

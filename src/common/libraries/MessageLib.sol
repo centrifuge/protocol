@@ -74,8 +74,8 @@ library MessageLib {
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
-        (43   << uint8(MessageType.SetPoolAdapters) * 8) +
-        (41   << uint8(MessageType.SetPoolAdaptersManager) * 8) +
+        (43  << uint8(MessageType.SetPoolAdapters) * 8) +
+        (41  << uint8(MessageType.SetPoolAdaptersManager) * 8) +
         (0   << uint8(MessageType._Placeholder7) * 8) +
         (0   << uint8(MessageType._Placeholder8) * 8) +
         (0   << uint8(MessageType._Placeholder9) * 8) +

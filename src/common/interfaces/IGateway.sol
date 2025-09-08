@@ -19,14 +19,15 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     }
 
     struct Underpaid {
-        uint128 counter;
         uint128 gasLimit;
+        uint64 counter;
+        bool isSubsidized;
     }
 
     event File(bytes32 indexed what, address addr);
 
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
-    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
+    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
@@ -97,7 +98,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, bool isSubsidized) external;
 
     /// @notice Initialize batching message
     function startBatching() external;
@@ -107,4 +108,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the current gateway batching level.
+    function subsidizedValue(PoolId poolId) external view returns (uint256);
 }

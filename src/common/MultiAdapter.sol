@@ -29,6 +29,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageProperties public messageProperties;
 
     mapping(PoolId => address) public manager;
+    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isSendingBlocked;
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
     mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
@@ -186,6 +187,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
+        require(!isSendingBlocked[centrifugeId][poolId], SendingBlocked());
+
         IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
 
         // If adapters not configured per pool, then use the global adapters
@@ -229,6 +232,17 @@ contract MultiAdapter is Auth, IMultiAdapter {
             total += adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit);
         }
     }
+
+    /// @inheritdoc IMultiAdapter
+    function enableSending(uint16 centrifugeId, PoolId poolId, bool canSend) external {
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
+        isSendingBlocked[centrifugeId][poolId] = !canSend;
+        emit EnableSending(centrifugeId, poolId, canSend);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Getters
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {

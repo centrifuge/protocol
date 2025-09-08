@@ -3,6 +3,8 @@ pragma solidity >=0.5.0;
 
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
+import {PoolId} from "../types/PoolId.sol";
+
 interface IAdapter is IAuth {
     error NotEntrypoint();
     error UnknownChainId();
@@ -15,4 +17,8 @@ interface IAdapter is IAuth {
 
     /// @notice Estimate the total cost in native gas tokens
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
+}
+
+interface IAdapterBlockSendingExt is IAdapter {
+    function isSendingBlocked(uint16 centrifugeId, PoolId poolId) external returns (bool);
 }

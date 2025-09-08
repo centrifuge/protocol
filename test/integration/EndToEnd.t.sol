@@ -25,7 +25,7 @@ import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
-import {VaultUpdateKind, MessageType} from "../../src/common/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/libraries/MessageLib.sol";
 
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
@@ -140,7 +140,7 @@ contract EndToEndDeployment is Test {
     address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
-    address immutable MANAGER = makeAddr("MANAGER");
+    address immutable MULTI_ADAPTER_MANAGER = makeAddr("MULTI_ADAPTER_MANAGER");
 
     uint128 constant USDC_AMOUNT_1 = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -158,6 +158,9 @@ contract EndToEndDeployment is Test {
 
     LocalAdapter adapterAToB;
     LocalAdapter adapterBToA;
+
+    LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+    LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
 
     CHub h;
     CSpoke s;
@@ -180,10 +183,10 @@ contract EndToEndDeployment is Test {
     //----------------------------------------------------------------------------------------------
 
     function setUp() public virtual {
+        // Wire global adapters
         adapterAToB = _deployChain(deployA, CENTRIFUGE_ID_A, CENTRIFUGE_ID_B, SAFE_ADMIN_A);
         adapterBToA = _deployChain(deployB, CENTRIFUGE_ID_B, CENTRIFUGE_ID_A, SAFE_ADMIN_B);
 
-        // We connect both deploys through the adapters
         adapterAToB.setEndpoint(adapterBToA);
         adapterBToA.setEndpoint(adapterAToB);
 
@@ -223,7 +226,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, MANAGER);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, MULTI_ADAPTER_MANAGER);
         vm.stopPrank();
     }
 
@@ -475,6 +478,29 @@ contract EndToEndFlows is EndToEndUtils {
     function _configurePool(bool sameChain) internal {
         _setSpoke(sameChain);
         _configurePool(s);
+    }
+
+    function _configureBasePoolWithCustomAdapters() internal {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        // Wire pool adapters
+        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+
+        poolAdapterAToB.setEndpoint(poolAdapterBToA);
+        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = poolAdapterAToB;
+
+        bytes32[] memory remoteAdapters = new bytes32[](1);
+        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(
+            s.centrifugeId, POOL_A, localAdapters, remoteAdapters, MULTI_ADAPTER_MANAGER.toBytes32()
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -1041,6 +1067,7 @@ contract EndToEndFlows is EndToEndUtils {
 contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     using CastLib for *;
     using MathLib for *;
+    using MessageLib for *;
 
     function setUp() public virtual override {
         super.setUp();
@@ -1292,30 +1319,17 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
     /// forge-config: default.isolate = true
     function testAdaptersPerPool() public {
-        _setSpoke(IN_DIFFERENT_CHAINS);
-        _createPool();
-
-        LocalAdapter poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
-        LocalAdapter poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
-
-        poolAdapterAToB.setEndpoint(poolAdapterBToA);
-        poolAdapterBToA.setEndpoint(poolAdapterAToB);
-
-        IAdapter[] memory localAdapters = new IAdapter[](1);
-        localAdapters[0] = poolAdapterAToB;
-
-        bytes32[] memory remoteAdapters = new bytes32[](1);
-        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+        _configureBasePoolWithCustomAdapters();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, MANAGER.toBytes32());
-
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
         // Hub -> Spoke message went through the pool adapter
         assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
 
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+
+        vm.startPrank(ANY);
         s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
 
         vm.startPrank(BSM);
@@ -1323,5 +1337,30 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // Spoke -> Hub message went through the pool adapter
         assertEq(uint8(poolAdapterBToA.receivedMessageTypes(0)), uint8(MessageType.UpdateShares));
+    }
+
+    /// forge-config: default.isolate = true
+    function testAdaptersPerPoolWithCorrectRepayment() public {
+        _configureBasePoolWithCustomAdapters();
+
+        uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
+
+        vm.startPrank(FM);
+        h.multiAdapter.enableSending(s.centrifugeId, POOL_A, false);
+
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+
+        h.multiAdapter.enableSending(s.centrifugeId, POOL_A, true);
+
+        bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
+        (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
+
+        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas + gasLimit); // Was refunded
+
+        vm.startPrank(ANY);
+        h.gateway.repay(s.centrifugeId, message);
+
+        assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
+        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
     }
 }
