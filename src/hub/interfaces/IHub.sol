@@ -368,7 +368,7 @@ interface IHub {
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
     /// @param centrifugeId chain where to perform the adapter configuration.
-    /// @param poolId pool associated to this configutation.
+    /// @param poolId pool associated to this configuration.
     /// @param localAdapters Adapter addresses in this chain.
     /// @param remoteAdapters Adapter addresses in the remote chain.
     /// @param localRecoverer address used to recover messages in this chain.
