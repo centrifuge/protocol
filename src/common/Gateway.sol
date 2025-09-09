@@ -230,7 +230,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             if (msg.value > 0) subsidizePool(poolId);
         }
 
-        require(_send(centrifugeId, batch, underpaid_.gasLimit), InsufficientFundsForRepayment());
+        require(_send(centrifugeId, batch, underpaid_.gasLimit), CanNotBeRepaid());
 
         if (!underpaid_.isSubsidized) {
             _endTransactionPayment();

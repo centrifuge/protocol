@@ -57,8 +57,8 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
 
-    /// @notice Dispatched when a batch is repaid with insufficient funds.
-    error InsufficientFundsForRepayment();
+    /// @notice Dispatched when a batch is repaid with insufficient funds or the sending is blocked.
+    error CanNotBeRepaid();
 
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxGasLimit();
