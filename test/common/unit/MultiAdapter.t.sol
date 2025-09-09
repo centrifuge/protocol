@@ -228,17 +228,19 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestSetRecoveryAddress is MultiAdapterTest {
+contract MultiAdapterTestSetManager is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         multiAdapter.setManager(POOL_A, MANAGER);
     }
 
-    function testSetRecoveryAddress() public {
+    function testSetManager() public {
         vm.expectEmit();
         emit IMultiAdapter.SetManager(POOL_A, MANAGER);
         multiAdapter.setManager(POOL_A, MANAGER);
+
+        assertEq(multiAdapter.manager(POOL_A), MANAGER);
     }
 }
 
@@ -475,7 +477,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 }
 
 contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
-    function testErrRecovererNotAllowed() public {
+    function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
         multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
@@ -523,6 +525,18 @@ contract MultiAdapterTestSend is MultiAdapterTest {
 
     function testErrEmptyAdapterSet() public {
         vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
+        multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+    }
+
+    function testErrSendingBlocked() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter);
+        multiAdapter.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, false);
+
+        vm.prank(address(this));
+        vm.expectRevert(IMultiAdapter.SendingBlocked.selector);
         multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 
@@ -598,5 +612,24 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), estimation);
+    }
+}
+
+contract MultiAdapterTestEnableSending is MultiAdapterTest {
+    function testErrManagerNotAllowed() public {
+        vm.prank(ANY);
+        vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
+        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, true);
+    }
+
+    function testEnableSending() public {
+        multiAdapter.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IMultiAdapter.EnableSending(REMOTE_CENT_ID, POOL_A, false);
+        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, false);
+
+        assertEq(multiAdapter.isSendingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
