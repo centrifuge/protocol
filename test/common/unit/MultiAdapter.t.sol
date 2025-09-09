@@ -476,25 +476,25 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
+contract MultiAdapterTestExecute is MultiAdapterTest {
     function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
     }
 
-    function testExecuteRecovery() public {
+    function testExecute() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter);
         multiAdapter.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        emit IMultiAdapter.ExecuteRecovery(REMOTE_CENT_ID, MESSAGE_1, payloadAdapter);
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        emit IMultiAdapter.Execute(REMOTE_CENT_ID, MESSAGE_1, payloadAdapter);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
 
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
-    function testExecuteRecoveryWithProofs() public {
+    function testExecuteWithProofs() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
         multiAdapter.setManager(POOL_A, MANAGER);
 
@@ -502,13 +502,13 @@ contract MultiAdapterTestExecuteRecovery is MultiAdapterTest {
 
         vm.startPrank(MANAGER);
 
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
 
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, proofAdapter1, proof);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, proofAdapter1, proof);
         assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
 
-        multiAdapter.executeRecovery(REMOTE_CENT_ID, POOL_A, proofAdapter2, proof);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, proofAdapter2, proof);
         assertEq(gateway.count(REMOTE_CENT_ID), 1); // executed!
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
@@ -533,10 +533,10 @@ contract MultiAdapterTestSend is MultiAdapterTest {
         multiAdapter.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, false);
+        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         vm.prank(address(this));
-        vm.expectRevert(IMultiAdapter.SendingBlocked.selector);
+        vm.expectRevert(IMultiAdapter.OutgoingBlocked.selector);
         multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 
@@ -615,20 +615,20 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
     }
 }
 
-contract MultiAdapterTestEnableSending is MultiAdapterTest {
+contract MultiAdapterTestBlockOutgoing is MultiAdapterTest {
     function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
-        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, true);
+        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
     }
 
-    function testEnableSending() public {
+    function testBlockOutgoing() public {
         multiAdapter.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IMultiAdapter.EnableSending(REMOTE_CENT_ID, POOL_A, false);
-        multiAdapter.enableSending(REMOTE_CENT_ID, POOL_A, false);
+        emit IMultiAdapter.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+        multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         assertEq(multiAdapter.isSendingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }

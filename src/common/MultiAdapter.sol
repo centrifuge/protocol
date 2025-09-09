@@ -169,10 +169,10 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
+    function execute(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata payload) external {
         require(msg.sender == manager[poolId], ManagerNotAllowed());
         _handle(centrifugeId, payload, adapter);
-        emit ExecuteRecovery(centrifugeId, payload, adapter);
+        emit Execute(centrifugeId, payload, adapter);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        require(!isSendingBlocked[centrifugeId][poolId], SendingBlocked());
+        require(!isSendingBlocked[centrifugeId][poolId], OutgoingBlocked());
 
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
 
@@ -227,10 +227,10 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function enableSending(uint16 centrifugeId, PoolId poolId, bool canSend) external {
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
         require(msg.sender == manager[poolId], ManagerNotAllowed());
-        isSendingBlocked[centrifugeId][poolId] = !canSend;
-        emit EnableSending(centrifugeId, poolId, canSend);
+        isSendingBlocked[centrifugeId][poolId] = isBlocked;
+        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

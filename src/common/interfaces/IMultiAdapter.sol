@@ -35,7 +35,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
     event SetManager(PoolId poolId, address manager);
-    event EnableSending(uint16 centrifugeId, PoolId poolId, bool canSend);
+    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
@@ -55,7 +55,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         bytes32 adapterData
     );
 
-    event ExecuteRecovery(uint16 centrifugeId, bytes message, IAdapter adapter);
+    event Execute(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -82,7 +82,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     error ManagerNotAllowed();
 
     /// @notice Dispatched when the adapter is blocked for sending messages
-    error SendingBlocked();
+    error OutgoingBlocked();
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @param  what The name of the variable to be updated.
@@ -90,22 +90,22 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Configure new adapters for a determined pool.
-    ///         Messages sent but not yet received will be lost. They can be recovered with `executeRecovery()`
+    ///         Messages sent but not yet received will be lost. They can be recovered with `execute()`
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
     function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters) external;
 
-    /// @notice Configures a recovery address for a pool to later be able to call `executeRecovery()`.
+    /// @notice Configures a recovery address for a pool to later be able to call `execute()`.
     /// @param  poolId PoolId associated to the adapters
-    /// @param  manager address able to call to `executeRecovery()`
+    /// @param  manager address able to call to `execute()`
     function setManager(PoolId poolId, address manager) external;
 
     /// @notice Indicates if the adapter for a determined pool can send messages or not
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  poolId PoolId associated to the adapters
     /// @param  canSend If can send messages or not
-    function enableSending(uint16 centrifugeId, PoolId poolId, bool canSend) external;
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Execute message as it were sent by the passed adapter,
     ///         If multiple adapters fail at the same time, these will need to be recovered serially
@@ -113,7 +113,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @param  poolId PoolId associated to the adapter
     /// @param  adapter Adapter's address that the recovery is targeting
     /// @param  message Hash of the message to be recovered
-    function executeRecovery(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata message) external;
+    function execute(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata message) external;
 
     /// @notice A view method of the current quorum.abi
     /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.

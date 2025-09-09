@@ -1346,11 +1346,11 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
 
         vm.startPrank(FM);
-        h.multiAdapter.enableSending(s.centrifugeId, POOL_A, false);
+        h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, true);
 
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
-        h.multiAdapter.enableSending(s.centrifugeId, POOL_A, true);
+        h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, false);
 
         bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
         (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
