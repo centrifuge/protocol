@@ -189,7 +189,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         PoolId poolId = messageProperties.messagePoolId(payload);
         require(!isSendingBlocked[centrifugeId][poolId], SendingBlocked());
 
-        IAdapter[] memory adapters_ = _poolAdapters(centrifugeId, poolId);
+        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
 
         require(adapters_.length != 0, EmptyAdapterSet());
 
@@ -218,7 +218,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (uint256 total)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = _poolAdapters(centrifugeId, poolId);
+        IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
         bytes memory proof = MessageProofLib.createMessageProof(poolId, keccak256(payload));
 
         for (uint256 i; i < adapters_.length; i++) {
@@ -237,7 +237,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     // Getters
     //----------------------------------------------------------------------------------------------
 
-    function _poolAdapters(uint16 centrifugeId, PoolId poolId) internal view returns (IAdapter[] memory adapters_) {
+    function poolAdapters(uint16 centrifugeId, PoolId poolId) public view returns (IAdapter[] memory adapters_) {
         adapters_ = adapters[centrifugeId][poolId];
 
         // If adapters not configured per pool, then use the global adapters

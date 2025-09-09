@@ -145,4 +145,10 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @param  centrifugeId Chain where the adapters are configured for
     /// @param  poolId PoolId associated to the adapters
     function adapters(uint16 centrifugeId, PoolId poolId, uint256 id) external view returns (IAdapter);
+
+    /// @notice Returns the list of adapters that will be used for a pool.
+    /// @param  centrifugeId Chain where the adapters are configured for
+    /// @param  poolId PoolId associated to the adapters
+    /// @return pool adapters or global adapters if they were not configured
+    function poolAdapters(uint16 centrifugeId, PoolId poolId) external view returns (IAdapter[] memory);
 }
