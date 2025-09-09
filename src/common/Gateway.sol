@@ -214,20 +214,15 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    /// @dev note repay will only repay subsized messages, transactional messages fails if not enough gas.
     function repay(uint16 centrifugeId, bytes memory batch) external payable pauseable {
         bytes32 batchHash = keccak256(batch);
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         require(underpaid_.counter > 0, NotUnderpaidBatch());
 
-        PoolId poolId = processor.messagePoolIdPayment(batch);
-
         underpaid_.counter--;
 
         if (!underpaid_.isSubsidized) {
             _startTransactionPayment(msg.sender);
-        } else {
-            if (msg.value > 0) subsidizePool(poolId);
         }
 
         require(_send(centrifugeId, batch, underpaid_.gasLimit), CanNotBeRepaid());

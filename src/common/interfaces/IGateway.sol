@@ -72,7 +72,11 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
-    /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
+    /// @notice Repay an underpaid batch.
+    /// @dev Depending on the repaid message properties the payment vary.
+    ///      Check Underpaid.isSubsidized to know how the message must be repaid.
+    ///      - If !Underpaid.isSubsidized, then the payment is transactional and needs to be paid in `repay{value: ..}()`
+    ///      - If Underpaid.isSubsidized, the funds are taken from the subsidized pool
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.

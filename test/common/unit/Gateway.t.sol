@@ -927,17 +927,18 @@ contract GatewayTestRepay is GatewayTest {
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         gateway.send(REMOTE_CENT_ID, batch);
-
-        uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
+        gateway.subsidizePool{value: MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234}(POOL_A);
 
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
-        gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+        gateway.repay(REMOTE_CENT_ID, batch);
 
         (uint128 gasLimit, uint64 counter, bool isSubsidized) = gateway.underpaid(REMOTE_CENT_ID, keccak256(batch));
         assertEq(counter, 0);
         assertEq(gasLimit, 0);
         assertEq(isSubsidized, false);
+
+        assertEq(gateway.subsidizedValue(POOL_A), 1234); // 1234 of gas remaining
     }
 
     function testCorrectRepayForBatches() public {
@@ -951,12 +952,11 @@ contract GatewayTestRepay is GatewayTest {
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT * 2, address(POOL_REFUND));
         gateway.endBatching();
-
-        uint256 payment = MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE;
+        gateway.subsidizePool{value: MESSAGE_GAS_LIMIT * 2 + ADAPTER_ESTIMATE + 1234}(POOL_A);
 
         vm.expectEmit();
         emit IGateway.RepayBatch(REMOTE_CENT_ID, batch);
-        gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
+        gateway.repay(REMOTE_CENT_ID, batch);
     }
 
     function testCorrectRepayWithTransactionalPayment() public {
