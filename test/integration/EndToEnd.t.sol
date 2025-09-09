@@ -14,8 +14,6 @@ import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
 import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
-import {MockValuation} from "../common/mocks/MockValuation.sol";
-
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
@@ -49,13 +47,13 @@ import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
+
 import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {QueueManager} from "../../src/managers/QueueManager.sol";
-
+import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
@@ -98,7 +96,7 @@ contract EndToEndDeployment is Test {
         Hub hub;
         // Others
         IdentityValuation identityValuation;
-        MockValuation valuation;
+        OracleValuation oracleValuation;
         MockSnapshotHook snapshotHook;
     }
 
@@ -123,7 +121,6 @@ contract EndToEndDeployment is Test {
         // Others
         ERC20 usdc;
         AssetId usdcId;
-        QueueManager queueManager;
     }
 
     ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
@@ -138,6 +135,7 @@ contract EndToEndDeployment is Test {
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
     address immutable BSM = makeAddr("BSM");
+    address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
 
@@ -151,8 +149,6 @@ contract EndToEndDeployment is Test {
     AssetId USD_ID;
     PoolId POOL_A;
     ShareClassId SC_1;
-
-    mapping(uint16 centrifugeId => AssetId[]) assetIds;
 
     FullDeployer deployA = new FullDeployer();
     FullDeployer deployB = new FullDeployer();
@@ -204,7 +200,7 @@ contract EndToEndDeployment is Test {
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
             identityValuation: deployA.identityValuation(),
-            valuation: new MockValuation(deployA.hubRegistry()),
+            oracleValuation: deployA.oracleValuation(),
             snapshotHook: new MockSnapshotHook()
         });
 
@@ -273,9 +269,6 @@ contract EndToEndDeployment is Test {
         s_.syncManager = deploy.syncManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
-        s_.queueManager = deploy.queueManager();
-
-        assetIds[centrifugeId].push(s_.usdcId);
 
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
@@ -433,7 +426,14 @@ contract EndToEndFlows is EndToEndUtils {
         hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
 
         hub.hub.initializeHolding(
-            poolId, shareClassId, assetId, hub.valuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            poolId,
+            shareClassId,
+            assetId,
+            hub.oracleValuation,
+            ASSET_ACCOUNT,
+            EQUITY_ACCOUNT,
+            GAIN_ACCOUNT,
+            LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
             poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32()
@@ -445,9 +445,6 @@ contract EndToEndFlows is EndToEndUtils {
             spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(spoke.centrifugeId, poolId, BSM.toBytes32(), true);
-        hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.queueManager).toBytes32(), true
-        );
 
         vm.stopPrank();
     }
@@ -463,6 +460,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
+        h.oracleValuation.updateFeeder(POOL_A, FEEDER, true);
+        h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
         vm.stopPrank();
 
         // We also subsidize the hub
@@ -491,7 +490,9 @@ contract EndToEndFlows is EndToEndUtils {
         D18 assetPrice,
         D18 sharePrice
     ) internal virtual {
-        hub.valuation.setPrice(assetId, USD_ID, assetPrice);
+        vm.startPrank(FEEDER);
+        hub.oracleValuation.setPrice(poolId, shareClassId, assetId, assetPrice);
+        vm.stopPrank();
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
@@ -1001,14 +1002,17 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
-        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         // CHECKS
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, USDC_AMOUNT_1, "expected amount");
         assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
 
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1, "expected snapshots");
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), nonZeroPrices ? 1 : 2, "expected snapshots");
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
@@ -1016,13 +1020,16 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
         _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
-        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
+
+        vm.startPrank(BSM);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
+        s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, 0, "expected amount");
         assertEq(value, assetToPool(0), "expected value");
 
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1, "expected snapshots");
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 2, "expected snapshots");
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(0), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(0), true);
@@ -1172,7 +1179,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
-        s.queueManager.sync(POOL_A, SC_1, assetIds[s.centrifugeId]);
+        s.balanceSheet.submitQueuedAssets(POOL_A, SC_1, s.usdcId, EXTRA_GAS);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);

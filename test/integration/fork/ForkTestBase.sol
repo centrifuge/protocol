@@ -5,8 +5,6 @@ import {ERC20} from "../../../src/misc/ERC20.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {MockValuation} from "../../common/mocks/MockValuation.sol";
-
 import {Root} from "../../../src/common/Root.sol";
 import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
@@ -35,8 +33,7 @@ import {FreezeOnly} from "../../../src/hooks/FreezeOnly.sol";
 import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
 
-import {QueueManager} from "../../../src/managers/QueueManager.sol";
-
+import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
 import "forge-std/Test.sol";
@@ -78,7 +75,7 @@ contract ForkTestBase is EndToEndFlows {
             shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
             hub: Hub(IntegrationConstants.HUB),
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
-            valuation: MockValuation(address(0)), // Fork tests don't use dynamic pricing
+            oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
             snapshotHook: MockSnapshotHook(address(0)) // Fork tests don't use snapshot hooks
         });
 
@@ -98,8 +95,7 @@ contract ForkTestBase is EndToEndFlows {
             fullRestrictionsHook: FullRestrictions(IntegrationConstants.FULL_RESTRICTIONS_HOOK),
             redemptionRestrictionsHook: RedemptionRestrictions(IntegrationConstants.REDEMPTION_RESTRICTIONS_HOOK),
             usdc: ERC20(address(0)), // NOTE: Unused in fork tests in order to be chain agnostic
-            usdcId: newAssetId(0), // NOTE: Unused in fork tests in order to be chain agnostic
-            queueManager: QueueManager(address(0))
+            usdcId: newAssetId(0) // NOTE: Unused in fork tests in order to be chain agnostic
         });
 
         // Initialize pricing state
