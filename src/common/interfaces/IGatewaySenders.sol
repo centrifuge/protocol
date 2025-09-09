@@ -9,7 +9,7 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
-    error CanNotBeSentLocally();
+    error CannotBeSentLocally();
 
     function localCentrifugeId() external view returns (uint16);
 }

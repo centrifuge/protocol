@@ -189,10 +189,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         PoolId poolId = messageProperties.messagePoolId(payload);
         require(!isSendingBlocked[centrifugeId][poolId], SendingBlocked());
 
-        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
-
-        // If adapters not configured per pool, then use the global adapters
-        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
+        IAdapter[] memory adapters_ = _poolAdapters(centrifugeId, poolId);
 
         require(adapters_.length != 0, EmptyAdapterSet());
 
@@ -203,7 +200,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
         emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
 
-        // payload is now the proof (to avoid stack too deep issue)
+        // Override the payload variable to send the proof to the remaining adapters
         payload = MessageProofLib.createMessageProof(poolId, payloadHash);
         for (uint256 i = 1; i < adapters_.length; i++) {
             cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
@@ -221,11 +218,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (uint256 total)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        IAdapter[] memory adapters_ = adapters[centrifugeId][poolId];
-
-        // If adapters not configured per pool, then use the global adapters
-        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
-
+        IAdapter[] memory adapters_ = _poolAdapters(centrifugeId, poolId);
         bytes memory proof = MessageProofLib.createMessageProof(poolId, keccak256(payload));
 
         for (uint256 i; i < adapters_.length; i++) {
@@ -244,16 +237,23 @@ contract MultiAdapter is Auth, IMultiAdapter {
     // Getters
     //----------------------------------------------------------------------------------------------
 
+    function _poolAdapters(uint16 centrifugeId, PoolId poolId) internal view returns (IAdapter[] memory adapters_) {
+        adapters_ = adapters[centrifugeId][poolId];
+
+        // If adapters not configured per pool, then use the global adapters
+        if (adapters_.length == 0) adapters_ = adapters[centrifugeId][GLOBAL_ID];
+    }
+
     /// @inheritdoc IMultiAdapter
     function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
-        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]];
-        return adapter.quorum;
+        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        return _adapterDetails[centrifugeId][poolId][adapter].quorum;
     }
 
     /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
-        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapters[centrifugeId][poolId][0]];
-        return adapter.activeSessionId;
+        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        return _adapterDetails[centrifugeId][poolId][adapter].activeSessionId;
     }
 
     /// @inheritdoc IMultiAdapter

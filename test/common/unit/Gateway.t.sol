@@ -874,7 +874,7 @@ contract GatewayTestRepay is GatewayTest {
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(POOL_REFUND));
         gateway.send(REMOTE_CENT_ID, batch);
 
-        vm.expectRevert(IGateway.CanNotBeRepaid.selector);
+        vm.expectRevert(IGateway.CannotBeRepaid.selector);
         gateway.repay(REMOTE_CENT_ID, batch);
     }
 
@@ -899,7 +899,7 @@ contract GatewayTestRepay is GatewayTest {
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
 
-        vm.expectRevert(IGateway.CanNotBeRepaid.selector);
+        vm.expectRevert(IGateway.CannotBeRepaid.selector);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
     }
 
@@ -917,7 +917,7 @@ contract GatewayTestRepay is GatewayTest {
 
         // Expected: MESSAGE_GAS_LIMIT * 2 + ...
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
-        vm.expectRevert(IGateway.CanNotBeRepaid.selector);
+        vm.expectRevert(IGateway.CannotBeRepaid.selector);
         gateway.repay{value: payment}(REMOTE_CENT_ID, batch);
     }
 

@@ -152,8 +152,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (bool succeeded) {
-        PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
         PoolId adapterPoolId = processor.messagePoolId(batch);
+        PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
         // Ensure sufficient funds are available
@@ -225,7 +225,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             _startTransactionPayment(msg.sender);
         }
 
-        require(_send(centrifugeId, batch, underpaid_.gasLimit), CanNotBeRepaid());
+        require(_send(centrifugeId, batch, underpaid_.gasLimit), CannotBeRepaid());
 
         if (!underpaid_.isSubsidized) {
             _endTransactionPayment();

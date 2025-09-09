@@ -538,7 +538,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         external
     {
         if (centrifugeId == localCentrifugeId) {
-            revert CanNotBeSentLocally();
+            revert CannotBeSentLocally();
         } else {
             gateway.send(
                 centrifugeId,
@@ -549,7 +549,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
         if (centrifugeId == localCentrifugeId) {
-            revert CanNotBeSentLocally();
+            revert CannotBeSentLocally();
         } else {
             gateway.send(
                 centrifugeId, MessageLib.SetPoolAdaptersManager({poolId: poolId.raw(), manager: manager}).serialize()
