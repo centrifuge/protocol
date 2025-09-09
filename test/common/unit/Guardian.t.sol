@@ -236,7 +236,7 @@ contract GuardianTestRecoverTokens is GuardianTest {
     }
 }
 
-contract GuardianTestSetAdapter is GuardianTest {
+contract GuardianTestSetAdapters is GuardianTest {
     function testSetAdapters() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
@@ -247,14 +247,8 @@ contract GuardianTestSetAdapter is GuardianTest {
             abi.encode()
         );
 
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.setManager.selector, POOL_0, MANAGER),
-            abi.encode()
-        );
-
         vm.prank(address(SAFE));
-        guardian.setAdapters(CENTRIFUGE_ID, adapters, MANAGER);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters);
     }
 
     function testSetAdaptersOnlySafe() public {
@@ -263,6 +257,25 @@ contract GuardianTestSetAdapter is GuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.setAdapters(CENTRIFUGE_ID, adapters, MANAGER);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters);
+    }
+}
+
+contract GuardianTestSetAdaptersManagers is GuardianTest {
+    function testSetAdaptersManagers() public {
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.setManager.selector, POOL_0, MANAGER),
+            abi.encode()
+        );
+
+        vm.prank(address(SAFE));
+        guardian.setAdaptersManager(MANAGER);
+    }
+
+    function testSetAdaptersOnlySafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
+        guardian.setAdaptersManager(MANAGER);
     }
 }

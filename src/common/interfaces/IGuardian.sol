@@ -72,6 +72,9 @@ interface IGuardian {
     /// @dev For bidirectional communication, perform this setup on the remote MultiAdapter.
     /// @param centrifugeId The destination chain ID to wire adapters for
     /// @param adapters Array of adapter addresses to register with MultiAdapter
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external;
+
+    /// @notice Set an adapters manager for the global adaters.
     /// @param manager address able to recover messages in the `centrifugeId` chain or pause sending messages
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, address manager) external;
+    function setAdaptersManager(address manager) external;
 }

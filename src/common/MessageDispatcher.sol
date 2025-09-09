@@ -534,15 +534,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters, bytes32 manager)
-        external
-    {
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters) external {
         if (centrifugeId == localCentrifugeId) {
             revert CannotBeSentLocally();
         } else {
             gateway.send(
-                centrifugeId,
-                MessageLib.SetPoolAdapters({poolId: poolId.raw(), manager: manager, adapterList: adapters}).serialize()
+                centrifugeId, MessageLib.SetPoolAdapters({poolId: poolId.raw(), adapterList: adapters}).serialize()
             );
         }
     }

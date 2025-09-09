@@ -226,7 +226,8 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, MULTI_ADAPTER_MANAGER);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
+        deploy.guardian().setAdaptersManager(MULTI_ADAPTER_MANAGER);
         vm.stopPrank();
     }
 
@@ -498,9 +499,8 @@ contract EndToEndFlows is EndToEndUtils {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(
-            s.centrifugeId, POOL_A, localAdapters, remoteAdapters, MULTI_ADAPTER_MANAGER.toBytes32()
-        );
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters);
+        h.hub.setAdaptersManager{value: GAS}(s.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
     }
 
     //----------------------------------------------------------------------------------------------
