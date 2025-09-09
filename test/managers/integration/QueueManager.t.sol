@@ -8,10 +8,7 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
 import "../../spoke/integration/BaseTest.sol";
 
-import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
-
-import {IQueueManager} from "../../../src/managers/QueueManager.sol";
 
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
