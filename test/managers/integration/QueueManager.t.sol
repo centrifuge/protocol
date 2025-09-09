@@ -20,13 +20,10 @@ abstract contract QueueManagerBaseTest is BaseTest {
 
     address asset1 = address(erc20);
     address asset2 = address(new ERC20(6));
-    address asset3 = address(new ERC20(6));
     AssetId assetId1;
     AssetId assetId2;
-    AssetId assetId3;
     address vault1;
     address vault2;
-    address vault3;
 
     address user = makeAddr("user");
 
@@ -53,18 +50,6 @@ abstract contract QueueManagerBaseTest is BaseTest {
         );
         assetId2 = AssetId.wrap(createdAssetId2);
         vault2 = vaultAddress2;
-
-        (, address vaultAddress3, uint128 createdAssetId3) = deployVault(
-            VaultKind.SyncDepositAsyncRedeem,
-            18,
-            address(fullRestrictionsHook),
-            defaultShareClassId,
-            asset3,
-            0,
-            THIS_CHAIN_ID
-        );
-        assetId3 = AssetId.wrap(createdAssetId3);
-        vault3 = vaultAddress3;
     }
 }
 
