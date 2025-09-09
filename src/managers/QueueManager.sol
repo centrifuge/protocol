@@ -74,7 +74,7 @@ contract QueueManager is IQueueManager, IUpdateContract {
         uint256 validCount = 0;
 
         for (uint256 i = 0; i < assetIds.length; i++) {
-            bytes32 key = bytes32(uint256(AssetId.unwrap(assetIds[i])));
+            bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
             if (TransientStorageLib.tloadBool(key)) {
                 continue; // Skip duplicate
             }
