@@ -66,6 +66,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a refund address is not set.
     error RefundAddressNotSet();
 
+    /// @notice Dispatched when a handle is called without enough gas to process the message.
+    error NotEnoughGasToProcess();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.

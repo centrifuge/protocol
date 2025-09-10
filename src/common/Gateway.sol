@@ -101,7 +101,11 @@ contract Gateway is Auth, Recoverable, IGateway {
             remaining = remaining.slice(length, remaining.length - length);
 
             uint256 remainingGas = gasleft() - GAS_FAIL_MESSAGE_STORAGE;
-            uint256 executionGas = gasService.maxBatchGasLimit(localCentrifugeId).min(remainingGas);
+            uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
+
+            // We only want to fail inside `processor.handle()` by logic stuff, not by out of gas issues
+            require(remainingGas >= executionGas, NotEnoughGasToProcess());
+
             try processor_.handle{gas: executionGas}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
             } catch (bytes memory err) {
