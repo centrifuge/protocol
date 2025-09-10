@@ -160,13 +160,13 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (adapter.isSendingBlocked(centrifugeId, adapterPoolId)) {
+            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
                 return false;
             }
         } else {
-            if (adapter.isSendingBlocked(centrifugeId, adapterPoolId)) {
+            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 return false;
             }
@@ -221,15 +221,11 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        if (!underpaid_.isSubsidized) {
-            _startTransactionPayment(msg.sender);
-        }
+        if (!underpaid_.isSubsidized) _startTransactionPayment(msg.sender);
 
         require(_send(centrifugeId, batch, underpaid_.gasLimit), CannotBeRepaid());
 
-        if (!underpaid_.isSubsidized) {
-            _endTransactionPayment();
-        }
+        if (!underpaid_.isSubsidized) _endTransactionPayment();
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -275,7 +271,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function startTransactionPayment(address payer) public payable auth {
+    function startTransactionPayment(address payer) external payable auth {
         _startTransactionPayment(payer);
     }
 
@@ -285,7 +281,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function endTransactionPayment() public auth {
+    function endTransactionPayment() external auth {
         _endTransactionPayment();
     }
 

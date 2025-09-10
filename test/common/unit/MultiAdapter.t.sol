@@ -630,6 +630,6 @@ contract MultiAdapterTestBlockOutgoing is MultiAdapterTest {
         emit IMultiAdapter.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
         multiAdapter.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
-        assertEq(multiAdapter.isSendingBlocked(REMOTE_CENT_ID, POOL_A), true);
+        assertEq(multiAdapter.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }

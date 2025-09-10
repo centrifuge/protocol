@@ -165,7 +165,7 @@ contract GatewayTest is Test {
 
         vm.mockCall(
             address(adapter),
-            abi.encodeWithSelector(IAdapterBlockSendingExt.isSendingBlocked.selector, centrifugeId, POOL_A),
+            abi.encodeWithSelector(IAdapterBlockSendingExt.isOutgoingBlocked.selector, centrifugeId, POOL_A),
             abi.encode(false)
         );
     }
@@ -173,7 +173,7 @@ contract GatewayTest is Test {
     function _mockBlockSending(uint16 centrifugeId, PoolId poolId, bool value) internal {
         vm.mockCall(
             address(adapter),
-            abi.encodeWithSelector(IAdapterBlockSendingExt.isSendingBlocked.selector, centrifugeId, poolId),
+            abi.encodeWithSelector(IAdapterBlockSendingExt.isOutgoingBlocked.selector, centrifugeId, poolId),
             abi.encode(value)
         );
     }

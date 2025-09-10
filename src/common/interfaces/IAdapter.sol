@@ -20,5 +20,5 @@ interface IAdapter is IAuth {
 }
 
 interface IAdapterBlockSendingExt is IAdapter {
-    function isSendingBlocked(uint16 centrifugeId, PoolId poolId) external returns (bool);
+    function isOutgoingBlocked(uint16 centrifugeId, PoolId poolId) external returns (bool);
 }

@@ -29,10 +29,10 @@ contract MultiAdapter is Auth, IMultiAdapter {
     IMessageProperties public messageProperties;
 
     mapping(PoolId => address) public manager;
-    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isSendingBlocked;
     mapping(uint16 centrifugeId => mapping(PoolId => IAdapter[])) public adapters;
-    mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
+    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => Inbound)) public inbound;
+    mapping(uint16 centrifugeId => mapping(PoolId => mapping(IAdapter adapter => Adapter))) internal _adapterDetails;
 
     constructor(
         uint16 localCentrifugeId_,
@@ -187,7 +187,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         returns (bytes32)
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        require(!isSendingBlocked[centrifugeId][poolId], OutgoingBlocked());
+        require(!isOutgoingBlocked[centrifugeId][poolId], OutgoingBlocked());
 
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
 
@@ -229,7 +229,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
         require(msg.sender == manager[poolId], ManagerNotAllowed());
-        isSendingBlocked[centrifugeId][poolId] = isBlocked;
+        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
