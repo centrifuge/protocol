@@ -116,8 +116,6 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         IPoolEscrow escrow = poolEscrowFactory.newEscrow(poolId);
         gateway.setRefundAddress(poolId, escrow);
-
-        multiAdapter.setManager(poolId, admin);
     }
 
     //----------------------------------------------------------------------------------------------

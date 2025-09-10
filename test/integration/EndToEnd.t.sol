@@ -500,6 +500,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters);
+        h.hub.setAdaptersManager{value: GAS}(h.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
         h.hub.setAdaptersManager{value: GAS}(s.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
     }
 
@@ -1345,16 +1346,17 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
 
-        vm.startPrank(FM);
+        vm.startPrank(MULTI_ADAPTER_MANAGER);
         h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, true);
 
+        vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
+        vm.startPrank(MULTI_ADAPTER_MANAGER);
         h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, false);
 
         bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
         (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
-
         assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas + gasLimit); // Was refunded
 
         vm.startPrank(ANY);

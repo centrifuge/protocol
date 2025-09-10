@@ -34,9 +34,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
-    IMultiAdapter public multiAdapter;
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
+    IMultiAdapter public multiAdapter;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
