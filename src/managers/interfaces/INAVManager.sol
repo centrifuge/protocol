@@ -15,7 +15,7 @@ interface INAVHook {
     /// @param scId The share class ID
     /// @param centrifugeId The Centrifuge ID of the network
     /// @param netAssetValue The new net asset value
-    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, D18 netAssetValue) external;
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external;
 
     /// @notice Handle transfer shares between networks
     /// @param poolId The pool ID
@@ -33,11 +33,26 @@ interface INAVHook {
 }
 
 interface INAVManager is ISnapshotHook {
+    event UpdateManager(address indexed manager, bool canManage);
+    event SetNavHook(address indexed navHook);
+    event InitializeNetwork(uint16 indexed centrifugeId);
+    event InitializeHolding(ShareClassId indexed scId, AssetId indexed assetId);
+    event InitializeLiability(ShareClassId indexed scId, AssetId indexed assetId);
+    event Sync(ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
+    event Transfer(
+        ShareClassId indexed scId_,
+        uint16 indexed fromCentrifugeId,
+        uint16 indexed toCentrifugeId,
+        uint128 sharesTransferred
+    );
+
     error MismatchedEpochs();
     error AlreadyInitialized();
     error NotInitialized();
     error ExceedsMaxAccounts();
     error InvalidNAVHook();
+    error InvalidPoolId();
+    error EmptyAddress();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -49,6 +64,14 @@ interface INAVManager is ISnapshotHook {
     /// @notice Set the NAV hook contract that will receive NAV updates
     /// @param navHook The address of the NAV hook contract
     function setNAVHook(INAVHook navHook) external;
+
+    /// @notice Check if an address can manage the NAV manager
+    function manager(address manager) external view returns (bool);
+
+    /// @notice Update whether an address can manage the NAV manager
+    /// @param manager The address of the manager
+    /// @param canManage Whether the address can manage this manager
+    function updateManager(address manager, bool canManage) external;
 
     //----------------------------------------------------------------------------------------------
     // Account creation
@@ -71,7 +94,7 @@ interface INAVManager is ISnapshotHook {
     function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
     //----------------------------------------------------------------------------------------------
-    // Price updates
+    // Holding updates
     //----------------------------------------------------------------------------------------------
 
     /// @notice Update the holding value for a specific asset
@@ -79,6 +102,18 @@ interface INAVManager is ISnapshotHook {
     /// @param assetId The asset ID to update
     function updateHoldingValue(ShareClassId scId, AssetId assetId) external;
 
+    /// @notice Update the valuation contract for a specific asset
+    /// @param scId The share class ID
+    /// @param assetId The asset ID to update
+    /// @param valuation The new valuation contract
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external;
+
+    /// @notice Set the account ID for a specific asset holding
+    /// @param scId The share class ID
+    /// @param assetId The asset ID
+    /// @param kind The account kind (type)
+    /// @param accountId The account ID to set
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
 
     //----------------------------------------------------------------------------------------------
     // Calculations
@@ -88,7 +123,7 @@ interface INAVManager is ISnapshotHook {
     /// @dev NAV = equity + gain - loss - liability
     /// @param centrifugeId The Centrifuge ID of the network
     /// @return The calculated net asset value
-    function netAssetValue(uint16 centrifugeId) external view returns (D18);
+    function netAssetValue(uint16 centrifugeId) external view returns (uint128);
 
     //----------------------------------------------------------------------------------------------
     // Helpers

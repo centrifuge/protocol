@@ -30,6 +30,7 @@ contract NAVManager is Auth, INAVManager {
     INAVHook public navHook;
     mapping(uint16 centrifugeId => uint16) public accountCounter;
     mapping(uint16 centrifugeId => mapping(AssetId => AccountId)) public assetIdToAccountId;
+    mapping(address => bool) public manager;
 
     constructor(PoolId poolId_, IHub hub_, address deployer) Auth(deployer) {
         poolId = poolId_;
@@ -39,22 +40,37 @@ contract NAVManager is Auth, INAVManager {
         accounting = hub.accounting();
     }
 
+    /// @dev Check if the msg.sender is ward or a manager
+    modifier onlyManager() {
+        require(wards[msg.sender] == 1 || manager[msg.sender], NotAuthorized());
+        _;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc INAVManager
     function setNAVHook(INAVHook navHook_) external auth {
         navHook = navHook_;
+        emit SetNavHook(address(navHook_));
+    }
+
+    /// @inheritdoc INAVManager
+    function updateManager(address manager_, bool canManage) external auth {
+        require(manager_ != address(0), EmptyAddress());
+
+        manager[manager_] = canManage;
+
+        emit UpdateManager(manager_, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
     // Account creation
     //----------------------------------------------------------------------------------------------
 
-    function initializeNetwork(uint16 centrifugeId) external {
-        // TODO AUTH
-        // require(hubRegistry.manager(poolId, msg.sender), NotHubManager());
-
+    /// @inheritdoc INAVManager
+    function initializeNetwork(uint16 centrifugeId) external onlyManager {
         require(accountCounter[centrifugeId] == 0, AlreadyInitialized());
 
         hub.createAccount(poolId, equityAccount(centrifugeId), false);
@@ -63,10 +79,12 @@ contract NAVManager is Auth, INAVManager {
         hub.createAccount(poolId, lossAccount(centrifugeId), false);
 
         accountCounter[centrifugeId] = 5;
+
+        emit InitializeNetwork(centrifugeId);
     }
 
-    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external {
-        // TODO AUTH
+    /// @inheritdoc INAVManager
+    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());
@@ -91,10 +109,12 @@ contract NAVManager is Auth, INAVManager {
         );
 
         accountCounter[centrifugeId] = index + 1;
+
+        emit InitializeHolding(scId, assetId);
     }
 
-    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external {
-        // TODO AUTH
+    /// @inheritdoc INAVManager
+    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
         uint16 centrifugeId = assetId.centrifugeId();
         uint16 index = accountCounter[centrifugeId];
         require(index > 0, NotInitialized());
@@ -110,6 +130,8 @@ contract NAVManager is Auth, INAVManager {
         hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount_, liabilityAccount(centrifugeId));
 
         accountCounter[centrifugeId] = index + 1;
+
+        emit InitializeLiability(scId, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -119,14 +141,16 @@ contract NAVManager is Auth, INAVManager {
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
         console2.log("NAVManager onSync");
-        require(poolId == poolId_);
         require(msg.sender == holdings, NotAuthorized());
+        require(poolId == poolId_, InvalidPoolId());
         require(address(navHook) != address(0), InvalidNAVHook());
 
-        D18 netAssetValue_ = netAssetValue(centrifugeId);
-        console2.log("NAV", netAssetValue_.raw());
+        uint128 netAssetValue_ = netAssetValue(centrifugeId);
+        console2.log("NAV", netAssetValue_);
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
         console2.log("NAVManager onSync done");
+
+        emit Sync(scId, centrifugeId, netAssetValue_);
     }
 
     /// @inheritdoc ISnapshotHook
@@ -137,22 +161,30 @@ contract NAVManager is Auth, INAVManager {
         uint16 toCentrifugeId,
         uint128 sharesTransferred
     ) external {
-        require(poolId == poolId_);
         require(msg.sender == address(hub), NotAuthorized());
+        require(poolId == poolId_, InvalidPoolId());
         require(address(navHook) != address(0), InvalidNAVHook());
 
         navHook.onTransfer(poolId, scId_, fromCentrifugeId, toCentrifugeId, sharesTransferred);
+
+        emit Transfer(scId_, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
-    function updateHoldingValue(ShareClassId scId, AssetId assetId) external {
+    /// @inheritdoc INAVManager
+    function updateHoldingValue(ShareClassId scId, AssetId assetId) external onlyManager {
         hub.updateHoldingValue(poolId, scId, assetId);
     }
 
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external {
+    /// @inheritdoc INAVManager
+    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
         hub.updateHoldingValuation(poolId, scId, assetId, valuation);
     }
 
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external {
+    /// @inheritdoc INAVManager
+    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+        external
+        onlyManager
+    {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
@@ -162,8 +194,8 @@ contract NAVManager is Auth, INAVManager {
     // Calculations
     //----------------------------------------------------------------------------------------------
 
-    /// @dev NAV = equity + gain - loss - liability
-    function netAssetValue(uint16 centrifugeId) public view returns (D18) {
+    /// @inheritdoc INAVManager
+    function netAssetValue(uint16 centrifugeId) public view returns (uint128) {
         // TODO: how to handle when one of the accounts is not positive
         (, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
         (, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
@@ -174,33 +206,39 @@ contract NAVManager is Auth, INAVManager {
         console2.log("Gain", gain);
         console2.log("Loss", loss);
         console2.log("Liability", liability);
-        return d18(equity) + d18(gain) - d18(loss) - d18(liability);
+        return equity + gain - loss - liability;
     }
 
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
 
+    /// @inheritdoc INAVManager
     function assetAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
         return assetIdToAccountId[centrifugeId][assetId];
     }
 
+    /// @inheritdoc INAVManager
     function expenseAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
         return assetAccount(centrifugeId, assetId);
     }
 
+    /// @inheritdoc INAVManager
     function equityAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 1);
     }
 
+    /// @inheritdoc INAVManager
     function liabilityAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 2);
     }
 
+    /// @inheritdoc INAVManager
     function gainAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 3);
     }
 
+    /// @inheritdoc INAVManager
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 4);
     }
