@@ -31,6 +31,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
+    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 50_000;
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
@@ -96,7 +97,9 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
 
-            try processor_.handle(centrifugeId, message) {
+            uint256 remainingGas = gasleft() - GAS_FAIL_MESSAGE_STORAGE;
+            uint256 executionGas = gasService.maxBatchGasLimit(centrifugeId).min(remainingGas);
+            try processor_.handle{gas: executionGas}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
             } catch (bytes memory err) {
                 bytes32 messageHash = keccak256(message);
