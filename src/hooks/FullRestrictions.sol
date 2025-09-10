@@ -27,15 +27,15 @@ contract FullRestrictions is BaseTransferHook {
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
 
-        if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
+        if (isDepositRequestOrIssuance(from, to)) return isAuthorized(to) || isTargetMember(to, hookData);
         if (isDepositFulfillment(from, to)) return true;
-        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
+        if (isDepositClaim(from, to)) return isAuthorized(to) || isTargetMember(to, hookData);
+        if (isRedeemRequest(from, to)) return isAuthorized(from) || isSourceMember(from, hookData);
         if (isRedeemFulfillment(from, to)) return true;
         if (isRedeemClaimOrRevocation(from, to)) return true;
         if (isCrosschainTransfer(from, to)) return true;
 
         // Else, it's a transfer
-        return isTargetMember(to, hookData);
+        return isAuthorized(to) || isTargetMember(to, hookData);
     }
 }

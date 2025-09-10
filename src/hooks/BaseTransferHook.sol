@@ -234,6 +234,12 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, ITransferHo
         return TransientStorageLib.tloadBool(keccak256(abi.encode("isAuthorized", token, user)));
     }
 
+    /// @dev When called within context of the hook, the msg.sender is the token
+    function isAuthorized(address user) internal view returns (bool) {
+        address token = msg.sender;
+        return TransientStorageLib.tloadBool(keccak256(abi.encode("isAuthorized", token, user)));
+    }
+
     //----------------------------------------------------------------------------------------------
     // ERC-165
     //----------------------------------------------------------------------------------------------
