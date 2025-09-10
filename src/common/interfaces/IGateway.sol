@@ -30,7 +30,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
-    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
+    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash, bytes error);
 
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);

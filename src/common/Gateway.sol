@@ -112,7 +112,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         } catch (bytes memory err) {
             bytes32 messageHash = keccak256(message);
             failedMessages[centrifugeId][messageHash]++;
-            emit FailMessage(centrifugeId, message, err);
+            emit FailMessage(centrifugeId, message, messageHash, err);
         }
     }
 

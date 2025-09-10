@@ -295,7 +295,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.expectEmit();
-        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, abi.encodeWithSignature("HandleError()"));
+        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, keccak256(batch), abi.encodeWithSignature("HandleError()"));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 0);
