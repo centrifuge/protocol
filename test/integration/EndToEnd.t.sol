@@ -19,7 +19,7 @@ import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
-import {MultiAdapter} from "../../src/common/MultiAdapter.sol";
+import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
 import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
@@ -1364,5 +1364,25 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
         assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
+    }
+
+    /// forge-config: default.isolate = true
+    function testMaxAdaptersConfigurationWeight() public {
+        // This tests is just to compute the SetPoolAdapters max weight used in GasService
+
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        IAdapter[] memory localAdapters = new IAdapter[](1);
+        localAdapters[0] = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](MAX_ADAPTER_COUNT);
+        for (uint256 i; i < MAX_ADAPTER_COUNT; i++) {
+            IAdapter adapter = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+            remoteAdapters[i] = address(adapter).toBytes32();
+        }
+
+        vm.startPrank(FM);
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters);
     }
 }
