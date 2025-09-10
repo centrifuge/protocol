@@ -153,6 +153,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         // C: Verify shares were minted
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should still be burned on chain B");
+        assertEq(shareTokenC.balanceOf(INVESTOR_A), amount, "Shares minted on chain C");
     }
 }
 

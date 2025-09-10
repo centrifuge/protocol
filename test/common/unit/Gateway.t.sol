@@ -285,7 +285,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
         vm.expectEmit();
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
@@ -374,7 +374,7 @@ contract GatewayTestRetry is GatewayTest {
         processor.disableFailure();
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.retry(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);

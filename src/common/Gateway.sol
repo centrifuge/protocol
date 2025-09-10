@@ -107,10 +107,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     function _process(uint16 centrifugeId, bytes memory message) internal {
+        bytes32 messageHash = keccak256(message);
         try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
-            emit ExecuteMessage(centrifugeId, message);
+            emit ExecuteMessage(centrifugeId, message, messageHash);
         } catch (bytes memory err) {
-            bytes32 messageHash = keccak256(message);
             failedMessages[centrifugeId][messageHash]++;
             emit FailMessage(centrifugeId, message, messageHash, err);
         }
@@ -124,7 +124,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         failedMessages[centrifugeId][messageHash]--;
         processor.handle(centrifugeId, message);
 
-        emit ExecuteMessage(centrifugeId, message);
+        emit ExecuteMessage(centrifugeId, message, messageHash);
     }
 
     //----------------------------------------------------------------------------------------------
