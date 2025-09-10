@@ -78,9 +78,9 @@ contract MultiAdapterTest is Test {
     uint16 constant LOCAL_CENT_ID = 23;
     uint16 constant REMOTE_CENT_ID = 24;
 
-    uint256 constant ADAPTER_ESTIMATE_1 = 1.5 gwei;
-    uint256 constant ADAPTER_ESTIMATE_2 = 1 gwei;
-    uint256 constant ADAPTER_ESTIMATE_3 = 0.5 gwei;
+    uint256 constant ADAPTER_ESTIMATE_1 = 15;
+    uint256 constant ADAPTER_ESTIMATE_2 = 10;
+    uint256 constant ADAPTER_ESTIMATE_3 = 5;
 
     bytes32 constant ADAPTER_DATA_1 = bytes32("data1");
     bytes32 constant ADAPTER_DATA_2 = bytes32("data2");

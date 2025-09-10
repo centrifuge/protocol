@@ -130,12 +130,12 @@ contract GatewayTest is Test {
     uint16 constant LOCAL_CENT_ID = 24;
     uint16 constant REMOTE_CENT_ID = 24;
 
-    uint256 constant ADAPTER_ESTIMATE = 1 gwei;
+    uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
-    uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
-    uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
-    uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
+    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
+    uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
+    uint128 constant EXTRA_GAS_LIMIT = 1;
     bool constant NO_SUBSIDIZED = false;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
