@@ -100,13 +100,10 @@ contract Gateway is Auth, Recoverable, IGateway {
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
 
-            uint256 remainingGas = gasleft() - GAS_FAIL_MESSAGE_STORAGE;
             uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
+            require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            // We only want to fail inside `processor.handle()` by logic stuff, not by out of gas issues
-            require(remainingGas >= executionGas, NotEnoughGasToProcess());
-
-            try processor_.handle{gas: remainingGas}(centrifugeId, message) {
+            try processor_.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
             } catch (bytes memory err) {
                 bytes32 messageHash = keccak256(message);
