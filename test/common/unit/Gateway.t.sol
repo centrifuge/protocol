@@ -36,7 +36,7 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
     if (kind == MessageKind.WithPoolA1) return 10;
     if (kind == MessageKind.WithPoolA2) return 15;
-    if (kind == MessageKind.WithPoolAFail) return 10;
+    if (kind == MessageKind.WithPoolAFail) return 250;
     return 2;
 }
 
@@ -119,6 +119,10 @@ contract GatewayExt is Gateway {
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
+    }
+
+    function process(uint16 centrifugeId, bytes memory message) public {
+        _process(centrifugeId, message);
     }
 }
 
@@ -267,6 +271,16 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
+    function testErrNotEnoughGasToProcess() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
+        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+
+        vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
+
+        // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
+        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+    }
+
     function testMessage() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
@@ -331,6 +345,12 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
+    }
+
+    function testMessageFailBenchmark() public {
+        bytes memory message = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.process(REMOTE_CENT_ID, message);
     }
 }
 

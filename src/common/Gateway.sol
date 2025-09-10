@@ -31,7 +31,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
-    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 50_000;
+    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
@@ -92,24 +92,27 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
-        IMessageProcessor processor_ = processor;
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
-            uint256 length = processor_.messageLength(remaining);
+            uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
 
             uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
             require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            try processor_.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
-                emit ExecuteMessage(centrifugeId, message);
-            } catch (bytes memory err) {
-                bytes32 messageHash = keccak256(message);
-                failedMessages[centrifugeId][messageHash]++;
-                emit FailMessage(centrifugeId, message, err);
-            }
+            _process(centrifugeId, message);
+        }
+    }
+
+    function _process(uint16 centrifugeId, bytes memory message) internal {
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message);
+        } catch (bytes memory err) {
+            bytes32 messageHash = keccak256(message);
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, err);
         }
     }
 
