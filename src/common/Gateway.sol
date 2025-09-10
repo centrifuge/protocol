@@ -35,6 +35,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
+    uint16 public immutable localCentrifugeId;
+
     // Dependencies
     IRoot public immutable root;
     IGasService public gasService;
@@ -52,7 +54,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+        localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
 
@@ -98,7 +101,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             remaining = remaining.slice(length, remaining.length - length);
 
             uint256 remainingGas = gasleft() - GAS_FAIL_MESSAGE_STORAGE;
-            uint256 executionGas = gasService.maxBatchGasLimit(centrifugeId).min(remainingGas);
+            uint256 executionGas = gasService.maxBatchGasLimit(localCentrifugeId).min(remainingGas);
             try processor_.handle{gas: executionGas}(centrifugeId, message) {
                 emit ExecuteMessage(centrifugeId, message);
             } catch (bytes memory err) {

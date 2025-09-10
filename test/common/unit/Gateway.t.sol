@@ -101,7 +101,9 @@ contract MockPoolRefund is Recoverable {
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(IRoot root_, IGasService gasService_, address deployer) Gateway(root_, gasService_, deployer) {}
+    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
+        Gateway(localCentrifugeId, root_, gasService_, deployer)
+    {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -125,6 +127,7 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
+    uint16 constant LOCAL_CENT_ID = 24;
     uint16 constant REMOTE_CENT_ID = 24;
 
     uint256 constant ADAPTER_ESTIMATE = 1 gwei;
@@ -140,7 +143,7 @@ contract GatewayTest is Test {
     IAdapterBlockSendingExt adapter = IAdapterBlockSendingExt(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
