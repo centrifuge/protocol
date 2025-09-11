@@ -226,7 +226,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length));
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
         deploy.guardian().setAdaptersManager(MULTI_ADAPTER_MANAGER);
         vm.stopPrank();
     }
@@ -499,7 +499,7 @@ contract EndToEndFlows is EndToEndUtils {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1);
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
         h.hub.setAdaptersManager{value: GAS}(h.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
         h.hub.setAdaptersManager{value: GAS}(s.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
     }
@@ -1383,6 +1383,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         }
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1);
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
     }
 }

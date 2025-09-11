@@ -659,13 +659,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         PoolId poolId,
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
-        uint8 threshold
+        uint8 threshold,
+        uint8 recoveryIndex
     ) external payable payTransaction {
         _isManager(poolId);
 
-        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold);
+        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
 
-        sender.sendSetPoolAdapters(centrifugeId, poolId, remoteAdapters, threshold);
+        sender.sendSetPoolAdapters(centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex);
     }
 
     /// @inheritdoc IHub
