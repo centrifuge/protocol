@@ -56,7 +56,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @notice Dispatched when the contract is configured with an empty adapter set.
     error EmptyAdapterSet();
 
-    /// @notice Dispatched when the threshold number is higher than the number of configued adapters (aka quorum).
+    /// @notice Dispatched when the threshold number is higher than the number of configured adapters (aka quorum).
     error ThresholdHigherThanQuorum();
 
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
