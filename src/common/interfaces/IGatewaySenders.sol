@@ -132,8 +132,13 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external;
 
     /// @notice Creates and send the message
-    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters, uint8 threshold)
-        external;
+    function sendSetPoolAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        bytes32[] memory adapters,
+        uint8 threshold,
+        uint8 recoveryIndex
+    ) external;
 
     /// @notice Creates and send the message
     function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external;

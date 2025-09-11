@@ -92,7 +92,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
-            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold);
+            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold, m.recoveryIndex);
         } else if (kind == MessageType.SetPoolAdaptersManager) {
             MessageLib.SetPoolAdaptersManager memory m = message.deserializeSetPoolAdaptersManager();
             multiAdapter.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());

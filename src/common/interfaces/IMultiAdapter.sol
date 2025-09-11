@@ -18,6 +18,8 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         uint8 quorum;
         /// @notice Number of votes required for a message to be executed. Less-equal to quorum.
         uint8 threshold;
+        /// @notice Index in the adapter array to start consider the adapter as recovery adapter.
+        uint8 recoveryIndex;
         /// @notice Each time the quorum is decreased, a new session starts which invalidates old votes
         uint64 activeSessionId;
     }
@@ -34,7 +36,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     event File(bytes32 indexed what, address addr);
 
-    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold);
+    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
     event SetManager(PoolId poolId, address manager);
     event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
@@ -58,6 +60,9 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     /// @notice Dispatched when the threshold number is higher than the number of configured adapters (aka quorum).
     error ThresholdHigherThanQuorum();
+
+    /// @notice Dispatched when the recovery index is higher than the number of configured adapters (aka quorum).
+    error RecoveryIndexHigherThanQuorum();
 
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
@@ -86,7 +91,16 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
     /// @param  threshold Minimum number of adapters required to process the messages
-    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
+    ///         If not wanted a threshold set `adapters.length` value
+    /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
+    ///         If not wanted a recoveryIndex set `adapters.length` value
+    function setAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] calldata adapters,
+        uint8 threshold,
+        uint8 recoveryIndex
+    ) external;
 
     /// @notice Configures a recovery address for a pool to later be able to call `execute()`.
     /// @param  poolId PoolId associated to the adapters
@@ -118,6 +132,12 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @param  poolId PoolId associated to the adapters
     /// return  Needed amount
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
+
+    /// @notice Index in the adapter array to start consider the adapter as recovery adapter.
+    /// @param  centrifugeId Chain where the adapter is configured for
+    /// @param  poolId PoolId associated to the adapters
+    /// return  Needed amount
+    function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
     /// @dev    When the adapters are updated with new ones,

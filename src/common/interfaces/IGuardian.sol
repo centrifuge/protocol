@@ -67,12 +67,9 @@ interface IGuardian {
         uint256 amount
     ) external;
 
-    /// @notice Set adapters into MultiAdapter.
-    /// @dev The adapters must be previously deployed and wired.
-    /// @param centrifugeId The destination chain ID to wire adapters for
-    /// @param adapters Array of adapter addresses to register with MultiAdapter
-    /// @param  threshold Minimum number of adapters required to process the messages
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold) external;
+    /// @notice Set adapters into MultiAdapter. Check IMultiAdapter docs
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external;
 
     /// @notice Set an adapters manager for the global adaters.
     /// @param manager address able to recover messages in the `centrifugeId` chain or pause sending messages

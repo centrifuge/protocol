@@ -367,17 +367,21 @@ interface IHub {
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
-    /// @param centrifugeId chain where to perform the adapter configuration.
-    /// @param poolId pool associated to this configuration.
-    /// @param localAdapters Adapter addresses in this chain.
-    /// @param remoteAdapters Adapter addresses in the remote chain.
-    /// @param threshold Minimum number of adapters required to process the messages
+    /// @param  centrifugeId chain where to perform the adapter configuration.
+    /// @param  poolId pool associated to this configuration.
+    /// @param  localAdapters Adapter addresses in this chain.
+    /// @param  remoteAdapters Adapter addresses in the remote chain.
+    /// @param  threshold Minimum number of adapters required to process the messages
+    ///         If not wanted a threshold set `adapters.length` value
+    /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
+    ///         If not wanted a recoveryIndex set `adapters.length` value
     function setAdapters(
         uint16 centrifugeId,
         PoolId poolId,
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
-        uint8 threshold
+        uint8 threshold,
+        uint8 recoveryIndex
     ) external payable;
 
     /// @notice Set an adapters manager for a pool. The manager can modify adapter-related things in the remote chain.
