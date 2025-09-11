@@ -6,7 +6,6 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {MessageProofLib} from "../../../src/common/libraries/MessageProofLib.sol";
 import {MessageLib, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCallbackMessageLib.sol";
 
@@ -349,9 +348,8 @@ contract MockCentrifugeChain is Test {
     }
 
     function execute(bytes memory message) public {
-        bytes memory proof = MessageProofLib.createMessageProof(message.messagePoolId(), keccak256(message));
         for (uint256 i = 0; i < adapters.length; i++) {
-            AdapterLike(address(adapters[i])).execute(i == 0 ? message : proof);
+            AdapterLike(address(adapters[i])).execute(message);
         }
     }
 }

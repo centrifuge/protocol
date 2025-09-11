@@ -7,7 +7,6 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
-import {MessageProofLib} from "../../../src/common/libraries/MessageProofLib.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/common/interfaces/IMultiAdapter.sol";
@@ -90,12 +89,11 @@ contract MultiAdapterTest is Test {
 
     bytes constant MESSAGE_1 = "POOL_A: Message 1";
     bytes constant MESSAGE_2 = "POOL_A: Message 2";
-    bytes constant PROOF_1 = "1POOL_A";
     bytes constant MESSAGE_POOL_0 = "Message";
 
-    IAdapter payloadAdapter = IAdapter(makeAddr("PayloadAdapter"));
-    IAdapter proofAdapter1 = IAdapter(makeAddr("ProofAdapter1"));
-    IAdapter proofAdapter2 = IAdapter(makeAddr("ProofAdapter2"));
+    IAdapter adapter1 = IAdapter(makeAddr("Adapter1"));
+    IAdapter adapter2 = IAdapter(makeAddr("Adapter2"));
+    IAdapter adapter3 = IAdapter(makeAddr("Adapter3"));
     IAdapter[] oneAdapter;
     IAdapter[] threeAdapters;
 
@@ -130,10 +128,10 @@ contract MultiAdapterTest is Test {
     }
 
     function setUp() public {
-        oneAdapter.push(payloadAdapter);
-        threeAdapters.push(payloadAdapter);
-        threeAdapters.push(proofAdapter1);
-        threeAdapters.push(proofAdapter2);
+        oneAdapter.push(adapter1);
+        threeAdapters.push(adapter1);
+        threeAdapters.push(adapter2);
+        threeAdapters.push(adapter3);
     }
 
     function testConstructor() public view {
@@ -245,234 +243,148 @@ contract MultiAdapterTestSetManager is MultiAdapterTest {
 }
 
 contract MultiAdapterTestHandle is MultiAdapterTest {
-    using MessageProofLib for *;
-
     function testErrInvalidAdapter() public {
         vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-    }
-
-    function testErrEmptyMessage() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter);
-
-        vm.prank(address(payloadAdapter));
-        vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, new bytes(0));
-    }
-
-    function testErrNonProofAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
-
-        vm.prank(address(payloadAdapter));
-        vm.expectRevert(IMultiAdapter.NonProofAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1)));
-    }
-
-    function testErrNonProofAdapterWithOneAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter);
-
-        vm.prank(address(payloadAdapter));
-        vm.expectRevert(IMultiAdapter.NonProofAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1)));
-    }
-
-    function testErrNonPayloadAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
-
-        vm.prank(address(proofAdapter1));
-        vm.expectRevert(IMultiAdapter.NonPayloadAdapter.selector);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-    }
-
-    function testMessageWithOneAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter);
-
-        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(MESSAGE_1)));
-
-        vm.prank(address(payloadAdapter));
-        vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, payloadAdapter);
-        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
-
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
     function testMessageWithOneAdapterButPoolANoConfigured() public {
         // POOL_A is not configured, and MESSAGE_1 comes from POOL_A, but it works because POOL_0 is the default
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter);
 
-        vm.prank(address(payloadAdapter));
+        vm.prank(address(adapter1));
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
 
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
-    function testMessageAndProofs() public {
+    function testMessageWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
+        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(MESSAGE_1)));
 
-        vm.prank(address(payloadAdapter));
+        vm.prank(address(adapter1));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, payloadAdapter);
-        multiAdapter.handle(REMOTE_CENT_ID, message);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1);
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 1, 0, 0);
+        assertVotes(MESSAGE_1, 1, 0, 0);
 
-        vm.prank(address(proofAdapter1));
+        vm.prank(address(adapter2));
         vm.expectEmit();
-        emit IMultiAdapter.HandleProof(REMOTE_CENT_ID, payloadId, keccak256(message), proofAdapter1);
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2);
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 1, 1, 0);
+        assertVotes(MESSAGE_1, 1, 1, 0);
 
-        vm.prank(address(proofAdapter2));
+        vm.prank(address(adapter3));
         vm.expectEmit();
-        emit IMultiAdapter.HandleProof(REMOTE_CENT_ID, payloadId, keccak256(message), proofAdapter2);
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3);
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 0), message);
-        assertVotes(message, 0, 0, 0);
+        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+        assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
-    function testSameMessageAndProofs() public {
+    function testSameMessageAgainWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
 
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(message, 1, 0, 0);
+        assertVotes(MESSAGE_1, 1, 0, 0);
 
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(message, 1, 1, 0);
+        assertVotes(MESSAGE_1, 1, 1, 0);
 
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 1), message);
-        assertVotes(message, 0, 0, 0);
+        assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_1);
+        assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
-    function testOtherMessageAndProofs() public {
+    function testOtherMessageWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
 
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-
-        bytes memory batch2 = MESSAGE_2;
-        bytes memory proof2 = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_2));
-
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, batch2);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(batch2, 1, 0, 0);
+        assertVotes(MESSAGE_2, 1, 0, 0);
 
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof2);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(batch2, 1, 1, 0);
+        assertVotes(MESSAGE_2, 1, 1, 0);
 
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof2);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_2);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertEq(gateway.handled(REMOTE_CENT_ID, 1), batch2);
-        assertVotes(batch2, 0, 0, 0);
-    }
-
-    function testMessageAfterProofs() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
-
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 0, 1, 0);
-
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
-        assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 0, 1, 1);
-
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
-        assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(message, 0, 0, 0);
+        assertEq(gateway.handled(REMOTE_CENT_ID, 1), MESSAGE_2);
+        assertVotes(MESSAGE_2, 0, 0, 0);
     }
 
     function testOneFasterAdapter() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 2, 0, 0);
+        assertVotes(MESSAGE_1, 2, 0, 0);
 
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 2, 1, 0);
+        assertVotes(MESSAGE_1, 2, 1, 0);
 
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(message, 1, 0, 0);
+        assertVotes(MESSAGE_1, 1, 0, 0);
 
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
-        assertVotes(message, 1, 1, 0);
+        assertVotes(MESSAGE_1, 1, 1, 0);
 
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 2);
-        assertVotes(message, 0, 0, 0);
+        assertVotes(MESSAGE_1, 0, 0, 0);
     }
 
     function testVotesAfterNewSession() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
-        vm.prank(address(payloadAdapter));
-        multiAdapter.handle(REMOTE_CENT_ID, message);
-        vm.prank(address(proofAdapter1));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
 
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        vm.prank(address(proofAdapter2));
-        multiAdapter.handle(REMOTE_CENT_ID, proof);
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
-        assertVotes(message, 0, 0, 1);
+        assertVotes(MESSAGE_1, 0, 0, 1);
     }
 }
 
@@ -480,7 +392,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
     function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IMultiAdapter.ManagerNotAllowed.selector);
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, bytes(""));
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, bytes(""));
     }
 
     function testExecute() public {
@@ -488,35 +400,31 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
         multiAdapter.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        emit IMultiAdapter.Execute(REMOTE_CENT_ID, MESSAGE_1, payloadAdapter);
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        emit IMultiAdapter.Execute(REMOTE_CENT_ID, MESSAGE_1, adapter1);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, MESSAGE_1);
 
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 
-    function testExecuteWithProofs() public {
+    function testExecuteWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
         multiAdapter.setManager(POOL_A, MANAGER);
 
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
         vm.startPrank(MANAGER);
 
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, payloadAdapter, MESSAGE_1);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter1, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
 
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, proofAdapter1, proof);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter2, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0); // nothing yet
 
-        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, proofAdapter2, proof);
+        multiAdapter.execute(REMOTE_CENT_ID, POOL_A, adapter3, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 1); // executed!
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
     }
 }
 
 contract MultiAdapterTestSend is MultiAdapterTest {
-    using MessageProofLib for *;
-
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -543,33 +451,28 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     function testSendMessage() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-        bytes32 batchHash = keccak256(MESSAGE_1);
-        bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, batchHash));
+        bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, keccak256(MESSAGE_1)));
 
         uint256 cost = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
-        _mockAdapter(payloadAdapter, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(proofAdapter1, proof, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(proofAdapter2, proof, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         vm.expectEmit();
-        emit IMultiAdapter.SendPayload(
-            REMOTE_CENT_ID, payloadId, message, payloadAdapter, ADAPTER_DATA_1, address(REFUND)
-        );
+        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter1, ADAPTER_DATA_1, address(REFUND));
         vm.expectEmit();
-        emit IMultiAdapter.SendProof(REMOTE_CENT_ID, payloadId, batchHash, proofAdapter1, ADAPTER_DATA_2);
+        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter2, ADAPTER_DATA_2, address(REFUND));
         vm.expectEmit();
-        emit IMultiAdapter.SendProof(REMOTE_CENT_ID, payloadId, batchHash, proofAdapter2, ADAPTER_DATA_3);
-        multiAdapter.send{value: cost}(REMOTE_CENT_ID, message, GAS_LIMIT, REFUND);
+        emit IMultiAdapter.SendPayload(REMOTE_CENT_ID, payloadId, MESSAGE_1, adapter3, ADAPTER_DATA_3, address(REFUND));
+        multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
     }
 
     function testSendMessageButPoolANotConfigured() public {
         // POOL_A is not configured, and MESSAGE_1 is send from POOL_A, but it works because POOL_0 is the default
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter);
 
-        _mockAdapter(payloadAdapter, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
 
         uint256 cost = GAS_LIMIT + ADAPTER_ESTIMATE_1;
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
@@ -577,8 +480,6 @@ contract MultiAdapterTestSend is MultiAdapterTest {
 }
 
 contract MultiAdapterTestEstimate is MultiAdapterTest {
-    using MessageProofLib for *;
-
     function testEstimateNoAdapters() public view {
         assertEq(multiAdapter.estimate(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT), 0);
     }
@@ -586,12 +487,9 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
     function testEstimate() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
-        _mockAdapter(payloadAdapter, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(proofAdapter1, proof, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(proofAdapter2, proof, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 
@@ -602,12 +500,9 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
         // POOL_A is not configured, and MESSAGE_1 is from POOL_A, but it works because POOL_0 is the default
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters);
 
-        bytes memory message = MESSAGE_1;
-        bytes memory proof = MessageProofLib.createMessageProof(POOL_A, keccak256(MESSAGE_1));
-
-        _mockAdapter(payloadAdapter, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
-        _mockAdapter(proofAdapter1, proof, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
-        _mockAdapter(proofAdapter2, proof, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+        _mockAdapter(adapter1, MESSAGE_1, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, MESSAGE_1, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, MESSAGE_1, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
 
         uint256 estimation = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
 

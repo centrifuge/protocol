@@ -8,7 +8,6 @@ import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 
-// NOTE: Should never exceed 254 messages because id == 255 corresponds to message proofs
 enum MessageType {
     /// @dev Placeholder for null message type
     _Invalid,
