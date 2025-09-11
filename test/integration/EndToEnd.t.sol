@@ -660,7 +660,7 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
         uint32 depositEpochId = requestManager.nowDepositEpoch(shareClassId, assetId);
         hub.hub.approveDeposits{value: GAS}(poolId, shareClassId, assetId, depositEpochId, amount);
 
@@ -688,7 +688,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxDepositClaims(
+            IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager")).maxDepositClaims(
                 shareClassId, investor.toBytes32(), assetId
             )
         );
@@ -885,7 +885,7 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
         uint32 nowRedeemEpoch = requestManager.nowRedeemEpoch(shareClassId, assetId);
         uint32 nowRevokeEpoch = requestManager.nowRevokeEpoch(shareClassId, assetId);
 
@@ -911,7 +911,7 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
         uint32 nowDepositEpoch = requestManager.nowDepositEpoch(shareClassId, assetId);
         uint32 nowIssueEpoch = requestManager.nowIssueEpoch(shareClassId, assetId);
 
@@ -953,7 +953,7 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
         uint32 redeemEpochId = requestManager.nowRedeemEpoch(shareClassId, assetId);
         hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
 
@@ -980,7 +980,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxRedeemClaims(
+            IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager")).maxRedeemClaims(
                 shareClassId, investor.toBytes32(), assetId
             )
         );
