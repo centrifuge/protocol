@@ -15,7 +15,6 @@ import {ShareClassId, newShareClassId} from "../common/types/ShareClassId.sol";
 contract ShareClassManager is Auth, IShareClassManager {
     IHubRegistry public immutable hubRegistry;
 
-    // Share classes
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId poolId => uint32) public shareClassCount;
     mapping(ShareClassId scId => ShareClassMetrics) public metrics;
@@ -26,16 +25,6 @@ contract ShareClassManager is Auth, IShareClassManager {
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
         hubRegistry = hubRegistry_;
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Events
-    //----------------------------------------------------------------------------------------------
-
-    //----------------------------------------------------------------------------------------------
-    // Errors
-    //----------------------------------------------------------------------------------------------
-
-    error DecreaseMoreThanIssued();
 
     //----------------------------------------------------------------------------------------------
     // Administration

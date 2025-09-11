@@ -70,9 +70,11 @@ contract HubRequestManager is Auth, IHubRequestManager {
         hubRegistry = hubRegistry_;
     }
 
-    /// @notice Updates a contract parameter.
-    /// @param what Name of the parameter to update.
-    /// Accepts a `bytes32` representation of 'hub'
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRequestManager
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = data;
         else revert FileUnrecognizedParam();

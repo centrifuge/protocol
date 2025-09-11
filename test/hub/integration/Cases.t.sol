@@ -112,7 +112,7 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager"));
         hub.approveDeposits{value: GAS}(
             poolId, scId, USDC_C2, requestManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
         );
@@ -179,7 +179,7 @@ contract TestCases is BaseTest {
         );
 
         vm.startPrank(FM);
-        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency("requestManager"));
+        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager"));
         hub.approveRedeems(poolId, scId, USDC_C2, requestManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT);
         hub.revokeShares{value: GAS}(
             poolId, scId, USDC_C2, requestManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS

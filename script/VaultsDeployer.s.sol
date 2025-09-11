@@ -20,8 +20,8 @@ import "forge-std/Script.sol";
 struct VaultsReport {
     SpokeReport spoke;
     SyncManager syncManager;
-    AsyncRequestManager asyncRequestManager;
     HubRequestManager hubRequestManager;
+    AsyncRequestManager asyncRequestManager;
     Escrow routerEscrow;
     Escrow globalEscrow;
     VaultRouter vaultRouter;
@@ -45,9 +45,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         // Rely Root
         report.vaultRouter.rely(address(report.spoke.common.root));
         report.asyncRequestManager.rely(address(report.spoke.common.root));
-        if (address(report.hubRequestManager) != address(0)) {
-            report.hubRequestManager.rely(address(report.spoke.common.root));
-        }
+        report.hubRequestManager.rely(address(report.spoke.common.root));
         report.syncManager.rely(address(report.spoke.common.root));
         report.routerEscrow.rely(address(report.spoke.common.root));
         report.globalEscrow.rely(address(report.spoke.common.root));
@@ -80,9 +78,7 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.asyncVaultFactory.deny(address(this));
         report.syncDepositVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));
-        if (address(report.hubRequestManager) != address(0)) {
-            report.hubRequestManager.deny(address(this));
-        }
+        report.hubRequestManager.deny(address(this));
         report.syncManager.deny(address(this));
         report.routerEscrow.deny(address(this));
         report.globalEscrow.deny(address(this));
@@ -132,14 +128,12 @@ contract VaultsDeployer is SpokeDeployer {
             )
         );
 
-        if (_hubRegistry != address(0)) {
-            hubRequestManager = HubRequestManager(
-                create3(
-                    generateSalt("hubRequestManager"),
-                    abi.encodePacked(type(HubRequestManager).creationCode, abi.encode(_hubRegistry, batcher))
-                )
-            );
-        }
+        hubRequestManager = HubRequestManager(
+            create3(
+                generateSalt("hubRequestManager"),
+                abi.encodePacked(type(HubRequestManager).creationCode, abi.encode(_hubRegistry, batcher))
+            )
+        );
 
         syncManager = SyncManager(
             create3(generateSalt("syncManager"), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
@@ -201,8 +195,8 @@ contract VaultsDeployer is SpokeDeployer {
         return VaultsReport(
             _spokeReport(),
             syncManager,
-            asyncRequestManager,
             hubRequestManager,
+            asyncRequestManager,
             routerEscrow,
             globalEscrow,
             vaultRouter,

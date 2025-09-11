@@ -45,6 +45,7 @@ interface IShareClassManager {
     error AlreadyUsedSalt();
     error PoolMissing();
     error ShareClassNotFound();
+    error DecreaseMoreThanIssued();
 
     /// Functions
 

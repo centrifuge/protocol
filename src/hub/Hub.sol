@@ -179,6 +179,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         bytes calldata payload,
         uint128 gasLimit
     ) external {
+        // TODO: verify msg.sender is the hub request manager
         _auth();
         sender.sendRequestCallback(poolId, scId, assetId, payload, gasLimit);
     }
@@ -317,10 +318,8 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external payable payTransaction {
         _isManager(poolId);
 
-        // Store hubManager in hubRegistry
-        hubRegistry.updateDependency("requestManager", address(uint160(uint256(hubManager))));
+        hubRegistry.updateDependency(poolId, "requestManager", address(uint160(uint256(hubManager))));
 
-        // Send spokeManager to the spoke chain
         sender.sendSetRequestManager(poolId, scId, assetId, spokeManager);
 
         emit SetRequestManager(poolId, scId, assetId, hubManager, spokeManager);
@@ -358,7 +357,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external payable payTransaction returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
         _isManager(poolId);
         D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, depositAssetId);
-        (pendingAssetAmount, approvedPoolAmount) = IHubRequestManager(hubRegistry.dependency("requestManager"))
+        (pendingAssetAmount, approvedPoolAmount) = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager"))
             .approveDeposits(poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset);
 
         sender.sendRequestCallback(
@@ -381,7 +380,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         D18 price = hubHelpers.pricePoolPerAsset(poolId, scId, payoutAssetId);
-        (pendingShareAmount) = IHubRequestManager(hubRegistry.dependency("requestManager")).approveRedeems(
+        (pendingShareAmount) = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).approveRedeems(
             poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price
         );
     }
@@ -403,7 +402,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         (issuedShareAmount, depositAssetAmount, depositPoolAmount) = IHubRequestManager(
-            hubRegistry.dependency("requestManager")
+            hubRegistry.dependency(poolId, "requestManager")
         ).issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
 
         sender.sendRequestCallback(
@@ -432,7 +431,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         _isManager(poolId);
 
         (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) = IHubRequestManager(
-            hubRegistry.dependency("requestManager")
+            hubRegistry.dependency(poolId, "requestManager")
         ).revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
 
         sender.sendRequestCallback(
@@ -453,7 +452,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _isManager(poolId);
 
-        uint128 cancelledAssetAmount = IHubRequestManager(hubRegistry.dependency("requestManager"))
+        uint128 cancelledAssetAmount = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager"))
             .forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
@@ -476,7 +475,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _isManager(poolId);
 
-        uint128 cancelledShareAmount = IHubRequestManager(hubRegistry.dependency("requestManager"))
+        uint128 cancelledShareAmount = IHubRequestManager(hubRegistry.dependency(poolId, "requestManager"))
             .forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
 
         // Cancellation might have been queued such that it will be executed in the future during claiming

@@ -19,7 +19,7 @@ contract HubRegistry is Auth, IHubRegistry {
 
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
-    mapping(bytes32 => address) public dependency;
+    mapping(PoolId => mapping(bytes32 => address)) public dependency;
     mapping(PoolId => mapping(address => bool)) public manager;
 
     constructor(address deployer) Auth(deployer) {}
@@ -73,10 +73,12 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function updateDependency(bytes32 what, address dependency_) external auth {
-        dependency[what] = dependency_;
+    function updateDependency(PoolId poolId_, bytes32 what, address dependency_) external auth {
+        require(exists(poolId_), NonExistingPool(poolId_));
+        
+        dependency[poolId_][what] = dependency_;
 
-        emit UpdateDependency(what, dependency_);
+        emit UpdateDependency(poolId_, what, dependency_);
     }
 
     /// @inheritdoc IHubRegistry

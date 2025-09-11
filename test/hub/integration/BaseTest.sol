@@ -69,7 +69,8 @@ contract BaseTest is HubDeployer, Test {
 
         // Deploy and set up mock request manager
         mockRequestManager = new MockRequestManager();
-        hubRegistry.updateDependency("requestManager", address(mockRequestManager));
+        PoolId testPool = hubRegistry.poolId(CHAIN_CP, 1);
+        hubRegistry.updateDependency(testPool, "requestManager", address(mockRequestManager));
 
         vm.stopPrank();
     }

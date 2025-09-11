@@ -11,7 +11,7 @@ interface IHubRegistry is IERC6909Decimals {
     event NewPool(PoolId poolId, address indexed manager, AssetId indexed currency);
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdateDependency(bytes32 indexed what, address dependency);
+    event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
 
     error NonExistingPool(PoolId id);
@@ -35,7 +35,7 @@ interface IHubRegistry is IERC6909Decimals {
     function setMetadata(PoolId poolId, bytes calldata metadata) external;
 
     /// @notice updates a dependency of the system
-    function updateDependency(bytes32 what, address dependency) external;
+    function updateDependency(PoolId poolId, bytes32 what, address dependency) external;
 
     /// @notice updates the currency of the pool
     function updateCurrency(PoolId poolId, AssetId currency) external;
@@ -47,7 +47,7 @@ interface IHubRegistry is IERC6909Decimals {
     function currency(PoolId poolId) external view returns (AssetId);
 
     /// @notice returns the dependency used in the system
-    function dependency(bytes32 what) external view returns (address);
+    function dependency(PoolId poolId, bytes32 what) external view returns (address);
 
     /// @notice returns whether the account is a manager
     function manager(PoolId poolId, address who) external view returns (bool);
