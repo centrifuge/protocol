@@ -371,11 +371,13 @@ interface IHub {
     /// @param poolId pool associated to this configuration.
     /// @param localAdapters Adapter addresses in this chain.
     /// @param remoteAdapters Adapter addresses in the remote chain.
+    /// @param threshold Minimum number of adapters required to process the messages
     function setAdapters(
         uint16 centrifugeId,
         PoolId poolId,
         IAdapter[] memory localAdapters,
-        bytes32[] memory remoteAdapters
+        bytes32[] memory remoteAdapters,
+        uint8 threshold
     ) external payable;
 
     /// @notice Set an adapters manager for a pool. The manager can modify adapter-related things in the remote chain.

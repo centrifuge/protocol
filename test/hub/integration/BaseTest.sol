@@ -61,7 +61,7 @@ contract BaseTest is HubDeployer, Test {
         cv = new MockVaults(CHAIN_CV, multiAdapter);
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = cv;
-        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters);
+        multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters, uint8(adapters.length));
 
         valuation = new MockValuation(hubRegistry);
 
