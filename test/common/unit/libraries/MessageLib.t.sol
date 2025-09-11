@@ -3,16 +3,9 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../../src/common/types/AssetId.sol";
-import {MessageProofLib} from "../../../../src/common/libraries/MessageProofLib.sol";
 import {MessageType, MessageLib} from "../../../../src/common/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
-
-contract TestMessageProofCompatibility is Test {
-    function testMessageProofCompatibility() public pure {
-        assertNotEq(uint8(type(MessageType).max), MessageProofLib.MESSAGE_PROOF_ID);
-    }
-}
 
 contract TestMessageLibIds is Test {
     function _prepareFor() private returns (bytes memory buffer) {

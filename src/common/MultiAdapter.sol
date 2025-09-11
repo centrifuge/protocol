@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
-import {MessageProofLib} from "./libraries/MessageProofLib.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
@@ -16,15 +15,14 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
-    using MessageProofLib for *;
     using BytesLib for bytes;
-    using ArrayLib for uint16[8];
-    using MathLib for uint256;
+using MathLib for uint256;
+using ArrayLib for uint16[8];
 
     PoolId public constant GLOBAL_ID = PoolId.wrap(0);
-    uint8 public constant PRIMARY_ADAPTER_ID = 1;
 
     uint16 public immutable localCentrifugeId;
+
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
@@ -103,11 +101,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
-        bool isMessageProof = payload.toUint8(0) == MessageProofLib.MESSAGE_PROOF_ID;
-
-        PoolId poolId;
-        if (isMessageProof) poolId = payload.proofPoolId();
-        else poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = messageProperties.messagePoolId(payload);
 
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
 
@@ -117,23 +111,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(adapter.id != 0, InvalidAdapter());
 
         // Verify adapter and parse message hash
-        bytes32 payloadHash;
-        if (isMessageProof) {
-            require(adapter.id != PRIMARY_ADAPTER_ID, NonProofAdapter());
-
-            payloadHash = payload.proofHash();
-            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
-            emit HandleProof(centrifugeId, payloadId, payloadHash, adapter_);
-        } else {
-            require(adapter.id == PRIMARY_ADAPTER_ID, NonPayloadAdapter());
-
-            payloadHash = keccak256(payload);
-            bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
-            emit HandlePayload(centrifugeId, payloadId, payload, adapter_);
-        }
+        bytes32 payloadHash = keccak256(payload);
+        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
+        emit HandlePayload(centrifugeId, payloadId, payload, adapter_);
 
         // Special case for gas efficiency
-        if (adapter.quorum == 1 && !isMessageProof) {
+        if (adapter.quorum == 1) {
             gateway.handle(centrifugeId, payload);
             return;
         }
@@ -153,18 +136,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
             // Reduce votes by quorum
             state.votes.decreaseFirstNValues(adapter.quorum);
 
-            if (isMessageProof) {
-                gateway.handle(centrifugeId, state.pending);
-            } else {
-                gateway.handle(centrifugeId, payload);
-            }
-
-            // Only if there are no more pending messages, remove the pending message
-            if (state.votes.isEmpty()) {
-                delete state.pending;
-            }
-        } else if (!isMessageProof) {
-            state.pending = payload;
+            gateway.handle(centrifugeId, payload);
         }
     }
 
@@ -180,7 +152,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapter
-    function send(uint16 centrifugeId, bytes memory payload, uint256 gasLimit, address refund)
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address refund)
         external
         payable
         auth
@@ -190,22 +162,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(!isOutgoingBlocked[centrifugeId][poolId], OutgoingBlocked());
 
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
-
         require(adapters_.length != 0, EmptyAdapterSet());
 
-        bytes32 payloadHash = keccak256(payload);
-        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, payloadHash));
-
-        uint256 cost = adapters_[0].estimate(centrifugeId, payload, gasLimit);
-        bytes32 adapterData = adapters_[0].send{value: cost}(centrifugeId, payload, gasLimit, refund);
-        emit SendPayload(centrifugeId, payloadId, payload, adapters_[0], adapterData, refund);
-
-        // Override the payload variable to send the proof to the remaining adapters
-        payload = MessageProofLib.createMessageProof(poolId, payloadHash);
-        for (uint256 i = 1; i < adapters_.length; i++) {
-            cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
-            adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
-            emit SendProof(centrifugeId, payloadId, payloadHash, adapters_[i], adapterData);
+        bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
+        for (uint256 i = 0; i < adapters_.length; i++) {
+            uint256 cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
+            bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
+            emit SendPayload(centrifugeId, payloadId, payload, adapters_[i], adapterData, refund);
         }
 
         return bytes32(0);
@@ -219,10 +182,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     {
         PoolId poolId = messageProperties.messagePoolId(payload);
         IAdapter[] memory adapters_ = poolAdapters(centrifugeId, poolId);
-        bytes memory proof = MessageProofLib.createMessageProof(poolId, keccak256(payload));
 
         for (uint256 i; i < adapters_.length; i++) {
-            total += adapters_[i].estimate(centrifugeId, i == PRIMARY_ADAPTER_ID - 1 ? payload : proof, gasLimit);
+            total += adapters_[i].estimate(centrifugeId, payload, gasLimit);
         }
     }
 

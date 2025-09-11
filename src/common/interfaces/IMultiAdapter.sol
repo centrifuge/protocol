@@ -28,7 +28,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         uint16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
-        bytes pending;
     }
 
     event File(bytes32 indexed what, address addr);
@@ -38,7 +37,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
-    event HandleProof(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes32 payloadHash, IAdapter adapter);
     event SendPayload(
         uint16 indexed centrifugeId,
         bytes32 indexed payloadId,
@@ -46,13 +44,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         IAdapter adapter,
         bytes32 adapterData,
         address refund
-    );
-    event SendProof(
-        uint16 indexed centrifugeId,
-        bytes32 indexed payloadId,
-        bytes32 payloadHash,
-        IAdapter adapter,
-        bytes32 adapterData
     );
 
     event Execute(uint16 centrifugeId, bytes message, IAdapter adapter);
@@ -71,12 +62,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     /// @notice Dispatched when the contract tries to handle a message from an adaptet not contained in the adapter set.
     error InvalidAdapter();
-
-    /// @notice Dispatched when the contract is configured with an empty adapter set.
-    error NonProofAdapter();
-
-    /// @notice Dispatched when the contract tries to handle a payload from a non message adapter.
-    error NonPayloadAdapter();
 
     /// @notice Dispatched when a recovery message is not executed from the manager.
     error ManagerNotAllowed();
