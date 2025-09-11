@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -10,7 +10,7 @@ import {
     QueuedOrder,
     RequestType,
     EpochId
-} from "./interfaces/IHubRequestManager.sol";
+} from "../hub/interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";

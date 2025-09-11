@@ -11,7 +11,7 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {HubRequestManager} from "../../../src/hub/HubRequestManager.sol";
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {
     IHubRequestManager,
