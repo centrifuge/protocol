@@ -440,7 +440,7 @@ contract EndToEndFlows is EndToEndUtils {
             GAIN_ACCOUNT,
             LOSS_ACCOUNT
         );
-        hub.hub.setRequestManager{value: GAS}(poolId, address(spoke.asyncRequestManager).toBytes32());
+        hub.hub.setRequestManager{value: GAS}(poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32());
         hub.hub.updateBalanceSheetManager{value: GAS}(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
         );

@@ -37,7 +37,7 @@ contract TestCases is BaseTest {
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
         hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
-        hub.setRequestManager{value: GAS}(poolId, ASYNC_REQUEST_MANAGER.toBytes32());
+        hub.setRequestManager{value: GAS}(poolId, CHAIN_CV, ASYNC_REQUEST_MANAGER.toBytes32());
         hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true);
         hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true);
 

@@ -105,7 +105,7 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_2 =
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
-        (73  << (uint8(MessageType.SetRequestManager) - 32) * 8);
+        (41  << (uint8(MessageType.SetRequestManager) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
