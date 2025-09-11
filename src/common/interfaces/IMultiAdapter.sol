@@ -14,8 +14,10 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
         uint8 id;
-        /// @notice Number of votes required for a message to be executed
+        /// @notice Number of configured adapters
         uint8 quorum;
+        /// @notice Number of votes required for a message to be executed. Less-equal to quorum.
+        uint8 threshold;
         /// @notice Each time the quorum is decreased, a new session starts which invalidates old votes
         uint64 activeSessionId;
     }
@@ -24,15 +26,15 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         /// @dev Counts are stored as integers (instead of boolean values) to accommodate duplicate
         ///      messages (e.g. two investments from the same user with the same amount) being
         ///      processed in parallel. The entire struct is packed in a single bytes32 slot.
-        ///      Max uint16 = 65,535 so at most 65,535 duplicate messages can be processed in parallel.
-        uint16[MAX_ADAPTER_COUNT] votes;
+        ///      Max int16 = 32,767 so at most 32,767 duplicate messages can be processed in parallel.
+        int16[MAX_ADAPTER_COUNT] votes;
         /// @notice Each time adapters are updated, a new session starts which invalidates old votes
         uint64 sessionId;
     }
 
     event File(bytes32 indexed what, address addr);
 
-    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters);
+    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold);
     event SetManager(PoolId poolId, address manager);
     event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
@@ -53,6 +55,9 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     /// @notice Dispatched when the contract is configured with an empty adapter set.
     error EmptyAdapterSet();
+
+    /// @notice Dispatched when the threshold number is higher than the number of configued adapters (aka quorum).
+    error ThresholdHigherThanQuorum();
 
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
@@ -75,11 +80,13 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     function file(bytes32 what, address data) external;
 
     /// @notice Configure new adapters for a determined pool.
-    ///         Messages sent but not yet received will be lost. They can be recovered with `execute()`
+    ///         Messages sent but not yet received when this is executed will be lost.
+    ///         They can be recovered with `execute()`.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
-    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters) external;
+    /// @param  threshold Minimum number of adapters required to process the messages
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
 
     /// @notice Configures a recovery address for a pool to later be able to call `execute()`.
     /// @param  poolId PoolId associated to the adapters
@@ -100,13 +107,17 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @param  message Hash of the message to be recovered
     function execute(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata message) external;
 
-    /// @notice A view method of the current quorum.abi
-    /// @dev    Quorum shows the amount of votes needed in order for a message to be dispatched further.
-    ///         The quorum is taken from the first adapter which is always the length of active adapters.
+    /// @notice Number of total configured adapters for a pool.
+    /// @param  centrifugeId Chain where the adapter is configured for
+    /// @param  poolId PoolId associated to the adapters
+    /// @return  Needed amount
+    function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
+
+    /// @notice Number of required votes to consider a message valid for processing. It's lower-equal than quorum.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  poolId PoolId associated to the adapters
     /// return  Needed amount
-    function quorum(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
+    function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
     /// @notice Gets the current active routers session id.
     /// @dev    When the adapters are updated with new ones,
@@ -124,7 +135,7 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
     /// @param  payloadHash The hash value of the incoming message.
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory);
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Returns the address of the adapter at the given id.
     /// @param  centrifugeId Chain where the adapters are configured for

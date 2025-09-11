@@ -203,7 +203,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0));
+        hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), 0);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setAdaptersManager(0, POOL_A, bytes32(0));
