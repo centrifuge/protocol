@@ -22,6 +22,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     PoolId public constant GLOBAL_ID = PoolId.wrap(0);
 
     uint16 public immutable localCentrifugeId;
+
     IMessageHandler public gateway;
     IMessageProperties public messageProperties;
 
@@ -164,7 +165,6 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(adapters_.length != 0, EmptyAdapterSet());
 
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(payload)));
-
         for (uint256 i = 0; i < adapters_.length; i++) {
             uint256 cost = adapters_[i].estimate(centrifugeId, payload, gasLimit);
             bytes32 adapterData = adapters_[i].send{value: cost}(centrifugeId, payload, gasLimit, refund);
