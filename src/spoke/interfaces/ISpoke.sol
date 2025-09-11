@@ -30,8 +30,6 @@ struct ShareClassDetails {
 }
 
 struct ShareClassAsset {
-    /// @dev Manager that can send requests, and handles the request callbacks.
-    IRequestManager manager;
     /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     Price pricePoolPerAsset;
 }

@@ -154,7 +154,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpoke
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
-        IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
+        IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
@@ -308,7 +308,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
-        IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
+        IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
 
         manager.callback(poolId, scId, assetId, payload);
@@ -345,7 +345,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         IVault vault_ = factory.newVault(poolId, scId, asset, tokenId, shareClass_.shareToken, new address[](0));
 
         require(
-            vault_.vaultKind() == VaultKind.Sync || address(assetInfo[poolId][scId][assetId].manager) != address(0),
+            vault_.vaultKind() == VaultKind.Sync || address(requestManager[poolId]) != address(0),
             InvalidRequestManager()
         );
 
@@ -380,7 +380,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
-        IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
+        IRequestManager manager = requestManager[poolId];
         vault[poolId][scId][assetId][manager] = vault_;
 
         pool[poolId].numVaults++;
@@ -408,7 +408,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
-        IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
+        IRequestManager manager = requestManager[poolId];
         delete vault[poolId][scId][assetId][manager];
 
         pool[poolId].numVaults--;
