@@ -53,6 +53,7 @@ interface INAVManager is ISnapshotHook {
     error InvalidNAVHook();
     error InvalidPoolId();
     error EmptyAddress();
+    error NotAuthorized();
 
     //----------------------------------------------------------------------------------------------
     // Administration

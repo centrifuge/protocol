@@ -20,10 +20,11 @@ import {IHub} from "../hub/interfaces/IHub.sol";
 import {IAccounting} from "../hub/interfaces/IAccounting.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
-contract NAVManager is Auth, INAVManager {
+contract NAVManager is INAVManager {
     PoolId public immutable poolId;
 
     IHub public immutable hub;
+    IHubRegistry public immutable hubRegistry;
     address public immutable holdings;
     IAccounting public immutable accounting;
 
@@ -32,17 +33,24 @@ contract NAVManager is Auth, INAVManager {
     mapping(uint16 centrifugeId => mapping(AssetId => AccountId)) public assetIdToAccountId;
     mapping(address => bool) public manager;
 
-    constructor(PoolId poolId_, IHub hub_, address deployer) Auth(deployer) {
+    constructor(PoolId poolId_, IHub hub_) {
         poolId = poolId_;
 
         hub = hub_;
+        hubRegistry = hub_.hubRegistry();
         holdings = address(hub.holdings());
         accounting = hub.accounting();
     }
 
-    /// @dev Check if the msg.sender is ward or a manager
+    /// @dev Check if the msg.sender is a manager
     modifier onlyManager() {
-        require(wards[msg.sender] == 1 || manager[msg.sender], NotAuthorized());
+        require(manager[msg.sender], NotAuthorized());
+        _;
+    }
+
+    /// @dev Check if the msg.sender is a hub manager
+    modifier onlyHubManager() {
+        require(hubRegistry.manager(poolId, msg.sender), NotAuthorized());
         _;
     }
 
@@ -51,13 +59,13 @@ contract NAVManager is Auth, INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function setNAVHook(INAVHook navHook_) external auth {
+    function setNAVHook(INAVHook navHook_) external onlyHubManager {
         navHook = navHook_;
         emit SetNavHook(address(navHook_));
     }
 
     /// @inheritdoc INAVManager
-    function updateManager(address manager_, bool canManage) external auth {
+    function updateManager(address manager_, bool canManage) external onlyHubManager {
         require(manager_ != address(0), EmptyAddress());
 
         manager[manager_] = canManage;
@@ -244,12 +252,10 @@ contract NAVManager is Auth, INAVManager {
     }
 }
 
-contract NavManagerFactory is INAVManagerFactory {
-    address public immutable contractUpdater;
+contract NAVManagerFactory is INAVManagerFactory {
     IHub public immutable hub;
 
-    constructor(address contractUpdater_, IHub hub_) {
-        contractUpdater = contractUpdater_;
+    constructor(IHub hub_) {
         hub = hub_;
     }
 
@@ -257,7 +263,7 @@ contract NavManagerFactory is INAVManagerFactory {
     function newManager(PoolId poolId) external returns (INAVManager) {
         require(hub.hubRegistry().exists(poolId), InvalidPoolId());
 
-        NAVManager manager = new NAVManager{salt: bytes32(uint256(poolId.raw()))}(poolId, hub, contractUpdater);
+        NAVManager manager = new NAVManager{salt: bytes32(uint256(poolId.raw()))}(poolId, hub);
 
         emit DeployNavManager(poolId, address(manager));
         return INAVManager(manager);

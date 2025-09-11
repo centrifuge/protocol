@@ -10,7 +10,7 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {AccountId, withCentrifugeId} from "../../../src/common/types/AccountId.sol";
 import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 
-import {NAVManager, NavManagerFactory} from "../../../src/managers/NAVManager.sol";
+import {NAVManager, NAVManagerFactory} from "../../../src/managers/NAVManager.sol";
 import {INAVManager, INAVHook} from "../../../src/managers/interfaces/INAVManager.sol";
 import {INAVManagerFactory} from "../../../src/managers/interfaces/INAVManagerFactory.sol";
 
@@ -23,7 +23,6 @@ import {Mock} from "../../common/mocks/Mock.sol";
 
 import "forge-std/Test.sol";
 
-// Mock contracts to bypass foundry mockCall issues
 contract IsContract {}
 
 contract NAVManagerTest is Test {
@@ -43,10 +42,9 @@ contract NAVManagerTest is Test {
     address hubRegistry = address(new IsContract());
     INAVHook navHook = INAVHook(address(new IsContract()));
 
-    address deployer = address(this);
-    address contractUpdater = makeAddr("contractUpdater");
     address unauthorized = makeAddr("unauthorized");
     address manager = makeAddr("manager");
+    address hubManager = makeAddr("hubManager");
 
     NAVManager navManager;
     MockValuation mockValuation;
@@ -75,14 +73,19 @@ contract NAVManagerTest is Test {
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset2), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint64)", POOL_A), abi.encode(18));
+        vm.mockCall(hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector), abi.encode(false));
+        vm.mockCall(
+            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_A, hubManager), abi.encode(true)
+        );
 
         vm.mockCall(address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector), abi.encode());
         vm.mockCall(address(navHook), abi.encodeWithSelector(INAVHook.onTransfer.selector), abi.encode());
     }
 
     function _deployManager() internal {
-        vm.prank(deployer);
-        navManager = new NAVManager(POOL_A, IHub(hub), deployer);
+        navManager = new NAVManager(POOL_A, IHub(hub));
+        vm.prank(hubManager);
+        navManager.updateManager(manager, true);
     }
 
     function _mockAccountValue(AccountId accountId, uint128 value, bool isPositive) internal {
@@ -96,7 +99,7 @@ contract NAVManagerTest is Test {
 
 contract NAVManagerConstructorTest is NAVManagerTest {
     function testConstructor() public view {
-        assertEq(PoolId.unwrap(navManager.poolId()), PoolId.unwrap(POOL_A));
+        assertEq(navManager.poolId().raw(), POOL_A.raw());
         assertEq(address(navManager.hub()), address(hub));
         assertEq(navManager.holdings(), holdings);
         assertEq(address(navManager.accounting()), address(accounting));
@@ -106,7 +109,10 @@ contract NAVManagerConstructorTest is NAVManagerTest {
 
 contract NAVManagerConfigureTest is NAVManagerTest {
     function testSetNAVHookSuccess() public {
-        vm.prank(deployer);
+        vm.expectEmit(true, false, false, true);
+        emit INAVManager.SetNavHook(address(navHook));
+
+        vm.prank(hubManager);
         navManager.setNAVHook(navHook);
 
         assertEq(address(navManager.navHook()), address(navHook));
@@ -119,10 +125,52 @@ contract NAVManagerConfigureTest is NAVManagerTest {
     }
 
     function testSetNAVHookToZeroAddress() public {
-        vm.prank(deployer);
+        vm.prank(hubManager);
         navManager.setNAVHook(INAVHook(address(0)));
 
         assertEq(address(navManager.navHook()), address(0));
+    }
+
+    function testUpdateManagerSuccess() public {
+        address newManager = makeAddr("newManager");
+
+        vm.expectEmit(true, true, false, false);
+        emit INAVManager.UpdateManager(newManager, true);
+
+        vm.prank(hubManager);
+        navManager.updateManager(newManager, true);
+
+        assertTrue(navManager.manager(newManager));
+    }
+
+    function testUpdateManagerRemove() public {
+        address managerAddr = makeAddr("newManager");
+
+        vm.prank(hubManager);
+        navManager.updateManager(managerAddr, true);
+        assertTrue(navManager.manager(managerAddr));
+
+        vm.expectEmit(true, true, false, false);
+        emit INAVManager.UpdateManager(managerAddr, false);
+
+        vm.prank(hubManager);
+        navManager.updateManager(managerAddr, false);
+
+        assertFalse(navManager.manager(managerAddr));
+    }
+
+    function testUpdateManagerUnauthorized() public {
+        address managerAddr = makeAddr("newManager");
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        navManager.updateManager(managerAddr, true);
+    }
+
+    function testUpdateManagerZeroAddress() public {
+        vm.expectRevert(INAVManager.EmptyAddress.selector);
+        vm.prank(hubManager);
+        navManager.updateManager(address(0), true);
     }
 
     function testInitializeNetworkSuccess() public {
@@ -147,15 +195,27 @@ contract NAVManagerConfigureTest is NAVManagerTest {
             abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, navManager.lossAccount(CENTRIFUGE_ID_1), false)
         );
 
+        vm.expectEmit(true, false, false, true);
+        emit INAVManager.InitializeNetwork(CENTRIFUGE_ID_1);
+
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
 
         assertEq(navManager.accountCounter(CENTRIFUGE_ID_1), 5);
     }
 
     function testInitializeNetworkAlreadyInitialized() public {
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
 
         vm.expectRevert(INAVManager.AlreadyInitialized.selector);
+        vm.prank(manager);
+        navManager.initializeNetwork(CENTRIFUGE_ID_1);
+    }
+
+    function testInitializeNetworkUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
     }
 }
@@ -163,7 +223,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
 contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     function setUp() public override {
         super.setUp();
-        // Initialize network first
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
     }
 
@@ -188,39 +248,50 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
             )
         );
 
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.InitializeHolding(SC_1, asset1);
+
+        vm.prank(manager);
         navManager.initializeHolding(SC_1, asset1, mockValuation);
 
         assertEq(navManager.accountCounter(CENTRIFUGE_ID_1), 6);
-        assertEq(
-            AccountId.unwrap(navManager.assetAccount(CENTRIFUGE_ID_1, asset1)), AccountId.unwrap(expectedAssetAccount)
-        );
+        assertEq(navManager.assetAccount(CENTRIFUGE_ID_1, asset1).raw(), expectedAssetAccount.raw());
     }
 
     function testInitializeHoldingNotInitialized() public {
         vm.expectRevert(INAVManager.NotInitialized.selector);
+        vm.prank(manager);
         navManager.initializeHolding(SC_1, AssetId.wrap(uint128(3) << 64 | 300), mockValuation);
     }
 
     function testInitializeHoldingSameAssetTwice() public {
+        vm.prank(manager);
         navManager.initializeHolding(SC_1, asset1, mockValuation);
 
-        // Should reuse the same account
         AccountId expectedAssetAccount = withCentrifugeId(CENTRIFUGE_ID_1, 5);
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
         );
 
+        vm.prank(manager);
         navManager.initializeHolding(SC_2, asset1, mockValuation);
 
         // Account counter should increment again
         assertEq(navManager.accountCounter(CENTRIFUGE_ID_1), 7);
+    }
+
+    function testInitializeHoldingUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        navManager.initializeHolding(SC_1, asset1, mockValuation);
     }
 }
 
 contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     function setUp() public override {
         super.setUp();
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
     }
 
@@ -243,26 +314,36 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
             )
         );
 
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.InitializeLiability(SC_1, asset1);
+
+        vm.prank(manager);
         navManager.initializeLiability(SC_1, asset1, mockValuation);
 
         assertEq(navManager.accountCounter(CENTRIFUGE_ID_1), 6);
-        assertEq(
-            AccountId.unwrap(navManager.expenseAccount(CENTRIFUGE_ID_1, asset1)),
-            AccountId.unwrap(expectedExpenseAccount)
-        );
+        assertEq(navManager.expenseAccount(CENTRIFUGE_ID_1, asset1).raw(), expectedExpenseAccount.raw());
     }
 
     function testInitializeLiabilityNotInitialized() public {
         vm.expectRevert(INAVManager.NotInitialized.selector);
+        vm.prank(manager);
         navManager.initializeLiability(SC_1, asset2, mockValuation);
+    }
+
+    function testInitializeLiabilityUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        navManager.initializeLiability(SC_1, asset1, mockValuation);
     }
 }
 
 contract NAVManagerOnSyncTest is NAVManagerTest {
     function setUp() public override {
         super.setUp();
-        navManager.initializeNetwork(CENTRIFUGE_ID_1);
+        vm.prank(hubManager);
         navManager.setNAVHook(navHook);
+        vm.prank(manager);
+        navManager.initializeNetwork(CENTRIFUGE_ID_1);
     }
 
     function testOnSyncSuccess() public {
@@ -274,18 +355,14 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, true);
 
         vm.expectCall(
-            address(navHook),
-            abi.encodeWithSelector(INAVHook.onUpdate.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, d18(1050))
+            address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, 1050)
         );
+
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.Sync(SC_1, CENTRIFUGE_ID_1, 1050);
 
         vm.prank(holdings);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
-
-        // assertEq(mockNAVHook.updateCallCount(), 1);
-        // assertEq(PoolId.unwrap(mockNAVHook.lastPoolId()), PoolId.unwrap(POOL_A));
-        // assertEq(ShareClassId.unwrap(mockNAVHook.lastScId()), ShareClassId.unwrap(SC_1));
-        // assertEq(mockNAVHook.lastCentrifugeId(), CENTRIFUGE_ID_1);
-        // assertEq(mockNAVHook.lastNetAssetValue().raw(), d18(1050).raw());
     }
 
     function testOnSyncInvalidPoolId() public {
@@ -302,7 +379,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
 
     function testOnSyncNoNAVHook() public {
         // Reset NAV hook to zero
-        vm.prank(deployer);
+        vm.prank(hubManager);
         navManager.setNAVHook(INAVHook(address(0)));
 
         vm.expectRevert(INAVManager.InvalidNAVHook.selector);
@@ -347,6 +424,13 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
     function testUpdateHoldingValue() public {
         vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_A, SC_1, asset1));
 
+        vm.prank(manager);
+        navManager.updateHoldingValue(SC_1, asset1);
+    }
+
+    function testUpdateHoldingValueUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         navManager.updateHoldingValue(SC_1, asset1);
     }
 
@@ -356,6 +440,13 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
             abi.encodeWithSelector(IHub.updateHoldingValuation.selector, POOL_A, SC_1, asset1, mockValuation)
         );
 
+        vm.prank(manager);
+        navManager.updateHoldingValuation(SC_1, asset1, mockValuation);
+    }
+
+    function testUpdateHoldingValuationUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         navManager.updateHoldingValuation(SC_1, asset1, mockValuation);
     }
 
@@ -368,6 +459,16 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
             abi.encodeWithSelector(IHub.setHoldingAccountId.selector, POOL_A, SC_1, asset1, kind, accountId)
         );
 
+        vm.prank(manager);
+        navManager.setHoldingAccountId(SC_1, asset1, kind, accountId);
+    }
+
+    function testSetHoldingAccountIdUnauthorized() public {
+        AccountId accountId = withCentrifugeId(CENTRIFUGE_ID_1, 10);
+        uint8 kind = 1;
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
         navManager.setHoldingAccountId(SC_1, asset1, kind, accountId);
     }
 }
@@ -376,43 +477,47 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
     function testEquityAccount() public view {
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 1);
         AccountId actual = navManager.equityAccount(CENTRIFUGE_ID_1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testLiabilityAccount() public view {
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 2);
         AccountId actual = navManager.liabilityAccount(CENTRIFUGE_ID_1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testGainAccount() public view {
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 3);
         AccountId actual = navManager.gainAccount(CENTRIFUGE_ID_1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testLossAccount() public view {
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 4);
         AccountId actual = navManager.lossAccount(CENTRIFUGE_ID_1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testAssetAccount() public {
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
+        vm.prank(manager);
         navManager.initializeHolding(SC_1, asset1, mockValuation);
 
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 5);
         AccountId actual = navManager.assetAccount(CENTRIFUGE_ID_1, asset1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testExpenseAccount() public {
+        vm.prank(manager);
         navManager.initializeNetwork(CENTRIFUGE_ID_1);
+        vm.prank(manager);
         navManager.initializeLiability(SC_1, asset1, mockValuation);
 
         AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 5);
         AccountId actual = navManager.expenseAccount(CENTRIFUGE_ID_1, asset1);
-        assertEq(AccountId.unwrap(actual), AccountId.unwrap(expected));
+        assertEq(actual.raw(), expected.raw());
     }
 
     function testAssetAccountNotInitialized() public view {
@@ -424,6 +529,7 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
 contract NAVManagerOnTransferTest is NAVManagerTest {
     function setUp() public override {
         super.setUp();
+        vm.prank(hubManager);
         navManager.setNAVHook(navHook);
     }
 
@@ -440,7 +546,7 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
     }
 
     function testOnTransferNoNAVHook() public {
-        vm.prank(deployer);
+        vm.prank(hubManager);
         navManager.setNAVHook(INAVHook(address(0)));
 
         vm.expectRevert(INAVManager.InvalidNAVHook.selector);
@@ -451,8 +557,11 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
     function testOnTransferSuccess() public {
         vm.expectCall(
             address(navHook),
-            abi.encodeWithSelector(INAVHook.onTransfer.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, d18(1))
+            abi.encodeWithSelector(INAVHook.onTransfer.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1)
         );
+
+        vm.expectEmit(true, true, true, true);
+        emit INAVManager.Transfer(SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
 
         vm.prank(hub);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
@@ -464,43 +573,39 @@ contract NAVManagerFactoryTest is Test {
     address accounting = address(new IsContract());
     address holdings = address(new IsContract());
     address hubRegistry = address(new IsContract());
-    address contractUpdater = makeAddr("contractUpdater");
 
-    NavManagerFactory factory;
+    NAVManagerFactory factory;
 
     function setUp() public {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.accounting.selector), abi.encode(accounting));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.holdings.selector), abi.encode(holdings));
-        factory = new NavManagerFactory(contractUpdater, IHub(hub));
+        factory = new NAVManagerFactory(IHub(hub));
     }
 
     function testFactoryConstructor() public view {
-        assertEq(factory.contractUpdater(), contractUpdater);
         assertEq(address(factory.hub()), address(hub));
     }
 
     function testNewManagerSuccess() public {
         PoolId poolId = PoolId.wrap(1);
 
-        // Mock hubRegistry.exists() to return true
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(IHubRegistry.exists.selector, poolId), abi.encode(true)
         );
 
         vm.expectEmit(true, false, false, false);
-        emit INAVManagerFactory.DeployNavManager(poolId, address(0)); // address will be different
+        emit INAVManagerFactory.DeployNavManager(poolId, address(0));
 
         INAVManager manager = factory.newManager(poolId);
 
         assertTrue(address(manager) != address(0));
-        assertEq(PoolId.unwrap(NAVManager(address(manager)).poolId()), PoolId.unwrap(poolId));
+        assertEq(NAVManager(address(manager)).poolId().raw(), poolId.raw());
     }
 
     function testNewManagerInvalidPool() public {
         PoolId poolId = PoolId.wrap(1);
 
-        // Mock hubRegistry.exists() to return false
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(IHubRegistry.exists.selector, poolId), abi.encode(false)
         );

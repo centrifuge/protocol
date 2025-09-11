@@ -12,6 +12,9 @@ import {HubHelpers} from "../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
+import {NAVManagerFactory} from "../src/managers/NAVManager.sol";
+import {SimplePriceManagerFactory} from "../src/managers/SimplePriceManager.sol";
+
 import "forge-std/Script.sol";
 
 abstract contract HubConstants {
@@ -94,6 +97,8 @@ contract HubDeployer is CommonDeployer, HubConstants {
     ShareClassManager public shareClassManager;
     HubHelpers public hubHelpers;
     Hub public hub;
+    NAVManagerFactory public navManagerFactory;
+    SimplePriceManagerFactory public simplePriceManagerFactory;
 
     function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
         _preDeployHub(input, batcher);
@@ -160,6 +165,20 @@ contract HubDeployer is CommonDeployer, HubConstants {
             )
         );
 
+        navManagerFactory = NAVManagerFactory(
+            create3(
+                generateSalt("navManagerFactory"),
+                abi.encodePacked(type(NAVManagerFactory).creationCode, abi.encode(hub))
+            )
+        );
+
+        simplePriceManagerFactory = SimplePriceManagerFactory(
+            create3(
+                generateSalt("simplePriceManagerFactory"),
+                abi.encodePacked(type(SimplePriceManagerFactory).creationCode, abi.encode(hub))
+            )
+        );
+
         batcher.engageHub(_hubReport());
 
         register("hubRegistry", address(hubRegistry));
@@ -168,6 +187,8 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("shareClassManager", address(shareClassManager));
         register("hubHelpers", address(hubHelpers));
         register("hub", address(hub));
+        register("navManagerFactory", address(navManagerFactory));
+        register("simplePriceManagerFactory", address(simplePriceManagerFactory));
     }
 
     function _postDeployHub(HubActionBatcher batcher) internal {
