@@ -73,11 +73,13 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(messageProcessor.root()), address(root));
         assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
+        assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
     }
 
     function testMessageDispatcher(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(guardian));
 
         assertEq(messageDispatcher.wards(address(root)), 1);
@@ -87,6 +89,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(messageDispatcher.root()), address(root));
         assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
+        assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
         assertEq(messageDispatcher.localCentrifugeId(), CENTRIFUGE_ID);
     }
@@ -111,6 +114,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(gateway.gasService()), address(gasService));
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
+        assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }
 
     function testMultiAdapter(address nonWard) public view {
@@ -118,14 +122,19 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(gateway));
+        vm.assume(nonWard != address(messageProcessor));
+        vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(multiAdapter.wards(address(root)), 1);
         assertEq(multiAdapter.wards(address(guardian)), 1);
         assertEq(multiAdapter.wards(address(gateway)), 1);
+        assertEq(multiAdapter.wards(address(messageProcessor)), 1);
+        assertEq(multiAdapter.wards(address(messageDispatcher)), 1);
         assertEq(multiAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(multiAdapter.gateway()), address(gateway));
+        assertEq(address(multiAdapter.messageProperties()), address(messageProcessor));
         assertEq(multiAdapter.localCentrifugeId(), CENTRIFUGE_ID);
     }
 

@@ -9,6 +9,8 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 
 interface ILocalCentrifugeId {
+    error CannotBeSentLocally();
+
     function localCentrifugeId() external view returns (uint16);
 }
 
@@ -128,6 +130,12 @@ interface IHubMessageSender is ILocalCentrifugeId {
         bytes calldata payload,
         uint128 extraGasLimit
     ) external;
+
+    /// @notice Creates and send the message
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters) external;
+
+    /// @notice Creates and send the message
+    function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external;
 }
 
 /// @notice Interface for dispatch-only gateway
