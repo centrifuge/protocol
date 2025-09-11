@@ -24,8 +24,10 @@ contract GuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
+    address immutable MANAGER = makeAddr("manager");
 
     uint16 constant CENTRIFUGE_ID = 1;
+    PoolId constant POOL_0 = PoolId.wrap(0);
     PoolId constant POOL_A = PoolId.wrap(1);
     AssetId constant ASSET_ID_A = AssetId.wrap(1);
     address immutable TARGET = makeAddr("target");
@@ -234,52 +236,14 @@ contract GuardianTestRecoverTokens is GuardianTest {
     }
 }
 
-contract GuardianTestInitiateRecovery is GuardianTest {
-    function testInitiateRecovery() public {
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(multiAdapter.initiateRecovery.selector, CENTRIFUGE_ID, ADAPTER, HASH),
-            abi.encode()
-        );
-
-        vm.prank(address(SAFE));
-        guardian.initiateRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
-    }
-
-    function testInitiateRecoveryOnlySafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.initiateRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
-    }
-}
-
-contract GuardianTestDisputeRecovery is GuardianTest {
-    function testDisputeRecovery() public {
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(multiAdapter.disputeRecovery.selector, CENTRIFUGE_ID, ADAPTER, HASH),
-            abi.encode()
-        );
-
-        vm.prank(address(SAFE));
-        guardian.disputeRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
-    }
-
-    function testDisputeRecoveryOnlySafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.disputeRecovery(CENTRIFUGE_ID, ADAPTER, HASH);
-    }
-}
-
-contract GuardianTestSetAdapter is GuardianTest {
+contract GuardianTestSetAdapters is GuardianTest {
     function testSetAdapters() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSignature("file(bytes32,uint16,IAdapter[])", bytes32("adapters"), CENTRIFUGE_ID, adapters),
+            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters),
             abi.encode()
         );
 
@@ -294,5 +258,24 @@ contract GuardianTestSetAdapter is GuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
         guardian.setAdapters(CENTRIFUGE_ID, adapters);
+    }
+}
+
+contract GuardianTestSetAdaptersManagers is GuardianTest {
+    function testSetAdaptersManagers() public {
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.setManager.selector, POOL_0, MANAGER),
+            abi.encode()
+        );
+
+        vm.prank(address(SAFE));
+        guardian.setAdaptersManager(MANAGER);
+    }
+
+    function testSetAdaptersOnlySafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
+        guardian.setAdaptersManager(MANAGER);
     }
 }

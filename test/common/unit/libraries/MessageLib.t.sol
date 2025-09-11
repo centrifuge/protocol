@@ -42,13 +42,13 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeInitiateSetPoolAdapters() public {
-        MessageLib.deserializeInitiateSetPoolAdapters(_prepareFor());
+    function testDeserializeSetPoolAdapters() public {
+        MessageLib.deserializeSetPoolAdapters(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeExecuteSetPoolAdapters() public {
-        MessageLib.deserializeExecuteSetPoolAdapters(_prepareFor());
+    function testDeserializeSetPoolAdaptersManager() public {
+        MessageLib.deserializeSetPoolAdaptersManager(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -218,10 +218,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
-    function testInitiateSetPoolAdapters(uint64 poolId, bytes32[] memory adapterList) public pure {
-        MessageLib.InitiateSetPoolAdapters memory a =
-            MessageLib.InitiateSetPoolAdapters({poolId: poolId, adapterList: adapterList});
-        MessageLib.InitiateSetPoolAdapters memory b = MessageLib.deserializeInitiateSetPoolAdapters(a.serialize());
+    function testSetPoolAdapters(uint64 poolId, bytes32[] memory adapterList) public pure {
+        vm.assume(adapterList.length <= 20);
+
+        MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({poolId: poolId, adapterList: adapterList});
+        MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.adapterList, b.adapterList);
@@ -232,11 +233,13 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testExecuteSetPoolAdapters(uint64 poolId) public pure {
-        MessageLib.ExecuteSetPoolAdapters memory a = MessageLib.ExecuteSetPoolAdapters({poolId: poolId});
-        MessageLib.ExecuteSetPoolAdapters memory b = MessageLib.deserializeExecuteSetPoolAdapters(a.serialize());
+    function testSetPoolAdaptersManager(uint64 poolId, bytes32 manager) public pure {
+        MessageLib.SetPoolAdaptersManager memory a =
+            MessageLib.SetPoolAdaptersManager({poolId: poolId, manager: manager});
+        MessageLib.SetPoolAdaptersManager memory b = MessageLib.deserializeSetPoolAdaptersManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
+        assertEq(a.manager, b.manager);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
         assertEq(a.serialize().messagePoolId().raw(), 0);

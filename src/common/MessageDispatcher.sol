@@ -6,6 +6,7 @@ import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
@@ -39,6 +40,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
+    IMultiAdapter public multiAdapter;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
@@ -63,6 +65,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -414,7 +417,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 gateway.send(targetCentrifugeId, message);
             } else {
                 // Spoke chain X => Hub chain Y => Spoke chain Z
-                gateway.addUnpaidMessage(targetCentrifugeId, message);
+                gateway.addUnpaidMessage(targetCentrifugeId, message, false);
             }
         }
     }
@@ -529,6 +532,27 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     assetId: assetId.raw(),
                     payload: payload
                 }).serialize()
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters) external {
+        if (centrifugeId == localCentrifugeId) {
+            revert CannotBeSentLocally();
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.SetPoolAdapters({poolId: poolId.raw(), adapterList: adapters}).serialize()
+            );
+        }
+    }
+
+    function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
+        if (centrifugeId == localCentrifugeId) {
+            multiAdapter.setManager(poolId, manager.toAddress());
+        } else {
+            gateway.send(
+                centrifugeId, MessageLib.SetPoolAdaptersManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }

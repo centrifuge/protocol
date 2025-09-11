@@ -106,18 +106,13 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function initiateRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        multiAdapter.initiateRecovery(centrifugeId, adapter, hash);
-    }
-
-    /// @inheritdoc IGuardian
-    function disputeRecovery(uint16 centrifugeId, IAdapter adapter, bytes32 hash) external onlySafe {
-        multiAdapter.disputeRecovery(centrifugeId, adapter, hash);
-    }
-
-    /// @inheritdoc IGuardian
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
-        multiAdapter.file("adapters", centrifugeId, adapters);
+        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters);
+    }
+
+    /// @inheritdoc IGuardian
+    function setAdaptersManager(address manager) external onlySafe {
+        multiAdapter.setManager(PoolId.wrap(0), manager);
     }
 
     //----------------------------------------------------------------------------------------------
