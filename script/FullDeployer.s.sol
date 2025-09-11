@@ -37,8 +37,14 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         FullActionBatcher batcher
     ) internal {
         _preDeployExtendedHub(commonInput, batcher);
-        _preDeployExtendedSpoke(commonInput, batcher);
+        _preDeployExtendedSpokeWithHub(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
+    }
+
+    function _preDeployExtendedSpokeWithHub(CommonInput memory input, FullActionBatcher batcher) internal {
+        _preDeployVaults(input, address(hubRegistry), batcher);
+        _preDeployHooks(input, batcher);
+        _preDeployManagers(input, batcher);
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {

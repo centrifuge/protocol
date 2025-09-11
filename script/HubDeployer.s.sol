@@ -11,7 +11,7 @@ import {Accounting} from "../src/hub/Accounting.sol";
 import {HubHelpers} from "../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
-import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
+
 
 import "forge-std/Script.sol";
 
@@ -28,7 +28,6 @@ struct HubReport {
     Holdings holdings;
     ShareClassManager shareClassManager;
     HubHelpers hubHelpers;
-    HubRequestManager hubRequestManager;
     Hub hub;
 }
 
@@ -95,7 +94,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
     Accounting public accounting;
     Holdings public holdings;
     ShareClassManager public shareClassManager;
-    HubRequestManager public hubRequestManager;
     HubHelpers public hubHelpers;
     Hub public hub;
 
@@ -129,12 +127,7 @@ contract HubDeployer is CommonDeployer, HubConstants {
             )
         );
 
-        hubRequestManager = HubRequestManager(
-            create3(
-                generateSalt("hubRequestManager"),
-                abi.encodePacked(type(HubRequestManager).creationCode, abi.encode(hubRegistry, batcher))
-            )
-        );
+
         hubHelpers = HubHelpers(
             create3(
                 generateSalt("hubHelpers"),
@@ -165,7 +158,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
                         address(hubRegistry),
                         address(multiAdapter),
                         address(shareClassManager),
-                        address(hubRequestManager),
                         batcher
                     )
                 )
@@ -178,7 +170,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("accounting", address(accounting));
         register("holdings", address(holdings));
         register("shareClassManager", address(shareClassManager));
-        register("hubRequestManager", address(hubRequestManager));
         register("hubHelpers", address(hubHelpers));
         register("hub", address(hub));
     }
@@ -193,6 +184,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _hubReport() internal view returns (HubReport memory) {
-        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHelpers, hubRequestManager, hub);
+        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHelpers, hub);
     }
 }
