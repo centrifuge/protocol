@@ -192,7 +192,9 @@ abstract contract CommonDeployer is Script, JsonRegistry, CreateXScript {
             payable(
                 create3(
                     generateSalt("gateway"),
-                    abi.encodePacked(type(Gateway).creationCode, abi.encode(root, gasService, batcher))
+                    abi.encodePacked(
+                        type(Gateway).creationCode, abi.encode(input.centrifugeId, root, gasService, batcher)
+                    )
                 )
             )
         );

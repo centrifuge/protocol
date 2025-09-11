@@ -36,7 +36,7 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPool0) return 5;
     if (kind == MessageKind.WithPoolA1) return 10;
     if (kind == MessageKind.WithPoolA2) return 15;
-    if (kind == MessageKind.WithPoolAFail) return 10;
+    if (kind == MessageKind.WithPoolAFail) return 250;
     return 2;
 }
 
@@ -101,7 +101,9 @@ contract MockPoolRefund is Recoverable {
 // -----------------------------------------
 
 contract GatewayExt is Gateway {
-    constructor(IRoot root_, IGasService gasService_, address deployer) Gateway(root_, gasService_, deployer) {}
+    constructor(uint16 localCentrifugeId, IRoot root_, IGasService gasService_, address deployer)
+        Gateway(localCentrifugeId, root_, gasService_, deployer)
+    {}
 
     function batchLocatorsLength() public view returns (uint256) {
         return TransientArrayLib.length(BATCH_LOCATORS_SLOT);
@@ -118,6 +120,10 @@ contract GatewayExt is Gateway {
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
     }
+
+    function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
+        _process(centrifugeId, message, messageHash);
+    }
 }
 
 // -----------------------------------------
@@ -125,14 +131,15 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
+    uint16 constant LOCAL_CENT_ID = 24;
     uint16 constant REMOTE_CENT_ID = 24;
 
-    uint256 constant ADAPTER_ESTIMATE = 1 gwei;
+    uint256 constant ADAPTER_ESTIMATE = 1;
     bytes32 constant ADAPTER_DATA = bytes32("adapter data");
 
-    uint256 constant MESSAGE_GAS_LIMIT = 10.0 gwei;
-    uint256 constant MAX_BATCH_GAS_LIMIT = 50.0 gwei;
-    uint128 constant EXTRA_GAS_LIMIT = 1.0 gwei;
+    uint256 constant MESSAGE_GAS_LIMIT = 100_000;
+    uint256 constant MAX_BATCH_GAS_LIMIT = 500_000;
+    uint128 constant EXTRA_GAS_LIMIT = 1;
     bool constant NO_SUBSIDIZED = false;
 
     IGasService gasService = IGasService(makeAddr("GasService"));
@@ -140,7 +147,7 @@ contract GatewayTest is Test {
     IAdapterBlockSendingExt adapter = IAdapterBlockSendingExt(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
-    GatewayExt gateway = new GatewayExt(IRoot(address(root)), gasService, address(this));
+    GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
 
     address immutable ANY = makeAddr("ANY");
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
@@ -264,11 +271,21 @@ contract GatewayTestHandle is GatewayTest {
         gateway.handle(REMOTE_CENT_ID, new bytes(0));
     }
 
+    function testErrNotEnoughGasToProcess() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
+        uint256 gas = MESSAGE_GAS_LIMIT + gateway.GAS_FAIL_MESSAGE_STORAGE();
+
+        vm.expectRevert(IGateway.NotEnoughGasToProcess.selector);
+
+        // NOTE: The own handle() also consume some gas, so passing gas + <small value> can also make it fails
+        gateway.handle{gas: gas - 1}(REMOTE_CENT_ID, batch);
+    }
+
     function testMessage() public {
         bytes memory batch = MessageKind.WithPool0.asBytes();
 
         vm.expectEmit();
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
@@ -278,7 +295,7 @@ contract GatewayTestHandle is GatewayTest {
         bytes memory batch = MessageKind.WithPoolAFail.asBytes();
 
         vm.expectEmit();
-        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, abi.encodeWithSignature("HandleError()"));
+        emit IGateway.FailMessage(REMOTE_CENT_ID, batch, keccak256(batch), abi.encodeWithSignature("HandleError()"));
         gateway.handle(REMOTE_CENT_ID, batch);
 
         assertEq(processor.count(REMOTE_CENT_ID), 0);
@@ -329,6 +346,13 @@ contract GatewayTestHandle is GatewayTest {
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
     }
+
+    function testMessageFailBenchmark() public {
+        bytes memory message = MessageKind.WithPoolAFail.asBytes();
+        bytes32 messageHash = keccak256(message);
+
+        gateway.process(REMOTE_CENT_ID, message, messageHash);
+    }
 }
 
 contract GatewayTestRetry is GatewayTest {
@@ -351,7 +375,7 @@ contract GatewayTestRetry is GatewayTest {
         processor.disableFailure();
 
         vm.prank(ANY);
-        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch);
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, batch, keccak256(batch));
         gateway.retry(REMOTE_CENT_ID, batch);
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);

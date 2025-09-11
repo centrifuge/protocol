@@ -31,8 +31,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
+    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
+
+    uint16 public immutable localCentrifugeId;
 
     // Dependencies
     IRoot public immutable root;
@@ -51,7 +54,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
 
-    constructor(IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+    constructor(uint16 localCentrifugeId_, IRoot root_, IGasService gasService_, address deployer) Auth(deployer) {
+        localCentrifugeId = localCentrifugeId_;
         root = root_;
         gasService = gasService_;
 
@@ -88,21 +92,26 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
-        IMessageProcessor processor_ = processor;
         bytes memory remaining = batch;
 
         while (remaining.length > 0) {
-            uint256 length = processor_.messageLength(remaining);
+            uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
             remaining = remaining.slice(length, remaining.length - length);
 
-            try processor_.handle(centrifugeId, message) {
-                emit ExecuteMessage(centrifugeId, message);
-            } catch (bytes memory err) {
-                bytes32 messageHash = keccak256(message);
-                failedMessages[centrifugeId][messageHash]++;
-                emit FailMessage(centrifugeId, message, err);
-            }
+            uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
+            require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
+
+            _process(centrifugeId, message, keccak256(message));
+        }
+    }
+
+    function _process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) internal {
+        try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
+            emit ExecuteMessage(centrifugeId, message, messageHash);
+        } catch (bytes memory err) {
+            failedMessages[centrifugeId][messageHash]++;
+            emit FailMessage(centrifugeId, message, messageHash, err);
         }
     }
 
@@ -114,7 +123,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         failedMessages[centrifugeId][messageHash]--;
         processor.handle(centrifugeId, message);
 
-        emit ExecuteMessage(centrifugeId, message);
+        emit ExecuteMessage(centrifugeId, message, messageHash);
     }
 
     //----------------------------------------------------------------------------------------------

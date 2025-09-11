@@ -114,6 +114,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(gateway.gasService()), address(gasService));
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
+        assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
     }
 
     function testMultiAdapter(address nonWard) public view {
