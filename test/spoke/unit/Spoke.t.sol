@@ -522,7 +522,8 @@ contract SpokeTestAddPool is SpokeTest {
         emit ISpoke.AddPool(POOL_A);
         spoke.addPool(POOL_A);
 
-        assertEq(spoke.pool(POOL_A), block.timestamp);
+        (uint64 createdAt,) = spoke.pool(POOL_A);
+        assertEq(createdAt, block.timestamp);
         assertEq(spoke.isPoolActive(POOL_A), true);
     }
 }
@@ -619,7 +620,7 @@ contract SpokeTestSetRequestManager is SpokeTest {
 
     function testErrPoolDoesNotExist() public {
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.PoolDoesNotExist.selector);
+        vm.expectRevert(ISpoke.InvalidPool.selector);
         spoke.setRequestManager(POOL_A, requestManager);
     }
 
@@ -644,7 +645,7 @@ contract SpokeTestSetRequestManager is SpokeTest {
         emit ISpoke.SetRequestManager(POOL_A, requestManager);
         spoke.setRequestManager(POOL_A, requestManager);
 
-        IRequestManager manager = spoke.poolRequestManager(POOL_A);
+        IRequestManager manager = spoke.requestManager(POOL_A);
         assertEq(address(manager), address(requestManager));
     }
 }
@@ -1072,7 +1073,7 @@ contract SpokeTestLinkVault is SpokeTest {
         emit ISpoke.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
+        (, uint32 numVaults) = spoke.pool(POOL_A);
         assertEq(numVaults, 1);
         assertEq(spoke.isLinked(vault), true);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
@@ -1161,7 +1162,7 @@ contract SpokeTestUnlinkVault is SpokeTest {
         emit ISpoke.UnlinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        (, uint32 numVaults,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_6909_1);
+        (, uint32 numVaults) = spoke.pool(POOL_A);
         assertEq(numVaults, 0);
         assertEq(spoke.isLinked(vault), false);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));

@@ -48,18 +48,17 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     ISpokeMessageSender public sender;
     IPoolEscrowFactory public poolEscrowFactory;
 
-    uint64 internal _assetCounter;
-
     mapping(PoolId => Pool) public pool;
+    mapping(PoolId => IRequestManager) public requestManager;
     mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClass;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ShareClassAsset))) public assetInfo;
-    mapping(PoolId => IRequestManager) public poolRequestManager;
     mapping(
         PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => mapping(IRequestManager => IVault)))
     ) public vault;
 
-    mapping(IVault => VaultDetails) internal _vaultDetails;
+    uint64 internal _assetCounter;
     mapping(AssetId => AssetIdKey) internal _idToAsset;
+    mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
 
     constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {
@@ -170,7 +169,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     function addPool(PoolId poolId) public auth {
         Pool storage pool_ = pool[poolId];
         require(pool_.createdAt == 0, PoolAlreadyAdded());
-        pool_.createdAt = block.timestamp;
+        pool_.createdAt = uint64(block.timestamp);
 
         IPoolEscrow escrow = poolEscrowFactory.escrow(poolId);
         if (address(escrow).code.length == 0) {
@@ -209,8 +208,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     /// @inheritdoc ISpokeGatewayHandler
     function setRequestManager(PoolId poolId, IRequestManager manager) public auth {
-        _pool(poolId); // Check existence
-        poolRequestManager[poolId] = manager;
+        require(isPoolActive(poolId), InvalidPool());
+        requestManager[poolId] = manager;
         emit SetRequestManager(poolId, manager);
     }
 
@@ -383,7 +382,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
         vault[poolId][scId][assetId][manager] = vault_;
-        assetInfo[poolId][scId][assetId].numVaults++;
+
+        pool[poolId].numVaults++;
         vaultDetails_.isLinked = true;
 
         if (manager == REQUEST_MANAGER_V3_0) {
@@ -410,7 +410,8 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         IRequestManager manager = assetInfo[poolId][scId][assetId].manager;
         delete vault[poolId][scId][assetId][manager];
-        assetInfo[poolId][scId][assetId].numVaults--;
+
+        pool[poolId].numVaults--;
         vaultDetails_.isLinked = false;
 
         if (manager == REQUEST_MANAGER_V3_0) {
@@ -539,11 +540,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(success && data.length >= 32, AssetMissingDecimals());
 
         return abi.decode(data, (uint8));
-    }
-
-    function _pool(PoolId poolId) internal view returns (Pool storage pool_) {
-        pool_ = pool[poolId];
-        require(pool_.createdAt > 0, PoolDoesNotExist());
     }
 
     function _shareClass(PoolId poolId, ShareClassId scId)

@@ -16,7 +16,10 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
 struct Pool {
-    uint256 createdAt;
+    /// @dev Timestamp of pool creation.
+    uint64 createdAt;
+    /// @dev Number of linked vaults.
+    uint32 numVaults;
 }
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
@@ -29,8 +32,6 @@ struct ShareClassDetails {
 struct ShareClassAsset {
     /// @dev Manager that can send requests, and handles the request callbacks.
     IRequestManager manager;
-    /// @dev Number of linked vaults.
-    uint32 numVaults;
     /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
     Price pricePoolPerAsset;
 }
@@ -113,7 +114,6 @@ interface ISpoke {
     error TooFewDecimals();
     error TooManyDecimals();
     error PoolAlreadyAdded();
-    error PoolDoesNotExist();
     error InvalidPool();
     error ShareClassAlreadyRegistered();
     error InvalidHook();
