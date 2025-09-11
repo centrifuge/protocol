@@ -186,6 +186,11 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, tooMuchAdapters, uint8(tooMuchAdapters.length));
     }
 
+    function testErrThresholdHigherThanQuorum() public {
+        vm.expectRevert(IMultiAdapter.ThresholdHigherThanQuorum.selector);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, uint8(threeAdapters.length + 1));
+    }
+
     function testErrNoDuplicatedAllowed() public {
         IAdapter[] memory duplicatedAdapters = new IAdapter[](2);
         duplicatedAdapters[0] = IAdapter(address(10));
@@ -385,6 +390,83 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
         assertVotes(MESSAGE_1, 0, 0, 1);
+    }
+
+    function testMessageWithThreshold2() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(MESSAGE_1, 1, 0, 0);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, 0, -1);
+
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, 0, 0);
+    }
+
+    function testSameMessageWithThreshold2() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(MESSAGE_1, 1, 0, 0);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, 0, -1);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, 1, -1);
+
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, 1, 0);
+
+        vm.prank(address(adapter3));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertVotes(MESSAGE_1, -1, 0, 0);
+    }
+
+    function testSameMessageWithThreshold1() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(MESSAGE_1, 0, -1, -1);
+
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertVotes(MESSAGE_1, 0, -2, -2);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertVotes(MESSAGE_1, 0, -1, -2);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 2);
+        assertVotes(MESSAGE_1, 0, 0, -2);
+
+        vm.prank(address(adapter2));
+        multiAdapter.handle(REMOTE_CENT_ID, MESSAGE_1);
+        assertEq(gateway.count(REMOTE_CENT_ID), 3);
+        assertVotes(MESSAGE_1, -1, 0, -3);
     }
 }
 
