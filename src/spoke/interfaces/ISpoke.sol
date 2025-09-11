@@ -29,11 +29,6 @@ struct ShareClassDetails {
     Price pricePoolPerShare;
 }
 
-struct ShareClassAsset {
-    /// @dev The price per pool unit in asset denomination (POOL_UNIT/ASSET_UNIT)
-    Price pricePoolPerAsset;
-}
-
 struct VaultDetails {
     /// @dev AssetId of the asset
     AssetId assetId;

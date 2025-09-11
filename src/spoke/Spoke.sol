@@ -7,7 +7,7 @@ import {IVault, VaultKind} from "./interfaces/IVault.sol";
 import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {IVaultManager, REQUEST_MANAGER_V3_0} from "./interfaces/legacy/IVaultManager.sol";
-import {AssetIdKey, Pool, ShareClassDetails, ShareClassAsset, VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
+import {AssetIdKey, Pool, ShareClassDetails, VaultDetails, ISpoke} from "./interfaces/ISpoke.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
@@ -51,7 +51,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     mapping(PoolId => Pool) public pool;
     mapping(PoolId => IRequestManager) public requestManager;
     mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClass;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ShareClassAsset))) public assetInfo;
     mapping(
         PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => mapping(IRequestManager => IVault)))
     ) public vault;
@@ -60,6 +59,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     mapping(AssetId => AssetIdKey) internal _idToAsset;
     mapping(IVault => VaultDetails) internal _vaultDetails;
     mapping(address asset => mapping(uint256 tokenId => AssetId assetId)) internal _assetToId;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Price))) internal _pricePoolPerAsset;
 
     constructor(ITokenFactory tokenFactory_, address deployer) Auth(deployer) {
         tokenFactory = tokenFactory_;
@@ -209,6 +209,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function setRequestManager(PoolId poolId, IRequestManager manager) public auth {
         require(isPoolActive(poolId), InvalidPool());
+        require(pool[poolId].numVaults == 0, MoreThanZeroLinkedVaults());
         requestManager[poolId] = manager;
         emit SetRequestManager(poolId, manager);
     }
@@ -277,7 +278,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         auth
     {
         (address asset, uint256 tokenId) = idToAsset(assetId);
-        Price storage poolPerAsset = assetInfo[poolId][scId][assetId].pricePoolPerAsset;
+        Price storage poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         // Disable expiration of the price if never initialized
@@ -298,7 +299,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
     function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external auth {
         (address asset, uint256 tokenId) = idToAsset(assetId);
-        assetInfo[poolId][scId][assetId].pricePoolPerAsset.maxAge = maxPriceAge;
+        _pricePoolPerAsset[poolId][scId][assetId].maxAge = maxPriceAge;
         emit UpdateMaxAssetPriceAge(poolId, scId, asset, tokenId, maxPriceAge);
     }
 
@@ -466,7 +467,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (D18 price)
     {
-        Price memory poolPerAsset = assetInfo[poolId][scId][assetId].pricePoolPerAsset;
+        Price memory poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         require(!checkValidity || poolPerAsset.isValid(), InvalidPrice());
 
         return poolPerAsset.price;
@@ -480,7 +481,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     {
         ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
 
-        Price memory poolPerAsset = assetInfo[poolId][scId][assetId].pricePoolPerAsset;
+        Price memory poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         Price memory poolPerShare = shareClass_.pricePoolPerShare;
 
         require(!checkValidity || poolPerAsset.isValid() && poolPerShare.isValid(), InvalidPrice());
@@ -506,7 +507,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         view
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil)
     {
-        Price memory poolPerAsset = assetInfo[poolId][scId][assetId].pricePoolPerAsset;
+        Price memory poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         computedAt = poolPerAsset.computedAt;
         maxAge = poolPerAsset.maxAge;
         validUntil = poolPerAsset.validUntil();

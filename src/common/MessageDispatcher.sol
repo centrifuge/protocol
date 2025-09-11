@@ -259,8 +259,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             spoke.setRequestManager(poolId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
-                centrifugeId,
-                MessageLib.SetRequestManager({poolId: poolId.raw(), manager: manager}).serialize()
+                centrifugeId, MessageLib.SetRequestManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }

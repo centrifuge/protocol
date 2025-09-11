@@ -633,7 +633,7 @@ contract SpokeTestSetRequestManager is SpokeTest {
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
         vm.prank(AUTH);
-        // This test is no longer applicable since request manager is now at pool level
+        vm.expectRevert(ISpoke.MoreThanZeroLinkedVaults.selector);
         spoke.setRequestManager(POOL_A, requestManager);
     }
 
