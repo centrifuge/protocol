@@ -53,6 +53,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     mapping(PoolId => Pool) public pool;
     mapping(PoolId => mapping(ShareClassId scId => ShareClassDetails)) public shareClass;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => ShareClassAsset))) public assetInfo;
+    mapping(PoolId => IRequestManager) public poolRequestManager;
     mapping(
         PoolId poolId => mapping(ShareClassId scId => mapping(AssetId assetId => mapping(IRequestManager => IVault)))
     ) public vault;
@@ -207,15 +208,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
-        public
-        auth
-    {
-        _shareClass(poolId, scId); // Check existence
-        ShareClassAsset storage assetInfo_ = assetInfo[poolId][scId][assetId];
-        require(assetInfo_.numVaults == 0, MoreThanZeroLinkedVaults());
-        assetInfo_.manager = manager;
-        emit SetRequestManager(poolId, scId, assetId, manager);
+    function setRequestManager(PoolId poolId, IRequestManager manager) public auth {
+        _pool(poolId); // Check existence
+        poolRequestManager[poolId] = manager;
+        emit SetRequestManager(poolId, manager);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -543,6 +539,11 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         require(success && data.length >= 32, AssetMissingDecimals());
 
         return abi.decode(data, (uint8));
+    }
+
+    function _pool(PoolId poolId) internal view returns (Pool storage pool_) {
+        pool_ = pool[poolId];
+        require(pool_.createdAt > 0, PoolDoesNotExist());
     }
 
     function _shareClass(PoolId poolId, ShareClassId scId)

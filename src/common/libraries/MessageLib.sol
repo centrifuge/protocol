@@ -673,23 +673,16 @@ library MessageLib {
 
     struct SetRequestManager {
         uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
         bytes32 manager;
     }
 
     function deserializeSetRequestManager(bytes memory data) internal pure returns (SetRequestManager memory) {
         require(messageType(data) == MessageType.SetRequestManager, UnknownMessageType());
-        return SetRequestManager({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            manager: data.toBytes32(41)
-        });
+        return SetRequestManager({poolId: data.toUint64(1), manager: data.toBytes32(9)});
     }
 
     function serialize(SetRequestManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetRequestManager, t.poolId, t.scId, t.assetId, t.manager);
+        return abi.encodePacked(MessageType.SetRequestManager, t.poolId, t.manager);
     }
 
     //---------------------------------------

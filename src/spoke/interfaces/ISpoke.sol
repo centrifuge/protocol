@@ -77,9 +77,7 @@ interface ISpoke {
         IVault vault,
         VaultKind kind
     );
-    event SetRequestManager(
-        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IRequestManager manager
-    );
+    event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
     event UpdateAssetPrice(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -115,6 +113,7 @@ interface ISpoke {
     error TooFewDecimals();
     error TooManyDecimals();
     error PoolAlreadyAdded();
+    error PoolDoesNotExist();
     error InvalidPool();
     error ShareClassAlreadyRegistered();
     error InvalidHook();

@@ -1,0 +1,1706 @@
+Warning: optimizer settings and `viaIR` have been disabled for accurate coverage reports.
+If you encounter "stack too deep" errors, consider using `--ir-minimum` which enables `viaIR` with minimum optimization resolving most of the errors
+Compiling 283 files with Solc 0.8.28
+Solc 0.8.28 finished in 67.77s
+Compiler run successful!
+Analysing contracts...
+Running tests...
+
+Ran 1 test for test/common/types/AccountId.t.sol:AccountIdTest
+[PASS] testAccountId(uint32) (runs: 101, μ: 3640, ~: 3640)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 23.64ms (15.88ms CPU time)
+
+Ran 4 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestERC20Hook
+[PASS] testCheckERC20TransferValidation() (gas: 26124)
+[PASS] testOnERC20AuthTransfer() (gas: 15340)
+[PASS] testOnERC20TransferBlocked() (gas: 21505)
+[PASS] testOnERC20TransferSuccess() (gas: 16051)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 27.38ms (13.42ms CPU time)
+
+Ran 3 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestEvents
+[PASS] testFreezeEvent() (gas: 55887)
+[PASS] testUnfreezeEvent() (gas: 46559)
+[PASS] testUpdateMemberEvent() (gas: 57163)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.80ms (470.25µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestVeto
+[PASS] testConstructor() (gas: 10961)
+[PASS] testErrNotAuthorized() (gas: 11722)
+[PASS] testVeto() (gas: 29246)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 26.37ms (244.50µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestSetAdaptersManagers
+[PASS] testGuardian() (gas: 23953)
+[PASS] testSetAdaptersManagers() (gas: 15833)
+[PASS] testSetAdaptersOnlySafe() (gas: 11564)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 36.30ms (10.83ms CPU time)
+
+Ran 7 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestFreeze
+[PASS] testFreezeEndorsedUser() (gas: 24550)
+[PASS] testFreezeSuccess() (gas: 60193)
+[PASS] testFreezeUnauthorized() (gas: 18449)
+[PASS] testFreezeUnfreezePattern() (gas: 55148)
+[PASS] testFreezeZeroAddress() (gas: 16324)
+[PASS] testUnfreezeSuccess() (gas: 51625)
+[PASS] testUnfreezeUnauthorized() (gas: 18472)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 35.94ms (834.71µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestUnpause
+[PASS] testGuardian() (gas: 23931)
+[PASS] testUnpause() (gas: 12376)
+[PASS] testUnpauseOnlySafe() (gas: 11149)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 8.73ms (215.79µs CPU time)
+
+Ran 2 tests for test/common/types/AssetId.t.sol:AssetIdTest
+[PASS] testAssetId(uint32,uint16) (runs: 101, μ: 6003, ~: 6003)
+[PASS] testAssetIdIso(uint32) (runs: 101, μ: 5576, ~: 5576)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 91.74ms (91.13ms CPU time)
+
+Ran 1 test for test/hub/unit/Holdings.t.sol:TestAmount
+[PASS] testSuccess() (gas: 81338)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 32.47ms (16.95ms CPU time)
+
+Ran 2 tests for test/hub/unit/Holdings.t.sol:TestDecrease
+[PASS] testErrNotAuthorized() (gas: 48919)
+[PASS] testSuccess() (gas: 102380)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.30ms (825.46µs CPU time)
+
+Ran 1 test for test/hub/unit/Holdings.t.sol:TestExists
+[PASS] testSuccess() (gas: 45301)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.57ms (146.08µs CPU time)
+
+Ran 2 tests for test/hub/unit/Holdings.t.sol:TestIncrease
+[PASS] testErrNotAuthorized() (gas: 48876)
+[PASS] testSuccess() (gas: 102337)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 3.77ms (3.33ms CPU time)
+
+Ran 5 tests for test/hub/unit/Holdings.t.sol:TestInitialize
+[PASS] testErrAlreadyInitialized() (gas: 45413)
+[PASS] testErrNotAuthorized() (gas: 16515)
+[PASS] testErrWrongShareClass() (gas: 13983)
+[PASS] testErrWrongValuation() (gas: 13946)
+[PASS] testSuccess() (gas: 114139)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.14ms (1.12ms CPU time)
+
+Ran 1 test for test/hub/unit/Holdings.t.sol:TestLiability
+[PASS] testSuccess() (gas: 40720)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 607.29µs (111.50µs CPU time)
+
+Ran 3 tests for test/hub/unit/Holdings.t.sol:TestSetAccountId
+[PASS] testErrHoldingNotFound() (gas: 15185)
+[PASS] testErrNotAuthorized() (gas: 48325)
+[PASS] testSuccess() (gas: 76303)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 817.00µs (367.50µs CPU time)
+
+Ran 5 tests for test/hub/unit/Holdings.t.sol:TestUpdate
+[PASS] testErrHoldingNotFound() (gas: 14710)
+[PASS] testErrNotAuthorized() (gas: 47856)
+[PASS] testUpdateEquals() (gas: 97608)
+[PASS] testUpdateLess() (gas: 97644)
+[PASS] testUpdateMore() (gas: 97632)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 3.44ms (2.97ms CPU time)
+
+Ran 11 tests for test/hub/unit/Accounting.t.sol:AccountingTest
+[PASS] testAccount() (gas: 80081)
+[PASS] testCreatingExistingAccount() (gas: 14230)
+[PASS] testDebitsAndCredits() (gas: 198054)
+[PASS] testDoubleUnlock() (gas: 40405)
+[PASS] testErrWhenNonExistentAccount() (gas: 58616)
+[PASS] testJournalId() (gas: 80102)
+[PASS] testNotWard() (gas: 74702)
+[PASS] testPoolIsolation() (gas: 277625)
+[PASS] testUnequalDebitsAndCredits(uint128) (runs: 101, μ: 167971, ~: 168563)
+[PASS] testUpdateEntryWithoutUnlocking() (gas: 16348)
+[PASS] testUpdateMetadata() (gas: 99550)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 131.97ms (123.30ms CPU time)
+
+Ran 4 tests for test/hub/unit/Holdings.t.sol:TestUpdateIsLiability
+[PASS] testErrHoldingNotFound() (gas: 14709)
+[PASS] testErrHoldingNotZero() (gas: 81601)
+[PASS] testErrNotAuthorized() (gas: 47852)
+[PASS] testSuccess() (gas: 54580)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 29.97ms (29.48ms CPU time)
+
+Ran 3 tests for test/hub/unit/Holdings.t.sol:TestUpdateValuation
+[PASS] testErrHoldingNotFound() (gas: 15089)
+[PASS] testErrNotAuthorized() (gas: 48198)
+[PASS] testSuccess() (gas: 53300)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.10ms (490.38µs CPU time)
+
+Ran 2 tests for test/hub/unit/Holdings.t.sol:TestValuation
+[PASS] testErrHoldingNotFound() (gas: 12448)
+[PASS] testSuccess() (gas: 44219)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 601.67µs (182.17µs CPU time)
+
+Ran 1 test for test/hub/unit/Holdings.t.sol:TestValue
+[PASS] testSuccess() (gas: 81455)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 653.08µs (245.13µs CPU time)
+
+Ran 1 test for test/hub/unit/Hub.t.sol:TestInitializeHolding
+[PASS] testErrAssetNotFound() (gas: 19101)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 20.42ms (633.25µs CPU time)
+
+Ran 1 test for test/hub/unit/Hub.t.sol:TestInitializeLiability
+[PASS] testErrAssetNotFound() (gas: 20001)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 27.14ms (158.38µs CPU time)
+
+Ran 5 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestNoteDeposit
+[PASS] testErrNotAuthorized() (gas: 17556)
+[PASS] testNoteDeposit(bool) (runs: 101, μ: 96045, ~: 94950)
+[PASS] testNoteDepositPriceOverridingPrice() (gas: 91429)
+[PASS] testNoteDepositTwice() (gas: 104297)
+[PASS] testNoteDepositZero() (gas: 43251)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 227.46ms (214.75ms CPU time)
+
+Ran 2 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestFuzz
+[PASS] testFuzzFreezeBit(uint128) (runs: 101, μ: 41828, ~: 42420)
+[PASS] testFuzzMembershipTimestamp(uint64) (runs: 101, μ: 60722, ~: 60722)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 180.63ms (171.20ms CPU time)
+
+Ran 2 tests for test/hub/unit/Hub.t.sol:TestMainMethodsChecks
+[PASS] testErrNotAuthotized() (gas: 47604)
+[PASS] testErrNotManager() (gas: 346538)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 41.09ms (38.26ms CPU time)
+
+Ran 1 test for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestInterfaceSupport
+[PASS] testSupportsInterface() (gas: 13405)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 25.73ms (153.21µs CPU time)
+
+Ran 1 test for test/hub/unit/Hub.t.sol:TestNotifyShareClass
+[PASS] testErrShareClassNotFound() (gas: 27099)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 6.17ms (670.88µs CPU time)
+
+Ran 1 test for test/hub/unit/HubHelpers.t.sol:TestMainMethodsChecks
+[PASS] testErrNotAuthotized() (gas: 35001)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 30.02ms (224.54µs CPU time)
+
+Ran 1 test for test/hub/unit/HubHelpers.t.sol:TestPricePoolPerAsset
+[PASS] testPriceWithoutHoldins() (gas: 14509)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 22.15ms (88.25µs CPU time)
+
+Ran 10 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestMember
+[PASS] testMembershipStatus() (gas: 65688)
+[PASS] testSourceMembershipValidation() (gas: 35170)
+[PASS] testSourceOrTargetFrozenValidation() (gas: 48157)
+[PASS] testTargetMembershipValidation() (gas: 35370)
+[PASS] testUpdateMemberEndorsedUser() (gas: 24804)
+[PASS] testUpdateMemberExactBoundaryTimestamp() (gas: 60593)
+[PASS] testUpdateMemberInvalidValidUntil() (gas: 20966)
+[PASS] testUpdateMemberPreservesFreezeStatus() (gas: 78042)
+[PASS] testUpdateMemberSuccess() (gas: 60020)
+[PASS] testUpdateMemberUnauthorized() (gas: 18795)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 63.20ms (57.57ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestOverridePricePoolPerAsset
+[PASS] testErrNotAuthorized() (gas: 15250)
+[PASS] testOverrideAsset(bool) (runs: 101, μ: 21733, ~: 20638)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 124.32ms (122.28ms CPU time)
+
+Ran 7 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestTransferTypes
+[PASS] testIsCrosschainTransfer() (gas: 19409)
+[PASS] testIsDepositClaim() (gas: 21442)
+[PASS] testIsDepositFulfillment() (gas: 19253)
+[PASS] testIsDepositRequestOrIssuance() (gas: 21393)
+[PASS] testIsRedeemClaimOrRevocation() (gas: 26297)
+[PASS] testIsRedeemFulfillment() (gas: 19339)
+[PASS] testIsRedeemRequest() (gas: 16656)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 15.69ms (11.41ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestOverridePricePoolPerShare
+[PASS] testErrNotAuthorized() (gas: 14811)
+[PASS] testOverrideShare(bool) (runs: 101, μ: 19869, ~: 18774)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 38.19ms (36.12ms CPU time)
+
+Ran 5 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestUpdateRestriction
+[PASS] testUpdateRestrictionFreeze() (gas: 60903)
+[PASS] testUpdateRestrictionInvalidUpdate() (gas: 17184)
+[PASS] testUpdateRestrictionMember() (gas: 63407)
+[PASS] testUpdateRestrictionUnauthorized() (gas: 18124)
+[PASS] testUpdateRestrictionUnfreeze() (gas: 54208)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 51.67ms (18.76ms CPU time)
+
+Ran 2 tests for test/misc/unit/libraries/ArrayLib.t.sol:ArrayLibTest
+[PASS] testCountPositiveValues(int16[8],uint8) (runs: 101, μ: 7665, ~: 7252)
+[PASS] testDecreaseFirstNValues(int16[8],uint8) (runs: 101, μ: 46011, ~: 44637)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 320.79ms (320.63ms CPU time)
+
+Ran 2 tests for test/hub/integration/BatchingAndPayment.t.sol:TestBatchingAndPayment
+[PASS] testMultipleMulticallDifferentPools() (gas: 4302235)
+[PASS] testMultipleMulticallSamePool() (gas: 2296938)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 77.38ms (18.22ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestReserve
+[PASS] testErrNotAuthorized() (gas: 17555)
+[PASS] testReserve(bool) (runs: 101, μ: 26894, ~: 25799)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 137.06ms (131.48ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestResetPricePoolPerAsset
+[PASS] testErrNotAuthorized() (gas: 14787)
+[PASS] testResetAsset(bool) (runs: 101, μ: 29928, ~: 28683)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 78.54ms (76.05ms CPU time)
+
+Ran 9 tests for test/misc/unit/libraries/SafeTransferLib.t.sol:SafeTransferLibTest
+[PASS] testApprove(address,uint256) (runs: 101, μ: 31298, ~: 31298)
+[PASS] testSafeApproveWithBoolFalse(address,uint256) (runs: 101, μ: 35708, ~: 35708)
+[PASS] testSafeApproveWithNoCode(address,uint256) (runs: 101, μ: 10173, ~: 10173)
+[PASS] testSafeTransfer(address,uint256) (runs: 101, μ: 40126, ~: 40139)
+[PASS] testSafeTransferFrom(address,address,uint256) (runs: 101, μ: 40393, ~: 40852)
+[PASS] testSafeTransferFromWithBoolFalse(address,address,uint256) (runs: 101, μ: 44016, ~: 44457)
+[PASS] testSafeTransferFromWithNoCode(address,address,uint256) (runs: 101, μ: 10736, ~: 10736)
+[PASS] testSafeTransferWithBoolFalse(address,uint256) (runs: 101, μ: 43718, ~: 43731)
+[PASS] testSafeTransferWithNoCode(address,uint256) (runs: 101, μ: 10173, ~: 10173)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 597.63ms (597.32ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestResetPricePoolPerShare
+[PASS] testErrNotAuthorized() (gas: 14421)
+[PASS] testResetShare(bool) (runs: 101, μ: 27546, ~: 26301)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 37.19ms (24.35ms CPU time)
+
+Ran 3 tests for test/common/types/ShareClassId.t.sol:ShareClassIdTest
+[PASS] testNewShareClassId(uint64,uint32) (runs: 101, μ: 4404, ~: 4404)
+[PASS] testShareClassId(bytes16) (runs: 101, μ: 5578, ~: 5578)
+[PASS] testShareClassIdCollisionResistance(uint64,uint64,uint32,uint32) (runs: 101, μ: 15071, ~: 14923)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 119.69ms (119.45ms CPU time)
+
+Ran 3 tests for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerDepositFailureTests
+[PASS] testInsufficientBalance(uint128) (runs: 101, μ: 67821, ~: 67821)
+[PASS] testNotAllowed(uint128) (runs: 101, μ: 14639, ~: 14639)
+[PASS] testNotBalanceSheetManager(uint128) (runs: 101, μ: 66713, ~: 66713)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 389.19ms (387.95ms CPU time)
+
+Ran 4 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestRevoke
+[PASS] testErrNotAuthorized() (gas: 14656)
+[PASS] testRevoke(bool) (runs: 101, μ: 63641, ~: 62556)
+[PASS] testRevokeOverridingPrice() (gas: 61104)
+[PASS] testRevokeTwice() (gas: 70470)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 256.08ms (248.64ms CPU time)
+
+Ran 2 tests for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerDepositSuccessTests
+[PASS] testDeposit(uint128) (runs: 101, μ: 72408, ~: 72408)
+[PASS] testOnrampDisable() (gas: 50613)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 283.56ms (276.00ms CPU time)
+
+Ran 8 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestSubmitQueuedAssets
+[PASS] testErrNotAuthorized() (gas: 15051)
+[PASS] testSubmitQueuedAssets(bool) (runs: 101, μ: 67078, ~: 65983)
+[PASS] testSubmitQueuedAssetsOverridingPrice() (gas: 66082)
+[PASS] testSubmitQueuedAssetsTwice() (gas: 84897)
+[PASS] testSubmitQueuedAssetsWithDifferentAssets() (gas: 135254)
+[PASS] testSubmitQueuedAssetsWithMoreDepositAmount() (gas: 120024)
+[PASS] testSubmitQueuedAssetsWithMoreWithdrawAmount() (gas: 115373)
+[PASS] testSubmitQueuedAssetsWithSameAmount() (gas: 114572)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 307.09ms (303.01ms CPU time)
+
+Ran 1 test for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerERC165Tests
+[PASS] testERC165Support(bytes4) (runs: 101, μ: 18474, ~: 18474)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 101.80ms (95.99ms CPU time)
+
+Ran 6 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestSubmitQueuedShares
+[PASS] testErrNotAuthorized() (gas: 14743)
+[PASS] testSubmitQueuedShares(bool) (runs: 101, μ: 53376, ~: 52281)
+[PASS] testSubmitQueuedSharesAfterUpdateAssets() (gas: 113807)
+[PASS] testSubmitQueuedSharesTwice() (gas: 66745)
+[PASS] testSubmitQueuedSharesWithDeltaNegative() (gas: 70053)
+[PASS] testSubmitQueuedSharesWithDeltaPositive() (gas: 76230)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 46.41ms (26.87ms CPU time)
+
+Ran 3 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestTransferSharesFrom
+[PASS] testErrCannotTransferFromEndorsedContract() (gas: 18253)
+[PASS] testErrNotAuthorized() (gas: 15876)
+[PASS] testOverrideAsset(bool) (runs: 101, μ: 36902, ~: 35807)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 37.29ms (33.71ms CPU time)
+
+Ran 1 test for test/managers/integration/OnOfframpManager.t.sol:OnOfframpManagerIntegrationTest
+[PASS] testDepositAndWithdrawHappyPath() (gas: 477063)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 47.35ms (6.45ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestUnreserve
+[PASS] testErrNotAuthorized() (gas: 17577)
+[PASS] testReserve(bool) (runs: 101, μ: 26916, ~: 25821)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 85.95ms (83.88ms CPU time)
+
+Ran 7 tests for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerUpdateContractFailureTests
+[PASS] testERC6909NotSupportedOfframp() (gas: 29584)
+[PASS] testERC6909NotSupportedOnramp() (gas: 27324)
+[PASS] testInvalidPool() (gas: 13939)
+[PASS] testInvalidShareClass() (gas: 14018)
+[PASS] testInvalidSource(address) (runs: 101, μ: 14900, ~: 14900)
+[PASS] testUnknownUpdateContractKind() (gas: 16795)
+[PASS] testUnknownUpdateContractType() (gas: 13881)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 84.82ms (25.87ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestUpdateManager
+[PASS] testErrNotAuthorized() (gas: 12341)
+[PASS] testUpdateManager() (gas: 12081)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 32.08ms (171.71µs CPU time)
+
+Ran 6 tests for test/hub/unit/HubRegistry.t.sol:HubRegistryTest
+[PASS] testExists() (gas: 69961)
+[PASS] testPoolRegistration(address) (runs: 101, μ: 90927, ~: 90927)
+[PASS] testSetMetadata(bytes) (runs: 101, μ: 142497, ~: 136638)
+[PASS] testUpdateCurrency(uint128) (runs: 101, μ: 90743, ~: 90743)
+[PASS] testUpdateDependency(bytes32,address) (runs: 101, μ: 49567, ~: 49567)
+[PASS] testUpdateManager(address,address) (runs: 101, μ: 105015, ~: 105015)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 1.16s (1.16s CPU time)
+
+Ran 3 tests for test/valuations/unit/IdentityValuation.t.sol:TestIdentityValuation
+[PASS] testFromLessDecimalsToMore() (gas: 16572)
+[PASS] testFromMoreDecimalsToLess() (gas: 16617)
+[PASS] testSameDecimals() (gas: 15252)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 798.83µs (293.08µs CPU time)
+
+Ran 5 tests for test/common/unit/PoolEscrow.t.sol:PoolEscrowTestERC6909
+[PASS] testAvailableBalanceOf(uint64,bytes16,uint8) (runs: 101, μ: 1850484, ~: 1851025)
+[PASS] testDeposit(uint64,bytes16,uint8) (runs: 101, μ: 1823763, ~: 1824304)
+[PASS] testReserveDecrease(uint64,bytes16,uint8) (runs: 101, μ: 1870096, ~: 1870637)
+[PASS] testReserveIncrease(uint64,bytes16,uint8) (runs: 101, μ: 1856025, ~: 1856566)
+[PASS] testWithdraw(uint64,bytes16,uint8) (runs: 101, μ: 1850115, ~: 1850656)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.54s (1.52s CPU time)
+
+Ran 5 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestWithdraw
+[PASS] testErrNotAuthorized() (gas: 17942)
+[PASS] testWithdraw(bool) (runs: 101, μ: 100476, ~: 99381)
+[PASS] testWithdrawOverridingPrice() (gas: 95792)
+[PASS] testWithdrawTwice() (gas: 110321)
+[PASS] testWithdrawZero() (gas: 47099)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 246.78ms (237.29ms CPU time)
+
+Ran 10 tests for test/hooks/integration/BaseTransferHook.t.sol:BaseTransferHookIntegrationTest
+[PASS] testAsyncRequestManagerBurns() (gas: 15364)
+[PASS] testBalanceSheetBurns() (gas: 15336)
+[PASS] testCompleteInvestmentFlowSequence() (gas: 28323)
+[PASS] testConfigurationValidation() (gas: 31061)
+[PASS] testCrosschainTransfers() (gas: 18375)
+[PASS] testDepositFlow() (gas: 18168)
+[PASS] testOtherContractBurns() (gas: 17647)
+[PASS] testRedeemFlow() (gas: 22283)
+[PASS] testRevokeShares() (gas: 19454)
+[PASS] testUserToUserTransfers() (gas: 27506)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 103.74ms (3.73ms CPU time)
+
+Ran 2 tests for test/hooks/unit/BaseTransferHook.t.sol:BaseTransferHookTestConstructor
+[PASS] testConstructor() (gas: 25181)
+[PASS] testConstructorInvalidInputs() (gas: 73461)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.71ms (241.63µs CPU time)
+
+Ran 3 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestFile
+[PASS] testErrFileUnrecognizedParam() (gas: 11954)
+[PASS] testErrNotAuthorized() (gas: 11861)
+[PASS] testFile() (gas: 32469)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 6.42ms (272.25µs CPU time)
+
+Ran 3 tests for test/integration/Integration.t.sol:_CentrifugeIntegrationTestWithUtilsTest
+[PASS] testCreatePool() (gas: 2118117)
+[PASS] testMintUSDC(uint256) (runs: 101, μ: 59827, ~: 60616)
+[PASS] testRegisterUSDC() (gas: 195745)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 289.94ms (190.87ms CPU time)
+
+Ran 2 tests for test/managers/integration/MerkleProofManager.t.sol:MerkleProofManagerSuccessTests
+[PASS] testExecute(uint128,uint128) (runs: 101, μ: 1196881, ~: 1199455)
+[PASS] testReceiveEther() (gas: 16367)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.86s (1.77s CPU time)
+
+Ran 4 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestIssue
+[PASS] testErrNotAuthorized() (gas: 15048)
+[PASS] testIssue(bool) (runs: 101, μ: 60565, ~: 59470)
+[PASS] testIssueOverridingPrice() (gas: 58139)
+[PASS] testIssueTwice() (gas: 67170)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 201.00ms (195.75ms CPU time)
+
+Ran 8 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestIssueAndRevokeCombinations
+[PASS] testIssueAndThenRevokeAndThenIssueSameAmount() (gas: 83496)
+[PASS] testIssueAndThenRevokeSameAmount() (gas: 53740)
+[PASS] testIssueAndThenRevokeWithLessAmount() (gas: 73107)
+[PASS] testIssueAndThenRevokeWithMoreAmount() (gas: 73195)
+[PASS] testRevokeAndThenIssueAndThenRevokeSameAmount() (gas: 83156)
+[PASS] testRevokeAndThenIssueSameAmount() (gas: 53360)
+[PASS] testRevokeAndThenIssueWithLessAmount() (gas: 72926)
+[PASS] testRevokeAndThenIssueWithMoreAmount() (gas: 72675)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 22.91ms (8.85ms CPU time)
+
+Ran 2 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestMulticall
+[PASS] testErrNotPayable() (gas: 17203)
+[PASS] testMulticall() (gas: 114820)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 9.12ms (588.50µs CPU time)
+
+Ran 1 test for test/hub/unit/ShareClassManager.t.sol:ShareClassManagerDepositRedeem
+[PASS] testDepositsWithRedeemsFullFlow(uint128,uint128,uint128,uint128,uint128) (runs: 101, μ: 623994, ~: 625217)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.49s (1.49s CPU time)
+
+Ran 6 tests for test/common/unit/factories/PoolEscrowFactory.t.sol:PoolEscrowFactoryTest
+[PASS] testDeployEscrowAtDeterministicAddress(uint64) (runs: 101, μ: 1842318, ~: 1842318)
+[PASS] testDeployEscrowTwiceReverts(uint64) (runs: 101, μ: 1040467541, ~: 1040467558)
+[PASS] testEscrowHasCorrectPermissions(uint64,address) (runs: 101, μ: 1854063, ~: 1854063)
+[PASS] testFileSetsBalanceSheet() (gas: 21785)
+[PASS] testFileUnauthorizedReverts() (gas: 14162)
+[PASS] testFileWithUnknownParamReverts() (gas: 13583)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 730.87ms (730.07ms CPU time)
+
+Ran 1 test for test/common/types/PoolId.t.sol:PoolIdTest
+[PASS] testPoolId(uint48,uint16) (runs: 101, μ: 5785, ~: 5785)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 31.41ms (31.21ms CPU time)
+
+Ran 6 tests for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerWithdrawFailureTests
+[PASS] testDisabledDestination(uint128) (runs: 101, μ: 76363, ~: 76363)
+[PASS] testInsufficientBalance(uint128) (runs: 101, μ: 100402, ~: 100402)
+[PASS] testInvalidDestination(uint128) (runs: 101, μ: 59854, ~: 59854)
+[PASS] testNotAllowed(uint128) (runs: 101, μ: 14437, ~: 14437)
+[PASS] testNotBalanceSheetManager(uint128) (runs: 101, μ: 100063, ~: 100063)
+[PASS] testZeroAddressReceiver(uint128) (runs: 101, μ: 48357, ~: 48357)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 1.00s (998.97ms CPU time)
+
+Ran 1 test for test/integration/MaliciousVaultAttack.t.sol:MaliciousVaultAttackTest
+[PASS] testAttack() (gas: 13424498)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 400.21ms (70.41ms CPU time)
+
+Ran 1 test for test/managers/unit/OnOfframpManager.t.sol:OnOfframpManagerWithdrawSuccessTests
+[PASS] testWithdraw(uint128) (runs: 101, μ: 102454, ~: 102454)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 162.41ms (161.21ms CPU time)
+
+Ran 7 tests for test/misc/unit/libraries/PricingLib.t.sol:AssetToPoolAmountTest
+[PASS] testAssetToPoolAmount(uint128,uint8,uint8,uint128) (runs: 101, μ: 24376, ~: 24912)
+[PASS] testAssetToPoolAmountSameDecimals(uint128,uint128) (runs: 101, μ: 10328, ~: 9844)
+[PASS] testAssetToPoolAmountZeroValues() (gas: 11854)
+[PASS] testConvertWithPrice(uint128,uint8,uint8,uint128) (runs: 101, μ: 24419, ~: 24955)
+[PASS] testConvertWithPriceSameDecimals(uint128,uint128) (runs: 101, μ: 10293, ~: 9809)
+[PASS] testConvertWithPriceSimple() (gas: 7372)
+[PASS] testConvertWithPriceZeroValues() (gas: 11850)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 270.27ms (270.02ms CPU time)
+
+Ran 4 tests for test/adapters/unit/LayerZeroAdapter.t.sol:LayerZeroAdapterTest
+[PASS] testDeploy() (gas: 24699)
+[PASS] testEstimate(uint64) (runs: 101, μ: 21525, ~: 21525)
+[PASS] testIncomingCalls(bytes,address,address,uint16,address) (runs: 101, μ: 98062, ~: 98040)
+[PASS] testOutgoingCalls(bytes,address,uint128,address) (runs: 101, μ: 287612, ~: 276689)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 799.87ms (798.71ms CPU time)
+
+Ran 2 tests for test/adapters/unit/LayerZeroAdapter.t.sol:LayerZeroAdapterTestSetDelegate
+[PASS] testSetDelegate() (gas: 26430)
+[PASS] testSetDelegateErrNotAuthorized() (gas: 13707)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 2.54ms (1.10ms CPU time)
+
+Ran 2 tests for test/adapters/unit/LayerZeroAdapter.t.sol:LayerZeroAdapterTestWire
+[PASS] testWire() (gas: 68018)
+[PASS] testWireErrNotAuthorized() (gas: 14350)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.69ms (380.08µs CPU time)
+
+Ran 4 tests for test/misc/unit/Recoverable.t.sol:TestRecoverable
+[PASS] testErrNotAuthorized() (gas: 22186)
+[PASS] testRecoverTokensERC20() (gas: 2137058)
+[PASS] testRecoverTokensERC6909() (gas: 1084499)
+[PASS] testRecoverTokensETH() (gas: 46769)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 12.21ms (11.63ms CPU time)
+
+Ran 4 tests for test/adapters/unit/AxelarAdapter.t.sol:AxelarAdapterTest
+[PASS] testDeploy() (gas: 21970)
+[PASS] testEstimate(uint256) (runs: 101, μ: 48300, ~: 48498)
+[PASS] testIncomingCalls(bytes32,address,address,string,bytes,address,address) (runs: 101, μ: 432744, ~: 432727)
+[PASS] testOutgoingCalls(bytes,address,uint256,address) (runs: 101, μ: 713301, ~: 697521)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 2.72s (2.72s CPU time)
+
+Ran 2 tests for test/adapters/unit/AxelarAdapter.t.sol:AxelarAdapterTestWire
+[PASS] testWire() (gas: 117266)
+[PASS] testWireErrNotAuthorized() (gas: 14953)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 5.97ms (4.96ms CPU time)
+
+Ran 2 tests for test/misc/unit/libraries/PricingLib.t.sol:AssetToShareAmountTest
+[PASS] testAssetToShareAmount(uint128,uint8,uint128,uint128) (runs: 101, μ: 25166, ~: 25246)
+[PASS] testAssetToShareToAssetRoundTrip(uint128,uint8,uint64,uint64) (runs: 101, μ: 20521, ~: 20852)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 171.08ms (170.84ms CPU time)
+
+Ran 4 tests for test/misc/unit/libraries/PricingLib.t.sol:CalcPriceAssetPerShareTest
+[PASS] testEdgeCases() (gas: 36191)
+[PASS] testIdentityPrice() (gas: 18458)
+[PASS] testManual() (gas: 17084)
+[PASS] testRoundingModes() (gas: 23334)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 4.51ms (2.86ms CPU time)
+
+Ran 5 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithPriceEdgeCasesTest
+[PASS] testEdgeCaseWithPriceMaxAmounts() (gas: 9475)
+[PASS] testEdgeCaseWithPriceMinBaseAmount() (gas: 11459)
+[PASS] testEdgeCaseWithPriceSmallestPriceToResultInOne() (gas: 10217)
+[PASS] testEdgeCaseWithPriceSmallestPriceToResultInZero() (gas: 10371)
+[PASS] testEdgeCaseWithPriceZeroPrice() (gas: 3963)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 675.46µs (354.21µs CPU time)
+
+Ran 3 tests for test/spoke/unit/BalanceSheet.t.sol:BalanceSheetTestDeposit
+[PASS] testDepositERC20(bool) (runs: 101, μ: 99616, ~: 98376)
+[PASS] testDepositERC6909() (gas: 90302)
+[PASS] testErrNotAuthorized() (gas: 17512)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 48.36ms (45.90ms CPU time)
+
+Ran 4 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithPriceTest
+[PASS] testConvertWithPrice(uint128,uint8,uint8,uint128) (runs: 101, μ: 24380, ~: 24911)
+[PASS] testConvertWithPriceSameDecimals(uint128,uint128) (runs: 101, μ: 10364, ~: 9787)
+[PASS] testConvertWithPriceSimple() (gas: 7417)
+[PASS] testConvertWithPriceZeroValues() (gas: 11828)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 43.88ms (43.62ms CPU time)
+
+Ran 5 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithPricesEdgeCasesTest
+[PASS] testConvertWithPricesZeroPrices() (gas: 6266)
+[PASS] testEdgeCaseWithPricesMaxAmounts() (gas: 8319)
+[PASS] testEdgeCaseWithPricesMinBaseAmount() (gas: 14510)
+[PASS] testEdgeCaseWithPricesTinyDenominator() (gas: 11130)
+[PASS] testEdgeCaseWithPricesTinyNumerator() (gas: 11006)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.56ms (990.88µs CPU time)
+
+Ran 36 tests for test/misc/unit/ERC20.t.sol:ERC20Test
+[PASS] testApprove() (gas: 39766)
+[PASS] testApprove(address,uint256) (runs: 101, μ: 39965, ~: 39965)
+[PASS] testBurn() (gas: 94942)
+[PASS] testBurn(address,uint256,uint256) (runs: 101, μ: 99356, ~: 99508)
+[PASS] testBurnInsufficientBalance(address,uint256,uint256) (runs: 101, μ: 65314, ~: 65019)
+[PASS] testBurnWithAllowance() (gas: 123716)
+[PASS] testFile(string,string,address) (runs: 101, μ: 130807, ~: 128935)
+[PASS] testInfiniteApproveTransferFrom() (gas: 107926)
+[PASS] testMint() (gas: 64936)
+[PASS] testMint(address,uint256) (runs: 101, μ: 65692, ~: 65692)
+[PASS] testMintBadAddress() (gas: 16293)
+[PASS] testPermissions(address) (runs: 101, μ: 29642, ~: 29628)
+[PASS] testPermit() (gas: 75759)
+[PASS] testPermit(uint248,address,uint256,uint256) (runs: 101, μ: 75726, ~: 76318)
+[PASS] testPermitBadDeadline() (gas: 46746)
+[PASS] testPermitBadDeadline(uint128,address,uint256,uint256) (runs: 101, μ: 47710, ~: 47707)
+[PASS] testPermitBadNonce() (gas: 46607)
+[PASS] testPermitBadNonce(uint128,address,uint256,uint256,uint256) (runs: 101, μ: 47514, ~: 47514)
+[PASS] testPermitContract() (gas: 414379)
+[PASS] testPermitContractInvalidSignature() (gas: 382599)
+[PASS] testPermitPastDeadline() (gas: 17120)
+[PASS] testPermitPastDeadline(uint128,address,uint256,uint64) (runs: 101, μ: 18787, ~: 18785)
+[PASS] testPermitReplay() (gas: 80515)
+[PASS] testPermitReplay(uint128,address,uint256,uint256) (runs: 101, μ: 81194, ~: 81194)
+[PASS] testTransfer() (gas: 74809)
+[PASS] testTransfer(address,uint256) (runs: 101, μ: 75269, ~: 75269)
+[PASS] testTransferBadAddress() (gas: 63693)
+[PASS] testTransferFrom() (gas: 96183)
+[PASS] testTransferFrom(address,uint256,uint256) (runs: 101, μ: 109473, ~: 109947)
+[PASS] testTransferFromBadAddress() (gas: 64628)
+[PASS] testTransferFromInsufficientAllowance() (gas: 88073)
+[PASS] testTransferFromInsufficientAllowance(address,uint256,uint256) (runs: 101, μ: 92967, ~: 92475)
+[PASS] testTransferFromInsufficientBalance() (gas: 87703)
+[PASS] testTransferFromInsufficientBalance(address,uint256,uint256) (runs: 101, μ: 92382, ~: 92087)
+[PASS] testTransferInsufficientBalance() (gas: 60488)
+[PASS] testTransferInsufficientBalance(address,uint256,uint256) (runs: 101, μ: 65335, ~: 65040)
+Suite result: ok. 36 passed; 0 failed; 0 skipped; finished in 2.83s (2.80s CPU time)
+
+Ran 20 tests for test/misc/unit/libraries/MathLib.t.sol:MathLibTest
+[PASS] testMax(uint256,uint256) (runs: 101, μ: 9005, ~: 9460)
+[PASS] testMin(uint256,uint256) (runs: 101, μ: 8941, ~: 9396)
+[PASS] testMulDivDown(uint256,uint256,uint256) (runs: 101, μ: 3565, ~: 4802)
+[PASS] testMulDivDownZeroDenominator(uint256,uint256) (runs: 101, μ: 3670, ~: 3669)
+[PASS] testMulDivUp(uint256,uint256,uint256) (runs: 101, μ: 12686, ~: 12334)
+[PASS] testMulDivUpUnderverflow(uint256,uint256) (runs: 101, μ: 4220, ~: 4219)
+[PASS] testMulDivUpZeroDenominator(uint256,uint256) (runs: 101, μ: 3650, ~: 3649)
+[PASS] testRpow() (gas: 8429)
+[PASS] testToUint128(uint256) (runs: 101, μ: 7717, ~: 7329)
+[PASS] testToUint128Overflow(uint128) (runs: 101, μ: 4257, ~: 4257)
+[PASS] testToUint16(uint256) (runs: 101, μ: 8248, ~: 8865)
+[PASS] testToUint16Overflow(uint256) (runs: 101, μ: 4055, ~: 4055)
+[PASS] testToUint32(uint256) (runs: 101, μ: 8068, ~: 8561)
+[PASS] testToUint32Overflow(uint256) (runs: 101, μ: 4099, ~: 4099)
+[PASS] testToUint64(uint256) (runs: 101, μ: 7989, ~: 7353)
+[PASS] testToUint64Overflow(uint256) (runs: 101, μ: 4076, ~: 4076)
+[PASS] testToUint8(uint256) (runs: 101, μ: 8745, ~: 8867)
+[PASS] testToUint8Overflow(uint256) (runs: 101, μ: 4032, ~: 4032)
+[PASS] testToUint96(uint256) (runs: 101, μ: 7863, ~: 7329)
+[PASS] testToUint96Overflow(uint256) (runs: 101, μ: 4054, ~: 4054)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 570.86ms (570.42ms CPU time)
+
+Ran 4 tests for test/misc/unit/libraries/MerkleProofLib.t.sol:MerkleProofLibTest
+[PASS] testValidProofSupplied() (gas: 6762)
+[PASS] testVerifyEmptyMerkleProofSuppliedLeafAndRootDifferent() (gas: 5678)
+[PASS] testVerifyEmptyMerkleProofSuppliedLeafAndRootSame() (gas: 5863)
+[PASS] testVerifyInvalidProofSupplied() (gas: 6804)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 556.63µs (371.54µs CPU time)
+
+Ran 5 tests for test/managers/integration/MerkleProofManager.t.sol:MerkleProofManagerFailureTests
+[PASS] testInvalidCall() (gas: 977185)
+[PASS] testInvalidDecoder() (gas: 935837)
+[PASS] testInvalidProof() (gas: 973777)
+[PASS] testNotSetAsBalanceSheetManager() (gas: 958541)
+[PASS] testNotStrategist() (gas: 11488)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 149.01ms (10.83ms CPU time)
+
+Ran 3 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithPricesTest
+[PASS] testConvertWithPricesDifferentDecimals(uint128,uint8,uint8,uint128,uint128) (runs: 101, μ: 28284, ~: 28533)
+[PASS] testConvertWithPricesSameDecimals(uint128,uint128,uint128) (runs: 101, μ: 14142, ~: 13409)
+[PASS] testConvertWithPricesSimple() (gas: 8153)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 337.98ms (337.66ms CPU time)
+
+Ran 5 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithReciprocalPriceEdgeCasesTest
+[PASS] testEdgeCaseWithReciprocalPriceMaxAmounts() (gas: 10002)
+[PASS] testEdgeCaseWithReciprocalPriceMinBaseAmount() (gas: 11872)
+[PASS] testEdgeCaseWithReciprocalPriceSmallestPrice() (gas: 11636)
+[PASS] testEdgeCaseWithReciprocalPriceSmallestPriceToZero() (gas: 14914)
+[PASS] testEdgeCaseWithReciprocalPriceZeroPrice() (gas: 3397)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 966.42µs (751.37µs CPU time)
+
+Ran 20 tests for test/misc/unit/libraries/D18.t.sol:D18Test
+[PASS] testDivD18() (gas: 3814)
+[PASS] testEqD18() (gas: 475)
+[PASS] testFuzzAdd(uint128,uint128) (runs: 101, μ: 5862, ~: 5862)
+[PASS] testFuzzDivD18(uint128,uint128) (runs: 101, μ: 10390, ~: 9609)
+[PASS] testFuzzMulD18(uint128,uint128) (runs: 101, μ: 10294, ~: 9903)
+[PASS] testFuzzMulUInt128(uint128,uint128) (runs: 101, μ: 11384, ~: 10993)
+[PASS] testFuzzMulUInt256(uint128,uint256) (runs: 101, μ: 11019, ~: 10740)
+[PASS] testFuzzReciprocalMulInt128(uint128,uint128) (runs: 101, μ: 13264, ~: 13566)
+[PASS] testFuzzReciprocalMulInt256(uint128,uint256) (runs: 101, μ: 12829, ~: 13100)
+[PASS] testFuzzSub(uint128,uint128) (runs: 100, μ: 5015, ~: 5015)
+[PASS] testIsNotZero() (gas: 4162)
+[PASS] testIsZero() (gas: 4177)
+[PASS] testMulD18() (gas: 3837)
+[PASS] testMulUint128() (gas: 5116)
+[PASS] testMulUint256() (gas: 4965)
+[PASS] testRawD18() (gas: 3436)
+[PASS] testReciprocalMulInt128() (gas: 5189)
+[PASS] testReciprocalMulInt256() (gas: 5016)
+[PASS] testRoundingUint128(uint128) (runs: 101, μ: 9592, ~: 9228)
+[PASS] testRoundingUint256(uint256) (runs: 101, μ: 9248, ~: 9035)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 520.07ms (519.69ms CPU time)
+
+Ran 3 tests for test/misc/unit/libraries/PricingLib.t.sol:ConvertWithReciprocalPriceTest
+[PASS] testConvertWithReciprocalPriceDifferentDecimals(uint128,uint8,uint8,uint128) (runs: 101, μ: 27615, ~: 28294)
+[PASS] testConvertWithReciprocalPriceSameDecimals(uint128,uint128) (runs: 101, μ: 11054, ~: 10352)
+[PASS] testConvertWithReciprocalPriceSimple() (gas: 8538)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 258.82ms (258.54ms CPU time)
+
+Ran 1 test for test/misc/unit/libraries/PricingLib.t.sol:PoolToAssetAmountTest
+[PASS] testPoolToAssetAmount(uint128,uint8,uint64) (runs: 101, μ: 23634, ~: 23495)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 102.70ms (102.50ms CPU time)
+
+Ran 10 tests for test/misc/unit/libraries/BytesLib.t.sol:BytesLibTest
+[PASS] testSlice(bytes,bytes,bytes) (runs: 101, μ: 8256, ~: 8195)
+[PASS] testSliceZeroPadded(bytes,bytes,uint8) (runs: 101, μ: 10226, ~: 9439)
+[PASS] testToAddress(address,bytes,bytes) (runs: 101, μ: 7010, ~: 7005)
+[PASS] testToBytes16(bytes16,bytes,bytes) (runs: 101, μ: 6769, ~: 6759)
+[PASS] testToBytes32(bytes32,bytes,bytes) (runs: 101, μ: 6702, ~: 6692)
+[PASS] testToUint128(uint128,bytes,bytes) (runs: 101, μ: 6833, ~: 6830)
+[PASS] testToUint16(uint16,bytes,bytes) (runs: 101, μ: 6805, ~: 6800)
+[PASS] testToUint32(uint32,bytes,bytes) (runs: 101, μ: 6873, ~: 6861)
+[PASS] testToUint64(uint64,bytes,bytes) (runs: 101, μ: 6872, ~: 6860)
+[PASS] testToUint8(uint8,bytes,bytes) (runs: 101, μ: 6809, ~: 6805)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 442.48ms (442.22ms CPU time)
+
+Ran 3 tests for test/adapters/Deployment.t.sol:AdaptersDeploymentTest
+[PASS] testAxelarAdapter(address) (runs: 101, μ: 41388, ~: 41388)
+[PASS] testLayerZeroAdapter(address) (runs: 101, μ: 39266, ~: 39266)
+[PASS] testWormholeAdapter(address) (runs: 101, μ: 41047, ~: 41047)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 380.11ms (343.15ms CPU time)
+
+Ran 3 tests for test/misc/unit/libraries/PricingLib.t.sol:ShareToAssetToShareTest
+[PASS] testShareToAssetAmount(uint128,uint8,uint64,uint64) (runs: 101, μ: 25824, ~: 26089)
+[PASS] testShareToAssetAmountZeroValues() (gas: 10271)
+[PASS] testShareToAssetToShareRoundTrip(uint128,uint8,uint64,uint64) (runs: 101, μ: 19863, ~: 20122)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 263.69ms (263.46ms CPU time)
+
+Ran 3 tests for test/vaults/integration/AsyncRequestManager.t.sol:AsyncRequestManagerTest
+[PASS] testFile() (gas: 46634)
+[PASS] testPrice() (gas: 8218383)
+[PASS] testRequestDepositUnlinkedVault() (gas: 11377490)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 75.71ms (42.89ms CPU time)
+
+Ran 12 tests for test/adapters/Deployment.t.sol:AdaptersInputValidationTest
+[PASS] testAxelarAdapter(address) (runs: 101, μ: 41433, ~: 41433)
+[PASS] testAxelarGasServiceNoCodeFails() (gas: 17117)
+[PASS] testAxelarGasServiceZeroAddressFails() (gas: 12257)
+[PASS] testAxelarGatewayNoCodeFails() (gas: 17015)
+[PASS] testAxelarGatewayZeroAddressFails() (gas: 12160)
+[PASS] testLayerZeroAdapter(address) (runs: 101, μ: 39266, ~: 39266)
+[PASS] testLayerZeroDelegateZeroAddressFails() (gas: 10243)
+[PASS] testLayerZeroEndpointNoCodeFails() (gas: 13960)
+[PASS] testLayerZeroEndpointZeroAddressFails() (gas: 9118)
+[PASS] testWormholeAdapter(address) (runs: 101, μ: 41003, ~: 41003)
+[PASS] testWormholeRelayerNoCodeFails() (gas: 13914)
+[PASS] testWormholeRelayerZeroAddressFails() (gas: 9117)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 365.51ms (352.01ms CPU time)
+
+Ran 9 tests for test/common/Deployment.t.sol:CommonDeploymentTest
+[PASS] testGasService() (gas: 254)
+[PASS] testGateway(address) (runs: 101, μ: 54016, ~: 54016)
+[PASS] testGuardian() (gas: 28195)
+[PASS] testMessageDispatcher(address) (runs: 101, μ: 45370, ~: 45370)
+[PASS] testMessageProcessor(address) (runs: 101, μ: 38799, ~: 38799)
+[PASS] testMultiAdapter(address) (runs: 101, μ: 57229, ~: 57229)
+[PASS] testPoolEscrowFactory(address) (runs: 101, μ: 26883, ~: 26883)
+[PASS] testRoot(address) (runs: 101, μ: 40326, ~: 40326)
+[PASS] testTokenRecoverer(address) (runs: 101, μ: 35197, ~: 35197)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 757.68ms (745.48ms CPU time)
+
+Ran 1 test for test/spoke/integration/Burn.t.sol:BurnTest
+[PASS] testBurn(uint256) (runs: 101, μ: 11659876, ~: 11659455)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.79s (4.71s CPU time)
+
+Ran 12 tests for test/hub/Deployment.t.sol:HubDeploymentCommonExtTest
+[PASS] testAccounting(address) (runs: 101, μ: 32935, ~: 32935)
+[PASS] testGatewayExt(address) (runs: 101, μ: 26943, ~: 26943)
+[PASS] testGuardianExt() (gas: 13534)
+[PASS] testHoldings(address) (runs: 101, μ: 30132, ~: 30132)
+[PASS] testHub(address) (runs: 101, μ: 95479, ~: 95479)
+[PASS] testHubHelpers(address) (runs: 101, μ: 51148, ~: 51148)
+[PASS] testHubRegistry(address) (runs: 101, μ: 34789, ~: 34789)
+[PASS] testMessageDispatcherExt(address) (runs: 101, μ: 35827, ~: 35827)
+[PASS] testMessageProcessorExt() (gas: 13536)
+[PASS] testMultiAdapterExt(address) (runs: 101, μ: 32078, ~: 32078)
+[PASS] testPoolEscrowFactoryExt(address) (runs: 101, μ: 21541, ~: 21541)
+[PASS] testShareClassManager(address) (runs: 101, μ: 37665, ~: 37665)
+Suite result: ok. 12 passed; 0 failed; 0 skipped; finished in 887.77ms (860.75ms CPU time)
+
+Ran 6 tests for test/hub/Deployment.t.sol:HubDeploymentTest
+[PASS] testAccounting(address) (runs: 101, μ: 32912, ~: 32912)
+[PASS] testHoldings(address) (runs: 101, μ: 30132, ~: 30132)
+[PASS] testHub(address) (runs: 101, μ: 95478, ~: 95478)
+[PASS] testHubHelpers(address) (runs: 101, μ: 51103, ~: 51103)
+[PASS] testHubRegistry(address) (runs: 101, μ: 34811, ~: 34811)
+[PASS] testShareClassManager(address) (runs: 101, μ: 37642, ~: 37642)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 783.57ms (734.39ms CPU time)
+
+Ran 2 tests for test/managers/Deployment.t.sol:ManagersDeploymentTest
+[PASS] testMerkleProofManagerFactory() (gas: 15335)
+[PASS] testOnOfframpManagerFactory() (gas: 15268)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 47.76ms (1.94ms CPU time)
+
+Ran 8 tests for test/spoke/Deployment.t.sol:SpokeDeploymentCommonExtTest
+[PASS] testBalanceSheet(address) (runs: 101, μ: 59398, ~: 59398)
+[PASS] testContractUpdater(address) (runs: 101, μ: 33000, ~: 33000)
+[PASS] testGatewayExt(address) (runs: 101, μ: 34095, ~: 34095)
+[PASS] testMessageDispatcherExt(address) (runs: 101, μ: 42696, ~: 42696)
+[PASS] testMessageProcessorExt() (gas: 26200)
+[PASS] testPoolEscrowFactoryExt(address) (runs: 101, μ: 27592, ~: 27592)
+[PASS] testSpoke(address) (runs: 101, μ: 56844, ~: 56844)
+[PASS] testTokenFactory(address) (runs: 101, μ: 43226, ~: 43226)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 702.42ms (687.77ms CPU time)
+
+Ran 4 tests for test/spoke/Deployment.t.sol:SpokeDeploymentTest
+[PASS] testBalanceSheet(address) (runs: 101, μ: 59398, ~: 59398)
+[PASS] testContractUpdater(address) (runs: 101, μ: 33000, ~: 33000)
+[PASS] testSpoke(address) (runs: 101, μ: 56822, ~: 56822)
+[PASS] testTokenFactory(address) (runs: 101, μ: 43204, ~: 43204)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 517.08ms (498.77ms CPU time)
+
+Ran 2 tests for test/valuations/Deployment.t.sol:ValuationsDeploymentTest
+[PASS] testIdentityValuation() (gas: 11376)
+[PASS] testOracleValuation() (gas: 15596)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 110.34ms (484.92µs CPU time)
+
+Ran 6 tests for test/hub/integration/Cases.t.sol:TestCases
+[PASS] testDeposit() (gas: 7345047)
+[PASS] testNotifyPricePoolPerShare() (gas: 6800251)
+[PASS] testPoolCreation(bool) (runs: 101, μ: 5324959, ~: 5086876)
+[PASS] testRedeem() (gas: 8772323)
+[PASS] testUpdateHolding() (gas: 6676548)
+[PASS] testUpdateShares() (gas: 5991993)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 5.24s (5.19s CPU time)
+
+Ran 2 tests for test/misc/unit/libraries/CastLib.t.sol:CastLibTest
+[PASS] testToAddress(address) (runs: 101, μ: 3813, ~: 3813)
+[PASS] testToAddressInvalid(address,bytes12) (runs: 101, μ: 6133, ~: 6133)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 53.53ms (53.36ms CPU time)
+
+Ran 3 tests for test/misc/unit/libraries/D18.t.sol:D18ReciprocalTest
+[PASS] testFuzzReciprocal(uint128) (runs: 101, μ: 10580, ~: 10198)
+[PASS] testReciprocalOne() (gas: 4243)
+[PASS] testReciprocalRoundingEdges() (gas: 5957)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 16.54ms (16.28ms CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestDenyContract
+[PASS] testConstructor() (gas: 10983)
+[PASS] testDenyContract() (gas: 17184)
+[PASS] testErrNotAuthorized() (gas: 12108)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.93ms (361.38µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestEndorse
+[PASS] testConstructor() (gas: 10983)
+[PASS] testEndorse() (gas: 38446)
+[PASS] testErrNotAuthorized() (gas: 11721)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 8.46ms (7.39ms CPU time)
+
+Ran 5 tests for test/common/unit/Root.t.sol:RootTestExecuteScheduleRely
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrTargetNotReady() (gas: 40100)
+[PASS] testErrTargetNotScheduled() (gas: 11722)
+[PASS] testExecuteScheduleRely() (gas: 51816)
+[PASS] testWrongDelay() (gas: 61271)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.31ms (462.13µs CPU time)
+
+Ran 6 tests for test/common/unit/Root.t.sol:RootTestFile
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrDelayTooLong() (gas: 11986)
+[PASS] testErrFileUnrecognizedParam() (gas: 11945)
+[PASS] testErrNotAuthorized() (gas: 11922)
+[PASS] testFileDelay() (gas: 21818)
+[PASS] testWrongDelay() (gas: 61271)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 1.33ms (444.88µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestPause
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrNotAuthorized() (gas: 11153)
+[PASS] testPause() (gas: 36479)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 1.57ms (249.17µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestRelyContract
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrNotAuthorized() (gas: 12087)
+[PASS] testRelyContract() (gas: 17076)
+[PASS] testWrongDelay() (gas: 61271)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.02ms (444.08µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestScheduleRely
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrNotAuthorized() (gas: 11721)
+[PASS] testScheduleRely() (gas: 42030)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 846.08µs (253.79µs CPU time)
+
+Ran 4 tests for test/common/unit/Root.t.sol:RootTestUnpause
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrNotAuthorized() (gas: 11242)
+[PASS] testUnpause() (gas: 26996)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 793.08µs (236.79µs CPU time)
+
+Ran 8 tests for test/vaults/Deployment.t.sol:VaultsDeploymentSpokeExtTest
+[PASS] testAsyncRequestManager(address) (runs: 101, μ: 61823, ~: 61823)
+[PASS] testAsyncVaultFactory(address) (runs: 101, μ: 32093, ~: 32093)
+[PASS] testGatewayExt(address) (runs: 101, μ: 32189, ~: 32189)
+[PASS] testGlobalEscrow(address) (runs: 101, μ: 32957, ~: 32957)
+[PASS] testRouterEscrow(address) (runs: 101, μ: 25981, ~: 25981)
+[PASS] testSyncDepositVaultFactory(address) (runs: 101, μ: 36180, ~: 36180)
+[PASS] testSyncManager(address) (runs: 101, μ: 45601, ~: 45601)
+[PASS] testVaultRouter(address) (runs: 101, μ: 38491, ~: 38491)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 1.07s (934.93ms CPU time)
+
+Ran 3 tests for test/valuations/unit/OracleValuation.t.sol:OracleValuationMultiAssetTests
+[PASS] testMultipleAssetsIndependentPrices() (gas: 82303)
+[PASS] testMultiplePoolsIndependentPrices() (gas: 114695)
+[PASS] testMultipleShareClassesIndependentPrices() (gas: 82302)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 22.58ms (12.81ms CPU time)
+
+Ran 5 tests for test/valuations/unit/OracleValuation.t.sol:OracleValuationSetPriceTests
+[PASS] testSetPriceCallsUpdateHoldingValue() (gas: 47418)
+[PASS] testSetPriceNotFeeder() (gas: 15198)
+[PASS] testSetPriceSuccess() (gas: 51303)
+[PASS] testSetPriceUpdatesMultipleTimes() (gas: 60358)
+[PASS] testSetPriceZeroPrice() (gas: 51182)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.49ms (987.83µs CPU time)
+
+Ran 4 tests for test/valuations/unit/OracleValuation.t.sol:OracleValuationUpdateFeederTests
+[PASS] testUpdateFeederDisable() (gas: 38340)
+[PASS] testUpdateFeederMultipleFeeders() (gas: 76597)
+[PASS] testUpdateFeederNotHubManager() (gas: 17829)
+[PASS] testUpdateFeederSuccess() (gas: 47253)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.24ms (854.29µs CPU time)
+
+Ran 25 tests for test/common/unit/libraries/MessageLib.t.sol:TestMessageLibIdentities
+[PASS] testCancelUpgrade(bytes32) (runs: 101, μ: 27989, ~: 27989)
+[PASS] testExecuteTransferShares(uint64,bytes16,bytes32,uint128) (runs: 101, μ: 37046, ~: 37046)
+[PASS] testInitiateTransferShares(uint64,bytes16,uint16,bytes32,uint128,uint128) (runs: 101, μ: 40977, ~: 40977)
+[PASS] testMaxAssetPriceAge(uint64,bytes16,uint128,uint64) (runs: 101, μ: 37462, ~: 37462)
+[PASS] testMaxSharePriceAge(uint64,bytes16,uint64) (runs: 101, μ: 34978, ~: 34978)
+[PASS] testNotifyPool(uint64) (runs: 101, μ: 30280, ~: 30280)
+[PASS] testNotifyPricePoolPerAsset(uint64,bytes16,uint128,uint128,uint64) (runs: 101, μ: 39960, ~: 39960)
+[PASS] testNotifyPricePoolPerShare(uint64,bytes16,uint128,uint64) (runs: 101, μ: 31614, ~: 31614)
+[PASS] testNotifyShareClass(uint64,bytes16,string,bytes32,uint8,bytes32,bytes32) (runs: 101, μ: 76402, ~: 75612)
+[PASS] testNotifyShareMetadata(uint64,bytes16,string,bytes32) (runs: 101, μ: 69870, ~: 70373)
+[PASS] testRecoverTokens(bytes32,bytes32,uint256,bytes32,uint256) (runs: 101, μ: 36877, ~: 36877)
+[PASS] testRegisterAsset(uint128,uint8) (runs: 101, μ: 31513, ~: 31513)
+[PASS] testRequest(uint64,bytes16,uint128,bytes) (runs: 101, μ: 36235, ~: 36161)
+[PASS] testRequestCallback(uint64,bytes16,uint128,bytes) (runs: 101, μ: 36843, ~: 36769)
+[PASS] testScheduleUpgrade(bytes32) (runs: 101, μ: 28032, ~: 28032)
+[PASS] testSetPoolAdapters(uint64,uint8,bytes32[]) (runs: 100, μ: 70303, ~: 70495)
+[PASS] testSetPoolAdaptersManager(uint64,bytes32) (runs: 101, μ: 30495, ~: 30495)
+[PASS] testSetRequestManager(uint64,bytes16,uint128,bytes32) (runs: 101, μ: 24358, ~: 24358)
+[PASS] testUpdateBalanceSheetManager(uint64,bytes32,bool) (runs: 101, μ: 34943, ~: 34943)
+[PASS] testUpdateContract(uint64,bytes16,bytes32,bytes) (runs: 101, μ: 61490, ~: 61424)
+[PASS] testUpdateHoldingAmount(uint64,bytes16,uint128,uint128,uint128,uint64,bool,bool,uint64) (runs: 101, μ: 49550, ~: 49550)
+[PASS] testUpdateRestriction(uint64,bytes16,bytes) (runs: 101, μ: 58978, ~: 58986)
+[PASS] testUpdateShareHook(uint64,bytes16,bytes32) (runs: 101, μ: 34589, ~: 34589)
+[PASS] testUpdateShares(uint64,bytes16,uint128,uint64,bool,bool,uint64) (runs: 101, μ: 44010, ~: 44010)
+[PASS] testUpdateVault(uint64,bytes16,bytes32,uint128,uint8) (runs: 101, μ: 39560, ~: 39560)
+Suite result: ok. 25 passed; 0 failed; 0 skipped; finished in 7.17s (7.17s CPU time)
+
+Ran 26 tests for test/common/unit/libraries/MessageLib.t.sol:TestMessageLibIds
+[PASS] testDeserializeCancelUpgrade() (gas: 4076)
+[PASS] testDeserializeExecuteTransferShares() (gas: 4124)
+[PASS] testDeserializeInitiateTransferShares() (gas: 4170)
+[PASS] testDeserializeMaxAssetPriceAge() (gas: 4151)
+[PASS] testDeserializeMaxSharePriceAge() (gas: 4108)
+[PASS] testDeserializeNotifyPool() (gas: 4081)
+[PASS] testDeserializeNotifyPricePoolPerAsset() (gas: 4154)
+[PASS] testDeserializeNotifyPricePoolPerShare() (gas: 4108)
+[PASS] testDeserializeNotifyShareClass() (gas: 4177)
+[PASS] testDeserializeNotifyShareHook() (gas: 4123)
+[PASS] testDeserializeNotifyShareMetadata() (gas: 4098)
+[PASS] testDeserializeRecoverTokens() (gas: 4163)
+[PASS] testDeserializeRegisterAsset() (gas: 4125)
+[PASS] testDeserializeRequest() (gas: 4170)
+[PASS] testDeserializeRequestCallback() (gas: 4127)
+[PASS] testDeserializeScheduleUpgrade() (gas: 4051)
+[PASS] testDeserializeSetPoolAdapters() (gas: 4144)
+[PASS] testDeserializeSetPoolAdaptersManager() (gas: 4097)
+[PASS] testDeserializeSetRequestManager() (gas: 4190)
+[PASS] testDeserializeUpdateBalanceSheetManager() (gas: 4121)
+[PASS] testDeserializeUpdateContract() (gas: 4186)
+[PASS] testDeserializeUpdateHoldingAmount() (gas: 4245)
+[PASS] testDeserializeUpdateRestriction() (gas: 4125)
+[PASS] testDeserializeUpdateShares() (gas: 4243)
+[PASS] testDeserializeUpdateVault() (gas: 4127)
+[PASS] testMessageLength() (gas: 4183)
+Suite result: ok. 26 passed; 0 failed; 0 skipped; finished in 20.39ms (19.76ms CPU time)
+
+Ran 4 tests for test/hooks/Deployment.t.sol:VaultsDeploymentTest
+[PASS] testFreelyTransferable(address) (runs: 101, μ: 28138, ~: 28138)
+[PASS] testFreezeOnly(address) (runs: 101, μ: 28161, ~: 28161)
+[PASS] testFullRestriction(address) (runs: 101, μ: 28159, ~: 28159)
+[PASS] testRedemptionRestriction(address) (runs: 101, μ: 28138, ~: 28138)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 275.12ms (254.29ms CPU time)
+
+Ran 5 tests for test/common/unit/PoolEscrow.t.sol:PoolEscrowTestERC20
+[PASS] testAvailableBalanceOf(uint64,bytes16) (runs: 101, μ: 1873962, ~: 1873962)
+[PASS] testDeposit(uint64,bytes16) (runs: 101, μ: 1811499, ~: 1811499)
+[PASS] testReserveDecrease(uint64,bytes16) (runs: 101, μ: 1893638, ~: 1893638)
+[PASS] testReserveIncrease(uint64,bytes16) (runs: 101, μ: 1879568, ~: 1879568)
+[PASS] testWithdraw(uint64,bytes16) (runs: 101, μ: 1873635, ~: 1873635)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.15s (1.15s CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestRequestCallback
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrInvalidRequestManager() (gas: 16096)
+[PASS] testErrNotAuthorized() (gas: 13641)
+[PASS] testRequestCallback() (gas: 123616)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 6.80ms (749.58µs CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestSetMaxAssetPriceAge
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 12738)
+[PASS] testErrUnknownAsset() (gas: 17222)
+[PASS] testSetMaxAssetPriceAge() (gas: 173211)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.66ms (1.83ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestSetMaxSharePriceAge
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 12298)
+[PASS] testErrShareTokenDoesNotExists() (gas: 14665)
+[PASS] testSetMaxSharePriceAge() (gas: 119003)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 4.73ms (698.96µs CPU time)
+
+Ran 5 tests for test/spoke/unit/Spoke.t.sol:SpokeTestSetRequestManager
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrMoreThanZeroLinkedVaults() (gas: 392611)
+[PASS] testErrNotAuthorized() (gas: 15174)
+[PASS] testErrShareTokenDoesNotExists() (gas: 17627)
+[PASS] testSetRequestManager() (gas: 126648)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 4.98ms (2.25ms CPU time)
+
+Ran 10 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUnlinkVault
+[PASS] testConstructor() (gas: 13738)
+[PASS] testErrAlreadyUnlinkedVault() (gas: 341135)
+[PASS] testErrInvalidVaultByPoolId() (gas: 17743)
+[PASS] testErrInvalidVaultByShareClassId() (gas: 18215)
+[PASS] testErrNotAuthorized() (gas: 15153)
+[PASS] testErrShareTokenDoesNotExists() (gas: 148528)
+[PASS] testErrUnknownAsset() (gas: 23277)
+[PASS] testErrUnknownVault() (gas: 221795)
+[PASS] testUnlinkVaultERC20() (gas: 328235)
+[PASS] testUnlinkVaultERC6909() (gas: 377927)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 160.65ms (144.71ms CPU time)
+
+Ran 6 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdatePricePoolPerAsset
+[PASS] testConstructor() (gas: 13627)
+[PASS] testErrCannotSetOlderPrice() (gas: 172077)
+[PASS] testErrNotAuthorized() (gas: 13219)
+[PASS] testErrUnknownAsset() (gas: 17703)
+[PASS] testMaxAgeNotOverwritenAfterUpdatingPrice() (gas: 178164)
+[PASS] testUpdatePricePoolPerAsset() (gas: 176651)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 11.25ms (9.17ms CPU time)
+
+Ran 6 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdatePricePoolPerShare
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrCannotSetOlderPrice() (gas: 117872)
+[PASS] testErrNotAuthorized() (gas: 12849)
+[PASS] testErrShareTokenDoesNotExists() (gas: 15194)
+[PASS] testMaxAgeNotOverwritenAfterUpdatingPrice() (gas: 123255)
+[PASS] testUpdatePricePoolPerShare() (gas: 122346)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 5.32ms (2.08ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdateRestriction
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrInvalidHook() (gas: 93173)
+[PASS] testErrNotAuthorized() (gas: 13115)
+[PASS] testUpdateRestriction() (gas: 94458)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 4.46ms (1.21ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdateShareHook
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrNotAuthorized() (gas: 14583)
+[PASS] testErrOldHook() (gas: 93543)
+[PASS] testUpdateShareHook() (gas: 99855)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 11.79ms (9.84ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdateShareMetadata
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 14281)
+[PASS] testErrOldMetadata() (gas: 94616)
+[PASS] testUpdateShareMetadata() (gas: 98112)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 30.76ms (1.58ms CPU time)
+
+Ran 3 tests for test/spoke/unit/Spoke.t.sol:SpokeTestUpdateVault
+[PASS] testConstructor() (gas: 13627)
+[PASS] testDeployAndLinkAndUnlinkAndLink() (gas: 416960)
+[PASS] testErrNotAuthorized() (gas: 15256)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 48.51ms (15.86ms CPU time)
+
+Ran 2 tests for test/spoke/unit/Spoke.t.sol:SpokeTestVaultDetails
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrUnknownVault() (gas: 22784)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 7.74ms (261.21µs CPU time)
+
+Ran 1 test for test/misc/unit/libraries/StringLib.t.sol:StringLibTest
+[PASS] testStringIsEmpty() (gas: 3920)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 225.58µs (40.13µs CPU time)
+
+Ran 2 tests for test/valuations/unit/OracleValuation.t.sol:OracleValuationEdgeCaseTests
+[PASS] testFeederManagement() (gas: 178522)
+[PASS] testMaxPrice() (gas: 51219)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.53ms (1.83ms CPU time)
+
+Ran 7 tests for test/valuations/unit/OracleValuation.t.sol:OracleValuationGetQuoteTests
+[PASS] testGetQuoteFromLessDecimalsToMore() (gas: 53582)
+[PASS] testGetQuoteFromMoreDecimalsToLess() (gas: 53605)
+[PASS] testGetQuoteFuzzPrices(uint128,uint128) (runs: 100, μ: 53716, ~: 53716)
+[PASS] testGetQuotePriceNotSet() (gas: 12810)
+[PASS] testGetQuoteSameDecimals() (gas: 52262)
+[PASS] testGetQuoteWithZeroAmount() (gas: 52216)
+[PASS] testGetQuoteWithZeroPrice() (gas: 52238)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 1.13s (1.13s CPU time)
+
+Ran 5 tests for test/vaults/integration/AsyncVault.t.sol:AsyncVaultTest
+[PASS] testAssertUint128(uint256) (runs: 101, μ: 11578987, ~: 11578987)
+[PASS] testERC165Support(bytes4) (runs: 101, μ: 11442034, ~: 11442034)
+[PASS] testFactorySetup(bytes16,uint128,address) (runs: 101, μ: 11433230, ~: 11433230)
+[PASS] testFile() (gas: 11466463)
+[PASS] testPreviewReverts(uint256) (runs: 101, μ: 11423360, ~: 11423360)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 10.37s (17.98s CPU time)
+
+Ran 1 test for test/spoke/integration/Mint.t.sol:MintTest
+[PASS] testMint(uint256) (runs: 101, μ: 11706519, ~: 11706098)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 5.33s (5.25s CPU time)
+
+Ran 1 test for test/common/unit/MultiAdapter.t.sol:MultiAdapterTest
+[PASS] testConstructor() (gas: 21436)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 14.23ms (105.50µs CPU time)
+
+Ran 3 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestBlockOutgoing
+[PASS] testBlockOutgoing() (gas: 67200)
+[PASS] testConstructor() (gas: 21414)
+[PASS] testErrManagerNotAllowed() (gas: 12349)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.60ms (385.17µs CPU time)
+
+Ran 4 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestEstimate
+[PASS] testConstructor() (gas: 21436)
+[PASS] testEstimate() (gas: 230623)
+[PASS] testEstimateButPoolANotConfigured() (gas: 233113)
+[PASS] testEstimateNoAdapters() (gas: 22028)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 22.43ms (7.19ms CPU time)
+
+Ran 4 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestExecute
+[PASS] testConstructor() (gas: 21414)
+[PASS] testErrManagerNotAllowed() (gas: 15408)
+[PASS] testExecute() (gas: 199178)
+[PASS] testExecuteWithSeveralAdapters() (gas: 356460)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 4.08ms (2.80ms CPU time)
+
+Ran 5 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestFile
+[PASS] testConstructor() (gas: 21414)
+[PASS] testErrFileUnrecognizedParam() (gas: 11397)
+[PASS] testErrNotAuthorized() (gas: 11884)
+[PASS] testMultiAdapterFileGateway() (gas: 21613)
+[PASS] testMultiAdapterFileMessageProperties() (gas: 21704)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.65ms (323.00µs CPU time)
+
+Ran 11 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestHandle
+[PASS] testConstructor() (gas: 21436)
+[PASS] testErrInvalidAdapter() (gas: 22587)
+[PASS] testMessageWithOneAdapterButPoolANoConfigured() (gas: 169273)
+[PASS] testMessageWithSeveralAdapters() (gas: 365366)
+[PASS] testMessageWithThreshold2() (gas: 347967)
+[PASS] testOneFasterAdapter() (gas: 447137)
+[PASS] testOtherMessageWithSeveralAdapters() (gas: 429068)
+[PASS] testSameMessageAgainWithSeveralAdapters() (gas: 425025)
+[PASS] testSameMessageWithThreshold1() (gas: 477091)
+[PASS] testSameMessageWithThreshold2() (gas: 451959)
+[PASS] testVotesAfterNewSession() (gas: 341919)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 52.00ms (50.50ms CPU time)
+
+Ran 6 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestSend
+[PASS] testConstructor() (gas: 21414)
+[PASS] testErrEmptyAdapterSet() (gas: 26629)
+[PASS] testErrNotAuthorized() (gas: 13069)
+[PASS] testErrSendingBlocked() (gas: 154923)
+[PASS] testSendMessage() (gas: 290743)
+[PASS] testSendMessageButPoolANotConfigured() (gas: 134876)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 2.71ms (1.44ms CPU time)
+
+Ran 8 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestSetAdapters
+[PASS] testConstructor() (gas: 21436)
+[PASS] testErrEmptyAdapterFile() (gas: 12762)
+[PASS] testErrExceedsMax() (gas: 17332)
+[PASS] testErrNoDuplicatedAllowed() (gas: 42157)
+[PASS] testErrNotAuthorized() (gas: 13088)
+[PASS] testErrThresholdHigherThanQuorum() (gas: 23246)
+[PASS] testMultiAdapterSetAdapters() (gas: 241743)
+[PASS] testMultiAdapterSetAdaptersAdvanceSession() (gas: 409602)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 6.50ms (4.04ms CPU time)
+
+Ran 3 tests for test/common/unit/MultiAdapter.t.sol:MultiAdapterTestSetManager
+[PASS] testConstructor() (gas: 21414)
+[PASS] testErrNotAuthorized() (gas: 12129)
+[PASS] testSetManager() (gas: 39683)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.56ms (315.17µs CPU time)
+
+Ran 5 tests for test/misc/unit/Multicall.t.sol:MulticallTest
+[PASS] testErrCallFailedWithEmptyRevert() (gas: 11927)
+[PASS] testErrUnauthorizedSender() (gas: 21354)
+[PASS] testRevertAtError() (gas: 41192)
+[PASS] testSeveralMulticallsInSingleTransaction() (gas: 46499)
+[PASS] testSuccess() (gas: 39425)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 23.61ms (23.30ms CPU time)
+
+Ran 19 tests for test/common/unit/Gateway.t.sol:GatewayTestSend
+[PASS] testConstructor() (gas: 23219)
+[PASS] testErrEmptyMessage() (gas: 14848)
+[PASS] testErrExceedsMaxBatching() (gas: 158936)
+[PASS] testErrNotAuthorized() (gas: 15372)
+[PASS] testErrNotEnoughTransactionGas() (gas: 64285)
+[PASS] testErrPaused() (gas: 13796)
+[PASS] testMessageBatchedWithExtraGasLimit() (gas: 76606)
+[PASS] testMessageWasBatched() (gas: 66762)
+[PASS] testMessageWithExtraGasLimit() (gas: 88402)
+[PASS] testSecondMessageWasBatchedDifferentPoolSameChain() (gas: 91403)
+[PASS] testSecondMessageWasBatchedSamePoolDifferentChain() (gas: 93259)
+[PASS] testSecondMessageWasBatchedSamePoolSameChain() (gas: 82785)
+[PASS] testSendMessageUnderpaid() (gas: 95884)
+[PASS] testSendMessageUnderpaidTwice() (gas: 113748)
+[PASS] testSendMessageUsingSubsidizedPoolPayment() (gas: 107929)
+[PASS] testSendMessageUsingSubsidizedPoolPaymentAndPoolRefunding() (gas: 130331)
+[PASS] testSendMessageUsingSubsidizedPoolPaymentButSendingBlocked() (gas: 132031)
+[PASS] testSendMessageUsingTransactionPayment() (gas: 76990)
+[PASS] testSendMessageUsingTransactionPaymentButSendingBlocked() (gas: 135603)
+Suite result: ok. 19 passed; 0 failed; 0 skipped; finished in 92.83ms (80.28ms CPU time)
+
+Ran 3 tests for test/common/unit/Gateway.t.sol:GatewayTestSetExtraGasLimit
+[PASS] testConstructor() (gas: 23174)
+[PASS] testCorrectSetExtraGasLimit() (gas: 12649)
+[PASS] testErrNotAuthorized() (gas: 11689)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 2.02ms (308.13µs CPU time)
+
+Ran 3 tests for test/common/unit/Gateway.t.sol:GatewayTestSetRefundAddress
+[PASS] testConstructor() (gas: 23152)
+[PASS] testErrNotAuthorized() (gas: 12256)
+[PASS] testSetRefundAddress() (gas: 40969)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.90ms (482.38µs CPU time)
+
+Ran 3 tests for test/common/unit/Gateway.t.sol:GatewayTestSetSubsidizePool
+[PASS] testConstructor() (gas: 23152)
+[PASS] testErrRefundAddressNotSet() (gas: 19353)
+[PASS] testSetSubsidizePool() (gas: 53384)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.43ms (432.67µs CPU time)
+
+Ran 3 tests for test/common/unit/Gateway.t.sol:GatewayTestStartBatching
+[PASS] testConstructor() (gas: 23174)
+[PASS] testStartBatching() (gas: 12252)
+[PASS] testStartBatchingIsTransactional() (gas: 33315)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 2.70ms (706.42µs CPU time)
+
+Ran 1 test for test/common/unit/Guardian.t.sol:GuardianTest
+[PASS] testGuardian() (gas: 23953)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.09ms (104.21µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestCancelRely
+[PASS] testCancelRely() (gas: 13220)
+[PASS] testCancelRelyOnlySafe() (gas: 11564)
+[PASS] testGuardian() (gas: 23953)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 32.13ms (315.38µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestCancelUpgrade
+[PASS] testCancelUpgrade() (gas: 18251)
+[PASS] testCancelUpgradeOnlySafe() (gas: 11910)
+[PASS] testGuardian() (gas: 23931)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 52.31ms (20.16ms CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestCreatePool
+[PASS] testCreatePool() (gas: 41083)
+[PASS] testCreatePoolOnlySafe() (gas: 12389)
+[PASS] testGuardian() (gas: 23953)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.16ms (286.58µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestFile
+[PASS] testFile() (gas: 83573)
+[PASS] testFileOnlySafe() (gas: 13944)
+[PASS] testGuardian() (gas: 23953)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 4.49ms (3.49ms CPU time)
+
+Ran 4 tests for test/common/unit/Guardian.t.sol:GuardianTestPause
+[PASS] testGuardian() (gas: 23931)
+[PASS] testPause() (gas: 12283)
+[PASS] testPauseOnlySafe() (gas: 13782)
+[PASS] testPauseWithOwner() (gas: 14946)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 1.35ms (306.96µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestRecoverTokens
+[PASS] testGuardian() (gas: 23998)
+[PASS] testRecoverTokens() (gas: 20630)
+[PASS] testRecoverTokensOnlySafe() (gas: 13202)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 22.41ms (356.33µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestScheduleRely
+[PASS] testGuardian() (gas: 23953)
+[PASS] testScheduleRely() (gas: 13241)
+[PASS] testScheduleRelyOnlySafe() (gas: 11607)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.41ms (281.37µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestScheduleUpgrade
+[PASS] testGuardian() (gas: 23953)
+[PASS] testScheduleUpgrade() (gas: 18249)
+[PASS] testScheduleUpgradeOnlySafe() (gas: 11911)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 1.31ms (273.63µs CPU time)
+
+Ran 3 tests for test/common/unit/Guardian.t.sol:GuardianTestSetAdapters
+[PASS] testGuardian() (gas: 23953)
+[PASS] testSetAdapters() (gas: 19485)
+[PASS] testSetAdaptersOnlySafe() (gas: 13185)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 2.35ms (398.96µs CPU time)
+
+Ran 3 tests for test/misc/unit/EIP712Lib.t.sol:EIP712LibTest
+[PASS] testCalculateDomainSeparator() (gas: 5087)
+[PASS] testConstantDomainSeperator() (gas: 3338)
+[PASS] testDifferentInputs() (gas: 5275)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 4.68ms (127.58µs CPU time)
+
+Ran 5 tests for test/vaults/integration/SyncManager.t.sol:SyncManagerUnauthorizedTest
+[PASS] testDepositUnauthorized() (gas: 15365)
+[PASS] testFileUnauthorized() (gas: 14160)
+[PASS] testMintUnauthorized() (gas: 15320)
+[PASS] testSetValuationUnauthorized() (gas: 14513)
+[PASS] testUpdate() (gas: 15301)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 54.15ms (22.82ms CPU time)
+
+Ran 3 tests for test/spoke/integration/AssetShareConversion.t.sol:AssetShareConversionTest
+[PASS] testAssetShareConversion(bytes16) (runs: 101, μ: 15777999, ~: 15777999)
+[PASS] testAssetShareConversionWithInverseDecimals(bytes16) (runs: 101, μ: 15371645, ~: 15371645)
+[PASS] testPriceWorksAfterRemovingVault(bytes16) (runs: 101, μ: 13708714, ~: 13708714)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 25.66s (31.43s CPU time)
+
+Ran 3 tests for test/vaults/integration/SyncManager.t.sol:SyncManagerUpdateValuation
+[PASS] testFuzzedPricesWithValuationERC20(uint128,uint128,uint8) (runs: 101, μ: 11345351, ~: 11345530)
+[PASS] testPricesWithValuationERC20() (gas: 11333659)
+[PASS] testSetValuationERC20() (gas: 11296109)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 7.16s (6.99s CPU time)
+
+Ran 9 tests for test/integration/ThreeChainEndToEnd.t.sol:ThreeChainEndToEndUseCases
+[PASS] testConfigureAssets_FromHubChain() (gas: 6386096)
+[PASS] testConfigureAssets_ToHubChain() (gas: 6386137)
+[PASS] testConfigureAssets_WithIntermediaryHubChain() (gas: 6612928)
+[PASS] testConfigurePool_FromHubChain() (gas: 20688656)
+[PASS] testConfigurePool_ToHubChain() (gas: 20686179)
+[PASS] testConfigurePool_WithIntermediaryHubChain() (gas: 24029070)
+[PASS] testCrossChainTransferShares_FromHubChain() (gas: 21251760)
+[PASS] testCrossChainTransferShares_ToHubChain() (gas: 21248273)
+[PASS] testCrossChainTransferShares_WithIntermediaryHubChain() (gas: 24898854)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 1.00s (604.79ms CPU time)
+
+Ran 2 tests for test/spoke/unit/factories/TokenFactory.t.sol:FactoryTest
+[PASS] testShareShouldBeDeterministic(string,string,bytes32,bytes32,uint8) (runs: 101, μ: 7313382, ~: 7315179)
+[PASS] testTokenWards(string,string,bytes32,bytes32,uint8) (runs: 101, μ: 7416399, ~: 7418189)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 965.75ms (964.74ms CPU time)
+
+Ran 2 tests for test/common/unit/TokenRecoverer.t.sol:TestTokenRecoverer
+[PASS] testErrNotAuthorized() (gas: 15463)
+[PASS] testSuccess() (gas: 26734)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 12.25ms (11.53ms CPU time)
+
+Ran 1 test for test/misc/unit/libraries/TransientArrayLib.t.sol:TransientArrayLibTest
+[PASS] testTransientArray(bytes32) (runs: 101, μ: 25563, ~: 25563)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 115.39ms (115.16ms CPU time)
+
+Ran 1 test for test/misc/unit/libraries/TransientBytesLib.t.sol:TransientBytesLibTest
+[PASS] testTransientBytes(bytes,bytes,bytes32) (runs: 101, μ: 32985, ~: 30572)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 187.27ms (187.00ms CPU time)
+
+Ran 5 tests for test/misc/unit/libraries/TransientStorageLib.t.sol:TransientStorageLibTest
+[PASS] testAddress(bytes32,address) (runs: 101, μ: 5024, ~: 5024)
+[PASS] testBool(bytes32,bool) (runs: 101, μ: 4813, ~: 4813)
+[PASS] testBytes32(bytes32,bytes32) (runs: 101, μ: 4762, ~: 4762)
+[PASS] testUint128(bytes32,uint128) (runs: 101, μ: 4818, ~: 4818)
+[PASS] testUint256(bytes32,uint256) (runs: 101, μ: 4848, ~: 4848)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 104.18ms (103.83ms CPU time)
+
+Ran 4 tests for test/spoke/unit/libraries/UpdateContractMessageLib.t.sol:TestUpdateContractMessageLibIdentities
+[PASS] testUpdateContractPolicy(bytes32,bytes32) (runs: 101, μ: 6473, ~: 6473)
+[PASS] testUpdateContractSyncDepositMaxReserve(uint128,uint128) (runs: 101, μ: 6649, ~: 6649)
+[PASS] testUpdateContractUpdateAddress(bytes32,uint128,bytes32,bool) (runs: 101, μ: 9168, ~: 9168)
+[PASS] testUpdateContractValuation(bytes32) (runs: 101, μ: 5174, ~: 5174)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 98.21ms (92.04ms CPU time)
+
+Ran 3 tests for test/hooks/unit/libraries/UpdateRestrictionManagerLib.t.sol:TestUpdateRestrictionMessageLibIdentities
+[PASS] testUpdateRestrictionFreeze(bytes32) (runs: 101, μ: 5150, ~: 5150)
+[PASS] testUpdateRestrictionMember(bytes32,uint64) (runs: 101, μ: 6537, ~: 6537)
+[PASS] testUpdateRestrictionUnfreeze(bytes32) (runs: 101, μ: 5129, ~: 5129)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 50.21ms (50.02ms CPU time)
+
+Ran 14 tests for test/vaults/integration/VaultRouter.t.sol:VaultRouterMoreUnitaryTest
+[PASS] testCancelDepositRequest() (gas: 12617185)
+[PASS] testCancelRedeemRequest() (gas: 13524967)
+[PASS] testClaimCancelDepositRequest() (gas: 13031503)
+[PASS] testClaimCancelRedeemRequest() (gas: 13854497)
+[PASS] testEnableAndDisable() (gas: 11461309)
+[PASS] testGetVault() (gas: 11426431)
+[PASS] testIfUserIsPermittedToExecuteRequests() (gas: 12398974)
+[PASS] testInitialization() (gas: 6523425)
+[PASS] testLockDepositRequests() (gas: 11787475)
+[PASS] testPermit() (gas: 11489992)
+[PASS] testRequestDeposit() (gas: 12267107)
+[PASS] testRequestRedeem() (gas: 13251429)
+[PASS] testRouterSyncDeposit() (gas: 11620392)
+[PASS] testUnlockDepositRequests() (gas: 11541231)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 1.52s (1.46s CPU time)
+
+Ran 1 test for test/vaults/integration/DepositRedeem.t.sol:DepositRedeem
+[PASS] testPartialDepositAndRedeemExecutions(bytes16) (runs: 101, μ: 16776026, ~: 16776026)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 19.23s (19.20s CPU time)
+
+Ran 8 tests for test/common/unit/Gateway.t.sol:GatewayTestEndBatching
+[PASS] testConstructor() (gas: 23218)
+[PASS] testErrNoBatched() (gas: 10809)
+[PASS] testErrNotAuthorized() (gas: 11257)
+[PASS] testSendMessageUnderpaid() (gas: 164895)
+[PASS] testSendTwoMessageBatching() (gas: 164281)
+[PASS] testSendTwoMessageBatchingDifferentChainSamePool() (gas: 210815)
+[PASS] testSendTwoMessageBatchingSameChainDifferentPool() (gas: 246213)
+[PASS] testSendTwoMessageBatchingUsingTransactionPayment() (gas: 122156)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 107.83ms (88.19ms CPU time)
+
+Ran 4 tests for test/common/unit/Gateway.t.sol:GatewayTestFile
+[PASS] testConstructor() (gas: 23152)
+[PASS] testErrFileUnrecognizedParam() (gas: 11465)
+[PASS] testErrNotAuthorized() (gas: 11907)
+[PASS] testGatewayFile() (gas: 42891)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 10.07ms (435.17µs CPU time)
+
+Ran 11 tests for test/common/unit/Gateway.t.sol:GatewayTestHandle
+[PASS] testBatchProcessing() (gas: 128471)
+[PASS] testBatchWithFailingMessages() (gas: 172264)
+[PASS] testBatchWithMultipleSameFailingMessages() (gas: 84978)
+[PASS] testConstructor() (gas: 23196)
+[PASS] testErrNotAuthorized() (gas: 15742)
+[PASS] testErrNotEnoughGasToProcess() (gas: 30963)
+[PASS] testErrPaused() (gas: 14210)
+[PASS] testMessage() (gas: 89322)
+[PASS] testMessageFailBenchmark() (gas: 45768)
+[PASS] testMessageFailed() (gas: 78543)
+[PASS] testMultipleSameFailingMessages() (gas: 86304)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 22.31ms (19.69ms CPU time)
+
+Ran 4 tests for test/common/unit/Gateway.t.sol:GatewayTestPayTransaction
+[PASS] testConstructor() (gas: 23196)
+[PASS] testErrNotAuthorized() (gas: 19093)
+[PASS] testPayTransaction() (gas: 21716)
+[PASS] testPayTransactionIsTransactional() (gas: 47635)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 27.37ms (25.89ms CPU time)
+
+Ran 2 tests for test/common/unit/Gateway.t.sol:GatewayTestReceive
+[PASS] testConstructor() (gas: 23174)
+[PASS] testGatewayReceive() (gas: 27287)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 11.08ms (240.67µs CPU time)
+
+Ran 10 tests for test/common/unit/Gateway.t.sol:GatewayTestRepay
+[PASS] testConstructor() (gas: 23152)
+[PASS] testCorrectRepay() (gas: 139469)
+[PASS] testCorrectRepayForBatches() (gas: 180635)
+[PASS] testCorrectRepayWithTransactionalPayment() (gas: 124201)
+[PASS] testErrCanNotBeRepaid() (gas: 130286)
+[PASS] testErrInsufficientFundsForRepayment() (gas: 130010)
+[PASS] testErrInsufficientFundsForRepaymentWithBatches() (gas: 185170)
+[PASS] testErrNotEnoughTransactionGas() (gas: 85999)
+[PASS] testErrNotUnderpaidBatch() (gas: 15905)
+[PASS] testErrPaused() (gas: 14186)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 28.25ms (24.71ms CPU time)
+
+Ran 5 tests for test/common/unit/Gateway.t.sol:GatewayTestRetry
+[PASS] testConstructor() (gas: 23196)
+[PASS] testErrNotFailedMessage() (gas: 15347)
+[PASS] testErrPaused() (gas: 14138)
+[PASS] testRecoverFailingMessage() (gas: 176400)
+[PASS] testRecoverMultipleFailingMessage() (gas: 272876)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 30.44ms (28.92ms CPU time)
+
+Ran 2 tests for test/adapters/unit/WormholeAdapter.t.sol:WormholeAdapterTestWire
+[PASS] testWire() (gas: 65684)
+[PASS] testWireErrNotAuthorized() (gas: 14417)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 1.16ms (346.88µs CPU time)
+
+Ran 1 test for test/valuations/unit/OracleValuation.t.sol:OracleValuationConstructorTests
+[PASS] testConstructorSetsImmutables() (gas: 15559)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.46ms (284.21µs CPU time)
+
+Ran 6 tests for test/common/unit/libraries/RequestCallbackMessageLib.t.sol:TestRequestCallbackMessageLibIdentities
+[PASS] testApprovedDeposits(uint128,uint128) (runs: 101, μ: 10052, ~: 10052)
+[PASS] testFulfilledDepositRequest(bytes32,uint128,uint128,uint128) (runs: 101, μ: 13464, ~: 13464)
+[PASS] testFulfilledRedeemRequest(bytes32,uint128,uint128,uint128) (runs: 101, μ: 13552, ~: 13552)
+[PASS] testIssuedShares(uint128,uint128) (runs: 101, μ: 10030, ~: 10030)
+[PASS] testRequestCallbackType(uint8) (runs: 101, μ: 4873, ~: 4873)
+[PASS] testRevokedShares(uint128,uint128,uint128) (runs: 101, μ: 11862, ~: 11862)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 315.04ms (314.80ms CPU time)
+
+Ran 7 tests for test/vaults/Deployment.t.sol:VaultsDeploymentTest
+[PASS] testAsyncRequestManager(address) (runs: 101, μ: 61845, ~: 61845)
+[PASS] testAsyncVaultFactory(address) (runs: 101, μ: 32115, ~: 32115)
+[PASS] testGlobalEscrow(address) (runs: 101, μ: 32912, ~: 32912)
+[PASS] testRouterEscrow(address) (runs: 101, μ: 26003, ~: 26003)
+[PASS] testSyncDepositVaultFactory(address) (runs: 101, μ: 36180, ~: 36180)
+[PASS] testSyncManager(address) (runs: 101, μ: 45623, ~: 45623)
+[PASS] testVaultRouter(address) (runs: 101, μ: 38491, ~: 38491)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 754.24ms (671.60ms CPU time)
+
+Ran 7 tests for test/spoke/unit/RestrictedTransfers.t.sol:FullRestrictionsTest
+[PASS] testAddMember(uint64) (runs: 101, μ: 67094, ~: 67094)
+[PASS] testAddMemberAndFreeze(uint64) (runs: 101, μ: 87755, ~: 87755)
+[PASS] testERC165Support(bytes4) (runs: 101, μ: 15759, ~: 15759)
+[PASS] testFreeze() (gas: 59335)
+[PASS] testFreezingZeroAddress() (gas: 22702)
+[PASS] testHandleInvalidMessage() (gas: 15244)
+[PASS] testIsMember(uint64) (runs: 101, μ: 62164, ~: 62164)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 420.51ms (419.32ms CPU time)
+
+Ran 2 tests for test/common/unit/Root.t.sol:RootTest
+[PASS] testConstructor() (gas: 10983)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 727.42µs (117.38µs CPU time)
+
+Ran 5 tests for test/common/unit/Root.t.sol:RootTestCancelRely
+[PASS] testCancelRely() (gas: 31650)
+[PASS] testConstructor() (gas: 10983)
+[PASS] testErrNotAuthorized() (gas: 11700)
+[PASS] testErrTargetNotScheduled() (gas: 13953)
+[PASS] testWrongDelay() (gas: 61249)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.21ms (381.38µs CPU time)
+
+Ran 4 tests for test/vaults/integration/SyncDeposit.t.sol:SyncDepositTest
+[PASS] testERC165SupportSyncDeposit(bytes4) (runs: 101, μ: 11290367, ~: 11290367)
+[PASS] testFile(bytes32) (runs: 101, μ: 11296769, ~: 11296769)
+[PASS] testSyncDepositERC20() (gas: 15256271)
+Logs:
+  Bound result 4
+
+[PASS] testSyncDepositERC20Fuzz(uint256) (runs: 101, μ: 15257154, ~: 15256496)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 25.85s (25.68s CPU time)
+
+Ran 3 tests for test/vaults/integration/SyncManager.t.sol:SyncManagerTest
+[PASS] testDepositUnlinkedVault() (gas: 11235330)
+[PASS] testFile() (gas: 50940)
+[PASS] testMintUnlinkedVault() (gas: 11255234)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 348.97ms (65.84ms CPU time)
+
+Ran 1 test for test/spoke/unit/Spoke.t.sol:SpokeTest
+[PASS] testConstructor() (gas: 13649)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 9.01ms (3.35ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestAddPool
+[PASS] testAddPool() (gas: 49158)
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 11675)
+[PASS] testErrPoolAlreadyAdded() (gas: 45423)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 3.19ms (692.08µs CPU time)
+
+Ran 8 tests for test/spoke/unit/Spoke.t.sol:SpokeTestAddShareClass
+[PASS] testAddShareClass() (gas: 90234)
+[PASS] testAddShareClassWithHook() (gas: 88791)
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrInvalidPool() (gas: 19547)
+[PASS] testErrNotAuthorized() (gas: 17246)
+[PASS] testErrShareClassAlreadyRegistered() (gas: 88696)
+[PASS] testErrTooFewDecimals() (gas: 51190)
+[PASS] testErrTooManyDecimals() (gas: 51250)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 5.31ms (1.77ms CPU time)
+
+Ran 5 tests for test/spoke/unit/Spoke.t.sol:SpokeTestCrosschainTransferShares
+[PASS] testConstructor() (gas: 13649)
+[PASS] testCrossChainTransfer() (gas: 135428)
+[PASS] testErrCrossChainTransferNotAllowed() (gas: 123213)
+[PASS] testErrLocalTransferNotAllowed() (gas: 112817)
+[PASS] testErrShareTokenDoesNotExists() (gas: 32624)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 5.77ms (3.36ms CPU time)
+
+Ran 6 tests for test/spoke/unit/Spoke.t.sol:SpokeTestDeployVault
+[PASS] testConstructor() (gas: 13627)
+[PASS] testDeployVault() (gas: 360155)
+[PASS] testErrInvalidRequestManager() (gas: 231690)
+[PASS] testErrNotAuthorized() (gas: 15450)
+[PASS] testErrShareTokenDoesNotExists() (gas: 17795)
+[PASS] testErrUnknownAsset() (gas: 95239)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 9.97ms (3.35ms CPU time)
+
+Ran 3 tests for test/spoke/unit/Spoke.t.sol:SpokeTestExecuteTransferShares
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 12657)
+[PASS] testExecuteTransferShares() (gas: 97598)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.12ms (596.08µs CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestFile
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrFileUnrecognizedParam() (gas: 11999)
+[PASS] testErrNotAuthorized() (gas: 11907)
+[PASS] testSpokeFile() (gas: 54189)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 9.13ms (1.61ms CPU time)
+
+Ran 3 tests for test/spoke/unit/Spoke.t.sol:SpokeTestLinkToken
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 14755)
+[PASS] testLinkToken() (gas: 45075)
+Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 2.76ms (515.92µs CPU time)
+
+Ran 10 tests for test/spoke/unit/Spoke.t.sol:SpokeTestLinkVault
+[PASS] testConstructor() (gas: 13716)
+[PASS] testErrAlreadyLinkedVault() (gas: 394283)
+[PASS] testErrInvalidVaultByPoolId() (gas: 17831)
+[PASS] testErrInvalidVaultByShareClassId() (gas: 18303)
+[PASS] testErrNotAuthorized() (gas: 15197)
+[PASS] testErrShareTokenDoesNotExists() (gas: 148704)
+[PASS] testErrUnknownAsset() (gas: 23343)
+[PASS] testErrUnknownVault() (gas: 221839)
+[PASS] testLinkVaultERC20() (gas: 353944)
+[PASS] testLinkVaultERC6909() (gas: 406815)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 10.99ms (8.31ms CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestPricePoolPerAsset
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrInvalidPrice() (gas: 13829)
+[PASS] testPricePoolPerAssetWithValidity() (gas: 172379)
+[PASS] testPricePoolPerAssetWithoutValidity() (gas: 14212)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 43.01ms (5.33ms CPU time)
+
+Ran 5 tests for test/spoke/unit/Spoke.t.sol:SpokeTestPricePoolPerShare
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrInvalidPrice() (gas: 90375)
+[PASS] testErrShareTokenDoesNotExists() (gas: 12625)
+[PASS] testPricePoolPerShareWithValidity() (gas: 118686)
+[PASS] testPricePoolPerShareWithoutValidity() (gas: 90273)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 3.07ms (1.14ms CPU time)
+
+Ran 7 tests for test/spoke/unit/Spoke.t.sol:SpokeTestPricesPoolPer
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrAssetTokenDoesNotExists() (gas: 13353)
+[PASS] testErrInvalidPrice() (gas: 218755)
+[PASS] testErrInvalidPriceOnlyAsset() (gas: 246200)
+[PASS] testErrInvalidPriceOnlyShare() (gas: 248001)
+[PASS] testPricePoolPerAssetWithValidity() (gas: 277782)
+[PASS] testPricePoolPerAssetWithoutValidity() (gas: 220054)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 6.07ms (4.21ms CPU time)
+
+Ran 11 tests for test/spoke/unit/Spoke.t.sol:SpokeTestRegisterAsset
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrAssetMissingDecimalsERC20() (gas: 32453)
+[PASS] testErrAssetMissingDecimalsERC6909() (gas: 32542)
+[PASS] testErrTooFewDecimalsERC20() (gas: 38241)
+[PASS] testErrTooFewDecimalsERC6909() (gas: 38778)
+[PASS] testErrTooManyDecimalsERC20() (gas: 38214)
+[PASS] testErrTooManyDecimalsERC6909() (gas: 38794)
+[PASS] testRegisterAssetERC20() (gas: 122077)
+[PASS] testRegisterAssetERC6909() (gas: 142656)
+[PASS] testRegisterDifferentAssetTwice() (gas: 235089)
+[PASS] testRegisterSameAssetTwice() (gas: 164087)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 6.76ms (4.23ms CPU time)
+
+Ran 2 tests for test/spoke/unit/Spoke.t.sol:SpokeTestRegisterVault
+[PASS] testConstructor() (gas: 13649)
+[PASS] testErrNotAuthorized() (gas: 20685)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 5.30ms (339.29µs CPU time)
+
+Ran 4 tests for test/spoke/unit/Spoke.t.sol:SpokeTestRequest
+[PASS] testConstructor() (gas: 13671)
+[PASS] testErrInvalidRequestManager() (gas: 13822)
+[PASS] testErrNotAuthorized() (gas: 119824)
+[PASS] testRequest() (gas: 127514)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 10.75ms (3.46ms CPU time)
+
+Ran 5 tests for test/hub/unit/ShareClassManager.t.sol:ShareClassManagerRoundingEdgeCasesDeposit
+[PASS] testClaimDepositEvenInvestorsUnevenClaimable() (gas: 297106)
+[PASS] testClaimDepositSingleShareAtom() (gas: 310568)
+[PASS] testClaimDepositUnevenInvestorsEvenClaimable() (gas: 366721)
+[PASS] testInvestorPaysNothingOtherClaimsAlmostAll() (gas: 324886)
+[PASS] testPaymentDiffRoundedDownVsUpAtMostOne(uint128,uint128,uint128) (runs: 101, μ: 330560, ~: 331425)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.00s (998.14ms CPU time)
+
+Ran 4 tests for test/hub/unit/ShareClassManager.t.sol:ShareClassManagerRoundingEdgeCasesRedeem
+[PASS] testClaimRedeemEvenInvestorsUnevenClaimable() (gas: 309782)
+[PASS] testClaimRedeemSingleAssetAtom() (gas: 307718)
+[PASS] testClaimRedeemUnevenInvestorsEvenClaimable() (gas: 383746)
+[PASS] testRedeemPaymentDiffRoundedDownVsUpAtMostOne(uint128,uint128,uint128,uint128) (runs: 101, μ: 333188, ~: 333563)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 662.38ms (658.01ms CPU time)
+
+Ran 13 tests for test/hub/unit/ShareClassManager.t.sol:ShareClassManagerSimpleTest
+[PASS] testAddShareClass(string,string,bytes32) (runs: 100, μ: 186159, ~: 202328)
+[PASS] testDecreaseShareClassIssuance(uint128) (runs: 101, μ: 61527, ~: 62095)
+[PASS] testDefaultGetShareClassNavPerShare() (gas: 14996)
+[PASS] testDefaultMetadata() (gas: 23701)
+[PASS] testExistence() (gas: 18025)
+[PASS] testIncreaseShareClassIssuance(uint128) (runs: 101, μ: 73225, ~: 74408)
+[PASS] testInitialValues() (gas: 29073)
+[PASS] testMaxDepositClaims() (gas: 87250)
+[PASS] testMaxRedeemClaims() (gas: 87559)
+[PASS] testPreviewNextShareClassId() (gas: 14963)
+[PASS] testPreviewShareClassId(uint32) (runs: 101, μ: 13064, ~: 13064)
+[PASS] testUpdateMetadata(string,string) (runs: 100, μ: 74808, ~: 63116)
+[PASS] testUpdateSharePrice() (gas: 45947)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 471.13ms (465.33ms CPU time)
+
+Ran 9 tests for test/spoke/unit/ShareToken.t.sol:ShareTokenTest
+[PASS] testAuthTransferFrom(uint256) (runs: 101, μ: 197194, ~: 198003)
+[PASS] testERC1404Support() (gas: 14708)
+[PASS] testERC165Support(bytes4) (runs: 101, μ: 15845, ~: 15845)
+[PASS] testFile(address,address) (runs: 101, μ: 62271, ~: 62271)
+[PASS] testMintTokensToMemberWorks(uint256) (runs: 101, μ: 243546, ~: 244734)
+[PASS] testTransfer(uint256) (runs: 101, μ: 317833, ~: 318627)
+[PASS] testTransferFrom() (gas: 903846)
+Logs:
+  Bound result 1
+
+[PASS] testTransferFromFuzz(uint256) (runs: 101, μ: 901938, ~: 903082)
+[PASS] testTransferFromTokensWithApproval(uint256) (runs: 101, μ: 236724, ~: 236338)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 2.73s (2.71s CPU time)
+
+Ran 7 tests for test/misc/unit/SignatureLib.t.sol:SignatureLibTest
+[PASS] testErrContractSignature() (gas: 194565)
+[PASS] testInvalidContractSignature() (gas: 182990)
+[PASS] testInvalidEOASignature() (gas: 18708)
+[PASS] testSignatureReplay() (gas: 23245)
+[PASS] testValidContractSignature() (gas: 183012)
+[PASS] testValidEOASignature() (gas: 16138)
+[PASS] testWrongDigestEOASignature() (gas: 18752)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 16.29ms (15.78ms CPU time)
+
+Ran 4 tests for test/vaults/integration/Operator.t.sol:OperatorTest
+[PASS] testDepositAsAuthorizedOperator(uint256) (runs: 101, μ: 12370436, ~: 12370041)
+[PASS] testDepositAsOperator(uint256) (runs: 101, μ: 12925014, ~: 12924619)
+[PASS] testInvalidateNonce(uint256) (runs: 101, μ: 11805202, ~: 11804807)
+[PASS] testRedeemAsOperator(uint256) (runs: 101, μ: 15148308, ~: 15147913)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 41.63s (41.56s CPU time)
+
+Ran 4 tests for test/adapters/unit/WormholeAdapter.t.sol:WormholeAdapterTest
+[PASS] testDeploy() (gas: 19378)
+[PASS] testEstimate(uint64) (runs: 101, μ: 18119, ~: 18119)
+[PASS] testIncomingCalls(bytes,address,address,uint16,address) (runs: 101, μ: 99310, ~: 99271)
+[PASS] testOutgoingCalls(bytes,address,uint256,address) (runs: 101, μ: 325585, ~: 317886)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 1.02s (970.45ms CPU time)
+
+Ran 2 tests for test/spoke/integration/Spoke.t.sol:SpokeDeployVaultTest
+[PASS] testDeployVaultWithLinkERC20(uint64,uint8,string,string,bytes16) (runs: 100, μ: 10658470, ~: 10667331)
+[PASS] testDeployVaultWithoutLinkERC20(uint64,uint8,string,string,bytes16) (runs: 100, μ: 10563409, ~: 10572270)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.23s (4.08s CPU time)
+
+Ran 1 test for test/spoke/integration/Spoke.t.sol:SpokeRestrictionTest
+[PASS] testFreezeAndUnfreeze() (gas: 11617151)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 179.21ms (38.44ms CPU time)

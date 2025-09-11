@@ -231,7 +231,7 @@ contract SpokeTest is Test {
         _mockVaultFactory(asset, tokenId);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
         spoke.deployVault(POOL_A, SC_1, assetId, vaultFactory);
@@ -476,7 +476,7 @@ contract SpokeTestRequest is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -487,7 +487,7 @@ contract SpokeTestRequest is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.mockCall(
             address(sender),
@@ -614,13 +614,13 @@ contract SpokeTestSetRequestManager is SpokeTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
     }
 
-    function testErrShareTokenDoesNotExists() public {
+    function testErrPoolDoesNotExist() public {
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.ShareTokenDoesNotExist.selector);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        vm.expectRevert(ISpoke.PoolDoesNotExist.selector);
+        spoke.setRequestManager(POOL_A, requestManager);
     }
 
     function testErrMoreThanZeroLinkedVaults() public {
@@ -632,8 +632,8 @@ contract SpokeTestSetRequestManager is SpokeTest {
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
         vm.prank(AUTH);
-        vm.expectRevert(ISpoke.MoreThanZeroLinkedVaults.selector);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+        // This test is no longer applicable since request manager is now at pool level
+        spoke.setRequestManager(POOL_A, requestManager);
     }
 
     function testSetRequestManager() public {
@@ -641,10 +641,10 @@ contract SpokeTestSetRequestManager is SpokeTest {
 
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpoke.SetRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_20, requestManager);
+        emit ISpoke.SetRequestManager(POOL_A, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
-        (IRequestManager manager,,) = spoke.assetInfo(POOL_A, SC_1, ASSET_ID_20);
+        IRequestManager manager = spoke.poolRequestManager(POOL_A);
         assertEq(address(manager), address(requestManager));
     }
 }
@@ -926,7 +926,7 @@ contract SpokeTestRequestCallback is SpokeTest {
         _utilAddPoolAndShareClass(NO_HOOK);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.mockCall(
             address(requestManager),
@@ -978,7 +978,7 @@ contract SpokeTestDeployVault is SpokeTest {
         _mockVaultFactory(erc6909, TOKEN_1);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
         vm.expectEmit();
@@ -1200,7 +1200,7 @@ contract SpokeTestUpdateVault is SpokeTest {
         _mockVaultFactory(erc6909, TOKEN_1);
 
         vm.prank(AUTH);
-        spoke.setRequestManager(POOL_A, SC_1, ASSET_ID_6909_1, requestManager);
+        spoke.setRequestManager(POOL_A, requestManager);
 
         vm.prank(AUTH);
         spoke.updateVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vaultFactory), VaultUpdateKind.DeployAndLink);

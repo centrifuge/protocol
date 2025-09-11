@@ -254,18 +254,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
+    function sendSetRequestManager(PoolId poolId, bytes32 manager) external auth {
+        if (poolId.centrifugeId() == localCentrifugeId) {
+            spoke.setRequestManager(poolId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
-                assetId.centrifugeId(),
-                MessageLib.SetRequestManager({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    manager: manager
-                }).serialize()
+                poolId.centrifugeId(),
+                MessageLib.SetRequestManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }
