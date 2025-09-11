@@ -176,8 +176,21 @@ interface IHubRequestManager {
     );
 
     //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Emitted when a call to `file()` was performed.
+    event File(bytes32 what, address addr);
+
+    //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
+    error FileUnrecognizedParam();
+
+    /// @notice Dispatched when unknown request type is encountered.
+    error UnknownRequestType();
 
     error InsufficientPending();
     error ZeroApprovalAmount();
@@ -192,6 +205,9 @@ interface IHubRequestManager {
     //----------------------------------------------------------------------------------------------
     // Incoming requests
     //----------------------------------------------------------------------------------------------
+
+    /// @notice Handles a request originating from the Hub side, similar to HubHelpers.request
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     function requestDeposit(PoolId poolId, ShareClassId scId, uint128 amount, bytes32 investor, AssetId depositAssetId)
         external;

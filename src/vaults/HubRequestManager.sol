@@ -22,6 +22,8 @@ import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
+import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
 /// @title  Hub Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes
@@ -29,8 +31,13 @@ contract HubRequestManager is Auth, IHubRequestManager {
     using MathLib for *;
     using CastLib for *;
     using BytesLib for bytes;
+    using RequestMessageLib for *;
+    using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
+    
+    // Hub reference for callbacks
+    address public hub;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -63,9 +70,62 @@ contract HubRequestManager is Auth, IHubRequestManager {
         hubRegistry = hubRegistry_;
     }
 
+    /// @notice Updates a contract parameter.
+    /// @param what Name of the parameter to update.
+    /// Accepts a `bytes32` representation of 'hub'
+    function file(bytes32 what, address data) external auth {
+        if (what == "hub") hub = data;
+        else revert FileUnrecognizedParam();
+
+        emit File(what, data);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Incoming requests
     //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHubRequestManager
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
+        uint8 kind = uint8(RequestMessageLib.requestType(payload));
+
+        if (kind == uint8(RequestMessageType.DepositRequest)) {
+            RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
+            this.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
+        } else if (kind == uint8(RequestMessageType.RedeemRequest)) {
+            RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
+            this.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
+        } else if (kind == uint8(RequestMessageType.CancelDepositRequest)) {
+            RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
+            uint128 cancelledAssetAmount = this.cancelDepositRequest(poolId, scId, m.investor, assetId);
+
+            // Cancellation might have been queued such that it will be executed in the future during claiming
+            if (cancelledAssetAmount > 0) {
+                _requestCallback(
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(),
+                    0
+                );
+            }
+        } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
+            RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
+            uint128 cancelledShareAmount = this.cancelRedeemRequest(poolId, scId, m.investor, assetId);
+
+            // Cancellation might have been queued such that it will be executed in the future during claiming
+            if (cancelledShareAmount > 0) {
+                _requestCallback(
+                    poolId,
+                    scId,
+                    assetId,
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
+                    0
+                );
+            }
+        } else {
+            revert UnknownRequestType();
+        }
+    }
 
     /// @inheritdoc IHubRequestManager
     function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
@@ -738,5 +798,15 @@ contract HubRequestManager is Auth, IHubRequestManager {
     ///         3. User's last update is not behind the current epoch (userOrder.lastUpdate >= currentEpoch)
     function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) internal pure returns (bool) {
         return currentEpoch <= 1 || userOrder.pending == 0 || userOrder.lastUpdate >= currentEpoch;
+    }
+
+    /// @dev Internal helper to call back to Hub for request callback messages
+    function _requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload, uint128 gasLimit) internal {
+        require(hub != address(0), "Hub not set");
+        // Call the Hub's requestCallback method
+        (bool success, ) = hub.call(
+            abi.encodeWithSignature("requestCallback(uint256,uint256,uint256,bytes,uint128)", poolId, scId, assetId, payload, gasLimit)
+        );
+        require(success, "Hub callback failed");
     }
 }

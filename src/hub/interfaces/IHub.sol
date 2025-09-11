@@ -107,6 +107,10 @@ interface IHub {
         external
         payable;
 
+    /// @notice Send request callback message - called by HubRequestManager
+    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, uint128 gasLimit)
+        external;
+
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
     function notifyPool(PoolId poolId, uint16 centrifugeId) external payable;

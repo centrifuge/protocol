@@ -34,6 +34,7 @@ contract HubHelpers is Auth, IHubHelpers {
     IShareClassManager public immutable shareClassManager;
 
     IHub public hub;
+    IHubRequestManager public hubRequestManager;
 
     constructor(
         IHoldings holdings_,
@@ -53,6 +54,7 @@ contract HubHelpers is Auth, IHubHelpers {
     /// @inheritdoc IHubHelpers
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHub(data);
+        else if (what == "hubRequestManager") hubRequestManager = IHubRequestManager(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -175,47 +177,7 @@ contract HubHelpers is Auth, IHubHelpers {
 
     /// @inheritdoc IHubHelpers
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
-        IHubRequestManager requestManager = IHubRequestManager(hubRegistry.dependency("requestManager"));
-        uint8 kind = uint8(RequestMessageLib.requestType(payload));
-
-        if (kind == uint8(RequestType.DepositRequest)) {
-            RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
-            requestManager.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
-        } else if (kind == uint8(RequestType.RedeemRequest)) {
-            RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
-            requestManager.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
-        } else if (kind == uint8(RequestType.CancelDepositRequest)) {
-            RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
-            uint128 cancelledAssetAmount = requestManager.cancelDepositRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledAssetAmount > 0) {
-                sender.sendRequestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    ),
-                    0
-                );
-            }
-        } else if (kind == uint8(RequestType.CancelRedeemRequest)) {
-            RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
-            uint128 cancelledShareAmount = requestManager.cancelRedeemRequest(poolId, scId, m.investor, assetId);
-
-            // Cancellation might have been queued such that it will be executed in the future during claiming
-            if (cancelledShareAmount > 0) {
-                sender.sendRequestCallback(
-                    poolId,
-                    scId,
-                    assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
-                    0
-                );
-            }
-        } else {
-            revert UnknownRequestType();
-        }
+        hubRequestManager.request(poolId, scId, assetId, payload);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -10,6 +10,8 @@ import {IHubRequestManager} from "../../../../src/hub/interfaces/IHubRequestMana
 contract MockRequestManager is IHubRequestManager {
     uint32 private constant MOCK_EPOCH = 1;
 
+    function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
+
     function requestDeposit(PoolId, ShareClassId, uint128, bytes32, AssetId) external override {}
 
     function cancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId)

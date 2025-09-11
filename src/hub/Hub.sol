@@ -171,6 +171,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         }
     }
 
+    /// @inheritdoc IHub
+    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, uint128 gasLimit)
+        external
+    {
+        _auth();
+        sender.sendRequestCallback(poolId, scId, assetId, payload, gasLimit);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Pool admin methods
     //----------------------------------------------------------------------------------------------
