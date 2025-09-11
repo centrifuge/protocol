@@ -117,7 +117,6 @@ abstract contract CreateXScript is Script {
 
     /**
      * @notice Deploys the contract via CREATE3
-     * @dev In test environments, falls back to regular CREATE deployment to avoid CreateX issues
      */
     function create3(bytes32 salt, bytes memory initCode) public returns (address) {
         // In test environment (chainId 31337), use regular CREATE instead of CREATE3

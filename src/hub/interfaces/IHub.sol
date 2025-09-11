@@ -62,7 +62,11 @@ interface IHub {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
     event SetRequestManager(
-        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bytes32 hubManager, bytes32 spokeManager
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        AssetId indexed assetId,
+        bytes32 hubManager,
+        bytes32 spokeManager
     );
 
     /// @notice Emitted when a call to `file()` was performed.
@@ -108,8 +112,13 @@ interface IHub {
         payable;
 
     /// @notice Send request callback message - called by HubRequestManager
-    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload, uint128 gasLimit)
-        external;
+    function requestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 gasLimit
+    ) external;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
@@ -170,9 +179,15 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Set request managers for both hub and spoke
-    /// @param hubManager Manager to be stored in hubRegistry using dependencies  
+    /// @param hubManager Manager to be stored in hubRegistry using dependencies
     /// @param spokeManager Manager to be sent to the spoke chain
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 hubManager, bytes32 spokeManager) external payable;
+    function setRequestManager(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 hubManager,
+        bytes32 spokeManager
+    ) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)

@@ -35,7 +35,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     using RequestCallbackMessageLib for *;
 
     IHubRegistry public immutable hubRegistry;
-    
+
     // Hub reference for callbacks
     address public hub;
 
@@ -104,7 +104,8 @@ contract HubRequestManager is Auth, IHubRequestManager {
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(),
+                    RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
+                    ),
                     0
                 );
             }
@@ -801,11 +802,15 @@ contract HubRequestManager is Auth, IHubRequestManager {
     }
 
     /// @dev Internal helper to call back to Hub for request callback messages
-    function _requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload, uint128 gasLimit) internal {
+    function _requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload, uint128 gasLimit)
+        internal
+    {
         require(hub != address(0), "Hub not set");
         // Call the Hub's requestCallback method
-        (bool success, ) = hub.call(
-            abi.encodeWithSignature("requestCallback(uint256,uint256,uint256,bytes,uint128)", poolId, scId, assetId, payload, gasLimit)
+        (bool success,) = hub.call(
+            abi.encodeWithSignature(
+                "requestCallback(uint256,uint256,uint256,bytes,uint128)", poolId, scId, assetId, payload, gasLimit
+            )
         );
         require(success, "Hub callback failed");
     }

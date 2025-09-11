@@ -12,7 +12,6 @@ import {HubHelpers} from "../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
-
 import "forge-std/Script.sol";
 
 abstract contract HubConstants {
@@ -126,7 +125,6 @@ contract HubDeployer is CommonDeployer, HubConstants {
                 abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
-
 
         hubHelpers = HubHelpers(
             create3(

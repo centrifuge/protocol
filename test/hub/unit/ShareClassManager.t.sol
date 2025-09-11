@@ -84,19 +84,28 @@ abstract contract ShareClassManagerBaseTest is Test {
 
     function _intoPoolAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
         return PricingLib.convertWithPrice(
-            amount, IHubRegistry(hubRegistryMock).decimals(assetId), IHubRegistry(hubRegistryMock).decimals(poolId), d18(1, 1)
+            amount,
+            IHubRegistry(hubRegistryMock).decimals(assetId),
+            IHubRegistry(hubRegistryMock).decimals(poolId),
+            d18(1, 1)
         );
     }
 
     function _poolAtomsToAsset(AssetId assetId, uint256 poolAtoms) internal view returns (uint128) {
         return PricingLib.convertWithPrice(
-            poolAtoms, IHubRegistry(hubRegistryMock).decimals(poolId), IHubRegistry(hubRegistryMock).decimals(assetId), d18(1, 1)
+            poolAtoms,
+            IHubRegistry(hubRegistryMock).decimals(poolId),
+            IHubRegistry(hubRegistryMock).decimals(assetId),
+            d18(1, 1)
         );
     }
 
     function _assetToPoolAtoms(AssetId assetId, uint128 amount) internal view returns (uint256) {
         return PricingLib.convertWithPrice(
-            amount, IHubRegistry(hubRegistryMock).decimals(assetId), IHubRegistry(hubRegistryMock).decimals(poolId), d18(1, 1)
+            amount,
+            IHubRegistry(hubRegistryMock).decimals(assetId),
+            IHubRegistry(hubRegistryMock).decimals(poolId),
+            d18(1, 1)
         );
     }
 

@@ -66,7 +66,7 @@ contract BaseTest is HubDeployer, Test {
         multiAdapter.setAdapters(CHAIN_CV, PoolId.wrap(0), adapters);
 
         valuation = new MockValuation(hubRegistry);
-        
+
         // Deploy and set up mock request manager
         mockRequestManager = new MockRequestManager();
         hubRegistry.updateDependency("requestManager", address(mockRequestManager));

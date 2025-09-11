@@ -72,7 +72,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                IHubRequestManager(hubRegistry.dependency("requestManager")).claimDeposit(poolId, scId, investor, assetId);
+            IHubRequestManager(hubRegistry.dependency("requestManager")).claimDeposit(poolId, scId, investor, assetId);
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
@@ -98,7 +98,7 @@ contract HubHelpers is Auth, IHubHelpers {
     {
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                IHubRequestManager(hubRegistry.dependency("requestManager")).claimRedeem(poolId, scId, investor, assetId);
+            IHubRequestManager(hubRegistry.dependency("requestManager")).claimRedeem(poolId, scId, investor, assetId);
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;

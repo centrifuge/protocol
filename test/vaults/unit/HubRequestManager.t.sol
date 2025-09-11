@@ -80,7 +80,7 @@ abstract contract HubRequestManagerBaseTest is Test {
 
     function setUp() public virtual {
         hubRequestManager = new HubRequestManager(IHubRegistry(hubRegistryMock), address(this));
-        
+
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);
         assertEq(IHubRegistry(hubRegistryMock).decimals(OTHER_STABLE), DECIMALS_OTHER_STABLE);
@@ -94,7 +94,7 @@ abstract contract HubRequestManagerBaseTest is Test {
             d18(1)
         );
     }
-    
+
     function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
         return PricingLib.convertWithPrice(
             amount,
@@ -107,28 +107,18 @@ abstract contract HubRequestManagerBaseTest is Test {
     function _approveDeposits(uint128 approvedAssetAmount) internal returns (uint128, uint128) {
         uint32 nowDepositEpochId = hubRequestManager.nowDepositEpoch(scId, USDC);
         D18 pricePoolPerAsset = d18(1);
-        
+
         return hubRequestManager.approveDeposits(
-            poolId,
-            scId,
-            USDC,
-            nowDepositEpochId,
-            approvedAssetAmount,
-            pricePoolPerAsset
+            poolId, scId, USDC, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
         );
     }
 
     function _approveRedeems(uint128 approvedShareAmount) internal returns (uint128) {
         uint32 nowRedeemEpochId = hubRequestManager.nowRedeemEpoch(scId, USDC);
         D18 pricePoolPerAsset = d18(1);
-        
+
         return hubRequestManager.approveRedeems(
-            poolId,
-            scId,
-            USDC,
-            nowRedeemEpochId,
-            approvedShareAmount,
-            pricePoolPerAsset
+            poolId, scId, USDC, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
         );
     }
 }
@@ -139,15 +129,7 @@ contract HubRequestManagerRequestsTest is HubRequestManagerBaseTest {
 
         vm.expectEmit();
         emit IHubRequestManager.UpdateDepositRequest(
-            poolId,
-            scId,
-            USDC,
-            hubRequestManager.nowDepositEpoch(scId, USDC),
-            investor,
-            amount,
-            amount,
-            0,
-            false
+            poolId, scId, USDC, hubRequestManager.nowDepositEpoch(scId, USDC), investor, amount, amount, 0, false
         );
         hubRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
 
@@ -177,15 +159,7 @@ contract HubRequestManagerRequestsTest is HubRequestManagerBaseTest {
 
         vm.expectEmit();
         emit IHubRequestManager.UpdateRedeemRequest(
-            poolId,
-            scId,
-            USDC,
-            hubRequestManager.nowRedeemEpoch(scId, USDC),
-            investor,
-            amount,
-            amount,
-            0,
-            false
+            poolId, scId, USDC, hubRequestManager.nowRedeemEpoch(scId, USDC), investor, amount, amount, 0, false
         );
         hubRequestManager.requestRedeem(poolId, scId, amount, investor, USDC);
 
@@ -256,7 +230,7 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
 
         assertEq(depositAssetAmount, approvedAmount);
         assertEq(depositPoolAmount, _intoPoolAmount(USDC, approvedAmount));
-        
+
         // Check issued share amount calculation
         uint128 expectedShares = PricingLib.assetToShareAmount(
             approvedAmount,
@@ -270,7 +244,8 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
     }
 
     function testRevokeShares(uint128 approvedAmount, uint128 navPoolPerShare) public {
-        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, 1e21)); // Further reduce max to prevent conversion issues
+        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, 1e21)); // Further reduce max to
+            // prevent conversion issues
         navPoolPerShare = uint128(bound(navPoolPerShare, 1e15, 1e19)); // 0.001 to 10 in D18 to prevent overflow
 
         // Setup: request, approve redeems
@@ -279,15 +254,15 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
 
         // Revoke shares
         uint32 nowRevokeEpochId = hubRequestManager.nowRevokeEpoch(scId, USDC);
-        (uint128 revokedShareAmount, , uint128 payoutPoolAmount) =
+        (uint128 revokedShareAmount,, uint128 payoutPoolAmount) =
             hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare));
 
         assertEq(revokedShareAmount, approvedAmount);
-        
+
         // Check payout calculations
         uint128 expectedPayoutPool = d18(navPoolPerShare).mulUint128(approvedAmount, MathLib.Rounding.Down);
         assertEq(payoutPoolAmount, expectedPayoutPool);
-        
+
         // Note: Skip asset amount assertion due to precision issues in decimal conversion with large numbers
         // The core logic is working correctly as verified by the pool amount assertion above
     }
@@ -301,7 +276,7 @@ contract HubRequestManagerClaimingTest is HubRequestManagerBaseTest {
         // Setup: request, approve, issue
         hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
         _approveDeposits(depositAmount);
-        
+
         uint32 nowIssueEpochId = hubRequestManager.nowIssueEpoch(scId, USDC);
         hubRequestManager.issueShares(poolId, scId, USDC, nowIssueEpochId, d18(navPoolPerShare));
 
@@ -322,7 +297,7 @@ contract HubRequestManagerClaimingTest is HubRequestManagerBaseTest {
         // Setup: request, approve, revoke
         hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
         _approveRedeems(redeemAmount);
-        
+
         uint32 nowRevokeEpochId = hubRequestManager.nowRevokeEpoch(scId, USDC);
         hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare));
 

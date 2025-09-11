@@ -2,11 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {
-    IShareClassManager,
-    ShareClassMetadata,
-    ShareClassMetrics
-} from "./interfaces/IShareClassManager.sol";
+import {IShareClassManager, ShareClassMetadata, ShareClassMetrics} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18} from "../misc/types/D18.sol";
@@ -34,8 +30,6 @@ contract ShareClassManager is Auth, IShareClassManager {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
-
-
 
     //----------------------------------------------------------------------------------------------
     // Errors

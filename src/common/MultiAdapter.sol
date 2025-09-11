@@ -16,8 +16,8 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
     using BytesLib for bytes;
-using MathLib for uint256;
-using ArrayLib for uint16[8];
+    using MathLib for uint256;
+    using ArrayLib for uint16[8];
 
     PoolId public constant GLOBAL_ID = PoolId.wrap(0);
 

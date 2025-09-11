@@ -442,7 +442,11 @@ contract EndToEndFlows is EndToEndUtils {
             LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
-            poolId, shareClassId, assetId, address(spoke.asyncRequestManager).toBytes32(), address(spoke.asyncRequestManager).toBytes32()
+            poolId,
+            shareClassId,
+            assetId,
+            address(spoke.asyncRequestManager).toBytes32(),
+            address(spoke.asyncRequestManager).toBytes32()
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
@@ -684,7 +688,9 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
+            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxDepositClaims(
+                shareClassId, investor.toBytes32(), assetId
+            )
         );
 
         // Store initial share balance for fork tests
@@ -974,7 +980,9 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
+            IHubRequestManager(hub.hubRegistry.dependency("requestManager")).maxRedeemClaims(
+                shareClassId, investor.toBytes32(), assetId
+            )
         );
 
         // Store initial asset balance for fork tests

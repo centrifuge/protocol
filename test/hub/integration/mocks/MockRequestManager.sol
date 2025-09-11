@@ -14,11 +14,7 @@ contract MockRequestManager is IHubRequestManager {
 
     function requestDeposit(PoolId, ShareClassId, uint128, bytes32, AssetId) external override {}
 
-    function cancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId)
-        external
-        override
-        returns (uint128)
-    {
+    function cancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint128) {
         return 0;
     }
 
@@ -36,11 +32,7 @@ contract MockRequestManager is IHubRequestManager {
         return (0, 0);
     }
 
-    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18)
-        external
-        override
-        returns (uint128)
-    {
+    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external override returns (uint128) {
         return 0;
     }
 
@@ -60,19 +52,11 @@ contract MockRequestManager is IHubRequestManager {
         return (0, 0, 0);
     }
 
-    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId)
-        external
-        override
-        returns (uint128)
-    {
+    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint128) {
         return 0;
     }
 
-    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId)
-        external
-        override
-        returns (uint128)
-    {
+    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint128) {
         return 0;
     }
 
