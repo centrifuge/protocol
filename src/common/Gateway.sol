@@ -102,12 +102,11 @@ contract Gateway is Auth, Recoverable, IGateway {
             uint256 executionGas = gasService.messageGasLimit(localCentrifugeId, message);
             require(gasleft() >= executionGas + GAS_FAIL_MESSAGE_STORAGE, NotEnoughGasToProcess());
 
-            _process(centrifugeId, message);
+            _process(centrifugeId, message, keccak256(message));
         }
     }
 
-    function _process(uint16 centrifugeId, bytes memory message) internal {
-        bytes32 messageHash = keccak256(message);
+    function _process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) internal {
         try processor.handle{gas: gasleft() - GAS_FAIL_MESSAGE_STORAGE}(centrifugeId, message) {
             emit ExecuteMessage(centrifugeId, message, messageHash);
         } catch (bytes memory err) {

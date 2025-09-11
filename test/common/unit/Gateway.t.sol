@@ -121,8 +121,8 @@ contract GatewayExt is Gateway {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
     }
 
-    function process(uint16 centrifugeId, bytes memory message) public {
-        _process(centrifugeId, message);
+    function process(uint16 centrifugeId, bytes memory message, bytes32 messageHash) public {
+        _process(centrifugeId, message, messageHash);
     }
 }
 
@@ -349,8 +349,9 @@ contract GatewayTestHandle is GatewayTest {
 
     function testMessageFailBenchmark() public {
         bytes memory message = MessageKind.WithPoolAFail.asBytes();
+        bytes32 messageHash = keccak256(message);
 
-        gateway.process(REMOTE_CENT_ID, message);
+        gateway.process(REMOTE_CENT_ID, message, messageHash);
     }
 }
 
