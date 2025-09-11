@@ -103,7 +103,9 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        multiAdapter.setAdapters(OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters);
+        multiAdapter.setAdapters(
+            OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), uint8(testAdapters.length)
+        );
 
         // We should not use the block ChainID
         vm.chainId(BLOCK_CHAIN_ID);
@@ -137,7 +139,10 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
             );
         }
 
-        spoke.setRequestManager(POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), asyncRequestManager);
+        // Only set request manager if not already set
+        if (address(spoke.requestManager(POOL_A)) == address(0)) {
+            spoke.setRequestManager(POOL_A, asyncRequestManager);
+        }
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncManager), true);
 

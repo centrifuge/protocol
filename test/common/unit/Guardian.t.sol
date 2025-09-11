@@ -243,12 +243,12 @@ contract GuardianTestSetAdapters is GuardianTest {
 
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters),
+            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, CENTRIFUGE_ID, POOL_0, adapters, 1, 2),
             abi.encode()
         );
 
         vm.prank(address(SAFE));
-        guardian.setAdapters(CENTRIFUGE_ID, adapters);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters, 1, 2);
     }
 
     function testSetAdaptersOnlySafe() public {
@@ -257,7 +257,7 @@ contract GuardianTestSetAdapters is GuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.setAdapters(CENTRIFUGE_ID, adapters);
+        guardian.setAdapters(CENTRIFUGE_ID, adapters, 1, 2);
     }
 }
 

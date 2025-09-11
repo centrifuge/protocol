@@ -17,7 +17,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     using CastLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
-    using ArrayLib for uint16[8];
+    using ArrayLib for int16[8];
 
     PoolId public constant GLOBAL_ID = PoolId.wrap(0);
 
@@ -57,10 +57,18 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata addresses) external auth {
+    function setAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] calldata addresses,
+        uint8 threshold_,
+        uint8 recoveryIndex_
+    ) external auth {
         uint8 quorum_ = addresses.length.toUint8();
         require(quorum_ != 0, EmptyAdapterSet());
         require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
+        require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
+        require(recoveryIndex_ <= quorum_, RecoveryIndexHigherThanQuorum());
 
         // Increment session id to reset pending votes
         uint256 numAdapters = adapters[centrifugeId][poolId].length;
@@ -78,11 +86,12 @@ contract MultiAdapter is Auth, IMultiAdapter {
             require(_adapterDetails[centrifugeId][poolId][addresses[j]].id == 0, NoDuplicatesAllowed());
 
             // Ids are assigned sequentially starting at 1
-            _adapterDetails[centrifugeId][poolId][addresses[j]] = Adapter(j + 1, quorum_, sessionId);
+            _adapterDetails[centrifugeId][poolId][addresses[j]] =
+                Adapter(j + 1, quorum_, threshold_, recoveryIndex_, sessionId);
         }
 
         adapters[centrifugeId][poolId] = addresses;
-        emit SetAdapters(centrifugeId, poolId, addresses);
+        emit SetAdapters(centrifugeId, poolId, addresses, threshold_, recoveryIndex_);
     }
 
     /// @inheritdoc IMultiAdapter
@@ -132,9 +141,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
         // Increase vote
         state.votes[adapter.id - 1]++;
 
-        if (state.votes.countNonZeroValues() >= adapter.quorum) {
+        if (state.votes.countPositiveValues(adapter.quorum) >= adapter.threshold) {
             // Reduce votes by quorum
-            state.votes.decreaseFirstNValues(adapter.quorum);
+            state.votes.decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
 
             gateway.handle(centrifugeId, payload);
         }
@@ -213,13 +222,25 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
+    function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
+        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        return _adapterDetails[centrifugeId][poolId][adapter].threshold;
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8) {
+        IAdapter adapter = adapters[centrifugeId][poolId][0];
+        return _adapterDetails[centrifugeId][poolId][adapter].recoveryIndex;
+    }
+
+    /// @inheritdoc IMultiAdapter
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint64) {
         IAdapter adapter = adapters[centrifugeId][poolId][0];
         return _adapterDetails[centrifugeId][poolId][adapter].activeSessionId;
     }
 
     /// @inheritdoc IMultiAdapter
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (uint16[MAX_ADAPTER_COUNT] memory) {
+    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
         return inbound[centrifugeId][payloadHash].votes;
     }
 }

@@ -211,13 +211,23 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), AssetId.wrap(assetId).centrifugeId());
     }
 
-    function testSetPoolAdapters(uint64 poolId, bytes32[] memory adapterList) public pure {
+    function testSetPoolAdapters(uint64 poolId, uint8 threshold, uint8 recoveryIndex, bytes32[] memory adapterList)
+        public
+        pure
+    {
         vm.assume(adapterList.length <= 20);
 
-        MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({poolId: poolId, adapterList: adapterList});
+        MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({
+            poolId: poolId,
+            threshold: threshold,
+            recoveryIndex: recoveryIndex,
+            adapterList: adapterList
+        });
         MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
+        assertEq(a.threshold, b.threshold);
+        assertEq(a.recoveryIndex, b.recoveryIndex);
         assertEq(a.adapterList, b.adapterList);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());
@@ -506,14 +516,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageSourceCentrifugeId(), PoolId.wrap(poolId).centrifugeId());
     }
 
-    function testSetRequestManager(uint64 poolId, bytes16 scId, uint128 assetId, bytes32 manager) public pure {
-        MessageLib.SetRequestManager memory a =
-            MessageLib.SetRequestManager({poolId: poolId, scId: scId, assetId: assetId, manager: manager});
+    function testSetRequestManager(uint64 poolId, bytes32 manager) public pure {
+        MessageLib.SetRequestManager memory a = MessageLib.SetRequestManager({poolId: poolId, manager: manager});
         MessageLib.SetRequestManager memory b = MessageLib.deserializeSetRequestManager(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
         assertEq(a.manager, b.manager);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);

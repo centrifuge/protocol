@@ -83,12 +83,10 @@ interface ISpokeGatewayHandler {
         address hook
     ) external;
 
-    /// @notice Updates the request manager for a specific asset
+    /// @notice Updates the request manager for a pool
     /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  assetId The asset id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager) external;
+    function setRequestManager(PoolId poolId, IRequestManager manager) external;
 
     /// @notice   Updates the tokenName and tokenSymbol of a share class token
     function updateShareMetadata(PoolId poolId, ShareClassId scId, string memory tokenName, string memory tokenSymbol)

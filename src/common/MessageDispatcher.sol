@@ -254,18 +254,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setRequestManager(poolId, scId, assetId, IRequestManager(manager.toAddress()));
+    function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external auth {
+        if (centrifugeId == localCentrifugeId) {
+            spoke.setRequestManager(poolId, IRequestManager(manager.toAddress()));
         } else {
             gateway.send(
-                assetId.centrifugeId(),
-                MessageLib.SetRequestManager({
-                    poolId: poolId.raw(),
-                    scId: scId.raw(),
-                    assetId: assetId.raw(),
-                    manager: manager
-                }).serialize()
+                centrifugeId, MessageLib.SetRequestManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }
@@ -537,12 +531,24 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetPoolAdapters(uint16 centrifugeId, PoolId poolId, bytes32[] memory adapters) external {
+    function sendSetPoolAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        bytes32[] memory adapters,
+        uint8 threshold,
+        uint8 recoveryIndex
+    ) external {
         if (centrifugeId == localCentrifugeId) {
             revert CannotBeSentLocally();
         } else {
             gateway.send(
-                centrifugeId, MessageLib.SetPoolAdapters({poolId: poolId.raw(), adapterList: adapters}).serialize()
+                centrifugeId,
+                MessageLib.SetPoolAdapters({
+                    poolId: poolId.raw(),
+                    threshold: threshold,
+                    recoveryIndex: recoveryIndex,
+                    adapterList: adapters
+                }).serialize()
             );
         }
     }

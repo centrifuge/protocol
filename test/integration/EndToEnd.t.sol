@@ -17,7 +17,6 @@ import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
 import {Guardian} from "../../src/common/Guardian.sol";
 import {PoolId} from "../../src/common/types/PoolId.sol";
-import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 import {GasService} from "../../src/common/GasService.sol";
 import {AccountId} from "../../src/common/types/AccountId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";
@@ -227,7 +226,7 @@ contract EndToEndDeployment is Test {
         vm.startPrank(address(deploy.guardian().safe()));
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        deploy.guardian().setAdapters(remoteCentrifugeId, adapters);
+        deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
         deploy.guardian().setAdaptersManager(MULTI_ADAPTER_MANAGER);
         vm.stopPrank();
     }
@@ -442,11 +441,7 @@ contract EndToEndFlows is EndToEndUtils {
             LOSS_ACCOUNT
         );
         hub.hub.setRequestManager{value: GAS}(
-            poolId,
-            shareClassId,
-            assetId,
-            address(spoke.asyncRequestManager).toBytes32(),
-            address(spoke.asyncRequestManager).toBytes32()
+            poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32()
         );
         hub.hub.updateBalanceSheetManager{value: GAS}(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
@@ -504,7 +499,7 @@ contract EndToEndFlows is EndToEndUtils {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters);
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
         h.hub.setAdaptersManager{value: GAS}(h.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
         h.hub.setAdaptersManager{value: GAS}(s.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
     }
@@ -660,12 +655,11 @@ contract EndToEndFlows is EndToEndUtils {
         uint128 amount
     ) internal {
         vm.startPrank(poolManager);
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
-        uint32 depositEpochId = requestManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
         hub.hub.approveDeposits{value: GAS}(poolId, shareClassId, assetId, depositEpochId, amount);
 
         vm.startPrank(poolManager);
-        uint32 issueEpochId = requestManager.nowIssueEpoch(shareClassId, assetId);
+        uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
         hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
     }
@@ -688,9 +682,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager")).maxDepositClaims(
-                shareClassId, investor.toBytes32(), assetId
-            )
+            hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         // Store initial share balance for fork tests
@@ -885,9 +877,8 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
-        uint32 nowRedeemEpoch = requestManager.nowRedeemEpoch(shareClassId, assetId);
-        uint32 nowRevokeEpoch = requestManager.nowRevokeEpoch(shareClassId, assetId);
+        uint32 nowRedeemEpoch = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
 
         // Handle live chain state: if redemptions have been approved but not revoked,
         // we need to revoke outstanding epochs before we can approve new ones
@@ -898,7 +889,7 @@ contract EndToEndFlows is EndToEndUtils {
                 hub.hub.revokeShares{value: GAS}(
                     poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
                 );
-                nowRevokeEpoch = requestManager.nowRevokeEpoch(shareClassId, assetId);
+                nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
         }
@@ -911,9 +902,8 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager
     ) internal {
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
-        uint32 nowDepositEpoch = requestManager.nowDepositEpoch(shareClassId, assetId);
-        uint32 nowIssueEpoch = requestManager.nowIssueEpoch(shareClassId, assetId);
+        uint32 nowDepositEpoch = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
+        uint32 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
 
         // Handle live chain state: if deposits have been approved but not yet issued,
         // we need to issue outstanding epochs before we can approve new ones
@@ -924,7 +914,7 @@ contract EndToEndFlows is EndToEndUtils {
                 hub.hub.issueShares{value: GAS}(
                     poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
                 );
-                nowIssueEpoch = requestManager.nowIssueEpoch(shareClassId, assetId);
+                nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
         }
@@ -953,11 +943,10 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        IHubRequestManager requestManager = IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager"));
-        uint32 redeemEpochId = requestManager.nowRedeemEpoch(shareClassId, assetId);
+        uint32 redeemEpochId = hub.shareClassManager.nowRedeemEpoch(shareClassId, assetId);
         hub.hub.approveRedeems(poolId, shareClassId, assetId, redeemEpochId, shares);
 
-        uint32 revokeEpochId = requestManager.nowRevokeEpoch(shareClassId, assetId);
+        uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
         hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
     }
@@ -980,9 +969,7 @@ contract EndToEndFlows is EndToEndUtils {
             shareClassId,
             assetId,
             investor.toBytes32(),
-            IHubRequestManager(hub.hubRegistry.dependency(poolId, "requestManager")).maxRedeemClaims(
-                shareClassId, investor.toBytes32(), assetId
-            )
+            hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
         // Store initial asset balance for fork tests
@@ -1396,6 +1383,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         }
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters);
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
     }
 }

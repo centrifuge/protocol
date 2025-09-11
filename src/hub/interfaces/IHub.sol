@@ -61,13 +61,6 @@ interface IHub {
     event ForwardTransferShares(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 receiver, uint128 amount
     );
-    event SetRequestManager(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        bytes32 hubManager,
-        bytes32 spokeManager
-    );
 
     /// @notice Emitted when a call to `file()` was performed.
     event File(bytes32 what, address addr);
@@ -110,15 +103,6 @@ interface IHub {
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
         external
         payable;
-
-    /// @notice Send request callback message - called by HubRequestManager
-    function requestCallback(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes calldata payload,
-        uint128 gasLimit
-    ) external;
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
@@ -178,16 +162,8 @@ interface IHub {
     /// @notice Allow/disallow an account to interact as hub manager this pool
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
-    /// @notice Set request managers for both hub and spoke
-    /// @param hubManager Manager to be stored in hubRegistry using dependencies
-    /// @param spokeManager Manager to be sent to the spoke chain
-    function setRequestManager(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 hubManager,
-        bytes32 spokeManager
-    ) external payable;
+    /// @notice Allow/disallow an account to interact as request manager
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
@@ -391,15 +367,21 @@ interface IHub {
 
     /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
     ///         The adapters should already be deployed and wired.
-    /// @param centrifugeId chain where to perform the adapter configuration.
-    /// @param poolId pool associated to this configuration.
-    /// @param localAdapters Adapter addresses in this chain.
-    /// @param remoteAdapters Adapter addresses in the remote chain.
+    /// @param  centrifugeId chain where to perform the adapter configuration.
+    /// @param  poolId pool associated to this configuration.
+    /// @param  localAdapters Adapter addresses in this chain.
+    /// @param  remoteAdapters Adapter addresses in the remote chain.
+    /// @param  threshold Minimum number of adapters required to process the messages
+    ///         If not wanted a threshold set `adapters.length` value
+    /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
+    ///         If not wanted a recoveryIndex set `adapters.length` value
     function setAdapters(
         uint16 centrifugeId,
         PoolId poolId,
         IAdapter[] memory localAdapters,
-        bytes32[] memory remoteAdapters
+        bytes32[] memory remoteAdapters,
+        uint8 threshold,
+        uint8 recoveryIndex
     ) external payable;
 
     /// @notice Set an adapters manager for a pool. The manager can modify adapter-related things in the remote chain.

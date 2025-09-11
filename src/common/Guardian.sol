@@ -106,8 +106,11 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters) external onlySafe {
-        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters);
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
+        external
+        onlySafe
+    {
+        multiAdapter.setAdapters(centrifugeId, PoolId.wrap(0), adapters, threshold, recoveryIndex);
     }
 
     /// @inheritdoc IGuardian
