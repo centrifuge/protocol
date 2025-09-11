@@ -18,8 +18,6 @@ import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 struct Pool {
     /// @dev Timestamp of pool creation.
     uint64 createdAt;
-    /// @dev Number of linked vaults.
-    uint32 numVaults;
 }
 
 /// @dev Each Centrifuge pool is associated to 1 or more shar classes
@@ -125,7 +123,6 @@ interface ISpoke {
     error ShareTokenTransferFailed();
     error TransferFromFailed();
     error InvalidRequestManager();
-    error MoreThanZeroLinkedVaults();
     error RequestManagerNotSet();
     error InvalidManager();
     error InvalidVault();

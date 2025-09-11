@@ -209,7 +209,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     /// @inheritdoc ISpokeGatewayHandler
     function setRequestManager(PoolId poolId, IRequestManager manager) public auth {
         require(isPoolActive(poolId), InvalidPool());
-        require(pool[poolId].numVaults == 0, MoreThanZeroLinkedVaults());
         requestManager[poolId] = manager;
         emit SetRequestManager(poolId, manager);
     }
@@ -383,8 +382,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         IRequestManager manager = requestManager[poolId];
         vault[poolId][scId][assetId][manager] = vault_;
-
-        pool[poolId].numVaults++;
         vaultDetails_.isLinked = true;
 
         if (manager == REQUEST_MANAGER_V3_0) {
@@ -411,8 +408,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         IRequestManager manager = requestManager[poolId];
         delete vault[poolId][scId][assetId][manager];
-
-        pool[poolId].numVaults--;
         vaultDetails_.isLinked = false;
 
         if (manager == REQUEST_MANAGER_V3_0) {

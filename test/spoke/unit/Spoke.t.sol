@@ -522,8 +522,7 @@ contract SpokeTestAddPool is SpokeTest {
         emit ISpoke.AddPool(POOL_A);
         spoke.addPool(POOL_A);
 
-        (uint64 createdAt,) = spoke.pool(POOL_A);
-        assertEq(createdAt, block.timestamp);
+        assertEq(spoke.pool(POOL_A), block.timestamp);
         assertEq(spoke.isPoolActive(POOL_A), true);
     }
 }
@@ -621,19 +620,6 @@ contract SpokeTestSetRequestManager is SpokeTest {
     function testErrPoolDoesNotExist() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpoke.InvalidPool.selector);
-        spoke.setRequestManager(POOL_A, requestManager);
-    }
-
-    function testErrMoreThanZeroLinkedVaults() public {
-        _utilRegisterAsset(erc6909);
-        _utilAddPoolAndShareClass(NO_HOOK);
-        _utilDeployVault(erc6909);
-
-        vm.prank(AUTH);
-        spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
-
-        vm.prank(AUTH);
-        vm.expectRevert(ISpoke.MoreThanZeroLinkedVaults.selector);
         spoke.setRequestManager(POOL_A, requestManager);
     }
 
@@ -1073,8 +1059,6 @@ contract SpokeTestLinkVault is SpokeTest {
         emit ISpoke.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spoke.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        (, uint32 numVaults) = spoke.pool(POOL_A);
-        assertEq(numVaults, 1);
         assertEq(spoke.isLinked(vault), true);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
     }
@@ -1162,8 +1146,6 @@ contract SpokeTestUnlinkVault is SpokeTest {
         emit ISpoke.UnlinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spoke.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        (, uint32 numVaults) = spoke.pool(POOL_A);
-        assertEq(numVaults, 0);
         assertEq(spoke.isLinked(vault), false);
         assertEq(address(spoke.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
     }

@@ -123,8 +123,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
         try spoke.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
-            (uint64 createdAt,) = spoke.pool(POOL_A);
-            if (createdAt == 0) {
+            if (spoke.pool(POOL_A) == 0) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
