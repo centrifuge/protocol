@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console2} from "forge-std/console2.sol";
-
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {ERC20} from "../../../src/misc/ERC20.sol";
 
@@ -71,7 +69,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32("1"));
 
         navManager = navManagerFactory.newManager(POOL_A);
-        priceManager = simplePriceManagerFactory.newManager(POOL_A, scId);
+        priceManager = simplePriceManagerFactory.newManager(POOL_A);
 
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
         hub.updateHubManager(POOL_A, address(navManager), true);

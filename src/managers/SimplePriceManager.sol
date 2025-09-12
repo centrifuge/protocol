@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console2} from "forge-std/console2.sol";
 import {INAVHook} from "./interfaces/INavManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 import {ISimplePriceManagerFactory} from "./interfaces/ISimplePriceManagerFactory.sol";
@@ -36,15 +35,15 @@ contract SimplePriceManager is ISimplePriceManager {
     mapping(address => bool) public manager;
     mapping(address => bool) public caller;
 
-    constructor(PoolId poolId_, ShareClassId scId_, IHub hub_) {
+    constructor(PoolId poolId_, IHub hub_) {
         poolId = poolId_;
-        scId = scId_;
-
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
 
         require(shareClassManager.shareClassCount(poolId_) == 1, InvalidShareClassCount());
+
+        scId = shareClassManager.previewShareClassId(poolId_, 1);
     }
 
     /// @dev Check if the msg.sender is a manager
@@ -103,39 +102,27 @@ contract SimplePriceManager is ISimplePriceManager {
     {
         require(poolId == poolId_, InvalidPoolId());
         require(scId == scId_, InvalidShareClassId());
-        console2.log("SimplePriceManager onUpdate", netAssetValue);
 
         NetworkMetrics storage networkMetrics = metrics[centrifugeId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
-
-        console2.log("SCM centid Issuance", issuance);
-        console2.log("Stored centid Issuance", networkMetrics.issuance);
 
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
         globalNetAssetValue = globalNetAssetValue + netAssetValue - networkMetrics.netAssetValue;
 
         D18 price = _navPerShare();
 
-        console2.log("price", price.raw());
-
         networkMetrics.netAssetValue = netAssetValue;
         networkMetrics.issuance = issuance;
 
         uint256 networkCount = networks.length;
-        console2.log("networkCount", networkCount);
         bytes[] memory cs = new bytes[](networkCount + 1);
         cs[0] = abi.encodeWithSelector(hub.updateSharePrice.selector, poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            console2.log("Calling notifySharePrice for centid", networks[i]);
             cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, networks[i]);
         }
 
-        console2.log("Calling multicall");
-
         IMulticall(address(hub)).multicall{value: MAX_MESSAGE_COST * (cs.length)}(cs);
-
-        console2.log("SimplePriceManager onUpdate done");
 
         emit Update(globalNetAssetValue, globalIssuance, price);
     }
@@ -174,7 +161,6 @@ contract SimplePriceManager is ISimplePriceManager {
         require(nowDepositEpochId == nowIssueEpochId, MismatchedEpochs());
 
         D18 navPoolPerShare = _navPerShare();
-        console2.log("navPoolPerShare", navPoolPerShare.raw());
         hub.approveDeposits(poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount);
         hub.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
     }
@@ -215,14 +201,12 @@ contract SimplePriceManagerFactory is ISimplePriceManagerFactory {
         hub = hub_;
     }
 
-    // TODO: remove scId param
-    function newManager(PoolId poolId, ShareClassId scId) external returns (ISimplePriceManager) {
+    function newManager(PoolId poolId) external returns (ISimplePriceManager) {
         require(hub.shareClassManager().shareClassCount(poolId) == 1, InvalidShareClassCount());
 
-        SimplePriceManager manager =
-            new SimplePriceManager{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(poolId, scId, hub);
+        SimplePriceManager manager = new SimplePriceManager{salt: keccak256(abi.encode(poolId.raw()))}(poolId, hub);
 
-        emit DeploySimplePriceManager(poolId, scId, address(manager));
+        emit DeploySimplePriceManager(poolId, address(manager));
         return ISimplePriceManager(manager);
     }
 }

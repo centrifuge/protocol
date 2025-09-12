@@ -7,9 +7,9 @@ import {PoolId} from "../../common/types/PoolId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
 interface ISimplePriceManagerFactory {
-    event DeploySimplePriceManager(PoolId indexed poolId, ShareClassId indexed scId, address indexed manager);
+    event DeploySimplePriceManager(PoolId indexed poolId, address indexed manager);
 
     error InvalidShareClassCount();
 
-    function newManager(PoolId poolId, ShareClassId scId) external returns (ISimplePriceManager);
+    function newManager(PoolId poolId) external returns (ISimplePriceManager);
 }

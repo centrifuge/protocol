@@ -81,6 +81,11 @@ contract SimplePriceManagerTest is Test {
         );
         vm.mockCall(
             shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.previewShareClassId.selector, POOL_A, 1),
+            abi.encode(SC_1)
+        );
+        vm.mockCall(
+            shareClassManager,
             abi.encodeWithSelector(IShareClassManager.issuance.selector, SC_1, CENTRIFUGE_ID_1),
             abi.encode(100)
         );
@@ -112,7 +117,7 @@ contract SimplePriceManagerTest is Test {
     }
 
     function _deployManager() internal {
-        priceManager = new SimplePriceManager(POOL_A, SC_1, IHub(hub));
+        priceManager = new SimplePriceManager(POOL_A, IHub(hub));
         vm.prank(hubManager);
         priceManager.updateManager(manager, true);
 
@@ -142,7 +147,7 @@ contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
 
         vm.expectRevert(ISimplePriceManager.InvalidShareClassCount.selector);
         vm.prank(hubManager);
-        new SimplePriceManager(POOL_A, SC_1, IHub(hub));
+        new SimplePriceManager(POOL_A, IHub(hub));
     }
 }
 
@@ -558,6 +563,11 @@ contract SimplePriceManagerFactoryTest is Test {
             abi.encodeWithSelector(IShareClassManager.shareClassCount.selector, POOL_A),
             abi.encode(1)
         );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.previewShareClassId.selector, POOL_A, 1),
+            abi.encode(SC_1)
+        );
     }
 
     function testFactoryConstructor() public view {
@@ -565,10 +575,10 @@ contract SimplePriceManagerFactoryTest is Test {
     }
 
     function testNewManagerSuccess() public {
-        vm.expectEmit(true, true, false, true);
-        emit ISimplePriceManagerFactory.DeploySimplePriceManager(POOL_A, SC_1, address(0));
+        vm.expectEmit(true, false, true, true);
+        emit ISimplePriceManagerFactory.DeploySimplePriceManager(POOL_A, address(0));
 
-        ISimplePriceManager manager = factory.newManager(POOL_A, SC_1);
+        ISimplePriceManager manager = factory.newManager(POOL_A);
 
         assertTrue(address(manager) != address(0));
         assertEq(SimplePriceManager(payable(address(manager))).poolId().raw(), POOL_A.raw());
@@ -584,6 +594,6 @@ contract SimplePriceManagerFactoryTest is Test {
             abi.encode(2)
         );
         vm.expectRevert(ISimplePriceManagerFactory.InvalidShareClassCount.selector);
-        factory.newManager(POOL_B, SC_1);
+        factory.newManager(POOL_B);
     }
 }
