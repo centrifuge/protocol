@@ -5,7 +5,6 @@ import {INAVHook} from "./interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 import {ISimplePriceManagerFactory} from "./interfaces/ISimplePriceManagerFactory.sol";
 
-import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 

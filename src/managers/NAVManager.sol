@@ -4,9 +4,6 @@ pragma solidity 0.8.28;
 import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 import {INAVManagerFactory} from "./interfaces/INAVManagerFactory.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {D18, d18} from "../misc/types/D18.sol";
-
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";

@@ -1,26 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ERC20} from "../../../src/misc/ERC20.sol";
-import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
-import {AccountId, withCentrifugeId} from "../../../src/common/types/AccountId.sol";
 
 import "../../hub/integration/BaseTest.sol";
 
-import {IHub} from "../../../src/hub/interfaces/IHub.sol";
-import {IAccounting} from "../../../src/hub/interfaces/IAccounting.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-
-import {NAVManager, NAVManagerFactory} from "../../../src/managers/NAVManager.sol";
 import {INAVManager, INAVHook} from "../../../src/managers/interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "../../../src/managers/interfaces/ISimplePriceManager.sol";
-import {SimplePriceManager, SimplePriceManagerFactory} from "../../../src/managers/SimplePriceManager.sol";
 
 contract NAVManagerIntegrationTest is BaseTest {
     INAVManager public navManager;

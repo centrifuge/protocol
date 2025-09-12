@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
 import {Mock} from "../../common/mocks/Mock.sol";
@@ -9,7 +9,6 @@ import {MockValuation} from "../../common/mocks/MockValuation.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 import {AccountId, withCentrifugeId} from "../../../src/common/types/AccountId.sol";
 
