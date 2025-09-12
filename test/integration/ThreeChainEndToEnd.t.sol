@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {EndToEndUseCases} from "./EndToEnd.t.sol";
+import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
@@ -36,7 +36,7 @@ enum CrossChainDirection {
 ///         Hub is on Chain A, with spokes on Chains B and C
 ///         C is considered the source chain, B the destination chain
 ///         Depending on the cross chain direction, the hub is either on A or B or C
-contract ThreeChainEndToEndDeployment is EndToEndUseCases {
+contract ThreeChainEndToEndDeployment is EndToEndFlows {
     using CastLib for *;
     using MessageLib for *;
 
@@ -59,7 +59,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
 
         // Connect Chain A to Chain C (spoke 2)
         adapterAToC = new LocalAdapter(CENTRIFUGE_ID_A, deployA.multiAdapter(), address(deployA));
-        _wire(deployA, CENTRIFUGE_ID_C, adapterAToC);
+        _setAdapter(deployA, CENTRIFUGE_ID_C, adapterAToC);
 
         adapterCToA.setEndpoint(adapterAToC);
         adapterAToC.setEndpoint(adapterCToA);
@@ -122,7 +122,7 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
             vm.expectEmit(true, false, false, false);
-            emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""));
+            emit IGateway.UnderpaidBatch(sC.centrifugeId, bytes(""), bytes32(0));
         } else {
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
@@ -152,11 +152,14 @@ contract ThreeChainEndToEndDeployment is EndToEndUseCases {
             emit IMultiAdapter.HandlePayload(h.centrifugeId, bytes32(""), bytes(""), adapterCToA);
             vm.expectEmit();
             emit ISpoke.ExecuteTransferShares(POOL_A, SC_1, INVESTOR_A, amount);
+
+            vm.startPrank(ANY);
             h.gateway.repay{value: GAS}(sC.centrifugeId, message);
         }
 
         // C: Verify shares were minted
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should still be burned on chain B");
+        assertEq(shareTokenC.balanceOf(INVESTOR_A), amount, "Shares minted on chain C");
     }
 }
 

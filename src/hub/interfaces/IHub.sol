@@ -11,6 +11,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {AccountId} from "../../common/types/AccountId.sol";
+import {IAdapter} from "../../common/interfaces/IAdapter.sol";
 import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IValuation} from "../../common/interfaces/IValuation.sol";
@@ -167,7 +168,7 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable;
 
     /// @notice Allow/disallow an account to interact as request manager
-    function setRequestManager(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 manager) external payable;
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external payable;
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
     function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
@@ -365,5 +366,32 @@ interface IHub {
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Perform an accounting entries update.
-    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external;
+    function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
+        external
+        payable;
+
+    /// @notice Set adapters for a pool in another chain. Pool related message will go by these adapters.
+    ///         The adapters should already be deployed and wired.
+    /// @param  centrifugeId chain where to perform the adapter configuration.
+    /// @param  poolId pool associated to this configuration.
+    /// @param  localAdapters Adapter addresses in this chain.
+    /// @param  remoteAdapters Adapter addresses in the remote chain.
+    /// @param  threshold Minimum number of adapters required to process the messages
+    ///         If not wanted a threshold set `adapters.length` value
+    /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
+    ///         If not wanted a recoveryIndex set `adapters.length` value
+    function setAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] memory localAdapters,
+        bytes32[] memory remoteAdapters,
+        uint8 threshold,
+        uint8 recoveryIndex
+    ) external payable;
+
+    /// @notice Set an adapters manager for a pool. The manager can modify adapter-related things in the remote chain.
+    /// @param centrifugeId chain where to perform the adapter configuration.
+    /// @param poolId pool associated to this configuration.
+    /// @param remoteManager address used to recover messages in the remote chain or pause sending messages.
+    function setAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 remoteManager) external payable;
 }

@@ -10,6 +10,7 @@ import {Gateway} from "../../../src/common/Gateway.sol";
 import {Guardian} from "../../../src/common/Guardian.sol";
 import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {GasService} from "../../../src/common/GasService.sol";
+import {MultiAdapter} from "../../../src/common/MultiAdapter.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
 
@@ -68,6 +69,7 @@ contract ForkTestBase is EndToEndFlows {
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            multiAdapter: MultiAdapter(IntegrationConstants.MULTI_ADAPTER),
             gasService: GasService(IntegrationConstants.GAS_SERVICE),
             hubRegistry: HubRegistry(IntegrationConstants.HUB_REGISTRY),
             accounting: Accounting(IntegrationConstants.ACCOUNTING),
@@ -84,6 +86,7 @@ contract ForkTestBase is EndToEndFlows {
             root: Root(IntegrationConstants.ROOT),
             guardian: Guardian(IntegrationConstants.GUARDIAN),
             gateway: Gateway(payable(IntegrationConstants.GATEWAY)),
+            multiAdapter: MultiAdapter(IntegrationConstants.MULTI_ADAPTER),
             balanceSheet: BalanceSheet(IntegrationConstants.BALANCE_SHEET),
             spoke: Spoke(IntegrationConstants.SPOKE),
             router: VaultRouter(IntegrationConstants.ROUTER),

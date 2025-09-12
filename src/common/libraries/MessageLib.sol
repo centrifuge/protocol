@@ -8,7 +8,6 @@ import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 
-// NOTE: Should never exceed 254 messages because id == 255 corresponds to message proofs
 enum MessageType {
     /// @dev Placeholder for null message type
     _Invalid,
@@ -17,8 +16,8 @@ enum MessageType {
     CancelUpgrade,
     RecoverTokens,
     RegisterAsset,
-    InitiateSetPoolAdapters,
-    ExecuteSetPoolAdapters,
+    SetPoolAdapters,
+    SetPoolAdaptersManager,
     _Placeholder7,
     _Placeholder8,
     _Placeholder9,
@@ -74,8 +73,8 @@ library MessageLib {
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (161 << uint8(MessageType.RecoverTokens) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
-        (11   << uint8(MessageType.InitiateSetPoolAdapters) * 8) +
-        (9   << uint8(MessageType.ExecuteSetPoolAdapters) * 8) +
+        (13  << uint8(MessageType.SetPoolAdapters) * 8) +
+        (41  << uint8(MessageType.SetPoolAdaptersManager) * 8) +
         (0   << uint8(MessageType._Placeholder7) * 8) +
         (0   << uint8(MessageType._Placeholder8) * 8) +
         (0   << uint8(MessageType._Placeholder9) * 8) +
@@ -106,7 +105,7 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_2 =
         (41  << (uint8(MessageType.Request) - 32) * 8) +
         (41  << (uint8(MessageType.RequestCallback) - 32) * 8) +
-        (73  << (uint8(MessageType.SetRequestManager) - 32) * 8);
+        (41  << (uint8(MessageType.SetRequestManager) - 32) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -133,8 +132,8 @@ library MessageLib {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.InitiateSetPoolAdapters)) {
-            length += message.toUint16(9) * 32; // message with variable length
+        } else if (kind == uint8(MessageType.SetPoolAdapters)) {
+            length += message.toUint16(11) * 32; // message with variable length
         }
     }
 
@@ -152,7 +151,7 @@ library MessageLib {
     function messagePoolIdPayment(bytes memory message) internal pure returns (PoolId poolId) {
         uint8 kind = message.toUint8(0);
 
-        if (kind == uint8(MessageType.InitiateSetPoolAdapters) || kind == uint8(MessageType.ExecuteSetPoolAdapters)) {
+        if (kind == uint8(MessageType.SetPoolAdapters) || kind == uint8(MessageType.SetPoolAdaptersManager)) {
             return PoolId.wrap(message.toUint64(1));
         }
 
@@ -164,9 +163,9 @@ library MessageLib {
 
         if (kind <= uint8(MessageType.RecoverTokens)) {
             return 0; // Non centrifugeId associated
-        } else if (kind == uint8(MessageType.InitiateSetPoolAdapters)) {
+        } else if (kind == uint8(MessageType.SetPoolAdapters)) {
             return message.messagePoolIdPayment().centrifugeId();
-        } else if (kind == uint8(MessageType.ExecuteSetPoolAdapters)) {
+        } else if (kind == uint8(MessageType.SetPoolAdaptersManager)) {
             return 0; // Non centrifugeId associated
         } else if (kind == uint8(MessageType.UpdateShares) || kind == uint8(MessageType.InitiateTransferShares)) {
             return 0; // Non centrifugeId associated
@@ -261,55 +260,64 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   InitiateSetPoolAdapters
+    //   SetPoolAdapters
     //---------------------------------------
 
-    struct InitiateSetPoolAdapters {
+    struct SetPoolAdapters {
         uint64 poolId;
+        uint8 threshold;
+        uint8 recoveryIndex;
         bytes32[] adapterList;
     }
 
-    function deserializeInitiateSetPoolAdapters(bytes memory data)
-        internal
-        pure
-        returns (InitiateSetPoolAdapters memory)
-    {
-        require(messageType(data) == MessageType.InitiateSetPoolAdapters, UnknownMessageType());
+    function deserializeSetPoolAdapters(bytes memory data) internal pure returns (SetPoolAdapters memory) {
+        require(messageType(data) == MessageType.SetPoolAdapters, UnknownMessageType());
 
-        uint16 length = data.toUint16(9);
+        uint16 length = data.toUint16(11);
         bytes32[] memory adapterList = new bytes32[](length);
         for (uint256 i; i < length; i++) {
-            adapterList[i] = data.toBytes32(11 + i * 32);
+            adapterList[i] = data.toBytes32(13 + i * 32);
         }
 
-        return InitiateSetPoolAdapters({poolId: data.toUint64(1), adapterList: adapterList});
+        return SetPoolAdapters({
+            poolId: data.toUint64(1),
+            threshold: data.toUint8(9),
+            recoveryIndex: data.toUint8(10),
+            adapterList: adapterList
+        });
     }
 
-    function serialize(InitiateSetPoolAdapters memory t) internal pure returns (bytes memory) {
+    function serialize(SetPoolAdapters memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.InitiateSetPoolAdapters, t.poolId, t.adapterList.length.toUint16(), t.adapterList
+            MessageType.SetPoolAdapters,
+            t.poolId,
+            t.threshold,
+            t.recoveryIndex,
+            t.adapterList.length.toUint16(),
+            t.adapterList
         );
     }
 
     //---------------------------------------
-    //   ExecuteSetPoolAdapters
+    //   SetPoolAdaptersManager
     //---------------------------------------
 
-    struct ExecuteSetPoolAdapters {
+    struct SetPoolAdaptersManager {
         uint64 poolId;
+        bytes32 manager;
     }
 
-    function deserializeExecuteSetPoolAdapters(bytes memory data)
+    function deserializeSetPoolAdaptersManager(bytes memory data)
         internal
         pure
-        returns (ExecuteSetPoolAdapters memory)
+        returns (SetPoolAdaptersManager memory)
     {
-        require(messageType(data) == MessageType.ExecuteSetPoolAdapters, UnknownMessageType());
-        return ExecuteSetPoolAdapters({poolId: data.toUint64(1)});
+        require(messageType(data) == MessageType.SetPoolAdaptersManager, UnknownMessageType());
+        return SetPoolAdaptersManager({poolId: data.toUint64(1), manager: data.toBytes32(9)});
     }
 
-    function serialize(ExecuteSetPoolAdapters memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.ExecuteSetPoolAdapters, t.poolId);
+    function serialize(SetPoolAdaptersManager memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetPoolAdaptersManager, t.poolId, t.manager);
     }
 
     //---------------------------------------
@@ -676,23 +684,16 @@ library MessageLib {
 
     struct SetRequestManager {
         uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
         bytes32 manager;
     }
 
     function deserializeSetRequestManager(bytes memory data) internal pure returns (SetRequestManager memory) {
         require(messageType(data) == MessageType.SetRequestManager, UnknownMessageType());
-        return SetRequestManager({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            manager: data.toBytes32(41)
-        });
+        return SetRequestManager({poolId: data.toUint64(1), manager: data.toBytes32(9)});
     }
 
     function serialize(SetRequestManager memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetRequestManager, t.poolId, t.scId, t.assetId, t.manager);
+        return abi.encodePacked(MessageType.SetRequestManager, t.poolId, t.manager);
     }
 
     //---------------------------------------

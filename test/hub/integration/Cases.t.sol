@@ -8,7 +8,6 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
-
 import {MessageLib} from "../../../src/common/libraries/MessageLib.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
@@ -38,7 +37,7 @@ contract TestCases is BaseTest {
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
         hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
         hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
-        hub.setRequestManager{value: GAS}(poolId, scId, USDC_C2, ASYNC_REQUEST_MANAGER.toBytes32());
+        hub.setRequestManager{value: GAS}(poolId, CHAIN_CV, ASYNC_REQUEST_MANAGER.toBytes32());
         hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true);
         hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true);
 
@@ -79,8 +78,6 @@ contract TestCases is BaseTest {
 
         MessageLib.SetRequestManager memory m2 = MessageLib.deserializeSetRequestManager(cv.popMessage());
         assertEq(m2.poolId, poolId.raw());
-        assertEq(m2.scId, scId.raw());
-        assertEq(m2.assetId, USDC_C2.raw());
         assertEq(m2.manager, ASYNC_REQUEST_MANAGER.toBytes32());
 
         MessageLib.UpdateBalanceSheetManager memory m3 =

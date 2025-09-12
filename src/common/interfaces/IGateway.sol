@@ -19,17 +19,18 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     }
 
     struct Underpaid {
-        uint128 counter;
         uint128 gasLimit;
+        uint64 counter;
+        bool isSubsidized;
     }
 
     event File(bytes32 indexed what, address addr);
 
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
-    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch);
+    event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
-    event ExecuteMessage(uint16 indexed centrifugeId, bytes message);
-    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes error);
+    event ExecuteMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash);
+    event FailMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash, bytes error);
 
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
     event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
@@ -56,8 +57,8 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
 
-    /// @notice Dispatched when a batch is repaid with insufficient funds.
-    error InsufficientFundsForRepayment();
+    /// @notice Dispatched when a batch is repaid with insufficient funds or the sending is blocked.
+    error CannotBeRepaid();
 
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
     error ExceedsMaxGasLimit();
@@ -65,13 +66,20 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a refund address is not set.
     error RefundAddressNotSet();
 
+    /// @notice Dispatched when a handle is called without enough gas to process the message.
+    error NotEnoughGasToProcess();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
 
-    /// @notice Repay an underpaid batch. Send unused funds to subsidy pot of the pool.
+    /// @notice Repay an underpaid batch.
+    /// @dev Depending on the repaid message properties the payment vary.
+    ///      Check Underpaid.isSubsidized to know how the message must be repaid.
+    ///      - If !Underpaid.isSubsidized, then the payment is transactional and needs to be paid in `repay{value: ..}()`
+    ///      - If Underpaid.isSubsidized, the funds are taken from the subsidized pool
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.
@@ -97,7 +105,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, bool isSubsidized) external;
 
     /// @notice Initialize batching message
     function startBatching() external;
@@ -107,4 +115,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Returns the current gateway batching level.
     function isBatching() external view returns (bool);
+
+    /// @notice Returns the current gateway batching level.
+    function subsidizedValue(PoolId poolId) external view returns (uint256);
 }

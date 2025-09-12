@@ -4,7 +4,9 @@ pragma solidity 0.8.28;
 import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
+import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
@@ -34,6 +36,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
+    IMultiAdapter public multiAdapter;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
 
@@ -50,6 +53,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -82,6 +86,16 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hub.registerAsset(AssetId.wrap(m.assetId), m.decimals);
+        } else if (kind == MessageType.SetPoolAdapters) {
+            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
+            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
+            for (uint256 i; i < adapters.length; i++) {
+                adapters[i] = IAdapter(m.adapterList[i].toAddress());
+            }
+            multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold, m.recoveryIndex);
+        } else if (kind == MessageType.SetPoolAdaptersManager) {
+            MessageLib.SetPoolAdaptersManager memory m = message.deserializeSetPoolAdaptersManager();
+            multiAdapter.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
@@ -152,12 +166,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
-            spoke.setRequestManager(
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                AssetId.wrap(m.assetId),
-                IRequestManager(m.manager.toAddress())
-            );
+            spoke.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
         } else if (kind == MessageType.UpdateBalanceSheetManager) {
             MessageLib.UpdateBalanceSheetManager memory m = MessageLib.deserializeUpdateBalanceSheetManager(message);
             balanceSheet.updateManager(PoolId.wrap(m.poolId), m.who.toAddress(), m.canManage);
