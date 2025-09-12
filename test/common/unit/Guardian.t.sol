@@ -45,7 +45,20 @@ contract GuardianTest is Test {
 }
 
 contract GuardianTestFile is GuardianTest {
-    function testFile() public {
+    function testErrNotAuthorizedSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
+        guardian.file("safe", makeAddr("newSafe"));
+    }
+
+    function testErrFileUnrecognizedParam() public {
+        vm.startPrank(address(SAFE));
+
+        vm.expectRevert(IGuardian.FileUnrecognizedParam.selector);
+        guardian.file("unknown", address(1));
+    }
+
+    function testGuardianFile() public {
         vm.startPrank(address(SAFE));
 
         guardian.file("sender", makeAddr("newSender"));
@@ -59,12 +72,6 @@ contract GuardianTestFile is GuardianTest {
 
         guardian.file("safe", makeAddr("newSafe"));
         assertEq(address(guardian.safe()), makeAddr("newSafe"));
-    }
-
-    function testFileOnlySafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IGuardian.NotTheAuthorizedSafe.selector);
-        guardian.file("safe", makeAddr("newSafe"));
     }
 }
 
