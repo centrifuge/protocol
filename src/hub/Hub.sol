@@ -516,6 +516,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @inheritdoc IHub
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 navPoolPerShare) public payable {
         _isManager(poolId);
+
         shareClassManager.updateSharePrice(poolId, scId, navPoolPerShare);
     }
 

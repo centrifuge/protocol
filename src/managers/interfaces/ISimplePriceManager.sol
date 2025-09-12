@@ -5,7 +5,7 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
-import {INAVHook} from "./INavManager.sol";
+import {INAVHook} from "./INAVManager.sol";
 
 interface ISimplePriceManager is INAVHook {
     event Update(uint128 newNAV, uint128 newIssuance, D18 newSharePrice);
