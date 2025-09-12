@@ -67,7 +67,7 @@ contract LayerZeroAdapterTestBase is Test {
         adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), DELEGATE, address(this));
     }
 
-    function testNextNonce() public {
+    function testNextNonce() public view {
         vm.assertEq(adapter.nextNonce(uint32(0), bytes32("")), 0);
     }
 }
