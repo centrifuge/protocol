@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
+import {INAVManagerFactory} from "./interfaces/INAVManagerFactory.sol";
+
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 
-import {INAVManagerFactory} from "./interfaces/INAVManagerFactory.sol";
-import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {IHoldings} from "../hub/interfaces/IHoldings.sol";
 import {AccountId, withCentrifugeId} from "../common/types/AccountId.sol";
 
 import {IHub} from "../hub/interfaces/IHub.sol";
+import {IHoldings} from "../hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../hub/interfaces/IAccounting.sol";
+import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager {

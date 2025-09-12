@@ -5,8 +5,8 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
-import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {d18} from "../../src/misc/types/D18.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/common/types/PoolId.sol";
 import {ISafe} from "../../src/common/interfaces/IGuardian.sol";

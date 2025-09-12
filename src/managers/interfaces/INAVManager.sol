@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 import {D18} from "../../misc/types/D18.sol";
+
 import {PoolId} from "../../common/types/PoolId.sol";
 import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {AccountId} from "../../common/types/AccountId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IValuation} from "../../common/interfaces/IValuation.sol";
+import {ISnapshotHook} from "../../common/interfaces/ISnapshotHook.sol";
 
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
