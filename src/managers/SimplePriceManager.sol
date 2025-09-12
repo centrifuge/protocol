@@ -114,8 +114,7 @@ contract SimplePriceManager is ISimplePriceManager {
         globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
         globalNetAssetValue = globalNetAssetValue + netAssetValue - networkMetrics.netAssetValue;
 
-        // TODO correct price calculation
-        D18 price = globalIssuance == 0 ? d18(1, 1) : d18(globalNetAssetValue) / d18(globalIssuance);
+        D18 price = _navPerShare();
 
         console2.log("price", price.raw());
 
@@ -200,7 +199,6 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     function _navPerShare() internal view returns (D18) {
-        // TODO: Fix calc
         return globalIssuance == 0 ? d18(1, 1) : d18(globalNetAssetValue) / d18(globalIssuance);
     }
 
@@ -217,6 +215,7 @@ contract SimplePriceManagerFactory is ISimplePriceManagerFactory {
         hub = hub_;
     }
 
+    // TODO: remove scId param
     function newManager(PoolId poolId, ShareClassId scId) external returns (ISimplePriceManager) {
         require(hub.shareClassManager().shareClassCount(poolId) == 1, InvalidShareClassCount());
 

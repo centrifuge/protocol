@@ -15,6 +15,7 @@ import {INAVManager, INAVHook} from "../../../src/managers/interfaces/INAVManage
 import {INAVManagerFactory} from "../../../src/managers/interfaces/INAVManagerFactory.sol";
 
 import {IHub} from "../../../src/hub/interfaces/IHub.sol";
+import {IHoldings} from "../../../src/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 
@@ -68,6 +69,8 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValuation.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.setHoldingAccountId.selector), abi.encode());
 
+        vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
+
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
 
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
@@ -101,7 +104,7 @@ contract NAVManagerConstructorTest is NAVManagerTest {
     function testConstructor() public view {
         assertEq(navManager.poolId().raw(), POOL_A.raw());
         assertEq(address(navManager.hub()), address(hub));
-        assertEq(navManager.holdings(), holdings);
+        assertEq(address(navManager.holdings()), holdings);
         assertEq(address(navManager.accounting()), address(accounting));
         assertEq(address(navManager.navHook()), address(0));
     }
@@ -366,7 +369,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
     }
 
     function testOnSyncInvalidPoolId() public {
-        vm.expectRevert();
+        vm.expectRevert(INAVManager.InvalidPoolId.selector);
         vm.prank(holdings);
         navManager.onSync(POOL_B, SC_1, CENTRIFUGE_ID_1);
     }
@@ -416,7 +419,7 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 100, true);
 
         vm.expectRevert();
-        uint128 nav = navManager.netAssetValue(CENTRIFUGE_ID_1);
+        navManager.netAssetValue(CENTRIFUGE_ID_1);
     }
 }
 
@@ -439,6 +442,7 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
             address(hub),
             abi.encodeWithSelector(IHub.updateHoldingValuation.selector, POOL_A, SC_1, asset1, mockValuation)
         );
+        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_A, SC_1, asset1));
 
         vm.prank(manager);
         navManager.updateHoldingValuation(SC_1, asset1, mockValuation);
@@ -534,13 +538,13 @@ contract NAVManagerOnTransferTest is NAVManagerTest {
     }
 
     function testOnTransferBasicAuth() public {
-        vm.expectRevert();
+        vm.expectRevert(INAVManager.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }
 
     function testOnTransferInvalidPoolId() public {
-        vm.expectRevert();
+        vm.expectRevert(INAVManager.InvalidPoolId.selector);
         vm.prank(hub);
         navManager.onTransfer(POOL_B, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 1);
     }

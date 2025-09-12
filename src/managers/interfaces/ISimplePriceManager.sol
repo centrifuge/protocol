@@ -25,11 +25,9 @@ interface ISimplePriceManager is INAVHook {
         uint128 issuance;
     }
 
-    // function poolId() external view returns (PoolId);
-    // function scId() external view returns (ShareClassId);
-    // function networks(uint256 index) external view returns (uint16);
-    // function globalIssuance() external view returns (uint128);
-    // function globalNetAssetValue() external view returns (D18);
+    function globalIssuance() external view returns (uint128);
+    function globalNetAssetValue() external view returns (uint128);
+    function metrics(uint16 centrifugeId) external view returns (uint128 netAssetValue, uint128 issuance);
 
     //----------------------------------------------------------------------------------------------
     // Administration

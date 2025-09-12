@@ -66,12 +66,12 @@ interface INAVManager is ISnapshotHook {
     /// @param navHook The address of the NAV hook contract
     function setNAVHook(INAVHook navHook) external;
 
-    /// @notice Check if an address can manage the NAV manager
+    /// @notice Check if an address can call management functions
     function manager(address manager) external view returns (bool);
 
-    /// @notice Update whether an address can manage the NAV manager
+    /// @notice Update whether an address can call management functions
     /// @param manager The address of the manager
-    /// @param canManage Whether the address can manage this manager
+    /// @param canManage Whether the address can call management functions
     function updateManager(address manager, bool canManage) external;
 
     //----------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ interface INAVManager is ISnapshotHook {
     /// @notice Set the account ID for a specific asset holding
     /// @param scId The share class ID
     /// @param assetId The asset ID
-    /// @param kind The account kind (type)
+    /// @param kind The account kind
     /// @param accountId The account ID to set
     function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
 
@@ -123,7 +123,6 @@ interface INAVManager is ISnapshotHook {
     /// @notice Calculate the net asset value for a specific network
     /// @dev NAV = equity + gain - loss - liability
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @return The calculated net asset value
     function netAssetValue(uint16 centrifugeId) external view returns (uint128);
 
     //----------------------------------------------------------------------------------------------
@@ -133,32 +132,26 @@ interface INAVManager is ISnapshotHook {
     /// @notice Get the asset account ID for a specific asset on a network
     /// @param centrifugeId The Centrifuge ID of the network
     /// @param assetId The asset ID
-    /// @return The account ID for the asset
     function assetAccount(uint16 centrifugeId, AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the expense account ID for a specific asset on a network
     /// @param centrifugeId The Centrifuge ID of the network
     /// @param assetId The asset ID
-    /// @return The account ID for the expense
     function expenseAccount(uint16 centrifugeId, AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the equity account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @return The equity account ID
     function equityAccount(uint16 centrifugeId) external pure returns (AccountId);
 
     /// @notice Get the liability account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @return The liability account ID
     function liabilityAccount(uint16 centrifugeId) external pure returns (AccountId);
 
     /// @notice Get the gain account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @return The gain account ID
     function gainAccount(uint16 centrifugeId) external pure returns (AccountId);
 
     /// @notice Get the loss account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @return The loss account ID
     function lossAccount(uint16 centrifugeId) external pure returns (AccountId);
 }

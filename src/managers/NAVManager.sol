@@ -14,6 +14,7 @@ import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {ISnapshotHook} from "../common/interfaces/ISnapshotHook.sol";
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {IHoldings} from "../hub/interfaces/IHoldings.sol";
 import {AccountId, withCentrifugeId} from "../common/types/AccountId.sol";
 
 import {IHub} from "../hub/interfaces/IHub.sol";
@@ -25,7 +26,7 @@ contract NAVManager is INAVManager {
 
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
-    address public immutable holdings;
+    IHoldings public immutable holdings;
     IAccounting public immutable accounting;
 
     INAVHook public navHook;
@@ -38,7 +39,7 @@ contract NAVManager is INAVManager {
 
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
-        holdings = address(hub.holdings());
+        holdings = hub.holdings();
         accounting = hub.accounting();
     }
 
@@ -149,16 +150,9 @@ contract NAVManager is INAVManager {
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
         console2.log("NAVManager onSync");
-        require(msg.sender == holdings, NotAuthorized());
+        require(msg.sender == address(holdings), NotAuthorized());
         require(poolId == poolId_, InvalidPoolId());
-        require(address(navHook) != address(0), InvalidNAVHook());
-
-        uint128 netAssetValue_ = netAssetValue(centrifugeId);
-        console2.log("NAV", netAssetValue_);
-        navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
-        console2.log("NAVManager onSync done");
-
-        emit Sync(scId, centrifugeId, netAssetValue_);
+        _onSync(scId, centrifugeId);
     }
 
     /// @inheritdoc ISnapshotHook
@@ -179,13 +173,18 @@ contract NAVManager is INAVManager {
     }
 
     /// @inheritdoc INAVManager
-    function updateHoldingValue(ShareClassId scId, AssetId assetId) external onlyManager {
+    function updateHoldingValue(ShareClassId scId, AssetId assetId) public onlyManager {
         hub.updateHoldingValue(poolId, scId, assetId);
+        (bool isSnapshot,) = holdings.snapshot(poolId, scId, assetId.centrifugeId());
+        if (isSnapshot) {
+            _onSync(scId, assetId.centrifugeId());
+        }
     }
 
     /// @inheritdoc INAVManager
     function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
         hub.updateHoldingValuation(poolId, scId, assetId, valuation);
+        updateHoldingValue(scId, assetId);
     }
 
     /// @inheritdoc INAVManager
@@ -204,16 +203,14 @@ contract NAVManager is INAVManager {
 
     /// @inheritdoc INAVManager
     function netAssetValue(uint16 centrifugeId) public view returns (uint128) {
-        // TODO: how to handle when one of the accounts is not positive
-        (, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
-        (, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
-        (, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
-        (, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
+        // TODO: how to handle when one of the accounts is not positive (or positive for loss account)
+        (bool equityIsPositive, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
+        (bool gainIsPositive, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
+        (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
+        (bool liabilityIsPositive, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
 
-        console2.log("Equity", equity);
-        console2.log("Gain", gain);
-        console2.log("Loss", loss);
-        console2.log("Liability", liability);
+        require(equityIsPositive && gainIsPositive && liabilityIsPositive && (!lossIsPositive || loss == 0), "");
+
         return equity + gain - loss - liability;
     }
 
@@ -249,6 +246,21 @@ contract NAVManager is INAVManager {
     /// @inheritdoc INAVManager
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
         return withCentrifugeId(centrifugeId, 4);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal methods
+    //----------------------------------------------------------------------------------------------
+
+    function _onSync(ShareClassId scId, uint16 centrifugeId) internal {
+        require(address(navHook) != address(0), InvalidNAVHook());
+
+        uint128 netAssetValue_ = netAssetValue(centrifugeId);
+        console2.log("NAV", netAssetValue_);
+        navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
+        console2.log("NAVManager onSync done");
+
+        emit Sync(scId, centrifugeId, netAssetValue_);
     }
 }
 
