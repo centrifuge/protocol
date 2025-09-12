@@ -128,7 +128,7 @@ contract HubRegistryTest is Test {
         // First register asset and pool to use for dependency testing
         registry.registerAsset(USD, 18);
         registry.registerPool(POOL_A, address(this), USD);
-        
+
         assertEq(address(registry.dependency(POOL_A, what)), address(0));
 
         vm.prank(makeAddr("unauthorizedAddress"));

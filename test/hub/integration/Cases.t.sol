@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "./BaseTest.sol";
+import {IHubRequestManager} from "../../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
@@ -108,10 +109,19 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.approveDeposits{value: GAS}(
-            poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
+            poolId,
+            scId,
+            USDC_C2,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowDepositEpoch(scId, USDC_C2),
+            APPROVED_INVESTOR_AMOUNT
         );
         hub.issueShares{value: GAS}(
-            poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
+            poolId,
+            scId,
+            USDC_C2,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowIssueEpoch(scId, USDC_C2),
+            NAV_PER_SHARE,
+            SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -120,7 +130,13 @@ contract TestCases is BaseTest {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
         hub.notifyDeposit{value: GAS}(
-            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2)
+            poolId,
+            scId,
+            USDC_C2,
+            INVESTOR,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).maxDepositClaims(
+                scId, INVESTOR, USDC_C2
+            )
         );
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
@@ -174,10 +190,19 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.approveRedeems(
-            poolId, scId, USDC_C2, shareClassManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT
+            poolId,
+            scId,
+            USDC_C2,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowRedeemEpoch(scId, USDC_C2),
+            APPROVED_SHARE_AMOUNT
         );
         hub.revokeShares{value: GAS}(
-            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
+            poolId,
+            scId,
+            USDC_C2,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowRevokeEpoch(scId, USDC_C2),
+            NAV_PER_SHARE,
+            SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -186,7 +211,13 @@ contract TestCases is BaseTest {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
         hub.notifyRedeem{value: GAS}(
-            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2)
+            poolId,
+            scId,
+            USDC_C2,
+            INVESTOR,
+            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).maxRedeemClaims(
+                scId, INVESTOR, USDC_C2
+            )
         );
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
