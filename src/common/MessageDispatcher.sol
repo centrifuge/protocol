@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console2} from "forge-std/console2.sol";
 import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
@@ -518,7 +517,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes calldata payload,
         uint128 extraGasLimit
     ) external auth {
-        console2.log("MessageDispatcher sendRequestCallback", assetId.centrifugeId() == localCentrifugeId);
         if (assetId.centrifugeId() == localCentrifugeId) {
             spoke.requestCallback(poolId, scId, assetId, payload);
         } else {

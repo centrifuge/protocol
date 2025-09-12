@@ -10,8 +10,6 @@ import {IBaseRequestManager} from "./interfaces/IBaseRequestManager.sol";
 import {IAsyncVault, IAsyncRedeemVault} from "./interfaces/IAsyncVault.sol";
 import {IAsyncRequestManager, AsyncInvestmentState} from "./interfaces/IVaultManagers.sol";
 
-import {console2} from "forge-std/console2.sol";
-
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
@@ -174,7 +172,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
             revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount, D18.wrap(m.pricePoolPerShare));
         } else if (kind == uint8(RequestCallbackType.FulfilledDepositRequest)) {
             RequestCallbackMessageLib.FulfilledDepositRequest memory m = payload.deserializeFulfilledDepositRequest();
-            console2.log("RequestCallbackMessageLib.FulfilledDepositRequest", m.cancelledAssetAmount);
             fulfillDepositRequest(
                 poolId,
                 scId,
@@ -257,8 +254,6 @@ contract AsyncRequestManager is Auth, Recoverable, IAsyncRequestManager {
     ) public auth {
         IAsyncVault vault_ = IAsyncVault(address(spoke.vault(poolId, scId, assetId, this)));
         AsyncInvestmentState storage state = investments[vault_][user];
-
-        console2.log("fulfillDepositRequest cancelled", cancelledAssets);
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
         if (cancelledAssets > 0) {

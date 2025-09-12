@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console2} from "forge-std/console2.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {
     IShareClassManager,
@@ -336,8 +335,6 @@ contract ShareClassManager is Auth, IShareClassManager {
     /// @inheritdoc IShareClassManager
     function updateSharePrice(PoolId poolId, ShareClassId scId_, D18 navPoolPerShare) external auth {
         require(exists(poolId, scId_), ShareClassNotFound());
-
-        console2.log("SCM updateSharePrice", navPoolPerShare.raw());
 
         ShareClassMetrics storage m = metrics[scId_];
         m.navPerShare = navPoolPerShare;

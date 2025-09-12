@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {console2} from "forge-std/console2.sol";
-
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 
@@ -149,7 +147,6 @@ contract NAVManager is INAVManager {
 
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
-        console2.log("NAVManager onSync");
         require(msg.sender == address(holdings), NotAuthorized());
         require(poolId == poolId_, InvalidPoolId());
         _onSync(scId, centrifugeId);
@@ -256,9 +253,7 @@ contract NAVManager is INAVManager {
         require(address(navHook) != address(0), InvalidNAVHook());
 
         uint128 netAssetValue_ = netAssetValue(centrifugeId);
-        console2.log("NAV", netAssetValue_);
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
-        console2.log("NAVManager onSync done");
 
         emit Sync(scId, centrifugeId, netAssetValue_);
     }
