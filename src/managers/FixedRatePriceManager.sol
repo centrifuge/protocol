@@ -25,7 +25,6 @@ contract FixedRatePriceManager is Auth {
     IShareClassManager public immutable shareClassManager;
 
     uint16[] public networks;
-
     uint64 public lastUpdate = 0;
 
     constructor(PoolId poolId_, ShareClassId scId_, IHub hub_, uint64 period_, uint64 rate_, address deployer)
