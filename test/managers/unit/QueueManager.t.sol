@@ -119,6 +119,19 @@ contract QueueManagerTest is Test {
             abi.encode(deposits, withdrawals)
         );
     }
+
+    function _expectSubmitAssets(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
+        vm.expectCall(
+            address(balanceSheet),
+            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, poolId, scId, assetId, 0)
+        );
+    }
+
+    function _expectSubmitShares(PoolId poolId, ShareClassId scId) internal {
+        vm.expectCall(
+            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, poolId, scId, 0)
+        );
+    }
 }
 
 contract QueueManagerConstructorTest is QueueManagerTest {
@@ -282,21 +295,10 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         assetIds[1] = ASSET_2;
         assetIds[2] = ASSET_3;
 
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_2, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_3, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
-        );
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_1);
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_2);
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_3);
+        _expectSubmitShares(POOL_A, SC_1);
         vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
@@ -315,14 +317,9 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         assetIds[0] = ASSET_1;
         assetIds[1] = ASSET_2;
 
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_2, 0)
-        );
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_1);
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_2);
+        // Expect submitQueuedAssets not to be called for ASSET_3
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_3, 0),
@@ -363,9 +360,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
 
-        vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
-        );
+        _expectSubmitShares(POOL_A, SC_1);
         vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
@@ -438,7 +433,6 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             address(balanceSheet),
             abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, extraGasLimit)
         );
-
         vm.expectCall(
             address(balanceSheet),
             abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, extraGasLimit)
@@ -475,10 +469,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         assetIds[1] = ASSET_2;
         assetIds[2] = ASSET_3;
 
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, 0)
-        );
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_1);
 
         // No calls for non-queued assets
         vm.expectCall(
@@ -511,21 +502,10 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         AssetId[] memory assetIds = new AssetId[](1);
         assetIds[0] = ASSET_1;
 
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
-        );
-
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_B, SC_2, ASSET_1, 0)
-        );
-        vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_B, SC_2, 0)
-        );
+        _expectSubmitAssets(POOL_A, SC_1, ASSET_1);
+        _expectSubmitShares(POOL_A, SC_1);
+        _expectSubmitAssets(POOL_B, SC_2, ASSET_1);
+        _expectSubmitShares(POOL_B, SC_2);
 
         queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
         (, uint64 lastSyncA,) = queueManager.scQueueState(POOL_A, SC_1);
