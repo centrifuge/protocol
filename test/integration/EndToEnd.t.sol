@@ -1324,9 +1324,11 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
         // Hub -> Spoke message went through the pool adapter
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
+        assertNotEq(s.spoke.pool(POOL_A), 0); // Message received and processed
 
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
@@ -1338,6 +1340,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // Spoke -> Hub message went through the pool adapter
         assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
+
+        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1); // Message received and processed
     }
 
     /// forge-config: default.isolate = true
@@ -1347,13 +1351,13 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
 
         vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(POOL_A, true);
+        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, true);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
         vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(POOL_A, false);
+        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, false);
 
         bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
         (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
@@ -1364,6 +1368,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
+        assertNotEq(s.spoke.pool(POOL_A), 0); // Message received and processed
     }
 
     /// forge-config: default.isolate = true

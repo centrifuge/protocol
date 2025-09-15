@@ -75,6 +75,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         assertEq(address(messageProcessor.root()), address(root));
         assertEq(address(messageProcessor.tokenRecoverer()), address(tokenRecoverer));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
+        assertEq(address(messageProcessor.gateway()), address(gateway));
     }
 
     function testMessageDispatcher(address nonWard) public view {
@@ -103,11 +104,13 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(multiAdapter));
         vm.assume(nonWard != address(messageDispatcher));
+        vm.assume(nonWard != address(messageProcessor));
 
         assertEq(gateway.wards(address(root)), 1);
         assertEq(gateway.wards(address(guardian)), 1);
         assertEq(gateway.wards(address(multiAdapter)), 1);
         assertEq(gateway.wards(address(messageDispatcher)), 1);
+        assertEq(gateway.wards(address(messageProcessor)), 1);
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly

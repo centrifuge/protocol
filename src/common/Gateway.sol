@@ -52,7 +52,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     address public transient transactionRefund;
     uint128 public transient extraGasLimit;
     mapping(PoolId => Funds) public subsidy;
-    mapping(PoolId => bool) public isOutgoingBlocked;
+    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
     // Inbound
@@ -179,13 +179,13 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (isOutgoingBlocked[adapterPoolId]) {
+            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
                 return false;
             }
         } else {
-            if (isOutgoingBlocked[adapterPoolId]) {
+            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 return false;
             }
@@ -349,10 +349,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(PoolId poolId, bool isBlocked) external {
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
         require(msg.sender == manager[poolId], ManagerNotAllowed());
-        isOutgoingBlocked[poolId] = isBlocked;
-        emit BlockOutgoing(poolId, isBlocked);
+        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
+        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

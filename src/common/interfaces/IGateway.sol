@@ -27,7 +27,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     event File(bytes32 indexed what, address addr);
 
     event SetManager(PoolId poolId, address manager);
-    event BlockOutgoing(PoolId poolId, bool isBlocked);
+    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
@@ -87,9 +87,10 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     function setManager(PoolId poolId, address manager) external;
 
     /// @notice Indicates if the gateway for a determined pool can send messages or not
-    /// @param  poolId PoolId associated to the adapters
+    /// @param centrifugeId Centrifuge ID associated to this block
+    /// @param  poolId PoolId associated to this block
     /// @param  canSend If can send messages or not
-    function blockOutgoing(PoolId poolId, bool canSend) external;
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Repay an underpaid batch.
     /// @dev Depending on the repaid message properties the payment vary.

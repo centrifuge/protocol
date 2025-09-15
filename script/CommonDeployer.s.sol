@@ -65,6 +65,7 @@ contract CommonActionBatcher {
         report.root.rely(address(report.messageDispatcher));
         report.gateway.rely(address(report.root));
         report.gateway.rely(address(report.messageDispatcher));
+        report.gateway.rely(address(report.messageProcessor));
         report.gateway.rely(address(report.guardian));
         report.gateway.rely(address(report.multiAdapter));
         report.multiAdapter.rely(address(report.root));
@@ -84,6 +85,7 @@ contract CommonActionBatcher {
         report.gateway.file("adapter", address(report.multiAdapter));
         report.poolEscrowFactory.file("gateway", address(report.gateway));
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
+        report.messageProcessor.file("gateway", address(report.gateway));
     }
 
     function postEngageCommon(CommonReport memory report) public onlyDeployer {

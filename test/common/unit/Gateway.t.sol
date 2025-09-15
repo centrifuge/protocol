@@ -712,7 +712,7 @@ contract GatewayTestSend is GatewayTest {
         gateway.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        gateway.blockOutgoing(POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
@@ -738,7 +738,7 @@ contract GatewayTestSend is GatewayTest {
         gateway.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        gateway.blockOutgoing(POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.subsidizePool{value: payment}(POOL_A);
@@ -924,7 +924,7 @@ contract GatewayTestRepay is GatewayTest {
         gateway.setManager(POOL_A, MANAGER);
 
         vm.prank(MANAGER);
-        gateway.blockOutgoing(POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(this));
         gateway.addUnpaidMessage(REMOTE_CENT_ID, batch, NO_SUBSIDIZED);
@@ -1073,7 +1073,7 @@ contract GatewayTestBlockOutgoing is GatewayTest {
     function testErrManagerNotAllowed() public {
         vm.prank(ANY);
         vm.expectRevert(IGateway.ManagerNotAllowed.selector);
-        gateway.blockOutgoing(POOL_A, false);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
     }
 
     function testBlockOutgoing() public {
@@ -1081,9 +1081,9 @@ contract GatewayTestBlockOutgoing is GatewayTest {
 
         vm.prank(MANAGER);
         vm.expectEmit();
-        emit IGateway.BlockOutgoing(POOL_A, true);
-        gateway.blockOutgoing(POOL_A, true);
+        emit IGateway.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
-        assertEq(gateway.isOutgoingBlocked(POOL_A), true);
+        assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
