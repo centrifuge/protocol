@@ -9,9 +9,9 @@ import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.s
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {Gateway, IRoot, IGasService, IGateway} from "../../../src/common/Gateway.sol";
 import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
-import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 

@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IGasService} from "./interfaces/IGasService.sol";
 import {IMessageSender} from "./interfaces/IMessageSender.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";

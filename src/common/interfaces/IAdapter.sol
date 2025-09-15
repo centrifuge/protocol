@@ -3,8 +3,6 @@ pragma solidity >=0.5.0;
 
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../types/PoolId.sol";
-
 interface IAdapter is IAuth {
     error NotEntrypoint();
     error UnknownChainId();
