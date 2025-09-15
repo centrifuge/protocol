@@ -42,6 +42,7 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(guardian.root()), address(root));
         assertEq(address(guardian.safe()), address(ADMIN_SAFE));
+        assertEq(address(guardian.gateway()), address(gateway));
         assertEq(address(guardian.multiAdapter()), address(multiAdapter));
         assertEq(address(guardian.sender()), address(messageDispatcher));
     }
@@ -80,7 +81,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(guardian));
-        vm.assume(nonWard != address(guardian));
 
         assertEq(messageDispatcher.wards(address(root)), 1);
         assertEq(messageDispatcher.wards(address(guardian)), 1);
@@ -89,7 +89,6 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         // dependencies set correctly
         assertEq(address(messageDispatcher.root()), address(root));
         assertEq(address(messageDispatcher.tokenRecoverer()), address(tokenRecoverer));
-        assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
         assertEq(address(messageDispatcher.gateway()), address(gateway));
         assertEq(messageDispatcher.localCentrifugeId(), CENTRIFUGE_ID);
     }
@@ -101,12 +100,14 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
     function testGateway(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(messageDispatcher));
+        vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(multiAdapter));
+        vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(gateway.wards(address(root)), 1);
-        assertEq(gateway.wards(address(messageDispatcher)), 1);
+        assertEq(gateway.wards(address(guardian)), 1);
         assertEq(gateway.wards(address(multiAdapter)), 1);
+        assertEq(gateway.wards(address(messageDispatcher)), 1);
         assertEq(gateway.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -123,13 +124,11 @@ contract CommonDeploymentTest is CommonDeployer, CommonDeploymentInputTest {
         vm.assume(nonWard != address(guardian));
         vm.assume(nonWard != address(gateway));
         vm.assume(nonWard != address(messageProcessor));
-        vm.assume(nonWard != address(messageDispatcher));
 
         assertEq(multiAdapter.wards(address(root)), 1);
         assertEq(multiAdapter.wards(address(guardian)), 1);
         assertEq(multiAdapter.wards(address(gateway)), 1);
         assertEq(multiAdapter.wards(address(messageProcessor)), 1);
-        assertEq(multiAdapter.wards(address(messageDispatcher)), 1);
         assertEq(multiAdapter.wards(nonWard), 0);
 
         // dependencies set correctly

@@ -7,6 +7,7 @@ import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IRequestManager} from "./interfaces/IRequestManager.sol";
 import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
@@ -36,6 +37,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
+    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
@@ -53,6 +55,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
@@ -201,7 +204,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
         } else if (kind == MessageType.SetGatewayManager) {
             MessageLib.SetGatewayManager memory m = message.deserializeSetGatewayManager();
-            multiAdapter.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
+            gateway.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
         } else {
             revert InvalidMessage(uint8(kind));
         }

@@ -2,14 +2,14 @@
 pragma solidity >=0.5.0;
 
 import {IMessageHandler} from "./IMessageHandler.sol";
-import {IAdapter, IAdapterBlockSendingExt} from "./IAdapter.sol";
+import {IAdapter} from "./IAdapter.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for handling several adapters transparently
-interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
+interface IMultiAdapter is IAdapter, IMessageHandler {
     /// @dev Each adapter struct is packed with the quorum to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
@@ -37,8 +37,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     event File(bytes32 indexed what, address addr);
 
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
-    event SetManager(PoolId poolId, address manager);
-    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
 
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
@@ -49,8 +47,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         bytes32 adapterData,
         address refund
     );
-
-    event Execute(uint16 centrifugeId, bytes message, IAdapter adapter);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -73,12 +69,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
     /// @notice Dispatched when the contract tries to handle a message from an adaptet not contained in the adapter set.
     error InvalidAdapter();
 
-    /// @notice Dispatched when a recovery message is not executed from the manager.
-    error ManagerNotAllowed();
-
-    /// @notice Dispatched when the adapter is blocked for sending messages
-    error OutgoingBlocked();
-
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
@@ -86,7 +76,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
 
     /// @notice Configure new adapters for a determined pool.
     ///         Messages sent but not yet received when this is executed will be lost.
-    ///         They can be recovered with `execute()`.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
@@ -101,25 +90,6 @@ interface IMultiAdapter is IAdapterBlockSendingExt, IMessageHandler {
         uint8 threshold,
         uint8 recoveryIndex
     ) external;
-
-    /// @notice Configures a recovery address for a pool to later be able to call `execute()`.
-    /// @param  poolId PoolId associated to the adapters
-    /// @param  manager address able to call to `execute()`
-    function setManager(PoolId poolId, address manager) external;
-
-    /// @notice Indicates if the adapter for a determined pool can send messages or not
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  poolId PoolId associated to the adapters
-    /// @param  canSend If can send messages or not
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
-
-    /// @notice Execute message as it were sent by the passed adapter,
-    ///         If multiple adapters fail at the same time, these will need to be recovered serially
-    /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  poolId PoolId associated to the adapter
-    /// @param  adapter Adapter's address that the recovery is targeting
-    /// @param  message Hash of the message to be recovered
-    function execute(uint16 centrifugeId, PoolId poolId, IAdapter adapter, bytes calldata message) external;
 
     /// @notice Number of total configured adapters for a pool.
     /// @param  centrifugeId Chain where the adapter is configured for

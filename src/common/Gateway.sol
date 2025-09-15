@@ -7,7 +7,7 @@ import {IGateway} from "./interfaces/IGateway.sol";
 import {IGasService} from "./interfaces/IGasService.sol";
 import {IMessageSender} from "./interfaces/IMessageSender.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IAdapterBlockSendingExt} from "./interfaces/IAdapter.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -41,7 +41,10 @@ contract Gateway is Auth, Recoverable, IGateway {
     IRoot public immutable root;
     IGasService public gasService;
     IMessageProcessor public processor;
-    IAdapterBlockSendingExt public adapter;
+    IAdapter public adapter;
+
+    // management
+    mapping(PoolId => address) public manager;
 
     // Outbound & payments
     bool public transient isBatching;
@@ -49,6 +52,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     address public transient transactionRefund;
     uint128 public transient extraGasLimit;
     mapping(PoolId => Funds) public subsidy;
+    mapping(PoolId => bool) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
     // Inbound
@@ -76,10 +80,16 @@ contract Gateway is Auth, Recoverable, IGateway {
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
         else if (what == "processor") processor = IMessageProcessor(instance);
-        else if (what == "adapter") adapter = IAdapterBlockSendingExt(instance);
+        else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
+    }
+
+    /// @inheritdoc IGateway
+    function setManager(PoolId poolId, address manager_) external auth {
+        manager[poolId] = manager_;
+        emit SetManager(poolId, manager_);
     }
 
     receive() external payable {
@@ -169,13 +179,13 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
+            if (isOutgoingBlocked[adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
                 return false;
             }
         } else {
-            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
+            if (isOutgoingBlocked[adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 return false;
             }
@@ -336,6 +346,13 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+    }
+
+    /// @inheritdoc IGateway
+    function blockOutgoing(PoolId poolId, bool isBlocked) external {
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
+        isOutgoingBlocked[poolId] = isBlocked;
+        emit BlockOutgoing(poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

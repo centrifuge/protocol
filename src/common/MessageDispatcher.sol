@@ -33,11 +33,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using MathLib for uint256;
 
     IRoot public immutable root;
-    IGateway public immutable gateway;
     ITokenRecoverer public immutable tokenRecoverer;
 
     uint16 public immutable localCentrifugeId;
 
+    IGateway public gateway;
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
     IMultiAdapter public multiAdapter;
@@ -65,7 +65,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
-        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "gateway") gateway = IGateway(gateway);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
         else revert FileUnrecognizedParam();
@@ -555,7 +555,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external auth {
         if (centrifugeId == localCentrifugeId) {
-            multiAdapter.setManager(poolId, manager.toAddress());
+            gateway.setManager(poolId, manager.toAddress());
         } else {
             gateway.send(
                 centrifugeId, MessageLib.SetGatewayManager({poolId: poolId.raw(), manager: manager}).serialize()

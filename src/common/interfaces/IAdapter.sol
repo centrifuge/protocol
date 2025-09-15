@@ -18,7 +18,3 @@ interface IAdapter is IAuth {
     /// @notice Estimate the total cost in native gas tokens
     function estimate(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) external view returns (uint256);
 }
-
-interface IAdapterBlockSendingExt is IAdapter {
-    function isOutgoingBlocked(uint16 centrifugeId, PoolId poolId) external returns (bool);
-}
