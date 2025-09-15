@@ -66,9 +66,15 @@ contract LayerZeroAdapterTestBase is Test {
         endpoint = new MockLayerZeroEndpoint();
         adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), DELEGATE, address(this));
     }
+
+    function testNextNonce() public view {
+        vm.assertEq(adapter.nextNonce(uint32(0), bytes32("")), 0);
+    }
 }
 
 contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
+    using CastLib for *;
+
     function testWireErrNotAuthorized() public {
         vm.prank(makeAddr("NotAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -76,9 +82,17 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
     }
 
     function testWire() public {
+        vm.assertEq(
+            adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), false
+        );
+
         vm.expectEmit();
         emit ILayerZeroAdapter.Wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
         adapter.wire(CENTRIFUGE_ID, LAYERZERO_ID, REMOTE_LAYERZERO_ADDR);
+
+        vm.assertEq(
+            adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), true
+        );
 
         (uint32 layerZeroid, address remoteDestAddress) = adapter.destinations(CENTRIFUGE_ID);
         assertEq(layerZeroid, LAYERZERO_ID);

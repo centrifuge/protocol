@@ -211,6 +211,7 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 2);
 
+        assertEq(multiAdapter.poolAdapters(REMOTE_CENT_ID, POOL_A).length, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 0);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), threeAdapters.length);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), 1);
