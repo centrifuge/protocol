@@ -36,7 +36,6 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     IHubRegistry public immutable hubRegistry;
 
-    // Hub reference for callbacks
     address public hub;
 
     // Epochs
