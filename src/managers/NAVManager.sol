@@ -190,7 +190,34 @@ contract NAVManager is INAVManager {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
     }
 
-    // TODO: realize gain/loss to move to equity account
+    /// @inheritdoc INAVManager
+    function closeGainLoss(uint16 centrifugeId) external onlyManager {
+        require(accountCounter[centrifugeId] > 0, NotInitialized());
+
+        AccountId equityAccount_ = equityAccount(centrifugeId);
+        AccountId gainAccount_ = gainAccount(centrifugeId);
+        AccountId lossAccount_ = lossAccount(centrifugeId);
+
+        (bool gainIsPositive, uint128 gainValue) = accounting.accountValue(poolId, gainAccount_);
+        (bool lossIsPositive, uint128 lossValue) = accounting.accountValue(poolId, lossAccount_);
+
+        accounting.unlock(poolId);
+
+        // Because we're crediting the gain account for gains and debiting the loss account for losses,
+        // Gain should never be negative, and loss should never be positive.
+        // Still, double-check here.
+        if (gainIsPositive && gainValue > 0) {
+            accounting.addDebit(gainAccount_, gainValue);
+            accounting.addCredit(equityAccount_, gainValue);
+        }
+
+        if (!lossIsPositive && lossValue > 0) {
+            accounting.addCredit(lossAccount_, lossValue);
+            accounting.addDebit(equityAccount_, lossValue);
+        }
+
+        accounting.lock();
+    }
 
     //----------------------------------------------------------------------------------------------
     // Calculations
@@ -199,6 +226,7 @@ contract NAVManager is INAVManager {
     /// @inheritdoc INAVManager
     function netAssetValue(uint16 centrifugeId) public view returns (uint128) {
         // TODO: how to handle when one of the accounts is not positive (or positive for loss account)
+        // Which should never happen, but still...
         (bool equityIsPositive, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
         (bool gainIsPositive, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));

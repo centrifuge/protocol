@@ -71,6 +71,10 @@ contract NAVManagerTest is Test {
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
 
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
+        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector), abi.encode());
+        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.addDebit.selector), abi.encode());
+        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.addCredit.selector), abi.encode());
+        vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector), abi.encode());
 
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset2), abi.encode(6));
@@ -473,6 +477,146 @@ contract NAVManagerUpdateHoldingTest is NAVManagerTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(unauthorized);
         navManager.setHoldingAccountId(SC_1, asset1, kind, accountId);
+    }
+}
+
+contract NAVManagerCloseGainLossTest is NAVManagerTest {
+    function setUp() public override {
+        super.setUp();
+        vm.prank(manager);
+        navManager.initializeNetwork(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossSuccess() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, false);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 100)
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 100)
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 50)
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 50)
+        );
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossOnlyGain() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 200, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 200)
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 200)
+        );
+        // No calls for loss account
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 0),
+            0
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 0),
+            0
+        );
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossOnlyLoss() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 150, false);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.lossAccount(CENTRIFUGE_ID_1), 150)
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 150)
+        );
+        // No calls for gain account
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addDebit.selector, navManager.gainAccount(CENTRIFUGE_ID_1), 0),
+            0
+        );
+        vm.expectCall(
+            accounting,
+            abi.encodeWithSelector(IAccounting.addCredit.selector, navManager.equityAccount(CENTRIFUGE_ID_1), 0),
+            0
+        );
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossNoGainNoLoss() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossGainNotPositive() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, false);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossLossIsPositive() public {
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
+
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.unlock.selector, POOL_A));
+        vm.expectCall(accounting, abi.encodeWithSelector(IAccounting.lock.selector));
+
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
+    }
+
+    function testCloseGainLossNotInitialized() public {
+        vm.expectRevert(INAVManager.NotInitialized.selector);
+        vm.prank(manager);
+        navManager.closeGainLoss(CENTRIFUGE_ID_2);
+    }
+
+    function testCloseGainLossUnauthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        vm.prank(unauthorized);
+        navManager.closeGainLoss(CENTRIFUGE_ID_1);
     }
 }
 

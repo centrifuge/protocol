@@ -115,6 +115,10 @@ interface INAVManager is ISnapshotHook {
     /// @param accountId The account ID to set
     function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
 
+    /// @notice close gain/loss accounts by moving balances to equity account
+    /// @param centrifugeId The Centrifuge ID of the network
+    function closeGainLoss(uint16 centrifugeId) external;
+
     //----------------------------------------------------------------------------------------------
     // Calculations
     //----------------------------------------------------------------------------------------------
