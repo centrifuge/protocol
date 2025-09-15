@@ -203,8 +203,8 @@ contract NAVManager is INAVManager {
 
         accounting.unlock(poolId);
 
-        // Because we're crediting the gain account for gains and debiting the loss account for losses,
-        // Gain should never be negative, and loss should never be positive.
+        // Because we're crediting the gain account for gains and debiting the loss account for losses (and loss is
+        // credit-normal), gain should never be negative, and loss should never be positive.
         // Still, double-check here.
         if (gainIsPositive && gainValue > 0) {
             accounting.addDebit(gainAccount_, gainValue);
