@@ -19,8 +19,7 @@ import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
-/// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
-///         and validates that multiple adapters have confirmed a message.
+/// @notice Routing contract that forwards outgoing messages through an adapters
 ///
 ///         Supports batching multiple messages, as well as paying for methods manually or through pool-level subsidies.
 ///
@@ -31,8 +30,8 @@ contract Gateway is Auth, Recoverable, IGateway {
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
-    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
+    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
     uint16 public immutable localCentrifugeId;
@@ -43,14 +42,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     IMessageProcessor public processor;
     IAdapter public adapter;
 
-    // management
+    // Management
     mapping(PoolId => address) public manager;
 
     // Outbound & payments
-    bool public transient isBatching;
     uint256 public transient fuel;
-    address public transient transactionRefund;
+    bool public transient isBatching;
     uint128 public transient extraGasLimit;
+    address public transient transactionRefund;
     mapping(PoolId => Funds) public subsidy;
     mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;

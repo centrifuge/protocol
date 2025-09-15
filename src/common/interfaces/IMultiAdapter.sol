@@ -83,6 +83,15 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     ///         If not wanted a threshold set `adapters.length` value
     /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
     ///         If not wanted a recoveryIndex set `adapters.length` value
+    ///
+    ///         A recovery adapter is an adapter that does not decrease their votes below 0.
+    ///         it is, it can never have a debt on messages not received.
+    ///         It can be used to easily emulate receiving a missing message by some of the others adapters.
+    ///
+    ///         i.e: Suppose a configuration of `[Adapter1, Adapter2, RecoveryAdapter]` with threshold 2.
+    ///         Both `Adapter1` and `Adapter2` will need always need to handle the message, each one, to process it.
+    ///         In case some of those fail, the losing vote can be recover through the `RecoveryAdapter`` to reach
+    ///         threshold 2.
     function setAdapters(
         uint16 centrifugeId,
         PoolId poolId,

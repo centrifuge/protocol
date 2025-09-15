@@ -98,10 +98,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata payload) external {
-        _handle(centrifugeId, payload, IAdapter(msg.sender));
-    }
-
-    function _handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter_) internal {
+        IAdapter adapter_ = IAdapter(msg.sender);
         PoolId poolId = messageProperties.messagePoolId(payload);
 
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
