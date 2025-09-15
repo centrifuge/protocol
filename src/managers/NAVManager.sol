@@ -188,6 +188,8 @@ contract NAVManager is INAVManager {
         onlyManager
     {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
+        // TODO: update assetIdToAccountId mapping and update value?
+        // Do we need to do something with the old account/value?
     }
 
     /// @inheritdoc INAVManager
