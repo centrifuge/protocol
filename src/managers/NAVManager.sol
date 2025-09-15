@@ -39,13 +39,11 @@ contract NAVManager is INAVManager {
         accounting = hub.accounting();
     }
 
-    /// @dev Check if the msg.sender is a manager
     modifier onlyManager() {
         require(manager[msg.sender], NotAuthorized());
         _;
     }
 
-    /// @dev Check if the msg.sender is a hub manager
     modifier onlyHubManager() {
         require(hubRegistry.manager(poolId, msg.sender), NotAuthorized());
         _;
@@ -171,9 +169,7 @@ contract NAVManager is INAVManager {
     function updateHoldingValue(ShareClassId scId, AssetId assetId) public onlyManager {
         hub.updateHoldingValue(poolId, scId, assetId);
         (bool isSnapshot,) = holdings.snapshot(poolId, scId, assetId.centrifugeId());
-        if (isSnapshot) {
-            _onSync(scId, assetId.centrifugeId());
-        }
+        if (isSnapshot) _onSync(scId, assetId.centrifugeId());
     }
 
     /// @inheritdoc INAVManager
