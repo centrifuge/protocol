@@ -71,7 +71,7 @@ interface IGuardian {
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
         external;
 
-    /// @notice Set an adapters manager for the global adaters.
-    /// @param manager address able to recover messages in the `centrifugeId` chain or pause sending messages
-    function setAdaptersManager(address manager) external;
+    /// @notice Set a gateway manager for the global adaters.
+    /// @param manager address used as manager.
+    function setGatewayManager(address manager) external;
 }

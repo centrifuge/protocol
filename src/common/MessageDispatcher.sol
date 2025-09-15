@@ -553,12 +553,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendSetPoolAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
+    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
         if (centrifugeId == localCentrifugeId) {
             multiAdapter.setManager(poolId, manager.toAddress());
         } else {
             gateway.send(
-                centrifugeId, MessageLib.SetPoolAdaptersManager({poolId: poolId.raw(), manager: manager}).serialize()
+                centrifugeId, MessageLib.SetGatewayManager({poolId: poolId.raw(), manager: manager}).serialize()
             );
         }
     }

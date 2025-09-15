@@ -114,7 +114,7 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setAdaptersManager(address manager) external onlySafe {
+    function setGatewayManager(address manager) external onlySafe {
         multiAdapter.setManager(PoolId.wrap(0), manager);
     }
 

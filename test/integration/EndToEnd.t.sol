@@ -140,7 +140,7 @@ contract EndToEndDeployment is Test {
     address immutable FEEDER = makeAddr("FEEDER");
     address immutable INVESTOR_A = makeAddr("INVESTOR_A");
     address immutable ANY = makeAddr("ANY");
-    address immutable MULTI_ADAPTER_MANAGER = makeAddr("MULTI_ADAPTER_MANAGER");
+    address immutable GATEWAY_MANAGER = makeAddr("GATEWAY_MANAGER");
 
     uint128 constant USDC_AMOUNT_1 = IntegrationConstants.DEFAULT_USDC_AMOUNT;
 
@@ -227,7 +227,7 @@ contract EndToEndDeployment is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-        deploy.guardian().setAdaptersManager(MULTI_ADAPTER_MANAGER);
+        deploy.guardian().setGatewayManager(GATEWAY_MANAGER);
         vm.stopPrank();
     }
 
@@ -500,8 +500,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
-        h.hub.setAdaptersManager{value: GAS}(h.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
-        h.hub.setAdaptersManager{value: GAS}(s.centrifugeId, POOL_A, MULTI_ADAPTER_MANAGER.toBytes32());
+        h.hub.setGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
+        h.hub.setGatewayManager{value: GAS}(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
     }
 
     //----------------------------------------------------------------------------------------------
@@ -1326,7 +1326,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
         // Hub -> Spoke message went through the pool adapter
-        assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
+        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
 
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
@@ -1337,7 +1337,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
 
         // Spoke -> Hub message went through the pool adapter
-        assertEq(uint8(poolAdapterBToA.receivedMessageTypes(0)), uint8(MessageType.UpdateShares));
+        assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
     }
 
     /// forge-config: default.isolate = true
@@ -1346,13 +1346,13 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
 
-        vm.startPrank(MULTI_ADAPTER_MANAGER);
+        vm.startPrank(GATEWAY_MANAGER);
         h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, true);
 
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
 
-        vm.startPrank(MULTI_ADAPTER_MANAGER);
+        vm.startPrank(GATEWAY_MANAGER);
         h.multiAdapter.blockOutgoing(s.centrifugeId, POOL_A, false);
 
         bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
@@ -1362,7 +1362,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(ANY);
         h.gateway.repay(s.centrifugeId, message);
 
-        assertEq(uint8(poolAdapterAToB.receivedMessageTypes(0)), uint8(MessageType.NotifyPool));
+        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
     }
 
