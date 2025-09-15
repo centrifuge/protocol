@@ -537,7 +537,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32[] memory adapters,
         uint8 threshold,
         uint8 recoveryIndex
-    ) external {
+    ) external auth {
         if (centrifugeId == localCentrifugeId) {
             revert CannotBeSentLocally();
         } else {
@@ -553,7 +553,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external {
+    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external auth {
         if (centrifugeId == localCentrifugeId) {
             multiAdapter.setManager(poolId, manager.toAddress());
         } else {
