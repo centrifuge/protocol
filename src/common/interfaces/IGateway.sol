@@ -6,6 +6,9 @@ import {IMessageHandler} from "./IMessageHandler.sol";
 
 import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
 
+import {IGasService} from "./IGasService.sol";
+import {IAdapter} from "./IAdapter.sol";
+
 import {PoolId} from "../types/PoolId.sol";
 
 /// @notice Interface for dispatch-only gateway
@@ -64,6 +67,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Dispatched when a refund address is not set.
     error RefundAddressNotSet();
+
+    function adapter() external view returns (IAdapter);
+    function gasService() external view returns (IGasService);
 
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.

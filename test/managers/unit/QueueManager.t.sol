@@ -12,6 +12,10 @@ import {IBalanceSheet} from "../../../src/spoke/interfaces/IBalanceSheet.sol";
 import {IUpdateContract} from "../../../src/spoke/interfaces/IUpdateContract.sol";
 import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
+import {IGateway} from "../../../src/common/interfaces/IGateway.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
+import {IGasService} from "../../../src/common/interfaces/IGasService.sol";
+
 import {QueueManager} from "../../../src/managers/QueueManager.sol";
 import {IQueueManager} from "../../../src/managers/interfaces/IQueueManager.sol";
 
@@ -57,6 +61,9 @@ contract QueueManagerTest is Test {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
     IBalanceSheet balanceSheet = IBalanceSheet(address(new MockBalanceSheet()));
+    address adapter = address(new IsContract());
+    address gasService = address(new IsContract());
+    address gateway = address(new IsContract());
 
     address contractUpdater = makeAddr("contractUpdater");
     address unauthorized = makeAddr("unauthorized");
@@ -68,10 +75,25 @@ contract QueueManagerTest is Test {
         _deployManager();
     }
 
-    function _setupMocks() internal {}
+    function _setupMocks() internal {
+        vm.mockCall(
+            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.gateway.selector), abi.encode(IGateway(gateway))
+        );
+
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.adapter.selector), abi.encode(adapter));
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.gasService.selector), abi.encode(gasService));
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.subsidizePool.selector), abi.encode());
+
+        vm.mockCall(
+            gasService, abi.encodeWithSelector(IGasService.updateHoldingAmount.selector), abi.encode(uint128(100000))
+        );
+        vm.mockCall(gasService, abi.encodeWithSelector(IGasService.updateShares.selector), abi.encode(uint128(150000)));
+
+        vm.mockCall(adapter, abi.encodeWithSelector(IAdapter.estimate.selector), abi.encode(uint256(0.1 ether)));
+    }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(contractUpdater, balanceSheet);
+        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)));
     }
 
     function _mockQueuedShares(
@@ -186,7 +208,7 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
         AssetId[] memory assetIds = new AssetId[](0);
 
         vm.expectRevert(IQueueManager.NoUpdates.selector);
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testMinDelayNotElapsed() public {
@@ -204,10 +226,10 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
         AssetId[] memory assetIds = new AssetId[](1);
         assetIds[0] = ASSET_1;
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         vm.expectRevert(IQueueManager.MinDelayNotElapsed.selector);
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testSyncWithTooManyAssets() public {
@@ -220,7 +242,7 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
         }
 
         vm.expectRevert(IQueueManager.TooManyAssets.selector);
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testSyncWithNoQueuedData() public {
@@ -228,7 +250,21 @@ contract QueueManagerSyncFailureTests is QueueManagerTest {
         assetIds[0] = ASSET_1;
 
         vm.expectRevert(IQueueManager.NoUpdates.selector);
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
+    }
+
+    function testSyncWithOnlyNonQueuedAssets() public {
+        _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
+        _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
+        _mockQueuedAssets(POOL_A, SC_1, ASSET_2, 0, 0);
+        _mockQueuedAssets(POOL_A, SC_1, ASSET_3, 0, 0);
+
+        AssetId[] memory assetIds = new AssetId[](2);
+        assetIds[0] = ASSET_2;
+        assetIds[1] = ASSET_3;
+
+        vm.expectRevert(IQueueManager.NoUpdates.selector);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 }
 
@@ -261,8 +297,9 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         vm.expectCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
         );
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(lastSync, block.timestamp);
@@ -296,8 +333,9 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         vm.expectCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0), 0
         );
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(lastSync, 0);
@@ -314,7 +352,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             _mockQueuedAssets(POOL_A, SC_1, assetId, 1, 0);
         }
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(lastSync, block.timestamp);
@@ -328,13 +366,15 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         vm.expectCall(
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
         );
+        vm.expectCall(gateway, 0.1 ether, abi.encodeWithSelector(IGateway.subsidizePool.selector, POOL_A));
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(lastSync, block.timestamp);
     }
 
+    /// forge-config: default.isolate = true
     function testSyncWithZeroMinDelay() public {
         vm.prank(contractUpdater);
         queueManager.update(
@@ -349,12 +389,13 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         AssetId[] memory assetIds = new AssetId[](1);
         assetIds[0] = ASSET_1;
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         // Should be able to sync immediately again
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
+    /// forge-config: default.isolate = true
     function testMinDelayElapsedAfterTime() public {
         vm.prank(contractUpdater);
         queueManager.update(
@@ -370,11 +411,11 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
         AssetId[] memory assetIds = new AssetId[](1);
         assetIds[0] = ASSET_1;
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         vm.warp(block.timestamp + DEFAULT_MIN_DELAY + 1);
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testSyncWithExtraGasLimit(uint128 extraGasLimit) public {
@@ -403,7 +444,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, extraGasLimit)
         );
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testSyncWithDuplicateAssets() public {
@@ -420,7 +461,7 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             1
         );
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
     }
 
     function testSyncWithMoreAssetsThanQueued() public {
@@ -455,45 +496,10 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0)
         );
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(lastSync, block.timestamp);
-    }
-
-    function testSyncWithOnlyNonQueuedAssets() public {
-        _mockQueuedShares(POOL_A, SC_1, 100, true, 1);
-        _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
-        _mockQueuedAssets(POOL_A, SC_1, ASSET_2, 0, 0);
-        _mockQueuedAssets(POOL_A, SC_1, ASSET_3, 0, 0);
-
-        AssetId[] memory assetIds = new AssetId[](2);
-        assetIds[0] = ASSET_2;
-        assetIds[1] = ASSET_3;
-
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_1, 0),
-            0
-        );
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_2, 0),
-            0
-        );
-        vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.submitQueuedAssets.selector, POOL_A, SC_1, ASSET_3, 0),
-            0
-        );
-        vm.expectCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_A, SC_1, 0), 0
-        );
-
-        queueManager.sync(POOL_A, SC_1, assetIds);
-
-        (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, SC_1);
-        assertEq(lastSync, 0);
     }
 
     function testSyncMultiplePools() public {
@@ -521,12 +527,12 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
             address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.submitQueuedShares.selector, POOL_B, SC_2, 0)
         );
 
-        queueManager.sync(POOL_A, SC_1, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, SC_1, assetIds);
         (, uint64 lastSyncA,) = queueManager.scQueueState(POOL_A, SC_1);
 
         assertEq(lastSyncA, block.timestamp);
 
-        queueManager.sync(POOL_B, SC_2, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_B, SC_2, assetIds);
         (, uint64 lastSyncB,) = queueManager.scQueueState(POOL_B, SC_2);
 
         assertEq(lastSyncB, block.timestamp);

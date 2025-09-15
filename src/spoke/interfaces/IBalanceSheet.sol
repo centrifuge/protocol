@@ -11,6 +11,7 @@ import {IRoot} from "../../common/interfaces/IRoot.sol";
 import {ShareClassId} from "../../common/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../common/interfaces/IPoolEscrow.sol";
 import {ISpokeMessageSender} from "../../common/interfaces/IGatewaySenders.sol";
+import {IGateway} from "../../common/interfaces/IGateway.sol";
 import {IPoolEscrowProvider} from "../../common/factories/interfaces/IPoolEscrowFactory.sol";
 
 struct ShareQueueAmount {
@@ -78,6 +79,7 @@ interface IBalanceSheet {
     function root() external view returns (IRoot);
     function spoke() external view returns (ISpoke);
     function sender() external view returns (ISpokeMessageSender);
+    function gateway() external view returns (IGateway);
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     function manager(PoolId poolId, address manager) external view returns (bool);

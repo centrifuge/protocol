@@ -55,7 +55,7 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
     using UpdateContractMessageLib for *;
 
     /// forge-config: default.isolate = true
-    function testCompleteWorkflow() public {
+    function testSuccess() public {
         uint128 extraGasLimit = 500;
         vm.prank(address(contractUpdater));
         queueManager.update(
@@ -91,7 +91,7 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
             )
         );
 
-        queueManager.sync(POOL_A, defaultTypedShareClassId, assetIds);
+        queueManager.sync{value: 0.1 ether}(POOL_A, defaultTypedShareClassId, assetIds);
 
         (, uint64 lastSync,) = queueManager.scQueueState(POOL_A, defaultTypedShareClassId);
         assertEq(lastSync, block.timestamp);

@@ -8,6 +8,9 @@ import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 
+import {IGateway} from "../common/interfaces/IGateway.sol";
+import {IAdapter} from "../common/interfaces/IAdapter.sol";
+import {IGasService} from "../common/interfaces/IGasService.sol";
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
@@ -24,12 +27,21 @@ contract QueueManager is IQueueManager, IUpdateContract {
 
     address public immutable contractUpdater;
     IBalanceSheet public immutable balanceSheet;
+    IGateway public immutable gateway;
+    IAdapter public immutable adapter;
+    uint128 public immutable sendUpdateAssetsGasLimit;
+    uint128 public immutable sendUpdateSharesGasLimit;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
     constructor(address contractUpdater_, IBalanceSheet balanceSheet_) {
         contractUpdater = contractUpdater_;
         balanceSheet = balanceSheet_;
+        gateway = balanceSheet_.gateway();
+        adapter = gateway.adapter();
+        IGasService gasService = gateway.gasService();
+        sendUpdateAssetsGasLimit = gasService.updateHoldingAmount();
+        sendUpdateSharesGasLimit = gasService.updateShares();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -58,20 +70,21 @@ contract QueueManager is IQueueManager, IUpdateContract {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IQueueManager
-    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external {
+    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external payable {
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
         require(
             sc.lastSync == 0 || sc.minDelay == 0 || block.timestamp >= sc.lastSync + sc.minDelay, MinDelayNotElapsed()
         );
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
-        require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
+        // require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
 
         require(assetIds.length <= 256, TooManyAssets()); // Bitmap limit
 
         // Deduplicate and validate using bitmap for valid indices
         uint256 validBitmap = 0; // Each bit represents if that index is valid
         uint256 validCount = 0;
+        uint128 gasLimit = 0;
 
         for (uint256 i = 0; i < assetIds.length; i++) {
             bytes32 key = keccak256(abi.encode(scId.raw(), assetIds[i].raw()));
@@ -85,12 +98,17 @@ contract QueueManager is IQueueManager, IUpdateContract {
             if (deposits > 0 || withdrawals > 0) {
                 validBitmap = validBitmap.withBit(i, true);
                 validCount++;
+                gasLimit += sendUpdateAssetsGasLimit + sc.extraGasLimit;
             }
         }
 
         // Build exactly-sized array
         bool submitShares = delta > 0 && validCount >= queuedAssetCounter;
-        bytes[] memory cs = new bytes[](validCount + (submitShares ? 1 : 0));
+        uint256 callCount = validCount + (submitShares ? 1 : 0);
+
+        require(callCount > 0, NoUpdates());
+
+        bytes[] memory cs = new bytes[](callCount);
 
         uint256 csIndex = 0;
         for (uint256 i = 0; i < assetIds.length; i++) {
@@ -106,8 +124,17 @@ contract QueueManager is IQueueManager, IUpdateContract {
             cs[validCount] =
                 abi.encodeWithSelector(balanceSheet.submitQueuedShares.selector, poolId, scId, sc.extraGasLimit);
             sc.lastSync = uint64(block.timestamp);
+            gasLimit += sendUpdateSharesGasLimit + sc.extraGasLimit;
         }
 
+        // Split because stack too deep
+        _sync(poolId, cs, gasLimit);
+    }
+
+    function _sync(PoolId poolId, bytes[] memory cs, uint128 gasLimit) internal {
+        uint256 estimate = adapter.estimate(poolId.centrifugeId(), cs[0], gasLimit);
+        require(msg.value >= estimate, InsufficientFunds());
+        gateway.subsidizePool{value: msg.value}(poolId);
         IMulticall(address(balanceSheet)).multicall(cs);
     }
 }

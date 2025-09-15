@@ -15,6 +15,7 @@ interface IQueueManager {
     error MinDelayNotElapsed();
     error TooManyAssets();
     error NoUpdateForAsset();
+    error InsufficientFunds();
 
     struct ShareClassQueueState {
         uint64 minDelay;
@@ -29,5 +30,5 @@ interface IQueueManager {
     /// @dev It is the caller's responsibility to ensure all asset IDs have a non-zero delta,
     ///      and `sync` is called n times up until the moment all asset IDs are included, and the shares
     ///      get synced as well.
-    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external;
+    function sync(PoolId poolId, ShareClassId scId, AssetId[] calldata assetIds) external payable;
 }
