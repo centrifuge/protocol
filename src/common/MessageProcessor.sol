@@ -79,9 +79,11 @@ contract MessageProcessor is Auth, IMessageProcessor {
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
             root.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RecoverTokens) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
             tokenRecoverer.recoverTokens(
                 IRecoverable(m.target.toAddress()), m.token.toAddress(), m.tokenId, m.to.toAddress(), m.amount
