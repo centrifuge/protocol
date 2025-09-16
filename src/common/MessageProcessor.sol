@@ -26,6 +26,8 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
+uint16 constant MAINNET_CENTRIFUGE_ID = 1;
+
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
     using MessageLib for *;
@@ -68,11 +70,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
-        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
 
+        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
 
         if (kind == MessageType.ScheduleUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
