@@ -400,10 +400,10 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
-    function _subsidizePool(CHub memory hub, PoolId poolId) internal {
+    function _depositSubsidy(CHub memory hub, PoolId poolId) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, 1 ether);
-        hub.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(poolId);
+        hub.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(poolId);
         vm.stopPrank();
     }
 
@@ -416,7 +416,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         _createPoolAccounts(h, POOL_A, FM);
-        _subsidizePool(h, POOL_A);
+        _depositSubsidy(h, POOL_A);
     }
 
     function _configurePoolCrossChain(
@@ -476,7 +476,7 @@ contract EndToEndFlows is EndToEndUtils {
         // We also subsidize the hub
         if (s.centrifugeId != h.centrifugeId) {
             vm.startPrank(ANY);
-            s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+            s_.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
         }
     }
 
@@ -1086,7 +1086,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _setSpoke(sameChain);
 
         vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
@@ -1107,9 +1107,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _setSpoke(sameChain);
 
         vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
 
-        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
+        s.gateway.depositSubsidy{value: VALUE}(PoolId.wrap(0));
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
@@ -1163,7 +1163,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // We just subsidize for two message
         vm.startPrank(ANY);
-        s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
+        s.gateway.depositSubsidy{value: h.gasService.updateShares() * 2}(POOL_A);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
         assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
 
@@ -1337,7 +1337,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
         vm.startPrank(ANY);
-        s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        s.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);

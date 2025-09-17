@@ -36,8 +36,8 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     event FailMessage(uint16 indexed centrifugeId, bytes message, bytes32 messageHash, bytes error);
 
     event SetRefundAddress(PoolId poolId, IRecoverable refund);
-    event SubsidizePool(PoolId indexed poolId, address indexed sender, uint256 amount);
-    event WithdrawSubsidizedPool(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
 
     /// @notice Dispatched when the `what` parameter of `file()` is not supported by the implementation.
     error FileUnrecognizedParam();
@@ -116,10 +116,10 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     function setRefundAddress(PoolId poolId, IRecoverable refund) external;
 
     /// @notice Pay upfront to later be able to subsidize messages associated to a pool
-    function subsidizePool(PoolId poolId) external payable;
+    function depositSubsidy(PoolId poolId) external payable;
 
     /// @notice Withdraw the funds associated to the pool
-    function withdrawSubsidizedPool(PoolId poolId, address to, uint256 amount) external;
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
 
     /// @notice Prepays for the TX cost for sending the messages through the adapters
     ///         Currently being called from Vault Router and Hub.

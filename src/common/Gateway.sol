@@ -97,7 +97,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     receive() external payable {
-        _subsidizePool(GLOBAL_POT, msg.sender, msg.value);
+        _depositSubsidy(GLOBAL_POT, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             // Extract from the GLOBAL_POT
             subsidy[GLOBAL_POT].value -= refundBalance.toUint96();
-            _subsidizePool(poolId, address(refund), refundBalance);
+            _depositSubsidy(poolId, address(refund), refundBalance);
         }
     }
 
@@ -275,24 +275,24 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function subsidizePool(PoolId poolId) public payable {
-        _subsidizePool(poolId, msg.sender, msg.value);
+    function depositSubsidy(PoolId poolId) public payable {
+        _depositSubsidy(poolId, msg.sender, msg.value);
     }
 
-    function _subsidizePool(PoolId poolId, address who, uint256 value) internal {
+    function _depositSubsidy(PoolId poolId, address who, uint256 value) internal {
         require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
         subsidy[poolId].value += value.toUint96();
-        emit SubsidizePool(poolId, who, value);
+        emit DepositSubsidy(poolId, who, value);
     }
 
     /// @inheritdoc IGateway
-    function withdrawSubsidizedPool(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
         subsidy[poolId].value -= amount.toUint96();
 
         (bool success,) = payable(to).call{value: amount}(new bytes(0));
         require(success, CannotWithdraw());
 
-        emit WithdrawSubsidizedPool(poolId, to, amount);
+        emit WithdrawSubsidy(poolId, to, amount);
     }
 
     /// @inheritdoc IGateway
@@ -324,7 +324,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
+                _depositSubsidy(GLOBAL_POT, transactionRefund_, fuel_);
             }
         }
     }
