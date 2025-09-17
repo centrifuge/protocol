@@ -24,6 +24,7 @@ import {IAdapter} from "../../src/common/interfaces/IAdapter.sol";
 import {PricingLib} from "../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/common/types/AssetId.sol";
+import {IMessageHandler} from "../../src/common/interfaces/IMessageHandler.sol";
 import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/common/MultiAdapter.sol";
 import {ILocalCentrifugeId} from "../../src/common/interfaces/IGatewaySenders.sol";
 import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/libraries/MessageLib.sol";
@@ -60,6 +61,8 @@ import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -1329,7 +1332,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // Hub -> Spoke message went through the pool adapter
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
-        assertNotEq(s.spoke.pool(POOL_A), 0); // Message received and processed
+        assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
         h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
@@ -1369,11 +1372,11 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
-        assertNotEq(s.spoke.pool(POOL_A), 0); // Message received and processed
+        assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
     }
 
     /// forge-config: default.isolate = true
-    function testMaxAdaptersConfigurationWeight() public {
+    function testMaxAdaptersConfigurationBenchmark() public {
         // This tests is just to compute the SetPoolAdapters max weight used in GasService
 
         _setSpoke(IN_DIFFERENT_CHAINS);
@@ -1392,6 +1395,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
     }
 
+    /// forge-config: default.isolate = true
     function testErrSetAdaptersLocally() public {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
@@ -1408,5 +1412,44 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         vm.startPrank(FM);
         h.hub.setAdapters{value: GAS}(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAdaptersWithRecovery() public {
+        _setSpoke(IN_DIFFERENT_CHAINS);
+        _createPool();
+
+        // Wire pool adapters
+        poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
+        poolAdapterBToA = new LocalAdapter(s.centrifugeId, s.multiAdapter, FM);
+
+        poolAdapterAToB.setEndpoint(poolAdapterBToA);
+        poolAdapterBToA.setEndpoint(poolAdapterAToB);
+
+        IAdapter[] memory localAdapters = new IAdapter[](2);
+        localAdapters[0] = poolAdapterAToB;
+        localAdapters[1] = new RecoveryAdapter(h.multiAdapter, FM);
+
+        bytes32[] memory remoteAdapters = new bytes32[](2);
+        remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
+        remoteAdapters[1] = address(new RecoveryAdapter(s.multiAdapter, FM)).toBytes32();
+
+        vm.startPrank(FM);
+
+        uint8 threshold = 2;
+        uint8 recoveryIndex = 1;
+        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, threshold, recoveryIndex);
+
+        // Only local adapter will send the message, recovery adapter will skip it.
+        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+
+        assertEq(s.spoke.pool(POOL_A), 0); // 1 of 2 received, not processed yet
+
+        bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
+
+        // In the remote recovery adapter, we recover the message
+        IMessageHandler(remoteAdapters[1].toAddress()).handle(h.centrifugeId, message);
+
+        assertEq(s.spoke.pool(POOL_A), block.timestamp); // 2 of 2 received and processed
     }
 }
