@@ -666,14 +666,10 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 remoteManager)
-        external
-        payable
-        payTransaction
-    {
+    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external payable payTransaction {
         _isManager(poolId);
 
-        sender.sendSetPoolAdaptersManager(centrifugeId, poolId, remoteManager);
+        sender.sendSetGatewayManager(centrifugeId, poolId, manager);
     }
 
     //----------------------------------------------------------------------------------------------

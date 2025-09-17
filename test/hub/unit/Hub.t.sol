@@ -206,7 +206,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setAdapters(0, POOL_A, new IAdapter[](0), new bytes32[](0), 0, 0);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setAdaptersManager(0, POOL_A, bytes32(0));
+        hub.setGatewayManager(0, POOL_A, bytes32(0));
 
         vm.stopPrank();
     }

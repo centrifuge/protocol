@@ -128,6 +128,7 @@ contract VaultsDeploymentSpokeExtTest is VaultsDeploymentTest {
         vm.assume(nonWard != address(root)); // From common
         vm.assume(nonWard != address(gateway)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
+        vm.assume(nonWard != address(messageProcessor)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
         vm.assume(nonWard != address(spoke)); // From spoke
         vm.assume(nonWard != address(balanceSheet)); // From spoke

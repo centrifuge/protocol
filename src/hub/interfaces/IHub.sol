@@ -389,9 +389,9 @@ interface IHub {
         uint8 recoveryIndex
     ) external payable;
 
-    /// @notice Set an adapters manager for a pool. The manager can modify adapter-related things in the remote chain.
-    /// @param centrifugeId chain where to perform the adapter configuration.
+    /// @notice Set a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
+    /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param poolId pool associated to this configuration.
-    /// @param remoteManager address used to recover messages in the remote chain or pause sending messages.
-    function setAdaptersManager(uint16 centrifugeId, PoolId poolId, bytes32 remoteManager) external payable;
+    /// @param manager address used as manager.
+    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external payable;
 }

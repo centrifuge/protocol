@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "./types/PoolId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
+import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IGasService} from "./interfaces/IGasService.sol";
 import {IMessageSender} from "./interfaces/IMessageSender.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
-import {IAdapterBlockSendingExt} from "./interfaces/IAdapter.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -19,20 +19,19 @@ import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
-/// @notice Routing contract that forwards outgoing messages to multiple adapters (1 full message, n-1 proofs)
-///         and validates that multiple adapters have confirmed a message.
+/// @notice Routing contract that forwards outgoing messages through an adapter
 ///
 ///         Supports batching multiple messages, as well as paying for methods manually or through pool-level subsidies.
 ///
 ///         Supports processing multiple duplicate messages in parallel by storing counts of messages
-///         and proofs that have been received. Also implements a retry method for failed messages.
+///         that have been received. Also implements a retry method for failed messages.
 contract Gateway is Auth, Recoverable, IGateway {
     using MathLib for *;
     using BytesLib for bytes;
     using TransientStorageLib for bytes32;
 
-    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     PoolId public constant GLOBAL_POT = PoolId.wrap(0);
+    uint256 public constant GAS_FAIL_MESSAGE_STORAGE = 40_000; // check testMessageFailBenchmark
     bytes32 public constant BATCH_LOCATORS_SLOT = bytes32(uint256(keccak256("Centrifuge/batch-locators")) - 1);
 
     uint16 public immutable localCentrifugeId;
@@ -41,14 +40,18 @@ contract Gateway is Auth, Recoverable, IGateway {
     IRoot public immutable root;
     IGasService public gasService;
     IMessageProcessor public processor;
-    IAdapterBlockSendingExt public adapter;
+    IAdapter public adapter;
+
+    // Management
+    mapping(PoolId => address) public manager;
 
     // Outbound & payments
-    bool public transient isBatching;
     uint256 public transient fuel;
-    address public transient transactionRefund;
+    bool public transient isBatching;
     uint128 public transient extraGasLimit;
+    address public transient transactionRefund;
     mapping(PoolId => Funds) public subsidy;
+    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
 
     // Inbound
@@ -76,10 +79,16 @@ contract Gateway is Auth, Recoverable, IGateway {
     function file(bytes32 what, address instance) external auth {
         if (what == "gasService") gasService = IGasService(instance);
         else if (what == "processor") processor = IMessageProcessor(instance);
-        else if (what == "adapter") adapter = IAdapterBlockSendingExt(instance);
+        else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
+    }
+
+    /// @inheritdoc IGateway
+    function setManager(PoolId poolId, address manager_) external auth {
+        manager[poolId] = manager_;
+        emit SetManager(poolId, manager_);
     }
 
     receive() external payable {
@@ -169,13 +178,13 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
+            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
                 return false;
             }
         } else {
-            if (adapter.isOutgoingBlocked(centrifugeId, adapterPoolId)) {
+            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
                 _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
                 return false;
             }
@@ -336,6 +345,13 @@ contract Gateway is Auth, Recoverable, IGateway {
             TransientBytesLib.clear(outboundBatchSlot);
             _gasLimitSlot(centrifugeId, poolId).tstore(uint256(0));
         }
+    }
+
+    /// @inheritdoc IGateway
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
+        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
+        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------
