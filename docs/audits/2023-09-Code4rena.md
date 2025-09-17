@@ -614,7 +614,7 @@ function processDeposit(address user, uint256 currencyAmount) public auth return
 
     uint128 _trancheTokenAmount = _calculateTrancheTokenAmount(_currencyAmount, liquidityPool, depositPrice);
     
-    //@audit => Add this check to prevent any rounding errors from causing problems when transfering shares from the Escrow to the Investor!
+    //@audit => Add this check to prevent any rounding errors from causing problems when transferring shares from the Escrow to the Investor!
 +   if (_trancheTokenAmount > orderbook[user][liquidityPool].maxMint) _trancheTokenAmount = orderbook[user][liquidityPool].maxMint;
     
     _deposit(_trancheTokenAmount, _currencyAmount, liquidityPool, user);
@@ -821,7 +821,7 @@ When calling the [`processWithdraw`](https://github.com/code-423n4/2023-09-centr
 
 ```solidity
 /// @dev Processes user's tranche token redemption after the epoch has been executed on Centrifuge.
-/// In case user's redempion order was fullfilled on Centrifuge during epoch execution MaxRedeem and MaxWithdraw
+/// In case user's redempion order was fulfilled on Centrifuge during epoch execution MaxRedeem and MaxWithdraw
 /// are increased and LiquidityPool currency can be transferred to user's wallet on calling processRedeem or processWithdraw.
 /// Note: The trancheTokenAmount required to fullfill the redemption order was already locked in escrow upon calling requestRedeem and burned upon collectRedeem.
 /// @notice trancheTokenAmount return value is type of uint256 to be compliant with EIP4626 LiquidityPool interface
@@ -1238,7 +1238,7 @@ https://github.com/code-423n4/2023-09-centrifuge/blob/512e7a71ebd9ae76384f837204
 
 The contract repeats the code of getting the lpValuse from the storage more than 10 times so the function `getLpValues()` should be added.  
 ```solidity 
-function _getLpValues(address user , address liquidityPool) private retruns ( LPValues storage lpValues ) {
+function _getLpValues(address user , address liquidityPool) private returns ( LPValues storage lpValues ) {
       lpValues =  orderbook[user][liquidityPool];
 }
 ```
@@ -1276,7 +1276,7 @@ more value to the project by incorporating our proofs of concept into its tests 
 
 **2.3 Code review**
 
-The code review commenced with understanding the "`ward` pattern" used to manage authorization accross the system. Thoroughly understanding this pattern made understanding the protocol contracts and its relations much smoother. Throughout this stage, I documented observations and raised questions concerning potential exploits without going too deep.
+The code review commenced with understanding the "`ward` pattern" used to manage authorization across the system. Thoroughly understanding this pattern made understanding the protocol contracts and its relations much smoother. Throughout this stage, I documented observations and raised questions concerning potential exploits without going too deep.
 
 **2.4 Threat Modelling**
 
