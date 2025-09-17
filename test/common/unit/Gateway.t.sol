@@ -9,9 +9,9 @@ import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.s
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../../src/common/types/PoolId.sol";
+import {IAdapter} from "../../../src/common/interfaces/IAdapter.sol";
 import {Gateway, IRoot, IGasService, IGateway} from "../../../src/common/Gateway.sol";
 import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
-import {IAdapter, IAdapterBlockSendingExt} from "../../../src/common/interfaces/IAdapter.sol";
 
 import "forge-std/Test.sol";
 
@@ -144,7 +144,7 @@ contract GatewayTest is Test {
 
     IGasService gasService = IGasService(makeAddr("GasService"));
     IRoot root = IRoot(makeAddr("Root"));
-    IAdapterBlockSendingExt adapter = IAdapterBlockSendingExt(makeAddr("Adapter"));
+    IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
     MockProcessor processor = new MockProcessor();
     GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), gasService, address(this));
@@ -152,6 +152,7 @@ contract GatewayTest is Test {
     address immutable ANY = makeAddr("ANY");
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
     IRecoverable immutable POOL_REFUND = new MockPoolRefund(address(gateway));
+    address immutable MANAGER = makeAddr("MANAGER");
 
     function _mockAdapter(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund) internal {
         vm.mockCall(
@@ -165,23 +166,6 @@ contract GatewayTest is Test {
             gasLimit + ADAPTER_ESTIMATE,
             abi.encodeWithSelector(IAdapter.send.selector, centrifugeId, message, gasLimit, refund),
             abi.encode(ADAPTER_DATA)
-        );
-
-        _mockBlockSending(centrifugeId, POOL_0, false);
-        _mockBlockSending(centrifugeId, POOL_A, false);
-
-        vm.mockCall(
-            address(adapter),
-            abi.encodeWithSelector(IAdapterBlockSendingExt.isOutgoingBlocked.selector, centrifugeId, POOL_A),
-            abi.encode(false)
-        );
-    }
-
-    function _mockBlockSending(uint16 centrifugeId, PoolId poolId, bool value) internal {
-        vm.mockCall(
-            address(adapter),
-            abi.encodeWithSelector(IAdapterBlockSendingExt.isOutgoingBlocked.selector, centrifugeId, poolId),
-            abi.encode(value)
         );
     }
 
@@ -242,6 +226,22 @@ contract GatewayTestFile is GatewayTest {
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));
+    }
+}
+
+contract GatewayTestSetManager is GatewayTest {
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.setManager(POOL_A, MANAGER);
+    }
+
+    function testSetManager() public {
+        vm.expectEmit();
+        emit IGateway.SetManager(POOL_A, MANAGER);
+        gateway.setManager(POOL_A, MANAGER);
+
+        assertEq(gateway.manager(POOL_A), MANAGER);
     }
 }
 
@@ -709,12 +709,15 @@ contract GatewayTestSend is GatewayTest {
     function testSendMessageUsingTransactionPaymentButSendingBlocked() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.startTransactionPayment{value: payment}(TRANSIENT_REFUND);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
-        _mockBlockSending(REMOTE_CENT_ID, POOL_A, true);
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
@@ -732,12 +735,15 @@ contract GatewayTestSend is GatewayTest {
     function testSendMessageUsingSubsidizedPoolPaymentButSendingBlocked() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE + 1234;
         gateway.subsidizePool{value: payment}(POOL_A);
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_GAS_LIMIT, TRANSIENT_REFUND);
-        _mockBlockSending(REMOTE_CENT_ID, POOL_A, true);
 
         vm.expectEmit();
         emit IGateway.PrepareMessage(REMOTE_CENT_ID, POOL_A, message);
@@ -915,12 +921,13 @@ contract GatewayTestRepay is GatewayTest {
     function testErrCanNotBeRepaid() public {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
 
         _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_GAS_LIMIT, address(this));
         gateway.addUnpaidMessage(REMOTE_CENT_ID, batch, NO_SUBSIDIZED);
-
-        _mockBlockSending(REMOTE_CENT_ID, POOL_A, true);
-
         uint256 payment = MESSAGE_GAS_LIMIT + ADAPTER_ESTIMATE;
 
         vm.expectRevert(IGateway.CannotBeRepaid.selector);
@@ -1059,5 +1066,24 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
         (uint128 gasLimit,,) = gateway.underpaid(REMOTE_CENT_ID, batchHash);
         assertEq(gasLimit, MESSAGE_GAS_LIMIT + EXTRA_GAS_LIMIT);
         assertEq(gateway.extraGasLimit(), 0);
+    }
+}
+
+contract GatewayTestBlockOutgoing is GatewayTest {
+    function testErrManagerNotAllowed() public {
+        vm.prank(ANY);
+        vm.expectRevert(IGateway.ManagerNotAllowed.selector);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
+    }
+
+    function testBlockOutgoing() public {
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IGateway.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
+
+        assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
