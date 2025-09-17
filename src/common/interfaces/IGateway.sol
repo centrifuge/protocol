@@ -75,6 +75,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a recovery message is not executed from the manager.
     error ManagerNotAllowed();
 
+    /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
+    error OutgoingBlocked();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.

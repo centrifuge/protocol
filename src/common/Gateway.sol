@@ -171,6 +171,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (bool succeeded) {
         PoolId adapterPoolId = processor.messagePoolId(batch);
+        require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
+
         PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
@@ -178,17 +180,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
-                _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
-                _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
-                return false;
-            }
         } else {
-            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
-                _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
-                return false;
-            }
-
             // Subsidized pool payment
             if (cost > subsidy[paymentPoolId].value) {
                 _requestPoolFunding(paymentPoolId);

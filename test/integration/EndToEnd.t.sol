@@ -1349,33 +1349,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// forge-config: default.isolate = true
-    function testAdaptersPerPoolWithCorrectRepayment() public {
-        _configureBasePoolWithCustomAdapters();
-
-        uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
-
-        vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, true);
-
-        vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
-
-        vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, false);
-
-        bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
-        (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
-        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas + gasLimit); // Was refunded
-
-        vm.startPrank(ANY);
-        h.gateway.repay(s.centrifugeId, message);
-
-        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
-        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
-        assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
-    }
-
-    /// forge-config: default.isolate = true
     function testMaxAdaptersConfigurationBenchmark() public {
         // This tests is just to compute the SetPoolAdapters max weight used in GasService
 
