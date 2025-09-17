@@ -133,7 +133,7 @@ contract EndToEndDeployment is Test {
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
     uint128 constant GAS = IntegrationConstants.GAS;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
-    uint128 constant SHARE_HOOK_GAS = IntegrationConstants.SHARE_HOOK_GAS;
+    uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -662,7 +662,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -887,9 +887,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.revokeShares{value: GAS}(
-                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS
-                );
+                hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, HOOK_GAS);
                 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -912,9 +910,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.issueShares{value: GAS}(
-                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS
-                );
+                hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, HOOK_GAS);
                 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -949,7 +945,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(

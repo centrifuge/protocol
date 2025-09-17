@@ -7,8 +7,13 @@ import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
 
 contract MockSnapshotHook is ISnapshotHook {
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint256 counter))) public synced;
-    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => uint256 amountTransferred))) public
-        transfers;
+    mapping(
+        PoolId
+            => mapping(
+                ShareClassId
+                    => mapping(uint16 fromCentrifugeId => mapping(uint16 toCentrifugeId => uint256 amountTransferred))
+            )
+    ) public transfers;
 
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
         synced[poolId][scId][centrifugeId]++;
@@ -21,7 +26,6 @@ contract MockSnapshotHook is ISnapshotHook {
         uint16 toCentrifugeId,
         uint128 sharesTransferred
     ) external {
-        transfers[poolId][scId][fromCentrifugeId] += sharesTransferred;
-        transfers[poolId][scId][toCentrifugeId] += sharesTransferred;
+        transfers[poolId][scId][fromCentrifugeId][toCentrifugeId] += sharesTransferred;
     }
 }
