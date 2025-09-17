@@ -71,6 +71,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
+    modifier onlyManager(PoolId poolId) {
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
+        _;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -281,6 +286,16 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
+    function withdrawSubsidizedPool(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
+        subsidy[poolId].value -= amount.toUint96();
+
+        (bool success,) = payable(to).call{value: amount}(new bytes(0));
+        require(success, CannotWithdraw());
+
+        emit WithdrawSubsidizedPool(poolId, to, amount);
+    }
+
+    /// @inheritdoc IGateway
     function startTransactionPayment(address payer) external payable auth {
         _startTransactionPayment(payer);
     }
@@ -340,8 +355,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }

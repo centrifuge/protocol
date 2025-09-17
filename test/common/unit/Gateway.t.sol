@@ -96,6 +96,8 @@ contract MockPoolRefund is Recoverable {
     receive() external payable {}
 }
 
+contract NoPayableDestination {}
+
 // -----------------------------------------
 //     GATEWAY EXTENSION
 // -----------------------------------------
@@ -131,7 +133,7 @@ contract GatewayExt is Gateway {
 // -----------------------------------------
 
 contract GatewayTest is Test {
-    uint16 constant LOCAL_CENT_ID = 24;
+    uint16 constant LOCAL_CENT_ID = 23;
     uint16 constant REMOTE_CENT_ID = 24;
 
     uint256 constant ADAPTER_ESTIMATE = 1;
@@ -153,6 +155,7 @@ contract GatewayTest is Test {
     address immutable TRANSIENT_REFUND = makeAddr("TRANSIENT_REFUND");
     IRecoverable immutable POOL_REFUND = new MockPoolRefund(address(gateway));
     address immutable MANAGER = makeAddr("MANAGER");
+    address NO_PAYABLE_DESTINATION = address(new NoPayableDestination());
 
     function _mockAdapter(uint16 centrifugeId, bytes memory message, uint256 gasLimit, address refund) internal {
         vm.mockCall(
@@ -432,7 +435,7 @@ contract GatewayTestSetRefundAddress is GatewayTest {
     }
 }
 
-contract GatewayTestSetSubsidizePool is GatewayTest {
+contract GatewayTestSubsidizePool is GatewayTest {
     function testErrRefundAddressNotSet() public {
         vm.deal(ANY, 100);
         vm.prank(ANY);
@@ -440,7 +443,7 @@ contract GatewayTestSetSubsidizePool is GatewayTest {
         gateway.subsidizePool{value: 100}(POOL_A);
     }
 
-    function testSetSubsidizePool() public {
+    function testSubsidizePool() public {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
 
         vm.deal(ANY, 100);
@@ -449,8 +452,46 @@ contract GatewayTestSetSubsidizePool is GatewayTest {
         emit IGateway.SubsidizePool(POOL_A, ANY, 100);
         gateway.subsidizePool{value: 100}(POOL_A);
 
-        (uint96 value,) = gateway.subsidy(POOL_A);
-        assertEq(value, 100);
+        assertEq(gateway.subsidizedValue(POOL_A), 100);
+    }
+}
+
+contract GatewayTestWithdrawSubsidizedPool is GatewayTest {
+    function testErrManagerNotAllowed() public {
+        vm.expectRevert(IGateway.ManagerNotAllowed.selector);
+        gateway.withdrawSubsidizedPool(POOL_A, MANAGER, 100);
+    }
+
+    function testErrCannotWithdraw() public {
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        gateway.subsidizePool{value: 100}(POOL_A);
+
+        vm.prank(MANAGER);
+        vm.expectRevert(IGateway.CannotWithdraw.selector);
+        gateway.withdrawSubsidizedPool(POOL_A, NO_PAYABLE_DESTINATION, 100);
+    }
+
+    function testWithdrawSubsidizedPool() public {
+        gateway.setRefundAddress(POOL_A, POOL_REFUND);
+        gateway.setManager(POOL_A, MANAGER);
+
+        vm.deal(ANY, 100);
+        vm.prank(ANY);
+        gateway.subsidizePool{value: 100}(POOL_A);
+
+        address to = makeAddr("to");
+        vm.prank(MANAGER);
+        vm.expectEmit();
+        emit IGateway.WithdrawSubsidizedPool(POOL_A, to, 100);
+        gateway.withdrawSubsidizedPool(POOL_A, to, 100);
+
+        assertEq(gateway.subsidizedValue(POOL_A), 0);
+        assertEq(MANAGER.balance, 0);
+        assertEq(to.balance, 100);
     }
 }
 
