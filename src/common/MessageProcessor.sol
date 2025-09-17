@@ -26,12 +26,12 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {IRecoverable} from "../misc/interfaces/IRecoverable.sol";
 
-uint16 constant MAINNET_CENTRIFUGE_ID = 1;
-
 contract MessageProcessor is Auth, IMessageProcessor {
     using CastLib for *;
     using MessageLib for *;
     using BytesLib for bytes;
+
+    uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
 
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
