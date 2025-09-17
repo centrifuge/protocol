@@ -126,6 +126,7 @@ contract VaultsDeploymentSpokeExtTest is VaultsDeploymentTest {
     function testGatewayExt(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root)); // From common
+        vm.assume(nonWard != address(gateway)); // From common
         vm.assume(nonWard != address(messageDispatcher)); // From common
         vm.assume(nonWard != address(multiAdapter)); // From common
         vm.assume(nonWard != address(spoke)); // From spoke
