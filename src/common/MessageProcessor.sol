@@ -32,6 +32,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
 
+    uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
+
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
@@ -71,17 +73,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
-        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
 
+        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
 
         if (kind == MessageType.ScheduleUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
             root.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RecoverTokens) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
             tokenRecoverer.recoverTokens(
                 IRecoverable(m.target.toAddress()), m.token.toAddress(), m.tokenId, m.to.toAddress(), m.amount
