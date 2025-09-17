@@ -26,6 +26,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     event File(bytes32 indexed what, address addr);
 
+    event SetManager(PoolId poolId, address manager);
+    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
+
     event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
@@ -69,11 +72,25 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a handle is called without enough gas to process the message.
     error NotEnoughGasToProcess();
 
+    /// @notice Dispatched when a recovery message is not executed from the manager.
+    error ManagerNotAllowed();
+
     /// @notice Used to update an address ( state variable ) on very rare occasions.
     /// @dev    Currently used to update addresses of contract instances.
     /// @param  what The name of the variable to be updated.
     /// @param  data New address.
     function file(bytes32 what, address data) external;
+
+    /// @notice Configures a manager address for a pool.
+    /// @param  poolId PoolId associated to the adapters
+    /// @param  manager address
+    function setManager(PoolId poolId, address manager) external;
+
+    /// @notice Indicates if the gateway for a determined pool can send messages or not
+    /// @param centrifugeId Centrifuge ID associated to this block
+    /// @param  poolId PoolId associated to this block
+    /// @param  canSend If can send messages or not
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Repay an underpaid batch.
     /// @dev Depending on the repaid message properties the payment vary.
