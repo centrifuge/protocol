@@ -96,6 +96,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external payable payTransaction protected {
         IShareToken share = IShareToken(shareToken(poolId, scId));
@@ -109,7 +110,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         share.burn(address(this), amount);
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
+        sender.sendInitiateTransferShares(
+            centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit
+        );
     }
 
     /// @inheritdoc ISpoke

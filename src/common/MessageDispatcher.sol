@@ -362,6 +362,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
@@ -369,6 +370,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
             );
         } else {
+            gateway.setExtraGasLimit(extraGasLimit);
             gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({

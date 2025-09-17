@@ -157,6 +157,7 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  receiver A bytes32 representation of the receiver address
     /// @param  amount The amount of tokens to transfer
+    /// @param  extraGasLimit extra gas limit used for some extra computation that could happen on the intermediary hub
     /// @param  remoteExtraGasLimit extra gas limit used for some extra computation that could happen in the chain where
     /// the transfer is executed.
     function crosschainTransferShares(
@@ -165,6 +166,7 @@ interface ISpoke {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external payable;
 
