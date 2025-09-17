@@ -19,7 +19,7 @@ import {TransientStorageLib} from "../misc/libraries/TransientStorageLib.sol";
 import {Recoverable, IRecoverable, ETH_ADDRESS} from "../misc/Recoverable.sol";
 
 /// @title  Gateway
-/// @notice Routing contract that forwards outgoing messages through an adapters
+/// @notice Routing contract that forwards outgoing messages through an adapter
 ///
 ///         Supports batching multiple messages, as well as paying for methods manually or through pool-level subsidies.
 ///
