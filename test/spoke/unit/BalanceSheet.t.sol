@@ -62,6 +62,7 @@ contract BalanceSheetTest is Test {
     address immutable MANAGER = makeAddr("MANAGER");
 
     uint128 constant AMOUNT = 100;
+    uint128 constant COST = 123;
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("scId"));
     AssetId constant ASSET_20 = AssetId.wrap(3);
@@ -171,7 +172,7 @@ contract BalanceSheetTest is Test {
                 price,
                 EXTRA_GAS
             ),
-            abi.encode(0)
+            abi.encode(COST)
         );
     }
 
@@ -190,7 +191,7 @@ contract BalanceSheetTest is Test {
                 }),
                 EXTRA_GAS
             ),
-            abi.encode(0)
+            abi.encode(COST)
         );
     }
 }
@@ -660,7 +661,7 @@ contract BalanceSheetTestSubmitQueuedAssets is BalanceSheetTest {
         _mockSendUpdateHoldingAmount(ASSET_20, 0, ASSET_PRICE, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
-        balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS);
+        assertEq(balanceSheet.submitQueuedAssets(POOL_A, SC_1, ASSET_20, EXTRA_GAS), COST);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 1);
@@ -784,7 +785,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
         _mockSendUpdateShares(0, !IS_ISSUANCE, IS_SNAPSHOT, 0);
 
         vm.prank(managerOrAuth ? MANAGER : AUTH);
-        balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
+        assertEq(balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS), COST);
 
         (,,, uint64 nonce) = balanceSheet.queuedShares(POOL_A, SC_1);
         assertEq(nonce, 1);
