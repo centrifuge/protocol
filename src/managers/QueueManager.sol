@@ -77,7 +77,6 @@ contract QueueManager is IQueueManager, IUpdateContract {
         );
 
         (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
-        // require(delta > 0 || queuedAssetCounter > 0, NoUpdates());
 
         require(assetIds.length <= 256, TooManyAssets()); // Bitmap limit
 
