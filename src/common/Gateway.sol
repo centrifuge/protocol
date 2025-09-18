@@ -71,6 +71,11 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
+    modifier onlyManager(PoolId poolId) {
+        require(msg.sender == manager[poolId], ManagerNotAllowed());
+        _;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -92,7 +97,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     receive() external payable {
-        _subsidizePool(GLOBAL_POT, msg.sender, msg.value);
+        _depositSubsidy(GLOBAL_POT, msg.sender, msg.value);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -171,6 +176,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     function _send(uint16 centrifugeId, bytes memory batch, uint128 batchGasLimit) internal returns (bool succeeded) {
         PoolId adapterPoolId = processor.messagePoolId(batch);
+        require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
+
         PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
@@ -178,17 +185,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (transactionRefund != address(0)) {
             require(cost <= fuel, NotEnoughTransactionGas());
             fuel -= cost;
-            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
-                _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
-                _subsidizePool(paymentPoolId, address(subsidy[paymentPoolId].refund), cost);
-                return false;
-            }
         } else {
-            if (isOutgoingBlocked[centrifugeId][adapterPoolId]) {
-                _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
-                return false;
-            }
-
             // Subsidized pool payment
             if (cost > subsidy[paymentPoolId].value) {
                 _requestPoolFunding(paymentPoolId);
@@ -262,7 +259,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             // Extract from the GLOBAL_POT
             subsidy[GLOBAL_POT].value -= refundBalance.toUint96();
-            _subsidizePool(poolId, address(refund), refundBalance);
+            _depositSubsidy(poolId, address(refund), refundBalance);
         }
     }
 
@@ -278,14 +275,24 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function subsidizePool(PoolId poolId) public payable {
-        _subsidizePool(poolId, msg.sender, msg.value);
+    function depositSubsidy(PoolId poolId) public payable {
+        _depositSubsidy(poolId, msg.sender, msg.value);
     }
 
-    function _subsidizePool(PoolId poolId, address who, uint256 value) internal {
+    function _depositSubsidy(PoolId poolId, address who, uint256 value) internal {
         require(address(subsidy[poolId].refund) != address(0), RefundAddressNotSet());
         subsidy[poolId].value += value.toUint96();
-        emit SubsidizePool(poolId, who, value);
+        emit DepositSubsidy(poolId, who, value);
+    }
+
+    /// @inheritdoc IGateway
+    function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyManager(poolId) {
+        subsidy[poolId].value -= amount.toUint96();
+
+        (bool success,) = payable(to).call{value: amount}(new bytes(0));
+        require(success, CannotWithdraw());
+
+        emit WithdrawSubsidy(poolId, to, amount);
     }
 
     /// @inheritdoc IGateway
@@ -317,7 +324,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             if (!success) {
                 // If refund fails, move remaining fuel to global pot
-                _subsidizePool(GLOBAL_POT, transactionRefund_, fuel_);
+                _depositSubsidy(GLOBAL_POT, transactionRefund_, fuel_);
             }
         }
     }
@@ -348,8 +355,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external {
-        require(msg.sender == manager[poolId], ManagerNotAllowed());
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
