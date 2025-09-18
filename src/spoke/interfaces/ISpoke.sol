@@ -170,6 +170,15 @@ interface ISpoke {
         uint128 remoteExtraGasLimit
     ) external payable;
 
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable;
+
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
     /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
     /// @dev `name()` and `symbol()` MAY return no values.
