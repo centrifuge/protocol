@@ -5,6 +5,7 @@ import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 import {IGuardian, ISafe} from "./interfaces/IGuardian.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IRootMessageSender} from "./interfaces/IGatewaySenders.sol";
@@ -18,14 +19,22 @@ contract Guardian is IGuardian {
     IRoot public immutable root;
 
     ISafe public safe;
+    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     IHubGuardianActions public hub;
     IRootMessageSender public sender;
 
-    constructor(ISafe safe_, IMultiAdapter multiAdapter_, IRoot root_, IRootMessageSender messageDispatcher_) {
-        root = root_;
-        multiAdapter = multiAdapter_;
+    constructor(
+        ISafe safe_,
+        IRoot root_,
+        IGateway gateway_,
+        IMultiAdapter multiAdapter_,
+        IRootMessageSender messageDispatcher_
+    ) {
         safe = safe_;
+        root = root_;
+        gateway = gateway_;
+        multiAdapter = multiAdapter_;
         sender = messageDispatcher_;
     }
 
@@ -48,6 +57,7 @@ contract Guardian is IGuardian {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IRootMessageSender(data);
         else if (what == "hub") hub = IHubGuardianActions(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
 
@@ -114,8 +124,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setAdaptersManager(address manager) external onlySafe {
-        multiAdapter.setManager(PoolId.wrap(0), manager);
+    function setGatewayManager(address manager) external onlySafe {
+        gateway.setManager(PoolId.wrap(0), manager);
     }
 
     //----------------------------------------------------------------------------------------------

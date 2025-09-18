@@ -5,6 +5,7 @@ import {PoolId} from "./types/PoolId.sol";
 import {AssetId} from "./types/AssetId.sol";
 import {IRoot} from "./interfaces/IRoot.sol";
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IGateway} from "./interfaces/IGateway.sol";
 import {ShareClassId} from "./types/ShareClassId.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
@@ -31,11 +32,14 @@ contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
 
+    uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
+
     IRoot public immutable root;
     ITokenRecoverer public immutable tokenRecoverer;
 
     IHubGatewayHandler public hub;
     ISpokeGatewayHandler public spoke;
+    IGateway public gateway;
     IMultiAdapter public multiAdapter;
     IBalanceSheetGatewayHandler public balanceSheet;
     IUpdateContractGatewayHandler public contractUpdater;
@@ -53,6 +57,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHubGatewayHandler(data);
         else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IUpdateContractGatewayHandler(data);
@@ -68,17 +73,20 @@ contract MessageProcessor is Auth, IMessageProcessor {
     /// @inheritdoc IMessageHandler
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
-        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
 
+        uint16 sourceCentrifugeId = message.messageSourceCentrifugeId();
         require(sourceCentrifugeId == 0 || sourceCentrifugeId == centrifugeId, InvalidSourceChain());
 
         if (kind == MessageType.ScheduleUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             root.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
             root.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RecoverTokens) {
+            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.RecoverTokens memory m = message.deserializeRecoverTokens();
             tokenRecoverer.recoverTokens(
                 IRecoverable(m.target.toAddress()), m.token.toAddress(), m.tokenId, m.to.toAddress(), m.amount
@@ -93,9 +101,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
             multiAdapter.setAdapters(centrifugeId, PoolId.wrap(m.poolId), adapters, m.threshold, m.recoveryIndex);
-        } else if (kind == MessageType.SetPoolAdaptersManager) {
-            MessageLib.SetPoolAdaptersManager memory m = message.deserializeSetPoolAdaptersManager();
-            multiAdapter.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hub.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
@@ -202,6 +207,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.MaxSharePriceAge) {
             MessageLib.MaxSharePriceAge memory m = message.deserializeMaxSharePriceAge();
             spoke.setMaxSharePriceAge(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.maxPriceAge);
+        } else if (kind == MessageType.SetGatewayManager) {
+            MessageLib.SetGatewayManager memory m = message.deserializeSetGatewayManager();
+            gateway.setManager(PoolId.wrap(m.poolId), m.manager.toAddress());
         } else {
             revert InvalidMessage(uint8(kind));
         }
