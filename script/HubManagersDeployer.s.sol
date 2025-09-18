@@ -28,8 +28,6 @@ contract HubManagersActionBatcher is HubActionBatcher {
         // Rely root
         report.navManager.rely(address(report.hub.common.root));
         report.simplePriceManager.rely(address(report.hub.common.root));
-
-        // File methods
     }
 
     function revokeManagers(HubManagersReport memory report) public onlyDeployer {
