@@ -96,51 +96,63 @@ interface IHub {
 
     /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
-        external;
+        external
+        returns (uint256 cost);
 
     /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
-        external;
+        external
+        returns (uint256 cost);
 
     /// @notice Notify to a CV instance that a new pool is available
     /// @param centrifugeId Chain where CV instance lives
-    function notifyPool(PoolId poolId, uint16 centrifugeId) external;
+    function notifyPool(PoolId poolId, uint16 centrifugeId) external returns (uint256 cost);
 
     /// @notice Notify to a CV instance that a new share class is available
     /// @param centrifugeId Chain where CV instance lives
     /// @param hook The hook address of the share class
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external;
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook)
+        external
+        returns (uint256 cost);
 
     /// @notice Notify to a CV instance that share metadata has updated
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
+        external
+        returns (uint256 cost);
 
     /// @notice Update on a CV instance the hook of a share token
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook) external;
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook)
+        external
+        returns (uint256 cost);
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
     /// @dev The receiving centrifugeId is derived from the provided assetId
     /// @param centrifugeId Chain to where the share price is notified
     /// @param scId Identifier of the share class
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external returns (uint256 cost);
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
     /// @dev The receiving centrifugeId is derived from the provided assetId
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external;
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external returns (uint256 cost);
 
     /// @notice Set the max price age per asset of a share class
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  maxPriceAge timestamp until the price become invalid
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge) external;
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge)
+        external
+        returns (uint256 cost);
 
     /// @notice Set the max price age per share of a share class
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id
     /// @param  maxPriceAge timestamp until the price become invalid
-    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge) external;
+    function setMaxSharePriceAge(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint64 maxPriceAge)
+        external
+        returns (uint256 cost);
 
     /// @notice Attach custom data to a pool
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external;
@@ -156,10 +168,12 @@ interface IHub {
     function updateHubManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Allow/disallow an account to interact as request manager
-    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external;
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external returns (uint256 cost);
 
     /// @notice Allow/disallow an account to interact as balance sheet manager for this pool
-    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage) external;
+    function updateBalanceSheetManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost);
 
     /// @notice Add a new share class to the pool
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
@@ -178,7 +192,7 @@ interface IHub {
         AssetId depositAssetId,
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount
-    ) external returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
+    ) external returns (uint256 cost, uint128 pendingAssetAmount, uint128 approvedPoolAmount);
 
     /// @notice Approves a percentage of all redemption requests for the given triplet of pool id, share class id and
     /// deposit asset id.
@@ -207,7 +221,9 @@ interface IHub {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
+    )
+        external
+        returns (uint256 cost, uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
 
     /// @notice Take back shares for the given identifier based on the provided NAV per share.
     /// deposit asset id.
@@ -223,15 +239,19 @@ interface IHub {
         uint32 nowRevokeEpochId,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+    )
+        external
+        returns (uint256 cost, uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
 
     /// @notice Force cancels a pending deposit request.
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
-        external;
+        external
+        returns (uint256 cost);
 
     /// @notice Force cancels a pending redeem request.
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external;
+        external
+        returns (uint256 cost);
 
     /// @notice Update remotely a restriction.
     /// @param centrifugeId Chain where CV instance lives.
@@ -244,7 +264,7 @@ interface IHub {
         uint16 centrifugeId,
         bytes calldata payload,
         uint128 extraGasLimit
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Updates a vault based on VaultUpdateKind
     /// @param  poolId The centrifuge pool id
@@ -261,7 +281,7 @@ interface IHub {
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
         uint128 extraGasLimit
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Update remotely an existing vault.
     /// @param centrifugeId Chain where CV instance lives.
@@ -276,7 +296,7 @@ interface IHub {
         bytes32 target,
         bytes calldata payload,
         uint128 extraGasLimit
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Update the price per share of a share class
     /// @param scId The share class identifier
@@ -363,11 +383,11 @@ interface IHub {
         bytes32[] memory remoteAdapters,
         uint8 threshold,
         uint8 recoveryIndex
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Set a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
     /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param poolId pool associated to this configuration.
     /// @param manager address used as manager.
-    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external;
+    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
 }
