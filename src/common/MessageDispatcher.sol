@@ -384,15 +384,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         bytes32 receiver,
         uint128 amount,
         uint128 remoteExtraGasLimit
-    ) external payable auth returns (uint256 cost) {
+    ) external auth returns (uint256 cost) {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hub.initiateTransferShares(
                 localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit
             );
         } else {
-            require(!gateway.isBatching(), CannotBeBatched());
-            gateway.depositSubsidy{value: msg.value}(poolId);
-            cost = gateway.send(
+            return gateway.send(
                 poolId.centrifugeId(),
                 MessageLib.InitiateTransferShares({
                     centrifugeId: targetCentrifugeId,
@@ -403,7 +401,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                     extraGasLimit: remoteExtraGasLimit
                 }).serialize()
             );
-            require(msg.value >= cost, NotEnoughGasToSendMessage());
         }
     }
 
@@ -435,7 +432,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 return gateway.send(targetCentrifugeId, message);
             } else {
                 // Spoke chain X => Hub chain Y => Spoke chain Z
-                gateway.addUnpaidMessage(targetCentrifugeId, message, false);
+                gateway.addUnpaidMessage(targetCentrifugeId, message);
             }
         }
     }
@@ -510,19 +507,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc ISpokeMessageSender
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals)
         external
-        payable
         auth
         returns (uint256 cost)
     {
         if (centrifugeId == localCentrifugeId) {
             hub.registerAsset(assetId, decimals);
         } else {
-            require(!gateway.isBatching(), CannotBeBatched());
-            gateway.depositSubsidy{value: msg.value}(GLOBAL_POOL);
-            cost = gateway.send(
+            return gateway.send(
                 centrifugeId, MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: decimals}).serialize()
             );
-            require(msg.value >= cost, NotEnoughGasToSendMessage());
         }
     }
 

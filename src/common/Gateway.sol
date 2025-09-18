@@ -187,7 +187,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         if (cost <= subsidy[paymentPoolId].value) {
             subsidy[paymentPoolId].value -= cost.toUint96();
         } else {
-            _addUnpaidBatch(centrifugeId, batch, true, batchGasLimit);
+            _addUnpaidBatch(centrifugeId, batch, batchGasLimit);
             return 0;
         }
 
@@ -197,20 +197,19 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, bool isSubsidized) external auth {
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external auth {
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
         extraGasLimit = 0;
         emit PrepareMessage(centrifugeId, processor.messagePoolId(message), message);
-        _addUnpaidBatch(centrifugeId, message, isSubsidized, gasLimit);
+        _addUnpaidBatch(centrifugeId, message, gasLimit);
     }
 
-    function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, bool isSubsidized, uint128 gasLimit) internal {
+    function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
         bytes32 batchHash = keccak256(message);
 
         Underpaid storage underpaid_ = underpaid[centrifugeId][batchHash];
         underpaid_.counter++;
         underpaid_.gasLimit = gasLimit;
-        underpaid_.isSubsidized = isSubsidized;
 
         emit UnderpaidBatch(centrifugeId, message, batchHash);
     }
@@ -223,10 +222,10 @@ contract Gateway is Auth, Recoverable, IGateway {
 
         underpaid_.counter--;
 
-        if (!underpaid_.isSubsidized) depositSubsidy(processor.messagePoolIdPayment(batch));
+        depositSubsidy(processor.messagePoolIdPayment(batch));
 
         uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit);
-        require(cost > 0 && (underpaid_.isSubsidized || msg.value >= cost), CannotBeRepaid());
+        require(cost > 0 && msg.value >= cost, CannotBeRepaid());
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 

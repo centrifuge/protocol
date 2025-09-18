@@ -21,7 +21,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     struct Underpaid {
         uint128 gasLimit;
         uint64 counter;
-        bool isSubsidized;
     }
 
     event File(bytes32 indexed what, address addr);
@@ -96,10 +95,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Repay an underpaid batch.
-    /// @dev Depending on the repaid message properties the payment vary.
-    ///      Check Underpaid.isSubsidized to know how the message must be repaid.
-    ///      - If !Underpaid.isSubsidized, then the payment is transactional and needs to be paid in `repay{value: ..}()`
-    ///      - If Underpaid.isSubsidized, the funds are taken from the subsidized pool
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.
@@ -119,7 +114,7 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
 
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, bool isSubsidized) external;
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
 
     /// @notice Initialize batching message
     function startBatching() external;

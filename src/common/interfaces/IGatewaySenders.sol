@@ -175,13 +175,10 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         bytes32 receiver,
         uint128 amount,
         uint128 remoteExtraGasLimit
-    ) external payable returns (uint256 cost);
+    ) external returns (uint256 cost);
 
     /// @notice Creates and send the message
-    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals)
-        external
-        payable
-        returns (uint256 cost);
+    function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals) external returns (uint256 cost);
 
     /// @notice Creates and send the message
     function sendUpdateHoldingAmount(
