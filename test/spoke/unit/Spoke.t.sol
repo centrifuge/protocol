@@ -138,14 +138,6 @@ contract SpokeTest is Test {
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.vaultKind.selector), abi.encode(VaultKind.Async));
     }
 
-    function _mockPayment(address who) internal {
-        vm.mockCall(
-            address(gateway), GAS, abi.encodeWithSelector(gateway.startTransactionPayment.selector, who), abi.encode()
-        );
-
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endTransactionPayment.selector), abi.encode());
-    }
-
     function _mockValidShareHook(address hook) internal {
         vm.mockCall(
             address(share), abi.encodeWithSignature("file(bytes32,address)", bytes32("hook"), hook), abi.encode()
@@ -181,7 +173,7 @@ contract SpokeTest is Test {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
-            abi.encode()
+            abi.encode(0)
         );
     }
 
@@ -196,8 +188,6 @@ contract SpokeTest is Test {
     }
 
     function _utilRegisterAsset(address asset) internal {
-        _mockPayment(ANY);
-
         if (asset == erc20) _mockERC20(DECIMALS);
         if (asset == erc20) _mockSendRegisterAsset(ASSET_ID_20);
 
@@ -276,11 +266,6 @@ contract SpokeTestFile is SpokeTest {
 contract SpokeTestCrosschainTransferShares is SpokeTest {
     using CastLib for *;
 
-    function setUp() public override {
-        super.setUp();
-        _mockPayment(ANY);
-    }
-
     function _mockCrossTransferShare(address sender, bool value) public {
         vm.mockCall(
             address(share),
@@ -336,7 +321,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
                 AMOUNT,
                 0
             ),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(ANY);
@@ -349,11 +334,6 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 contract SpokeTestRegisterAsset is SpokeTest {
     AssetId immutable ASSET_ID_6909_2 = newAssetId(LOCAL_CENTRIFUGE_ID, 2);
     uint256 constant TOKEN_2 = 123;
-
-    function setUp() public override {
-        super.setUp();
-        _mockPayment(ANY);
-    }
 
     function testErrAssetMissingDecimalsERC20() public {
         vm.prank(ANY);
@@ -492,7 +472,7 @@ contract SpokeTestRequest is SpokeTest {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(address(requestManager));

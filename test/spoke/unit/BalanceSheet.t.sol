@@ -171,7 +171,7 @@ contract BalanceSheetTest is Test {
                 price,
                 EXTRA_GAS
             ),
-            abi.encode()
+            abi.encode(0)
         );
     }
 
@@ -190,7 +190,7 @@ contract BalanceSheetTest is Test {
                 }),
                 EXTRA_GAS
             ),
-            abi.encode()
+            abi.encode(0)
         );
     }
 }
