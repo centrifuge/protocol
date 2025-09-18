@@ -4,14 +4,14 @@ pragma solidity 0.8.28;
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {SpokeDeployer, SpokeReport, SpokeActionBatcher} from "./SpokeDeployer.s.sol";
 
-import {VaultDecoder} from "../src/managers/decoders/VaultDecoder.sol";
-import {CircleDecoder} from "../src/managers/decoders/CircleDecoder.sol";
-import {OnOfframpManagerFactory} from "../src/managers/OnOfframpManager.sol";
-import {MerkleProofManagerFactory} from "../src/managers/MerkleProofManager.sol";
+import {VaultDecoder} from "../src/managers/spoke/decoders/VaultDecoder.sol";
+import {CircleDecoder} from "../src/managers/spoke/decoders/CircleDecoder.sol";
+import {OnOfframpManagerFactory} from "../src/managers/spoke/OnOfframpManager.sol";
+import {MerkleProofManagerFactory} from "../src/managers/spoke/MerkleProofManager.sol";
 
 import "forge-std/Script.sol";
 
-struct ManagersReport {
+struct SpokeManagersReport {
     SpokeReport spoke;
     OnOfframpManagerFactory onOfframpManagerFactory;
     MerkleProofManagerFactory merkleProofManagerFactory;
@@ -19,20 +19,20 @@ struct ManagersReport {
     CircleDecoder circleDecoder;
 }
 
-contract ManagersActionBatcher is SpokeActionBatcher {}
+contract SpokeManagersActionBatcher is SpokeActionBatcher {}
 
-contract ManagersDeployer is SpokeDeployer {
+contract SpokeManagersDeployer is SpokeDeployer {
     OnOfframpManagerFactory public onOfframpManagerFactory;
     MerkleProofManagerFactory public merkleProofManagerFactory;
     VaultDecoder public vaultDecoder;
     CircleDecoder public circleDecoder;
 
-    function deployManagers(CommonInput memory input, ManagersActionBatcher batcher) public {
-        _preDeployManagers(input, batcher);
-        _postDeployManagers(batcher);
+    function deploySpokeManagers(CommonInput memory input, SpokeManagersActionBatcher batcher) public {
+        _preDeploySpokeManagers(input, batcher);
+        _postDeploySpokeManagers(batcher);
     }
 
-    function _preDeployManagers(CommonInput memory input, ManagersActionBatcher batcher) internal {
+    function _preDeploySpokeManagers(CommonInput memory input, SpokeManagersActionBatcher batcher) internal {
         _preDeploySpoke(input, batcher);
 
         onOfframpManagerFactory = OnOfframpManagerFactory(
@@ -63,16 +63,16 @@ contract ManagersDeployer is SpokeDeployer {
         register("circleDecoder", address(circleDecoder));
     }
 
-    function _postDeployManagers(ManagersActionBatcher batcher) internal {
+    function _postDeploySpokeManagers(SpokeManagersActionBatcher batcher) internal {
         _postDeploySpoke(batcher);
     }
 
-    function removeManagersDeployerAccess(ManagersActionBatcher batcher) public {
+    function removeSpokeManagersDeployerAccess(SpokeManagersActionBatcher batcher) public {
         removeSpokeDeployerAccess(batcher);
     }
 
-    function _managersReport() internal view returns (ManagersReport memory) {
-        return ManagersReport(
+    function _spokeManagersReport() internal view returns (SpokeManagersReport memory) {
+        return SpokeManagersReport(
             _spokeReport(), onOfframpManagerFactory, merkleProofManagerFactory, vaultDecoder, circleDecoder
         );
     }

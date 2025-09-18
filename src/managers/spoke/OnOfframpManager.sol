@@ -5,17 +5,17 @@ import {IOnOfframpManager} from "./interfaces/IOnOfframpManager.sol";
 import {IOnOfframpManagerFactory} from "./interfaces/IOnOfframpManagerFactory.sol";
 import {IDepositManager, IWithdrawManager} from "./interfaces/IBalanceSheetManager.sol";
 
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {IERC165} from "../misc/interfaces/IERC165.sol";
-import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {IERC165} from "../../misc/interfaces/IERC165.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractType, UpdateContractMessageLib} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "../../spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractType, UpdateContractMessageLib} from "../../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  OnOfframpManager
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets.

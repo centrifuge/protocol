@@ -175,7 +175,7 @@ import {Auth} from "../misc/Auth.sol";
 // Before
 import {CommonInput} from "script/CommonDeployer.s.sol";
 
-// After (from script/ManagersDeployer.s.sol)
+// After (from script/SpokeManagersDeployer.s.sol)
 import {CommonInput} from "./CommonDeployer.s.sol";
 ```
 

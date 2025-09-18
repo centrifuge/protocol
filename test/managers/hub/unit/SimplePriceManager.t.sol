@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {Multicall} from "../../../src/misc/Multicall.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {Multicall} from "../../../../src/misc/Multicall.sol";
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
+import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
 
-import {IHub} from "../../../src/hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../../../src/hub/interfaces/IShareClassManager.sol";
+import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
+import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../../../src/hub/interfaces/IShareClassManager.sol";
 
-import {ISimplePriceManager} from "../../../src/managers/interfaces/ISimplePriceManager.sol";
-import {SimplePriceManager} from "../../../src/managers/SimplePriceManager.sol";
+import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
+import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
 
 import "forge-std/Test.sol";
 

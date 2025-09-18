@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {AssetId} from "../../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import "../../../spoke/integration/BaseTest.sol";
 
-import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {OnOfframpManagerFactory} from "../../../src/managers/OnOfframpManager.sol";
-import {IOnOfframpManager} from "../../../src/managers/interfaces/IOnOfframpManager.sol";
+import {OnOfframpManagerFactory} from "../../../../src/managers/spoke/OnOfframpManager.sol";
+import {IOnOfframpManager} from "../../../../src/managers/spoke/interfaces/IOnOfframpManager.sol";
 
 abstract contract OnOfframpManagerBaseTest is BaseTest {
     using CastLib for *;

@@ -4,18 +4,18 @@ pragma solidity 0.8.28;
 import {INAVHook} from "./interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
 
-import {D18, d18} from "../misc/types/D18.sol";
-import {IMulticall} from "../misc/interfaces/IMulticall.sol";
-import {Auth} from "../misc/Auth.sol";
+import {D18, d18} from "../../misc/types/D18.sol";
+import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
+import {Auth} from "../../misc/Auth.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {AssetId} from "../common/types/AssetId.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {MAX_MESSAGE_COST} from "../common/interfaces/IGasService.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {AssetId} from "../../common/types/AssetId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {MAX_MESSAGE_COST} from "../../common/interfaces/IGasService.sol";
 
-import {IHub} from "../hub/interfaces/IHub.sol";
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {IShareClassManager} from "../hub/interfaces/IShareClassManager.sol";
+import {IHub} from "../../hub/interfaces/IHub.sol";
+import {IHubRegistry} from "../../hub/interfaces/IHubRegistry.sol";
+import {IShareClassManager} from "../../hub/interfaces/IShareClassManager.sol";
 
 /// @notice Share price calculation manager for single share class pools.
 contract SimplePriceManager is ISimplePriceManager, Auth {

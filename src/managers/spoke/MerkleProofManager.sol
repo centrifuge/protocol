@@ -4,15 +4,15 @@ pragma solidity 0.8.28;
 import {IMerkleProofManagerFactory} from "./interfaces/IMerkleProofManagerFactory.sol";
 import {IMerkleProofManager, Call, PolicyLeaf} from "./interfaces/IMerkleProofManager.sol";
 
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MerkleProofLib} from "../misc/libraries/MerkleProofLib.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MerkleProofLib} from "../../misc/libraries/MerkleProofLib.sol";
 
-import {PoolId} from "../common/types/PoolId.sol";
-import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {PoolId} from "../../common/types/PoolId.sol";
+import {ShareClassId} from "../../common/types/ShareClassId.sol";
 
-import {IBalanceSheet} from "../spoke/interfaces/IBalanceSheet.sol";
-import {IUpdateContract} from "../spoke/interfaces/IUpdateContract.sol";
-import {UpdateContractMessageLib, UpdateContractType} from "../spoke/libraries/UpdateContractMessageLib.sol";
+import {IBalanceSheet} from "../../spoke/interfaces/IBalanceSheet.sol";
+import {IUpdateContract} from "../../spoke/interfaces/IUpdateContract.sol";
+import {UpdateContractMessageLib, UpdateContractType} from "../../spoke/libraries/UpdateContractMessageLib.sol";
 
 /// @title  Merkle Proof Manager
 /// @author Inspired by Boring Vaults from Se7en-Seas

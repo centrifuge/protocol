@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import {INAVHook} from "./INAVManager.sol";
 
-import {D18} from "../../misc/types/D18.sol";
+import {D18} from "../../../misc/types/D18.sol";
 
-import {PoolId} from "../../common/types/PoolId.sol";
-import {AssetId} from "../../common/types/AssetId.sol";
-import {ShareClassId} from "../../common/types/ShareClassId.sol";
+import {PoolId} from "../../../common/types/PoolId.sol";
+import {AssetId} from "../../../common/types/AssetId.sol";
+import {ShareClassId} from "../../../common/types/ShareClassId.sol";
 
 interface ISimplePriceManager is INAVHook {
     event Update(PoolId indexed poolId, uint128 newNAV, uint128 newIssuance, D18 newSharePrice);

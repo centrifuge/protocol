@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {d18} from "../../../src/misc/types/D18.sol";
+import {d18} from "../../../../src/misc/types/D18.sol";
 
-import {PoolId} from "../../../src/common/types/PoolId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
-import {IValuation} from "../../../src/common/interfaces/IValuation.sol";
-import {AssetId, newAssetId} from "../../../src/common/types/AssetId.sol";
-import {ISnapshotHook} from "../../../src/common/interfaces/ISnapshotHook.sol";
+import {PoolId} from "../../../../src/common/types/PoolId.sol";
+import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
+import {IValuation} from "../../../../src/common/interfaces/IValuation.sol";
+import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
+import {ISnapshotHook} from "../../../../src/common/interfaces/ISnapshotHook.sol";
 
-import "../../hub/integration/BaseTest.sol";
+import "../../../hub/integration/BaseTest.sol";
 
-import {INAVManager, INAVHook} from "../../../src/managers/interfaces/INAVManager.sol";
-import {ISimplePriceManager} from "../../../src/managers/interfaces/ISimplePriceManager.sol";
+import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
 
 contract NAVManagerIntegrationTest is BaseTest {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -154,9 +154,9 @@ contract NAVManagerIntegrationTest is BaseTest {
 
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
-        assertEq(hubLoss, 250e18);
+        assertEq(hubLoss, 250e18, "hubLoss2");
         assertFalse(hubLossIsPositive);
-        assertEq(navHub, 250e18);
+        assertEq(navHub, 250e18, "navHub2");
 
         assertEq(navSpoke, 3400e18);
         assertEq(navHub2, navHub);
@@ -177,9 +177,9 @@ contract NAVManagerIntegrationTest is BaseTest {
         globalIssuance = simplePriceManager.globalIssuance(POOL_A);
 
         // NAV and global issuance should remain unchanged, only issuance per network changes
-        assertEq(navHub, 250e18);
+        assertEq(navHub, 250e18, "navHub3");
         assertEq(navSpoke, 3400e18);
-        assertEq(navHub2, navHub);
+        assertEq(navHub2, navHub, "navHub v navHub3");
         assertEq(navSpoke2, navSpoke);
         assertEq(issuanceHub, 370e18);
         assertEq(issuanceSpoke, 3430e18);

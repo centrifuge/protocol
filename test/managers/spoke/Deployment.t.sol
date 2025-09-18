@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CommonDeploymentInputTest} from "../common/Deployment.t.sol";
+import {CommonDeploymentInputTest} from "../../common/Deployment.t.sol";
 
-import {ManagersDeployer, ManagersActionBatcher} from "../../script/ManagersDeployer.s.sol";
+import {SpokeManagersDeployer, SpokeManagersActionBatcher} from "../../../script/SpokeManagersDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
-contract ManagersDeploymentTest is ManagersDeployer, CommonDeploymentInputTest {
+contract ManagersDeploymentTest is SpokeManagersDeployer, CommonDeploymentInputTest {
     function setUp() public {
-        ManagersActionBatcher batcher = new ManagersActionBatcher();
-        deployManagers(_commonInput(), batcher);
-        removeManagersDeployerAccess(batcher);
+        SpokeManagersActionBatcher batcher = new SpokeManagersActionBatcher();
+        deploySpokeManagers(_commonInput(), batcher);
+        removeSpokeManagersDeployerAccess(batcher);
     }
 
     function testOnOfframpManagerFactory() public view {

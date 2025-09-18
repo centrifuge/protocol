@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAuth} from "../../../src/misc/Auth.sol";
-import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+import {IAuth} from "../../../../src/misc/Auth.sol";
+import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {AssetId} from "../../../src/common/types/AssetId.sol";
-import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {AssetId} from "../../../../src/common/types/AssetId.sol";
+import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 
-import "../../spoke/integration/BaseTest.sol";
+import "../../../spoke/integration/BaseTest.sol";
 
-import {BalanceSheet} from "../../../src/spoke/BalanceSheet.sol";
-import {UpdateContractMessageLib} from "../../../src/spoke/libraries/UpdateContractMessageLib.sol";
+import {BalanceSheet} from "../../../../src/spoke/BalanceSheet.sol";
+import {UpdateContractMessageLib} from "../../../../src/spoke/libraries/UpdateContractMessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {VaultDecoder} from "../../../src/managers/decoders/VaultDecoder.sol";
-import {MerkleProofManager, PolicyLeaf, Call} from "../../../src/managers/MerkleProofManager.sol";
-import {IMerkleProofManager, IERC7751} from "../../../src/managers/interfaces/IMerkleProofManager.sol";
+import {VaultDecoder} from "../../../../src/managers/spoke/decoders/VaultDecoder.sol";
+import {MerkleProofManager, PolicyLeaf, Call} from "../../../../src/managers/spoke/MerkleProofManager.sol";
+import {IMerkleProofManager, IERC7751} from "../../../../src/managers/spoke/interfaces/IMerkleProofManager.sol";
 
 import {MerkleTreeLib} from "../libraries/MerkleTreeLib.sol";
 
