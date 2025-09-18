@@ -12,8 +12,8 @@ import {HubHelpers} from "../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../src/hub/ShareClassManager.sol";
 
-import {NAVManagerFactory} from "../src/managers/NAVManager.sol";
-import {SimplePriceManagerFactory} from "../src/managers/SimplePriceManager.sol";
+import {NAVManager} from "../src/managers/NAVManager.sol";
+import {SimplePriceManager} from "../src/managers/SimplePriceManager.sol";
 
 import "forge-std/Script.sol";
 
@@ -31,6 +31,8 @@ struct HubReport {
     ShareClassManager shareClassManager;
     HubHelpers hubHelpers;
     Hub hub;
+    NAVManager navManager;
+    SimplePriceManager simplePriceManager;
 }
 
 contract HubActionBatcher is CommonActionBatcher, HubConstants {
@@ -45,6 +47,8 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.common.messageDispatcher.rely(address(report.hub));
         report.common.multiAdapter.rely(address(report.hub));
         report.common.poolEscrowFactory.rely(address(report.hub));
+        report.navManager.rely(address(report.hub));
+        report.simplePriceManager.rely(address(report.hub));
 
         // Rely hub helpers
         report.accounting.rely(address(report.hubHelpers));
@@ -55,6 +59,10 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.hub.rely(address(report.common.messageProcessor));
         report.hub.rely(address(report.common.messageDispatcher));
         report.hub.rely(address(report.common.guardian));
+
+        // Rely other
+        report.simplePriceManager.rely(address(report.navManager));
+        report.navManager.rely(address(report.holdings));
 
         // Rely root
         report.hubRegistry.rely(address(report.common.root));
@@ -87,6 +95,8 @@ contract HubActionBatcher is CommonActionBatcher, HubConstants {
         report.shareClassManager.deny(address(this));
         report.hub.deny(address(this));
         report.hubHelpers.deny(address(this));
+        report.navManager.deny(address(this));
+        report.simplePriceManager.deny(address(this));
     }
 }
 
@@ -98,8 +108,8 @@ contract HubDeployer is CommonDeployer, HubConstants {
     ShareClassManager public shareClassManager;
     HubHelpers public hubHelpers;
     Hub public hub;
-    NAVManagerFactory public navManagerFactory;
-    SimplePriceManagerFactory public simplePriceManagerFactory;
+    NAVManager public navManager;
+    SimplePriceManager public simplePriceManager;
 
     function deployHub(CommonInput memory input, HubActionBatcher batcher) public {
         _preDeployHub(input, batcher);
@@ -167,19 +177,18 @@ contract HubDeployer is CommonDeployer, HubConstants {
             )
         );
 
-        navManagerFactory = NAVManagerFactory(
+        navManager = NAVManager(
             create3(
-                generateSalt("navManagerFactory"),
-                abi.encodePacked(type(NAVManagerFactory).creationCode, abi.encode(hub))
+                generateSalt("navManager"),
+                abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub, address(batcher)))
             )
         );
 
-        simplePriceManagerFactory = SimplePriceManagerFactory(
-            create3(
-                generateSalt("simplePriceManagerFactory"),
-                abi.encodePacked(type(SimplePriceManagerFactory).creationCode, abi.encode(hub))
-            )
+        address simplePriceManagerAddr = create3(
+            generateSalt("simplePriceManager"),
+            abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(batcher)))
         );
+        simplePriceManager = SimplePriceManager(payable(simplePriceManagerAddr));
 
         batcher.engageHub(_hubReport());
 
@@ -189,8 +198,8 @@ contract HubDeployer is CommonDeployer, HubConstants {
         register("shareClassManager", address(shareClassManager));
         register("hubHelpers", address(hubHelpers));
         register("hub", address(hub));
-        register("navManagerFactory", address(navManagerFactory));
-        register("simplePriceManagerFactory", address(simplePriceManagerFactory));
+        register("navManager", address(navManager));
+        register("simplePriceManager", address(simplePriceManager));
     }
 
     function _postDeployHub(HubActionBatcher batcher) internal {
@@ -203,6 +212,16 @@ contract HubDeployer is CommonDeployer, HubConstants {
     }
 
     function _hubReport() internal view returns (HubReport memory) {
-        return HubReport(_commonReport(), hubRegistry, accounting, holdings, shareClassManager, hubHelpers, hub);
+        return HubReport(
+            _commonReport(),
+            hubRegistry,
+            accounting,
+            holdings,
+            shareClassManager,
+            hubHelpers,
+            hub,
+            navManager,
+            simplePriceManager
+        );
     }
 }

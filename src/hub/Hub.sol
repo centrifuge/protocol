@@ -589,6 +589,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
         hubHelpers.updateAccountingValue(poolId, scId, assetId, isPositive, diff);
+
+        (bool isSnapshot,) = holdings.snapshot(poolId, scId, assetId.centrifugeId());
+
+        if (isSnapshot) {
+            ISnapshotHook hook = holdings.snapshotHook(poolId);
+            if (address(hook) != address(0)) hook.onSync(poolId, scId, assetId.centrifugeId());
+        }
     }
 
     /// @inheritdoc IHub

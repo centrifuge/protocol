@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 import {INAVHook} from "./interfaces/INAVManager.sol";
 import {ISimplePriceManager} from "./interfaces/ISimplePriceManager.sol";
-import {ISimplePriceManagerFactory} from "./interfaces/ISimplePriceManagerFactory.sol";
 
 import {D18, d18} from "../misc/types/D18.sol";
 import {IMulticall} from "../misc/interfaces/IMulticall.sol";
+import {Auth} from "../misc/Auth.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -18,48 +18,34 @@ import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../hub/interfaces/IShareClassManager.sol";
 
 /// @notice Share price calculation manager for single share class pools.
-contract SimplePriceManager is ISimplePriceManager {
-    PoolId public immutable poolId;
-    ShareClassId public immutable scId;
-
+contract SimplePriceManager is ISimplePriceManager, Auth {
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 
-    uint16[] public networks;
-    uint128 public globalIssuance;
-    uint128 public globalNetAssetValue;
-    mapping(uint16 centrifugeId => NetworkMetrics) public metrics;
+    mapping(PoolId poolId => uint16[]) public networks;
+    mapping(PoolId poolId => uint128) public globalIssuance;
+    mapping(PoolId poolId => uint128) public globalNetAssetValue;
+    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public metrics;
+    mapping(PoolId poolId => mapping(address => bool)) public manager;
 
-    mapping(address => bool) public manager;
-    mapping(address => bool) public caller;
-
-    constructor(PoolId poolId_, IHub hub_) {
-        poolId = poolId_;
+    constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
         shareClassManager = hub_.shareClassManager();
 
-        require(shareClassManager.shareClassCount(poolId_) == 1, InvalidShareClassCount());
-
-        scId = shareClassManager.previewShareClassId(poolId_, 1);
+        // TODO: where to check share class count?
+        // require(shareClassManager.shareClassCount(poolId) == 1, InvalidShareClassCount());
+        // scId = shareClassManager.previewShareClassId(poolId, 1);
     }
 
-    /// @dev Check if the msg.sender is a manager
-    modifier onlyManager() {
-        require(manager[msg.sender], NotAuthorized());
+    modifier onlyManager(PoolId poolId) {
+        require(manager[poolId][msg.sender], NotAuthorized());
         _;
     }
 
-    /// @dev Check if the msg.sender is a hub manager
-    modifier onlyHubManager() {
+    modifier onlyHubManager(PoolId poolId) {
         require(hubRegistry.manager(poolId, msg.sender), NotAuthorized());
-        _;
-    }
-
-    /// @dev Check if the msg.sender is a allowed caller
-    modifier onlyCaller() {
-        require(caller[msg.sender], NotAuthorized());
         _;
     }
 
@@ -68,26 +54,15 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISimplePriceManager
-    function setNetworks(uint16[] calldata centrifugeIds) external onlyHubManager {
-        networks = centrifugeIds;
+    function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external onlyHubManager(poolId) {
+        networks[poolId] = centrifugeIds;
     }
 
     /// @inheritdoc ISimplePriceManager
-    function updateManager(address manager_, bool canManage) external onlyHubManager {
-        require(manager_ != address(0), EmptyAddress());
+    function updateManager(PoolId poolId, address manager_, bool canManage) external onlyHubManager(poolId) {
+        manager[poolId][manager_] = canManage;
 
-        manager[manager_] = canManage;
-
-        emit UpdateManager(manager_, canManage);
-    }
-
-    /// @inheritdoc ISimplePriceManager
-    function updateCaller(address caller_, bool canCall) external onlyHubManager {
-        require(caller_ != address(0), EmptyAddress());
-
-        caller[caller_] = canCall;
-
-        emit UpdateCaller(caller_, canCall);
+        emit UpdateManager(poolId, manager_, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -95,54 +70,45 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    function onUpdate(PoolId poolId_, ShareClassId scId_, uint16 centrifugeId, uint128 netAssetValue)
-        external
-        onlyCaller
-    {
-        require(poolId == poolId_, InvalidPoolId());
-        require(scId == scId_, InvalidShareClassId());
-
-        NetworkMetrics storage networkMetrics = metrics[centrifugeId];
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
+        NetworkMetrics storage networkMetrics = metrics[poolId][centrifugeId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
-        globalIssuance = globalIssuance + issuance - networkMetrics.issuance;
-        globalNetAssetValue = globalNetAssetValue + netAssetValue - networkMetrics.netAssetValue;
+        globalIssuance[poolId] = globalIssuance[poolId] + issuance - networkMetrics.issuance;
+        globalNetAssetValue[poolId] = globalNetAssetValue[poolId] + netAssetValue - networkMetrics.netAssetValue;
 
-        D18 price = _navPerShare();
+        D18 price = _navPerShare(poolId);
 
         networkMetrics.netAssetValue = netAssetValue;
         networkMetrics.issuance = issuance;
 
-        uint256 networkCount = networks.length;
+        uint256 networkCount = networks[poolId].length;
         bytes[] memory cs = new bytes[](networkCount + 1);
         cs[0] = abi.encodeWithSelector(hub.updateSharePrice.selector, poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, networks[i]);
+            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, networks[poolId][i]);
         }
 
         IMulticall(address(hub)).multicall{value: MAX_MESSAGE_COST * (cs.length)}(cs);
 
-        emit Update(globalNetAssetValue, globalIssuance, price);
+        emit Update(poolId, globalNetAssetValue[poolId], globalIssuance[poolId], price);
     }
 
     /// @inheritdoc INAVHook
     function onTransfer(
-        PoolId poolId_,
-        ShareClassId scId_,
+        PoolId poolId,
+        ShareClassId,
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
-    ) external onlyCaller {
-        require(poolId == poolId_, InvalidPoolId());
-        require(scId == scId_, InvalidShareClassId());
-
-        NetworkMetrics storage fromMetrics = metrics[fromCentrifugeId];
-        NetworkMetrics storage toMetrics = metrics[toCentrifugeId];
+    ) external auth {
+        NetworkMetrics storage fromMetrics = metrics[poolId][fromCentrifugeId];
+        NetworkMetrics storage toMetrics = metrics[poolId][toCentrifugeId];
         fromMetrics.issuance -= sharesTransferred;
         toMetrics.issuance += sharesTransferred;
 
-        emit Transfer(fromCentrifugeId, toCentrifugeId, sharesTransferred);
+        emit Transfer(poolId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -150,31 +116,37 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISimplePriceManager
-    function approveDepositsAndIssueShares(AssetId depositAssetId, uint128 approvedAssetAmount, uint128 extraGasLimit)
-        external
-        onlyManager
-    {
+    function approveDepositsAndIssueShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId depositAssetId,
+        uint128 approvedAssetAmount,
+        uint128 extraGasLimit
+    ) external onlyManager(poolId) {
         uint32 nowDepositEpochId = shareClassManager.nowDepositEpoch(scId, depositAssetId);
         uint32 nowIssueEpochId = shareClassManager.nowIssueEpoch(scId, depositAssetId);
 
         require(nowDepositEpochId == nowIssueEpochId, MismatchedEpochs());
 
-        D18 navPoolPerShare = _navPerShare();
+        D18 navPoolPerShare = _navPerShare(poolId);
         hub.approveDeposits(poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount);
         hub.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare, extraGasLimit);
     }
 
     /// @inheritdoc ISimplePriceManager
-    function approveRedeemsAndRevokeShares(AssetId payoutAssetId, uint128 approvedShareAmount, uint128 extraGasLimit)
-        external
-        onlyManager
-    {
+    function approveRedeemsAndRevokeShares(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId payoutAssetId,
+        uint128 approvedShareAmount,
+        uint128 extraGasLimit
+    ) external onlyManager(poolId) {
         uint32 nowRedeemEpochId = shareClassManager.nowRedeemEpoch(scId, payoutAssetId);
         uint32 nowRevokeEpochId = shareClassManager.nowRevokeEpoch(scId, payoutAssetId);
 
         require(nowRedeemEpochId == nowRevokeEpochId, MismatchedEpochs());
 
-        D18 navPoolPerShare = _navPerShare();
+        D18 navPoolPerShare = _navPerShare(poolId);
         hub.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount);
         hub.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare, extraGasLimit);
     }
@@ -183,29 +155,12 @@ contract SimplePriceManager is ISimplePriceManager {
     // Helpers
     //----------------------------------------------------------------------------------------------
 
-    function _navPerShare() internal view returns (D18) {
-        return globalIssuance == 0 ? d18(1, 1) : d18(globalNetAssetValue) / d18(globalIssuance);
+    function _navPerShare(PoolId poolId) internal view returns (D18) {
+        return globalIssuance[poolId] == 0 ? d18(1, 1) : d18(globalNetAssetValue[poolId]) / d18(globalIssuance[poolId]);
     }
 
     // TODO: remove when not needed anymore
     receive() external payable {
         // Accept ETH refunds from multicall
-    }
-}
-
-contract SimplePriceManagerFactory is ISimplePriceManagerFactory {
-    IHub public immutable hub;
-
-    constructor(IHub hub_) {
-        hub = hub_;
-    }
-
-    function newManager(PoolId poolId) external returns (ISimplePriceManager) {
-        require(hub.shareClassManager().shareClassCount(poolId) == 1, InvalidShareClassCount());
-
-        SimplePriceManager manager = new SimplePriceManager{salt: keccak256(abi.encode(poolId.raw()))}(poolId, hub);
-
-        emit DeploySimplePriceManager(poolId, address(manager));
-        return ISimplePriceManager(manager);
     }
 }

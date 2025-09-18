@@ -32,14 +32,15 @@ interface INAVHook {
 }
 
 interface INAVManager is ISnapshotHook {
-    event UpdateManager(address indexed manager, bool canManage);
-    event SetNavHook(address indexed navHook);
-    event InitializeNetwork(uint16 indexed centrifugeId);
-    event InitializeHolding(ShareClassId indexed scId, AssetId indexed assetId);
-    event InitializeLiability(ShareClassId indexed scId, AssetId indexed assetId);
-    event Sync(ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
+    event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
+    event SetNavHook(PoolId indexed poolId, address indexed navHook);
+    event InitializeNetwork(PoolId indexed poolId, uint16 indexed centrifugeId);
+    event InitializeHolding(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
+    event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
+    event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
     event Transfer(
-        ShareClassId indexed scId_,
+        PoolId indexed poolId,
+        ShareClassId scId,
         uint16 indexed fromCentrifugeId,
         uint16 indexed toCentrifugeId,
         uint128 sharesTransferred
@@ -50,9 +51,7 @@ interface INAVManager is ISnapshotHook {
     error NotInitialized();
     error ExceedsMaxAccounts();
     error InvalidNAVHook();
-    error InvalidPoolId();
-    error EmptyAddress();
-    error NotAuthorized();
+    error InvalidNAV();
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -62,62 +61,74 @@ interface INAVManager is ISnapshotHook {
     function navHook() external view returns (INAVHook);
 
     /// @notice Set the NAV hook contract that will receive NAV updates
+    /// @param poolId The pool ID
     /// @param navHook The address of the NAV hook contract
-    function setNAVHook(INAVHook navHook) external;
+    function setNAVHook(PoolId poolId, INAVHook navHook) external;
 
     /// @notice Check if an address can call management functions
-    function manager(address manager) external view returns (bool);
+    /// @param poolId The pool ID
+    /// @param manager The address of the manager
+    function manager(PoolId poolId, address manager) external view returns (bool);
 
     /// @notice Update whether an address can call management functions
+    /// @param poolId The pool ID
     /// @param manager The address of the manager
     /// @param canManage Whether the address can call management functions
-    function updateManager(address manager, bool canManage) external;
+    function updateManager(PoolId poolId, address manager, bool canManage) external;
 
     //----------------------------------------------------------------------------------------------
     // Account creation
     //----------------------------------------------------------------------------------------------
 
     /// @notice Initialize a new network by creating core accounts (equity, liability, gain, loss)
+    /// @param poolId The pool ID
     /// @param centrifugeId The Centrifuge ID of the network to initialize
-    function initializeNetwork(uint16 centrifugeId) external;
+    function initializeNetwork(PoolId poolId, uint16 centrifugeId) external;
 
     /// @notice Initialize a new holding asset account and associate it with the hub
+    /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param assetId The asset ID to initialize
     /// @param valuation The valuation contract for this asset
-    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external;
+    function initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
     /// @notice Initialize a new liability account and associate it with the hub
+    /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param assetId The asset ID to initialize as a liability
     /// @param valuation The valuation contract for this liability
-    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external;
+    function initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
     //----------------------------------------------------------------------------------------------
     // Holding updates
     //----------------------------------------------------------------------------------------------
 
     /// @notice Update the holding value for a specific asset
+    /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param assetId The asset ID to update
-    function updateHoldingValue(ShareClassId scId, AssetId assetId) external;
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external;
 
     /// @notice Update the valuation contract for a specific asset
+    /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param assetId The asset ID to update
     /// @param valuation The new valuation contract
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external;
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
 
     /// @notice Set the account ID for a specific asset holding
+    /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param assetId The asset ID
     /// @param kind The account kind
     /// @param accountId The account ID to set
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId) external;
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+        external;
 
     /// @notice close gain/loss accounts by moving balances to equity account
+    /// @param poolId The pool ID
     /// @param centrifugeId The Centrifuge ID of the network
-    function closeGainLoss(uint16 centrifugeId) external;
+    function closeGainLoss(PoolId poolId, uint16 centrifugeId) external;
 
     //----------------------------------------------------------------------------------------------
     // Calculations
@@ -125,22 +136,23 @@ interface INAVManager is ISnapshotHook {
 
     /// @notice Calculate the net asset value for a specific network
     /// @dev NAV = equity + gain - loss - liability
+    /// @param poolId The pool ID
     /// @param centrifugeId The Centrifuge ID of the network
-    function netAssetValue(uint16 centrifugeId) external view returns (uint128);
+    function netAssetValue(PoolId poolId, uint16 centrifugeId) external view returns (uint128);
 
     //----------------------------------------------------------------------------------------------
     // Helpers
     //----------------------------------------------------------------------------------------------
 
     /// @notice Get the asset account ID for a specific asset on a network
-    /// @param centrifugeId The Centrifuge ID of the network
+    /// @param poolId The pool ID
     /// @param assetId The asset ID
-    function assetAccount(uint16 centrifugeId, AssetId assetId) external view returns (AccountId);
+    function assetAccount(PoolId poolId, AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the expense account ID for a specific asset on a network
-    /// @param centrifugeId The Centrifuge ID of the network
+    /// @param poolId The pool ID
     /// @param assetId The asset ID
-    function expenseAccount(uint16 centrifugeId, AssetId assetId) external view returns (AccountId);
+    function expenseAccount(PoolId poolId, AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the equity account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network

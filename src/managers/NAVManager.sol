@@ -2,7 +2,8 @@
 pragma solidity 0.8.28;
 
 import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
-import {INAVManagerFactory} from "./interfaces/INAVManagerFactory.sol";
+
+import {Auth} from "../misc/Auth.sol";
 
 import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
@@ -17,34 +18,30 @@ import {IAccounting} from "../hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
-contract NAVManager is INAVManager {
-    PoolId public immutable poolId;
-
+contract NAVManager is INAVManager, Auth {
     IHub public immutable hub;
     IHubRegistry public immutable hubRegistry;
     IHoldings public immutable holdings;
     IAccounting public immutable accounting;
 
     INAVHook public navHook;
-    mapping(uint16 centrifugeId => uint16) public accountCounter;
-    mapping(uint16 centrifugeId => mapping(AssetId => AccountId)) public assetIdToAccountId;
-    mapping(address => bool) public manager;
+    mapping(PoolId poolId => mapping(uint16 centrifugeId => uint16)) public accountCounter;
+    mapping(PoolId poolId => mapping(AssetId => AccountId)) public assetIdToAccountId;
+    mapping(PoolId poolId => mapping(address => bool)) public manager;
 
-    constructor(PoolId poolId_, IHub hub_) {
-        poolId = poolId_;
-
+    constructor(IHub hub_, address deployer) Auth(deployer) {
         hub = hub_;
         hubRegistry = hub_.hubRegistry();
         holdings = hub.holdings();
         accounting = hub.accounting();
     }
 
-    modifier onlyManager() {
-        require(manager[msg.sender], NotAuthorized());
+    modifier onlyManager(PoolId poolId) {
+        require(manager[poolId][msg.sender], NotAuthorized());
         _;
     }
 
-    modifier onlyHubManager() {
+    modifier onlyHubManager(PoolId poolId) {
         require(hubRegistry.manager(poolId, msg.sender), NotAuthorized());
         _;
     }
@@ -54,18 +51,16 @@ contract NAVManager is INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function setNAVHook(INAVHook navHook_) external onlyHubManager {
+    function setNAVHook(PoolId poolId, INAVHook navHook_) external onlyHubManager(poolId) {
         navHook = navHook_;
-        emit SetNavHook(address(navHook_));
+        emit SetNavHook(poolId, address(navHook_));
     }
 
     /// @inheritdoc INAVManager
-    function updateManager(address manager_, bool canManage) external onlyHubManager {
-        require(manager_ != address(0), EmptyAddress());
+    function updateManager(PoolId poolId, address manager_, bool canManage) external onlyHubManager(poolId) {
+        manager[poolId][manager_] = canManage;
 
-        manager[manager_] = canManage;
-
-        emit UpdateManager(manager_, canManage);
+        emit UpdateManager(poolId, manager_, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -73,30 +68,33 @@ contract NAVManager is INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function initializeNetwork(uint16 centrifugeId) external onlyManager {
-        require(accountCounter[centrifugeId] == 0, AlreadyInitialized());
+    function initializeNetwork(PoolId poolId, uint16 centrifugeId) external onlyManager(poolId) {
+        require(accountCounter[poolId][centrifugeId] == 0, AlreadyInitialized());
 
         hub.createAccount(poolId, equityAccount(centrifugeId), false);
         hub.createAccount(poolId, liabilityAccount(centrifugeId), false);
         hub.createAccount(poolId, gainAccount(centrifugeId), false);
         hub.createAccount(poolId, lossAccount(centrifugeId), false);
 
-        accountCounter[centrifugeId] = 5;
+        accountCounter[poolId][centrifugeId] = 5;
 
-        emit InitializeNetwork(centrifugeId);
+        emit InitializeNetwork(poolId, centrifugeId);
     }
 
     /// @inheritdoc INAVManager
-    function initializeHolding(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
+    function initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
+        external
+        onlyManager(poolId)
+    {
         uint16 centrifugeId = assetId.centrifugeId();
-        uint16 index = accountCounter[centrifugeId];
+        uint16 index = accountCounter[poolId][centrifugeId];
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId assetAccount_ = assetIdToAccountId[centrifugeId][assetId];
+        AccountId assetAccount_ = assetIdToAccountId[poolId][assetId];
         if (assetAccount_.isNull()) {
             assetAccount_ = withCentrifugeId(centrifugeId, index);
-            assetIdToAccountId[centrifugeId][assetId] = assetAccount_;
+            assetIdToAccountId[poolId][assetId] = assetAccount_;
         }
 
         hub.createAccount(poolId, assetAccount_, true);
@@ -111,77 +109,81 @@ contract NAVManager is INAVManager {
             lossAccount(centrifugeId)
         );
 
-        accountCounter[centrifugeId] = index + 1;
+        accountCounter[poolId][centrifugeId] = index + 1;
 
-        emit InitializeHolding(scId, assetId);
+        emit InitializeHolding(poolId, scId, assetId);
     }
 
     /// @inheritdoc INAVManager
-    function initializeLiability(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
+    function initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
+        external
+        onlyManager(poolId)
+    {
         uint16 centrifugeId = assetId.centrifugeId();
-        uint16 index = accountCounter[centrifugeId];
+        uint16 index = accountCounter[poolId][centrifugeId];
         require(index > 0, NotInitialized());
         require(index < type(uint16).max, ExceedsMaxAccounts());
 
-        AccountId expenseAccount_ = assetIdToAccountId[centrifugeId][assetId];
+        AccountId expenseAccount_ = assetIdToAccountId[poolId][assetId];
         if (expenseAccount_.isNull()) {
             expenseAccount_ = withCentrifugeId(centrifugeId, index);
-            assetIdToAccountId[centrifugeId][assetId] = expenseAccount_;
+            assetIdToAccountId[poolId][assetId] = expenseAccount_;
         }
 
         hub.createAccount(poolId, expenseAccount_, true);
         hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount_, liabilityAccount(centrifugeId));
 
-        accountCounter[centrifugeId] = index + 1;
+        accountCounter[poolId][centrifugeId] = index + 1;
 
-        emit InitializeLiability(scId, assetId);
+        emit InitializeLiability(poolId, scId, assetId);
     }
 
     //----------------------------------------------------------------------------------------------
-    // Price updates
+    // INAVHook updates
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISnapshotHook
-    function onSync(PoolId poolId_, ShareClassId scId, uint16 centrifugeId) external {
-        require(msg.sender == address(holdings), NotAuthorized());
-        require(poolId == poolId_, InvalidPoolId());
-        _onSync(scId, centrifugeId);
+    function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external auth {
+        _onSync(poolId, scId, centrifugeId);
     }
 
     /// @inheritdoc ISnapshotHook
     function onTransfer(
-        PoolId poolId_,
-        ShareClassId scId_,
+        PoolId poolId,
+        ShareClassId scId,
         uint16 fromCentrifugeId,
         uint16 toCentrifugeId,
         uint128 sharesTransferred
-    ) external {
-        require(msg.sender == address(hub), NotAuthorized());
-        require(poolId == poolId_, InvalidPoolId());
+    ) external auth {
         require(address(navHook) != address(0), InvalidNAVHook());
 
-        navHook.onTransfer(poolId, scId_, fromCentrifugeId, toCentrifugeId, sharesTransferred);
+        navHook.onTransfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
 
-        emit Transfer(scId_, fromCentrifugeId, toCentrifugeId, sharesTransferred);
+        emit Transfer(poolId, scId, fromCentrifugeId, toCentrifugeId, sharesTransferred);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Holding updates
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc INAVManager
-    function updateHoldingValue(ShareClassId scId, AssetId assetId) public onlyManager {
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external onlyManager(poolId) {
         hub.updateHoldingValue(poolId, scId, assetId);
-        (bool isSnapshot,) = holdings.snapshot(poolId, scId, assetId.centrifugeId());
-        if (isSnapshot) _onSync(scId, assetId.centrifugeId());
     }
 
     /// @inheritdoc INAVManager
-    function updateHoldingValuation(ShareClassId scId, AssetId assetId, IValuation valuation) external onlyManager {
-        hub.updateHoldingValuation(poolId, scId, assetId, valuation);
-        updateHoldingValue(scId, assetId);
-    }
-
-    /// @inheritdoc INAVManager
-    function setHoldingAccountId(ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+    function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
         external
-        onlyManager
+        onlyManager(poolId)
+    {
+        hub.updateHoldingValuation(poolId, scId, assetId, valuation);
+        hub.updateHoldingValue(poolId, scId, assetId);
+    }
+
+    /// @inheritdoc INAVManager
+    function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
+        external
+        onlyManager(poolId)
     {
         hub.setHoldingAccountId(poolId, scId, assetId, kind, accountId);
         // TODO: update assetIdToAccountId mapping and update value?
@@ -189,8 +191,8 @@ contract NAVManager is INAVManager {
     }
 
     /// @inheritdoc INAVManager
-    function closeGainLoss(uint16 centrifugeId) external onlyManager {
-        require(accountCounter[centrifugeId] > 0, NotInitialized());
+    function closeGainLoss(PoolId poolId, uint16 centrifugeId) external onlyManager(poolId) {
+        require(accountCounter[poolId][centrifugeId] > 0, NotInitialized());
 
         AccountId equityAccount_ = equityAccount(centrifugeId);
         AccountId gainAccount_ = gainAccount(centrifugeId);
@@ -222,15 +224,15 @@ contract NAVManager is INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function netAssetValue(uint16 centrifugeId) public view returns (uint128) {
-        // TODO: how to handle when one of the accounts is not positive (or positive for loss account)
-        // Which should never happen, but still...
+    function netAssetValue(PoolId poolId, uint16 centrifugeId) public view returns (uint128) {
         (bool equityIsPositive, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
         (bool gainIsPositive, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
         (bool liabilityIsPositive, uint128 liability) = accounting.accountValue(poolId, liabilityAccount(centrifugeId));
 
-        require(equityIsPositive && gainIsPositive && liabilityIsPositive && (!lossIsPositive || loss == 0), "");
+        require(
+            equityIsPositive && gainIsPositive && liabilityIsPositive && (!lossIsPositive || loss == 0), InvalidNAV()
+        );
 
         return equity + gain - loss - liability;
     }
@@ -240,13 +242,13 @@ contract NAVManager is INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function assetAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
-        return assetIdToAccountId[centrifugeId][assetId];
+    function assetAccount(PoolId poolId, AssetId assetId) public view returns (AccountId) {
+        return assetIdToAccountId[poolId][assetId];
     }
 
     /// @inheritdoc INAVManager
-    function expenseAccount(uint16 centrifugeId, AssetId assetId) public view returns (AccountId) {
-        return assetAccount(centrifugeId, assetId);
+    function expenseAccount(PoolId poolId, AssetId assetId) public view returns (AccountId) {
+        return assetAccount(poolId, assetId);
     }
 
     /// @inheritdoc INAVManager
@@ -273,30 +275,12 @@ contract NAVManager is INAVManager {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    function _onSync(ShareClassId scId, uint16 centrifugeId) internal {
+    function _onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) internal {
         require(address(navHook) != address(0), InvalidNAVHook());
 
-        uint128 netAssetValue_ = netAssetValue(centrifugeId);
+        uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
         navHook.onUpdate(poolId, scId, centrifugeId, netAssetValue_);
 
-        emit Sync(scId, centrifugeId, netAssetValue_);
-    }
-}
-
-contract NAVManagerFactory is INAVManagerFactory {
-    IHub public immutable hub;
-
-    constructor(IHub hub_) {
-        hub = hub_;
-    }
-
-    /// @inheritdoc INAVManagerFactory
-    function newManager(PoolId poolId) external returns (INAVManager) {
-        require(hub.hubRegistry().exists(poolId), InvalidPoolId());
-
-        NAVManager manager = new NAVManager{salt: bytes32(uint256(poolId.raw()))}(poolId, hub);
-
-        emit DeployNavManager(poolId, address(manager));
-        return INAVManager(manager);
+        emit Sync(poolId, scId, centrifugeId, netAssetValue_);
     }
 }

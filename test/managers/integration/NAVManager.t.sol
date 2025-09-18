@@ -15,9 +15,6 @@ import {INAVManager, INAVHook} from "../../../src/managers/interfaces/INAVManage
 import {ISimplePriceManager} from "../../../src/managers/interfaces/ISimplePriceManager.sol";
 
 contract NAVManagerIntegrationTest is BaseTest {
-    INAVManager public navManager;
-    ISimplePriceManager public priceManager;
-
     PoolId constant POOL_A = PoolId.wrap(1);
 
     ShareClassId scId;
@@ -60,22 +57,18 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.startPrank(FM);
         scId = hub.addShareClass(POOL_A, "Test Share Class", "TSC", bytes32("1"));
 
-        navManager = navManagerFactory.newManager(POOL_A);
-        priceManager = simplePriceManagerFactory.newManager(POOL_A);
-
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(navManager)));
         hub.updateHubManager(POOL_A, address(navManager), true);
-        hub.updateHubManager(POOL_A, address(priceManager), true);
-        navManager.updateManager(manager, true);
-        priceManager.updateManager(manager, true);
+        hub.updateHubManager(POOL_A, address(simplePriceManager), true);
+        navManager.updateManager(POOL_A, manager, true);
+        simplePriceManager.updateManager(POOL_A, manager, true);
 
-        navManager.setNAVHook(INAVHook(address(priceManager)));
-        priceManager.updateCaller(address(navManager), true);
+        navManager.setNAVHook(POOL_A, INAVHook(address(simplePriceManager)));
 
         uint16[] memory networks = new uint16[](2);
         networks[0] = CHAIN_CP;
         networks[1] = CHAIN_CV;
-        priceManager.setNetworks(networks);
+        simplePriceManager.setNetworks(POOL_A, networks);
 
         vm.stopPrank();
 
@@ -84,19 +77,19 @@ contract NAVManagerIntegrationTest is BaseTest {
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 1));
         valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
 
-        vm.deal(address(priceManager), 1 ether);
+        vm.deal(address(simplePriceManager), 1 ether);
     }
 
     /// forge-config: default.isolate = true
     function testSuccess() public {
         vm.startPrank(manager);
-        navManager.initializeNetwork(CHAIN_CP);
-        navManager.initializeNetwork(CHAIN_CV);
+        navManager.initializeNetwork(POOL_A, CHAIN_CP);
+        navManager.initializeNetwork(POOL_A, CHAIN_CV);
 
-        navManager.initializeHolding(scId, asset1, IValuation(address(valuation)));
-        navManager.initializeHolding(scId, asset2, IValuation(address(valuation)));
-        navManager.initializeHolding(scId, asset3, IValuation(address(valuation)));
-        navManager.initializeLiability(scId, liabilityAsset, IValuation(address(valuation)));
+        navManager.initializeHolding(POOL_A, scId, asset1, IValuation(address(valuation)));
+        navManager.initializeHolding(POOL_A, scId, asset2, IValuation(address(valuation)));
+        navManager.initializeHolding(POOL_A, scId, asset3, IValuation(address(valuation)));
+        navManager.initializeLiability(POOL_A, scId, liabilityAsset, IValuation(address(valuation)));
 
         cv.updateHoldingAmount(POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), d18(1, 1), true, false, 0);
         cv.updateHoldingAmount(POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), d18(1, 1), true, false, 1);
@@ -120,12 +113,12 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.prank(address(root));
         hub.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
 
-        uint128 navHub = navManager.netAssetValue(CHAIN_CP);
-        uint128 navSpoke = navManager.netAssetValue(CHAIN_CV);
-        (uint128 navHub2, uint128 issuanceHub) = priceManager.metrics(CHAIN_CP);
-        (uint128 navSpoke2, uint128 issuanceSpoke) = priceManager.metrics(CHAIN_CV);
-        uint128 globalNAV = priceManager.globalNetAssetValue();
-        uint128 globalIssuance = priceManager.globalIssuance();
+        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (uint128 navHub2, uint128 issuanceHub) = simplePriceManager.metrics(POOL_A, CHAIN_CP);
+        (uint128 navSpoke2, uint128 issuanceSpoke) = simplePriceManager.metrics(POOL_A, CHAIN_CV);
+        uint128 globalNAV = simplePriceManager.globalNetAssetValue(POOL_A);
+        uint128 globalIssuance = simplePriceManager.globalIssuance(POOL_A);
 
         assertEq(navHub, 500e18);
         assertEq(navSpoke, 3300e18);
@@ -140,21 +133,21 @@ contract NAVManagerIntegrationTest is BaseTest {
         valuation.setPrice(POOL_A, scId, asset3, d18(1, 2)); // 50% decrease in value
 
         vm.prank(manager);
-        navManager.updateHoldingValue(scId, asset1);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
 
         vm.expectCall(
             address(hub),
             abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3650e18) / d18(3800e18))
         );
         vm.prank(manager);
-        navManager.updateHoldingValue(scId, asset3);
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
 
-        navHub = navManager.netAssetValue(CHAIN_CP);
-        navSpoke = navManager.netAssetValue(CHAIN_CV);
-        (navHub2, issuanceHub) = priceManager.metrics(CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = priceManager.metrics(CHAIN_CV);
-        globalNAV = priceManager.globalNetAssetValue();
-        globalIssuance = priceManager.globalIssuance();
+        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub) = simplePriceManager.metrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke) = simplePriceManager.metrics(POOL_A, CHAIN_CV);
+        globalNAV = simplePriceManager.globalNetAssetValue(POOL_A);
+        globalIssuance = simplePriceManager.globalIssuance(POOL_A);
         (bool spokeGainIsPositive, uint128 spokeGain) =
             accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
         (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
@@ -164,6 +157,7 @@ contract NAVManagerIntegrationTest is BaseTest {
         assertEq(hubLoss, 250e18);
         assertFalse(hubLossIsPositive);
         assertEq(navHub, 250e18);
+
         assertEq(navSpoke, 3400e18);
         assertEq(navHub2, navHub);
         assertEq(navSpoke2, navSpoke);
@@ -175,12 +169,12 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.prank(address(root));
         hub.initiateTransferShares(CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 130e18, 0);
 
-        navHub = navManager.netAssetValue(CHAIN_CP);
-        navSpoke = navManager.netAssetValue(CHAIN_CV);
-        (navHub2, issuanceHub) = priceManager.metrics(CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = priceManager.metrics(CHAIN_CV);
-        globalNAV = priceManager.globalNetAssetValue();
-        globalIssuance = priceManager.globalIssuance();
+        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub) = simplePriceManager.metrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke) = simplePriceManager.metrics(POOL_A, CHAIN_CV);
+        globalNAV = simplePriceManager.globalNetAssetValue(POOL_A);
+        globalIssuance = simplePriceManager.globalIssuance(POOL_A);
 
         // NAV and global issuance should remain unchanged, only issuance per network changes
         assertEq(navHub, 250e18);
@@ -200,12 +194,12 @@ contract NAVManagerIntegrationTest is BaseTest {
         vm.prank(address(root));
         hub.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, d18(1, 1), true, true, 2);
 
-        navHub = navManager.netAssetValue(CHAIN_CP);
-        navSpoke = navManager.netAssetValue(CHAIN_CV);
-        (navHub2, issuanceHub) = priceManager.metrics(CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = priceManager.metrics(CHAIN_CV);
-        globalNAV = priceManager.globalNetAssetValue();
-        globalIssuance = priceManager.globalIssuance();
+        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub) = simplePriceManager.metrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke) = simplePriceManager.metrics(POOL_A, CHAIN_CV);
+        globalNAV = simplePriceManager.globalNetAssetValue(POOL_A);
+        globalIssuance = simplePriceManager.globalIssuance(POOL_A);
 
         // Liability reduces the NAV
         assertEq(navHub, 200e18);
@@ -225,12 +219,12 @@ contract NAVManagerIntegrationTest is BaseTest {
             CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), d18(1, 2), false, true, 4
         );
 
-        navHub = navManager.netAssetValue(CHAIN_CP);
-        navSpoke = navManager.netAssetValue(CHAIN_CV);
-        (navHub2, issuanceHub) = priceManager.metrics(CHAIN_CP);
-        (navSpoke2, issuanceSpoke) = priceManager.metrics(CHAIN_CV);
-        globalNAV = priceManager.globalNetAssetValue();
-        globalIssuance = priceManager.globalIssuance();
+        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
+        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        (navHub2, issuanceHub) = simplePriceManager.metrics(POOL_A, CHAIN_CP);
+        (navSpoke2, issuanceSpoke) = simplePriceManager.metrics(POOL_A, CHAIN_CV);
+        globalNAV = simplePriceManager.globalNetAssetValue(POOL_A);
+        globalIssuance = simplePriceManager.globalIssuance(POOL_A);
 
         // NAV should remain unchanged
         assertEq(navHub, 200e18);
