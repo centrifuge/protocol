@@ -327,7 +327,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         );
 
         vm.mockCall(
-            address(gateway), GAS, abi.encodeWithSelector(gateway.depositSubsidy.selector, POOL_A), abi.encode()
+            address(gateway), GAS - 1, abi.encodeWithSelector(gateway.depositSubsidy.selector, POOL_A), abi.encode()
         );
 
         vm.prank(ANY);
@@ -419,7 +419,10 @@ contract SpokeTestRegisterAsset is SpokeTest {
         _mockSendRegisterAsset(ASSET_ID_20);
 
         vm.mockCall(
-            address(gateway), GAS, abi.encodeWithSelector(gateway.depositSubsidy.selector, PoolId.wrap(0)), abi.encode()
+            address(gateway),
+            GAS - 1,
+            abi.encodeWithSelector(gateway.depositSubsidy.selector, PoolId.wrap(0)),
+            abi.encode()
         );
 
         vm.prank(ANY);

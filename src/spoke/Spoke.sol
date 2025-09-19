@@ -104,10 +104,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
 
+        gateway.depositSubsidy{value: msg.value}(poolId);
         uint256 cost =
             sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
         require(msg.value >= cost, NotEnoughGas());
-        gateway.depositSubsidy{value: cost}(poolId);
     }
 
     /// @inheritdoc ISpoke
@@ -147,9 +147,9 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
 
+        gateway.depositSubsidy{value: msg.value}(PoolId.wrap(0));
         uint256 cost = sender.sendRegisterAsset(centrifugeId, assetId, decimals);
         require(msg.value >= cost, NotEnoughGas());
-        gateway.depositSubsidy{value: cost}(PoolId.wrap(0));
     }
 
     /// @inheritdoc ISpoke
