@@ -10,9 +10,9 @@ import {MockValuation} from "../../../common/mocks/MockValuation.sol";
 import {PoolId} from "../../../../src/common/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/common/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/common/types/AssetId.sol";
-import {AccountId, withCentrifugeId} from "../../../../src/common/types/AccountId.sol";
+import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/common/types/AccountId.sol";
 
-import {IHub} from "../../../../src/hub/interfaces/IHub.sol";
+import {IHub, AccountType} from "../../../../src/hub/interfaces/IHub.sol";
 import {IHoldings} from "../../../../src/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../../../../src/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/hub/interfaces/IHubRegistry.sol";
@@ -110,7 +110,6 @@ contract NAVManagerConstructorTest is NAVManagerTest {
         assertEq(address(navManager.hub()), address(hub));
         assertEq(address(navManager.holdings()), holdings);
         assertEq(address(navManager.accounting()), address(accounting));
-        assertEq(address(navManager.navHook()), address(0));
     }
 }
 
@@ -122,7 +121,8 @@ contract NAVManagerConfigureTest is NAVManagerTest {
         vm.prank(hubManager);
         navManager.setNAVHook(POOL_A, navHook);
 
-        assertEq(address(navManager.navHook()), address(navHook));
+        assertEq(address(navManager.navHook(POOL_A)), address(navHook));
+        assertEq(address(navManager.navHook(POOL_B)), address(0));
     }
 
     function testSetNAVHookUnauthorized() public {
@@ -135,7 +135,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
         vm.prank(hubManager);
         navManager.setNAVHook(POOL_A, INAVHook(address(0)));
 
-        assertEq(address(navManager.navHook()), address(0));
+        assertEq(address(navManager.navHook(POOL_A)), address(0));
     }
 
     function testUpdateManagerSuccess() public {
@@ -202,7 +202,7 @@ contract NAVManagerConfigureTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
 
-        assertEq(navManager.accountCounter(POOL_A, CENTRIFUGE_ID_1), 5);
+        assertTrue(navManager.initialized(POOL_A, CENTRIFUGE_ID_1));
     }
 
     function testInitializeNetworkAlreadyInitialized() public {
@@ -229,7 +229,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 
     function testInitializeHoldingSuccess() public {
-        AccountId expectedAssetAccount = withCentrifugeId(CENTRIFUGE_ID_1, 5);
+        AccountId expectedAssetAccount = withAssetId(asset1, uint16(AccountType.Asset));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
@@ -255,8 +255,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
-        assertEq(navManager.accountCounter(POOL_A, CENTRIFUGE_ID_1), 6);
-        assertEq(navManager.assetAccount(POOL_A, asset1).raw(), expectedAssetAccount.raw());
+        assertEq(navManager.assetAccount(asset1).raw(), expectedAssetAccount.raw());
     }
 
     function testInitializeHoldingNotInitialized() public {
@@ -269,7 +268,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expectedAssetAccount = withCentrifugeId(CENTRIFUGE_ID_1, 5);
+        AccountId expectedAssetAccount = withAssetId(asset1, uint16(AccountType.Asset));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
@@ -278,8 +277,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeHolding(POOL_A, SC_2, asset1, mockValuation);
 
-        // Account counter should increment again
-        assertEq(navManager.accountCounter(POOL_A, CENTRIFUGE_ID_1), 7);
+        assertEq(navManager.assetAccount(asset1).raw(), expectedAssetAccount.raw());
     }
 
     function testInitializeHoldingUnauthorized() public {
@@ -297,7 +295,7 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     }
 
     function testInitializeLiabilitySuccess() public {
-        AccountId expectedExpenseAccount = withCentrifugeId(CENTRIFUGE_ID_1, 5);
+        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(AccountType.Expense));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedExpenseAccount, true)
@@ -321,8 +319,7 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeLiability(POOL_A, SC_1, asset1, mockValuation);
 
-        assertEq(navManager.accountCounter(POOL_A, CENTRIFUGE_ID_1), 6);
-        assertEq(navManager.expenseAccount(POOL_A, asset1).raw(), expectedExpenseAccount.raw());
+        assertEq(navManager.expenseAccount(asset1).raw(), expectedExpenseAccount.raw());
     }
 
     function testInitializeLiabilityNotInitialized() public {
@@ -640,8 +637,8 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 5);
-        AccountId actual = navManager.assetAccount(POOL_A, asset1);
+        AccountId expected = withAssetId(asset1, uint16(AccountType.Asset));
+        AccountId actual = navManager.assetAccount(asset1);
         assertEq(actual.raw(), expected.raw());
     }
 
@@ -651,14 +648,9 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
         vm.prank(manager);
         navManager.initializeLiability(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, 5);
-        AccountId actual = navManager.expenseAccount(POOL_A, asset1);
+        AccountId expected = withAssetId(asset1, uint16(AccountType.Expense));
+        AccountId actual = navManager.expenseAccount(asset1);
         assertEq(actual.raw(), expected.raw());
-    }
-
-    function testAssetAccountNotInitialized() public view {
-        AccountId actual = navManager.assetAccount(POOL_A, asset1);
-        assertTrue(actual.isNull());
     }
 }
 

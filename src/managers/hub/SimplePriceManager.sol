@@ -23,10 +23,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     IHubRegistry public immutable hubRegistry;
     IShareClassManager public immutable shareClassManager;
 
-    mapping(PoolId poolId => uint16[]) public networks;
-    mapping(PoolId poolId => uint128) public globalIssuance;
-    mapping(PoolId poolId => uint128) public globalNetAssetValue;
-    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public metrics;
+    mapping(PoolId poolId => Metrics) public metrics;
+    mapping(PoolId poolId => mapping(uint16 centrifugeId => NetworkMetrics)) public networkMetrics;
     mapping(PoolId poolId => mapping(address => bool)) public manager;
 
     constructor(IHub hub_, address deployer) Auth(deployer) {
@@ -54,8 +52,13 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISimplePriceManager
+    function networks(PoolId poolId) external view returns (uint16[] memory) {
+        return metrics[poolId].networks;
+    }
+
+    /// @inheritdoc ISimplePriceManager
     function setNetworks(PoolId poolId, uint16[] calldata centrifugeIds) external onlyHubManager(poolId) {
-        networks[poolId] = centrifugeIds;
+        metrics[poolId].networks = centrifugeIds;
     }
 
     /// @inheritdoc ISimplePriceManager
@@ -71,28 +74,28 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
 
     /// @inheritdoc INAVHook
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external auth {
-        NetworkMetrics storage networkMetrics = metrics[poolId][centrifugeId];
+        NetworkMetrics storage networkMetrics_ = networkMetrics[poolId][centrifugeId];
         uint128 issuance = shareClassManager.issuance(scId, centrifugeId);
 
-        globalIssuance[poolId] = globalIssuance[poolId] + issuance - networkMetrics.issuance;
-        globalNetAssetValue[poolId] = globalNetAssetValue[poolId] + netAssetValue - networkMetrics.netAssetValue;
+        metrics[poolId].issuance = metrics[poolId].issuance + issuance - networkMetrics_.issuance;
+        metrics[poolId].netAssetValue = metrics[poolId].netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
 
         D18 price = _navPerShare(poolId);
 
-        networkMetrics.netAssetValue = netAssetValue;
-        networkMetrics.issuance = issuance;
+        networkMetrics_.netAssetValue = netAssetValue;
+        networkMetrics_.issuance = issuance;
 
-        uint256 networkCount = networks[poolId].length;
+        uint256 networkCount = metrics[poolId].networks.length;
         bytes[] memory cs = new bytes[](networkCount + 1);
         cs[0] = abi.encodeWithSelector(hub.updateSharePrice.selector, poolId, scId, price);
 
         for (uint256 i; i < networkCount; i++) {
-            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, networks[poolId][i]);
+            cs[i + 1] = abi.encodeWithSelector(hub.notifySharePrice.selector, poolId, scId, metrics[poolId].networks[i]);
         }
 
         IMulticall(address(hub)).multicall{value: MAX_MESSAGE_COST * (cs.length)}(cs);
 
-        emit Update(poolId, globalNetAssetValue[poolId], globalIssuance[poolId], price);
+        emit Update(poolId, metrics[poolId].netAssetValue, metrics[poolId].issuance, price);
     }
 
     /// @inheritdoc INAVHook
@@ -103,8 +106,8 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
         uint16 toCentrifugeId,
         uint128 sharesTransferred
     ) external auth {
-        NetworkMetrics storage fromMetrics = metrics[poolId][fromCentrifugeId];
-        NetworkMetrics storage toMetrics = metrics[poolId][toCentrifugeId];
+        NetworkMetrics storage fromMetrics = networkMetrics[poolId][fromCentrifugeId];
+        NetworkMetrics storage toMetrics = networkMetrics[poolId][toCentrifugeId];
         fromMetrics.issuance -= sharesTransferred;
         toMetrics.issuance += sharesTransferred;
 
@@ -156,7 +159,9 @@ contract SimplePriceManager is ISimplePriceManager, Auth {
     //----------------------------------------------------------------------------------------------
 
     function _navPerShare(PoolId poolId) internal view returns (D18) {
-        return globalIssuance[poolId] == 0 ? d18(1, 1) : d18(globalNetAssetValue[poolId]) / d18(globalIssuance[poolId]);
+        return metrics[poolId].issuance == 0
+            ? d18(1, 1)
+            : d18(metrics[poolId].netAssetValue) / d18(metrics[poolId].issuance);
     }
 
     // TODO: remove when not needed anymore

@@ -57,8 +57,14 @@ interface INAVManager is ISnapshotHook {
     // Administration
     //----------------------------------------------------------------------------------------------
 
+    /// @notice Check if a network has been initialized for a pool
+    /// @param poolId The pool ID
+    /// @param centrifugeId The Centrifuge ID of the network
+    function initialized(PoolId poolId, uint16 centrifugeId) external view returns (bool);
+
     /// @notice Get the NAV hook
-    function navHook() external view returns (INAVHook);
+    /// @param poolId The pool ID
+    function navHook(PoolId poolId) external view returns (INAVHook);
 
     /// @notice Set the NAV hook contract that will receive NAV updates
     /// @param poolId The pool ID
@@ -145,14 +151,12 @@ interface INAVManager is ISnapshotHook {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Get the asset account ID for a specific asset on a network
-    /// @param poolId The pool ID
     /// @param assetId The asset ID
-    function assetAccount(PoolId poolId, AssetId assetId) external view returns (AccountId);
+    function assetAccount(AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the expense account ID for a specific asset on a network
-    /// @param poolId The pool ID
     /// @param assetId The asset ID
-    function expenseAccount(PoolId poolId, AssetId assetId) external view returns (AccountId);
+    function expenseAccount(AssetId assetId) external view returns (AccountId);
 
     /// @notice Get the equity account ID for a specific network
     /// @param centrifugeId The Centrifuge ID of the network

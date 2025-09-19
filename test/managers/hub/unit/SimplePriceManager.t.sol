@@ -125,10 +125,12 @@ contract SimplePriceManagerTest is Test {
 
 contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
     function testConstructorSuccess() public view {
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+
         assertEq(address(priceManager.hub()), hub);
         assertEq(address(priceManager.shareClassManager()), shareClassManager);
-        assertEq(priceManager.globalIssuance(POOL_A), 0);
-        assertEq(priceManager.globalNetAssetValue(POOL_A), 0);
+        assertEq(globalNAV, 0);
+        assertEq(globalIssuance, 0);
     }
 }
 
@@ -142,9 +144,11 @@ contract SimplePriceManagerConfigureTest is SimplePriceManagerTest {
         vm.prank(hubManager);
         priceManager.setNetworks(POOL_A, networks);
 
-        assertEq(priceManager.networks(POOL_A, 0), CENTRIFUGE_ID_1);
-        assertEq(priceManager.networks(POOL_A, 1), CENTRIFUGE_ID_2);
-        assertEq(priceManager.networks(POOL_A, 2), CENTRIFUGE_ID_3);
+        uint16[] memory storedNetworks = priceManager.networks(POOL_A);
+
+        assertEq(storedNetworks[0], CENTRIFUGE_ID_1);
+        assertEq(storedNetworks[1], CENTRIFUGE_ID_2);
+        assertEq(storedNetworks[2], CENTRIFUGE_ID_3);
     }
 
     function testSetNetworksUnauthorized() public {
@@ -232,12 +236,13 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, netAssetValue);
 
-        assertEq(priceManager.globalIssuance(POOL_A), 100);
-        assertEq(priceManager.globalNetAssetValue(POOL_A), netAssetValue);
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalIssuance, 100);
+        assertEq(globalNAV, netAssetValue);
 
-        (uint128 storedNAV, uint128 storedIssuance) = priceManager.metrics(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(storedNAV, netAssetValue);
-        assertEq(storedIssuance, 100);
+        (uint128 networkNAV, uint128 networkIssuance) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        assertEq(networkNAV, netAssetValue);
+        assertEq(networkIssuance, 100);
     }
 
     function testOnUpdateSecondNetwork() public {
@@ -255,8 +260,9 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, netAssetValue2);
 
-        assertEq(priceManager.globalIssuance(POOL_A), 300); // 100 + 200
-        assertEq(priceManager.globalNetAssetValue(POOL_A), 2700); // 1000 + 1700
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalIssuance, 300); // 100 + 200
+        assertEq(globalNAV, 2700); // 1000 + 1700
     }
 
     function testOnUpdateExistingNetwork() public {
@@ -277,8 +283,9 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, newNetAssetValue);
 
-        assertEq(priceManager.globalIssuance(POOL_A), 150);
-        assertEq(priceManager.globalNetAssetValue(POOL_A), 1200);
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalIssuance, 150);
+        assertEq(globalNAV, 1200);
     }
 
     function testOnUpdateUnauthorized() public {
@@ -299,8 +306,9 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
-        assertEq(priceManager.globalIssuance(POOL_A), 0);
-        assertEq(priceManager.globalNetAssetValue(POOL_A), 1000);
+        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(globalIssuance, 0);
+        assertEq(globalNAV, 1000);
     }
 }
 
@@ -324,8 +332,8 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
 
-        (uint128 fromNAV, uint128 fromIssuance) = priceManager.metrics(POOL_A, CENTRIFUGE_ID_1);
-        (uint128 toNAV, uint128 toIssuance) = priceManager.metrics(POOL_A, CENTRIFUGE_ID_2);
+        (uint128 fromNAV, uint128 fromIssuance) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (uint128 toNAV, uint128 toIssuance) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
         assertEq(fromIssuance, 50); // 100 - 50
         assertEq(toIssuance, 250); // 200 + 50
@@ -345,8 +353,8 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, 0);
 
-        (, uint128 fromIssuance) = priceManager.metrics(POOL_A, CENTRIFUGE_ID_1);
-        (, uint128 toIssuance) = priceManager.metrics(POOL_A, CENTRIFUGE_ID_2);
+        (, uint128 fromIssuance) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (, uint128 toIssuance) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
         assertEq(fromIssuance, 100);
         assertEq(toIssuance, 200);

@@ -19,18 +19,23 @@ interface ISimplePriceManager is INAVHook {
     error InvalidShareClassCount();
     error MismatchedEpochs();
 
+    struct Metrics {
+        uint128 netAssetValue;
+        uint128 issuance;
+        uint16[] networks;
+    }
+
     struct NetworkMetrics {
         uint128 netAssetValue;
         uint128 issuance;
     }
 
-    function globalIssuance(PoolId poolId) external view returns (uint128);
-    function globalNetAssetValue(PoolId poolId) external view returns (uint128);
-    function metrics(PoolId poolId, uint16 centrifugeId)
+    function metrics(PoolId poolId) external view returns (uint128 netAssetValue, uint128 issuance);
+    function networks(PoolId poolId) external view returns (uint16[] memory networks);
+    function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view
         returns (uint128 netAssetValue, uint128 issuance);
-    function networks(PoolId poolId, uint256 index) external view returns (uint16);
     function manager(PoolId poolId, address manager_) external view returns (bool);
 
     //----------------------------------------------------------------------------------------------
