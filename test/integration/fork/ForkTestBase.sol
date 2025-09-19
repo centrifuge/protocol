@@ -42,6 +42,20 @@ import "forge-std/Test.sol";
 import {EndToEndFlows} from "../EndToEnd.t.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 
+interface HubLike {
+    function updateRestriction(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external payable;
+
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external payable;
+
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
+}
+
 /// @title ForkTestBase
 /// @notice Base contract for all fork tests, providing common setup and utilities
 contract ForkTestBase is EndToEndFlows {
@@ -111,7 +125,7 @@ contract ForkTestBase is EndToEndFlows {
 
     function _addPoolMember(IBaseVault vault, address user) internal virtual {
         vm.startPrank(_poolAdmin());
-        forkHub.hub.updateRestriction{value: GAS}(
+        forkHub.hub.updateRestriction(
             vault.poolId(), vault.scId(), forkSpoke.centrifugeId, _updateRestrictionMemberMsg(user), EXTRA_GAS
         );
         vm.stopPrank();
@@ -134,8 +148,8 @@ contract ForkTestBase is EndToEndFlows {
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
-        hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId);
-        hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId);
+        hub.hub.notifySharePrice(poolId, shareClassId, spoke.centrifugeId);
+        hub.hub.notifyAssetPrice(poolId, shareClassId, assetId);
         vm.stopPrank();
     }
 }

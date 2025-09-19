@@ -21,7 +21,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     struct Underpaid {
         uint128 gasLimit;
         uint64 counter;
-        bool isSubsidized;
     }
 
     event File(bytes32 indexed what, address addr);
@@ -51,17 +50,13 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Dispatched when a the gateway tries to send an empty message.
     error EmptyMessage();
 
-    /// @notice Dispatched when a the gateway has not enough fuel to send a message.
-    /// Only dispatched in PayTransaction method
-    error NotEnoughTransactionGas();
-
     /// @notice Dispatched when a message that has not failed is retried.
     error NotFailedMessage();
 
     /// @notice Dispatched when a batch that has not been underpaid is repaid.
     error NotUnderpaidBatch();
 
-    /// @notice Dispatched when a batch is repaid with insufficient funds or the sending is blocked.
+    /// @notice Dispatched when a batch is repaid with insufficient funds.
     error CannotBeRepaid();
 
     /// @notice Dispatched when a message is added to a batch that causes it to exceed the max batch size.
@@ -100,10 +95,6 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
 
     /// @notice Repay an underpaid batch.
-    /// @dev Depending on the repaid message properties the payment vary.
-    ///      Check Underpaid.isSubsidized to know how the message must be repaid.
-    ///      - If !Underpaid.isSubsidized, then the payment is transactional and needs to be paid in `repay{value: ..}()`
-    ///      - If Underpaid.isSubsidized, the funds are taken from the subsidized pool
     function repay(uint16 centrifugeId, bytes memory batch) external payable;
 
     /// @notice Retry a failed message.
@@ -121,18 +112,9 @@ interface IGateway is IMessageHandler, IMessageSender, IRecoverable {
     /// @notice Withdraw the funds associated to the pool
     function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external;
 
-    /// @notice Prepays for the TX cost for sending the messages through the adapters
-    ///         Currently being called from Vault Router and Hub.
-    ///         In order to prepay, the method MUST be called with `msg.value`.
-    ///         Called is assumed to have called IGateway.estimate before calling this.
-    function startTransactionPayment(address payer) external payable;
-
-    /// @notice Finalize the transaction payment mode, next payments will be subsidized (as default).
-    function endTransactionPayment() external;
-
     /// @notice Add a message to the underpaid storage to be repay and send later.
     /// @dev It only supports one message, not a batch
-    function addUnpaidMessage(uint16 centrifugeId, bytes memory message, bool isSubsidized) external;
+    function addUnpaidMessage(uint16 centrifugeId, bytes memory message) external;
 
     /// @notice Initialize batching message
     function startBatching() external;

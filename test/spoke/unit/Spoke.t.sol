@@ -123,6 +123,8 @@ contract SpokeTest is Test {
             address(gateway), abi.encodeWithSelector(gateway.setRefundAddress.selector, POOL_A, escrow), abi.encode()
         );
 
+        vm.mockCall(address(gateway), GAS, abi.encodeWithSelector(gateway.depositSubsidy.selector), abi.encode());
+
         vm.mockCall(
             address(tokenFactory),
             abi.encodeWithSelector(tokenFactory.newToken.selector, NAME, SYMBOL, DECIMALS, SALT),
@@ -136,14 +138,6 @@ contract SpokeTest is Test {
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.scId.selector), abi.encode(SC_1));
         vm.mockCall(address(vault), abi.encodeWithSelector(vault.vaultKind.selector), abi.encode(VaultKind.Async));
-    }
-
-    function _mockPayment(address who) internal {
-        vm.mockCall(
-            address(gateway), GAS, abi.encodeWithSelector(gateway.startTransactionPayment.selector, who), abi.encode()
-        );
-
-        vm.mockCall(address(gateway), abi.encodeWithSelector(gateway.endTransactionPayment.selector), abi.encode());
     }
 
     function _mockValidShareHook(address hook) internal {
@@ -181,7 +175,7 @@ contract SpokeTest is Test {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
-            abi.encode()
+            abi.encode(GAS)
         );
     }
 
@@ -196,8 +190,6 @@ contract SpokeTest is Test {
     }
 
     function _utilRegisterAsset(address asset) internal {
-        _mockPayment(ANY);
-
         if (asset == erc20) _mockERC20(DECIMALS);
         if (asset == erc20) _mockSendRegisterAsset(ASSET_ID_20);
 
@@ -276,11 +268,6 @@ contract SpokeTestFile is SpokeTest {
 contract SpokeTestCrosschainTransferShares is SpokeTest {
     using CastLib for *;
 
-    function setUp() public override {
-        super.setUp();
-        _mockPayment(ANY);
-    }
-
     function _mockCrossTransferShare(address sender, bool value) public {
         vm.mockCall(
             address(share),
@@ -336,7 +323,11 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
                 AMOUNT,
                 0
             ),
-            abi.encode()
+            abi.encode(GAS)
+        );
+
+        vm.mockCall(
+            address(gateway), GAS, abi.encodeWithSelector(gateway.depositSubsidy.selector, POOL_A), abi.encode()
         );
 
         vm.prank(ANY);
@@ -349,11 +340,6 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 contract SpokeTestRegisterAsset is SpokeTest {
     AssetId immutable ASSET_ID_6909_2 = newAssetId(LOCAL_CENTRIFUGE_ID, 2);
     uint256 constant TOKEN_2 = 123;
-
-    function setUp() public override {
-        super.setUp();
-        _mockPayment(ANY);
-    }
 
     function testErrAssetMissingDecimalsERC20() public {
         vm.prank(ANY);
@@ -402,6 +388,10 @@ contract SpokeTestRegisterAsset is SpokeTest {
     function testRegisterAssetERC20() public {
         _mockERC20(DECIMALS);
         _mockSendRegisterAsset(ASSET_ID_20);
+
+        vm.mockCall(
+            address(gateway), GAS, abi.encodeWithSelector(gateway.depositSubsidy.selector, PoolId.wrap(0)), abi.encode()
+        );
 
         vm.prank(ANY);
         vm.expectEmit();
@@ -492,7 +482,7 @@ contract SpokeTestRequest is SpokeTest {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(ISpokeMessageSender.sendRequest.selector, POOL_A, SC_1, ASSET_ID_20, PAYLOAD),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(address(requestManager));

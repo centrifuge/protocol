@@ -51,6 +51,7 @@ contract BaseTest is HubDeployer, Test {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
 
     uint128 constant GAS = MAX_MESSAGE_COST;
+    uint128 constant DEFAULT_SUBSIDY = MAX_MESSAGE_COST * 1000;
     uint128 constant SHARE_HOOK_GAS = 0 wei;
 
     MockVaults cv;
@@ -93,6 +94,8 @@ contract BaseTest is HubDeployer, Test {
 
         // We should not use the block ChainID
         vm.chainId(0xDEAD);
+
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 
     function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)

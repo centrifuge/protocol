@@ -30,17 +30,18 @@ contract TestCases is BaseTest {
         poolId = hubRegistry.poolId(CHAIN_CP, 1);
         vm.prank(ADMIN);
         guardian.createPool(poolId, FM, USD_ID);
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(poolId);
 
         scId = shareClassManager.previewNextShareClassId(poolId);
 
         vm.startPrank(FM);
         hub.setPoolMetadata(poolId, bytes("Testing pool"));
         hub.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SALT);
-        hub.notifyPool{value: GAS}(poolId, CHAIN_CV);
-        hub.notifyShareClass{value: GAS}(poolId, scId, CHAIN_CV, SC_HOOK);
-        hub.setRequestManager{value: GAS}(poolId, CHAIN_CV, ASYNC_REQUEST_MANAGER.toBytes32());
-        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true);
-        hub.updateBalanceSheetManager{value: GAS}(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true);
+        hub.notifyPool(poolId, CHAIN_CV);
+        hub.notifyShareClass(poolId, scId, CHAIN_CV, SC_HOOK);
+        hub.setRequestManager(poolId, CHAIN_CV, ASYNC_REQUEST_MANAGER.toBytes32());
+        hub.updateBalanceSheetManager(CHAIN_CV, poolId, ASYNC_REQUEST_MANAGER.toBytes32(), true);
+        hub.updateBalanceSheetManager(CHAIN_CV, poolId, SYNC_REQUEST_MANAGER.toBytes32(), true);
 
         hub.createAccount(poolId, ASSET_USDC_ACCOUNT, true);
         hub.createAccount(poolId, EQUITY_ACCOUNT, false);
@@ -63,7 +64,7 @@ contract TestCases is BaseTest {
                 LOSS_ACCOUNT
             );
         }
-        hub.updateVault{value: GAS}(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0);
+        hub.updateVault(poolId, scId, USDC_C2, bytes32("factory"), VaultUpdateKind.DeployAndLink, 0);
 
         MessageLib.NotifyPool memory m0 = MessageLib.deserializeNotifyPool(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -108,20 +109,11 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        hub.approveDeposits{value: GAS}(
-            poolId,
-            scId,
-            USDC_C2,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowDepositEpoch(scId, USDC_C2),
-            APPROVED_INVESTOR_AMOUNT
+        hub.approveDeposits(
+            poolId, scId, USDC_C2, shareClassManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT
         );
-        hub.issueShares{value: GAS}(
-            poolId,
-            scId,
-            USDC_C2,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowIssueEpoch(scId, USDC_C2),
-            NAV_PER_SHARE,
-            SHARE_HOOK_GAS
+        hub.issueShares(
+            poolId, scId, USDC_C2, shareClassManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -129,15 +121,7 @@ contract TestCases is BaseTest {
 
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.notifyDeposit{value: GAS}(
-            poolId,
-            scId,
-            USDC_C2,
-            INVESTOR,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).maxDepositClaims(
-                scId, INVESTOR, USDC_C2
-            )
-        );
+        hub.notifyDeposit(poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2));
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -193,16 +177,11 @@ contract TestCases is BaseTest {
             poolId,
             scId,
             USDC_C2,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowRedeemEpoch(scId, USDC_C2),
+            shareClassManager.nowRedeemEpoch(scId, USDC_C2),
             APPROVED_SHARE_AMOUNT
         );
-        hub.revokeShares{value: GAS}(
-            poolId,
-            scId,
-            USDC_C2,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).nowRevokeEpoch(scId, USDC_C2),
-            NAV_PER_SHARE,
-            SHARE_HOOK_GAS
+        hub.revokeShares(
+            poolId, scId, USDC_C2, shareClassManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS
         );
 
         // Queue cancellation request which is fulfilled when claiming
@@ -210,15 +189,7 @@ contract TestCases is BaseTest {
 
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.notifyRedeem{value: GAS}(
-            poolId,
-            scId,
-            USDC_C2,
-            INVESTOR,
-            IHubRequestManager(hubRegistry.dependency(poolId, "requestManager")).maxRedeemClaims(
-                scId, INVESTOR, USDC_C2
-            )
-        );
+        hub.notifyRedeem(poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2));
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -322,9 +293,9 @@ contract TestCases is BaseTest {
 
         vm.startPrank(FM);
         hub.updateSharePrice(poolId, scId, sharePrice);
-        hub.notifyAssetPrice{value: GAS}(poolId, scId, EUR_STABLE_C2);
-        hub.notifyAssetPrice{value: GAS}(poolId, scId, USDC_C2);
-        hub.notifySharePrice{value: GAS}(poolId, scId, CHAIN_CV);
+        hub.notifyAssetPrice(poolId, scId, EUR_STABLE_C2);
+        hub.notifyAssetPrice(poolId, scId, USDC_C2);
+        hub.notifySharePrice(poolId, scId, CHAIN_CV);
 
         MessageLib.NotifyPricePoolPerAsset memory m0 = MessageLib.deserializeNotifyPricePoolPerAsset(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());

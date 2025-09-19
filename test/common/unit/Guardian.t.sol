@@ -179,7 +179,7 @@ contract GuardianTestScheduleUpgrade is GuardianTest {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(sender.sendScheduleUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32()),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(address(SAFE));
@@ -200,7 +200,7 @@ contract GuardianTestCancelUpgrade is GuardianTest {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(sender.sendCancelUpgrade.selector, CENTRIFUGE_ID, TARGET.toBytes32()),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(address(SAFE));
@@ -234,7 +234,7 @@ contract GuardianTestRecoverTokens is GuardianTest {
                 TO.toBytes32(),
                 AMOUNT
             ),
-            abi.encode()
+            abi.encode(0)
         );
 
         vm.prank(address(SAFE));
