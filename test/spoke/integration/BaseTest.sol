@@ -158,7 +158,7 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
         poolId = POOL_A.raw();
 
         gateway.setRefundAddress(POOL_A, gateway);
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)
