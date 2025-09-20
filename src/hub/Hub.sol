@@ -6,11 +6,11 @@ import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
-import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
+import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import {D18, d18} from "../misc/types/D18.sol";
+import {D18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {Multicall, IMulticall} from "../misc/Multicall.sol";

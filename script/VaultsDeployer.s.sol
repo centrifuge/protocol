@@ -10,8 +10,8 @@ import {Spoke} from "../src/spoke/Spoke.sol";
 
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
+import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
 

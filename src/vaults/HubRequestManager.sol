@@ -1,17 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
-import {
-    IHubRequestManager,
-    EpochInvestAmounts,
-    EpochRedeemAmounts,
-    UserOrder,
-    QueuedOrder,
-    RequestType,
-    EpochId
-} from "../hub/interfaces/IHubRequestManager.sol";
-
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -26,6 +15,17 @@ import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
+
+import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
+import {
+    IHubRequestManager,
+    EpochInvestAmounts,
+    EpochRedeemAmounts,
+    UserOrder,
+    QueuedOrder,
+    RequestType,
+    EpochId
+} from "../hub/interfaces/IHubRequestManager.sol";
 
 /// @title  Hub Request Manager
 /// @notice Manager for handling deposit/redeem requests, epochs, and fulfillment logic for share classes

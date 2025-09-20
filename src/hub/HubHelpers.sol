@@ -19,7 +19,7 @@ import {AccountId} from "../common/types/AccountId.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IValuation} from "../common/interfaces/IValuation.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
-import {RequestMessageLib, RequestType} from "../common/libraries/RequestMessageLib.sol";
+import {RequestMessageLib} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
 contract HubHelpers is Auth, IHubHelpers {

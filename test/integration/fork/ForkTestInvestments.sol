@@ -32,8 +32,8 @@ import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
-import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
+import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 
 import {MockSnapshotHook} from "../../hooks/mocks/MockSnapshotHook.sol";
 

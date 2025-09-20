@@ -11,8 +11,9 @@ import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 
-import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
+import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -60,7 +61,7 @@ contract HubRegistryMock {
     }
 }
 
-abstract contract HubRequestManagerBaseTest is Test {
+abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for string;
@@ -84,6 +85,24 @@ abstract contract HubRequestManagerBaseTest is Test {
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);
         assertEq(IHubRegistry(hubRegistryMock).decimals(OTHER_STABLE), DECIMALS_OTHER_STABLE);
+    }
+
+    // Implement IHubGatewayHandler methods
+    function registerAsset(AssetId, uint8) external pure {}
+    function request(PoolId, ShareClassId, AssetId, bytes calldata) external pure {}
+    function updateHoldingAmount(uint16, PoolId, ShareClassId, AssetId, uint128, D18, bool, bool, uint64)
+        external
+        pure
+    {}
+    function initiateTransferShares(uint16, uint16, PoolId, ShareClassId, bytes32, uint128, uint128) external pure {}
+    function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external pure {}
+
+    function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128)
+        external
+        pure
+        returns (uint256 cost)
+    {
+        return 0; // Mock implementation returns zero cost
     }
 
     function _intoPoolAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
