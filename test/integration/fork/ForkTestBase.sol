@@ -27,6 +27,7 @@ import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 
 import {MockSnapshotHook} from "../../hooks/mocks/MockSnapshotHook.sol";
 
@@ -90,6 +91,7 @@ contract ForkTestBase is EndToEndFlows {
             holdings: Holdings(IntegrationConstants.HOLDINGS),
             shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
             hub: Hub(IntegrationConstants.HUB),
+            hubRequestManager: HubRequestManager(address(0)), // TODO: add this once deployed
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
             oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
             snapshotHook: MockSnapshotHook(address(0)) // Fork tests don't use snapshot hooks

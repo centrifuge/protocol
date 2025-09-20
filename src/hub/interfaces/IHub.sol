@@ -322,4 +322,13 @@ interface IHub {
     /// @param poolId pool associated to this configuration.
     /// @param manager address used as manager.
     function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
+
+    /// @notice Calls the request manager for a specific pool and centrifuge chain
+    /// @param poolId The pool ID
+    /// @param centrifugeId The centrifuge chain ID
+    /// @param data The encoded function call data
+    /// @return cost The gas cost for the operation
+    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data)
+        external
+        returns (uint256 cost);
 }
