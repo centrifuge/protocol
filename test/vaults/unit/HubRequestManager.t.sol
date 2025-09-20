@@ -327,3 +327,31 @@ contract HubRequestManagerViewsTest is HubRequestManagerBaseTest {
         assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
     }
 }
+
+contract HubRequestManagerAuthTest is HubRequestManagerBaseTest {
+    address constant UNAUTHORIZED = address(0x999);
+
+    function testErrNotAuthorized() public {
+        vm.startPrank(UNAUTHORIZED);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, 0, 0, d18(1));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, 0, 0, d18(1));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.issueShares(poolId, scId, USDC, 0, d18(1), 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.revokeShares(poolId, scId, USDC, 0, d18(1), 0);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.forceCancelDepositRequest(poolId, scId, bytes32(0), USDC);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        hubRequestManager.forceCancelRedeemRequest(poolId, scId, bytes32(0), USDC);
+
+        vm.stopPrank();
+    }
+}
