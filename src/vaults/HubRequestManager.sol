@@ -299,9 +299,6 @@ contract HubRequestManager is Auth, IHubRequestManager {
         epochAmounts.issuedAt = block.timestamp.toUint64();
         epochId[scId_][depositAssetId].issue = nowIssueEpochId;
 
-        uint128 depositAssetAmount = epochAmounts.approvedAssetAmount;
-        uint128 depositPoolAmount = epochAmounts.approvedPoolAmount;
-
         emit IssueShares(
             poolId,
             scId_,
@@ -422,7 +419,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            IHubGatewayHandler(hub).requestCallback(
+            return IHubGatewayHandler(hub).requestCallback(
                 poolId,
                 scId_,
                 payoutAssetId,
