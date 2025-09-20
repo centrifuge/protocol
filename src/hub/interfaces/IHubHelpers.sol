@@ -40,9 +40,6 @@ interface IHubHelpers {
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external;
 
-    /// @notice Handles a request originating from the Spoke side.
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
-
     function holdingAccounts(
         AccountId assetAccount,
         AccountId equityAccount,

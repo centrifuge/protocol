@@ -179,11 +179,6 @@ contract HubHelpers is Auth, IHubHelpers {
         accounting.lock();
     }
 
-    /// @inheritdoc IHubHelpers
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
-        hubRequestManager.request(poolId, scId, assetId, payload);
-    }
-
     //----------------------------------------------------------------------------------------------
     //  View methods
     //----------------------------------------------------------------------------------------------

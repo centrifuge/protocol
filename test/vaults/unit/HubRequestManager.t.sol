@@ -117,9 +117,7 @@ abstract contract HubRequestManagerBaseTest is Test {
         uint32 nowRedeemEpochId = hubRequestManager.nowRedeemEpoch(scId, USDC);
         D18 pricePoolPerAsset = d18(1);
 
-        hubRequestManager.approveRedeems(
-            poolId, scId, USDC, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset
-        );
+        hubRequestManager.approveRedeems(poolId, scId, USDC, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset);
     }
 }
 

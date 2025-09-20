@@ -134,8 +134,6 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
 
-
-
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateRestriction(POOL_A, ShareClassId.wrap(0), 0, bytes(""), 0);
 

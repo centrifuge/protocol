@@ -450,7 +450,9 @@ contract EndToEndFlows is EndToEndUtils {
             GAIN_ACCOUNT,
             LOSS_ACCOUNT
         );
-        hub.hub.setRequestManager(poolId, spoke.centrifugeId, address(hub.hubRequestManager), address(spoke.asyncRequestManager).toBytes32());
+        hub.hub.setRequestManager(
+            poolId, spoke.centrifugeId, address(hub.hubRequestManager), address(spoke.asyncRequestManager).toBytes32()
+        );
         hub.hub.updateBalanceSheetManager(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
         );
@@ -664,18 +666,25 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.hubRequestManager.nowDepositEpoch(shareClassId, assetId);
-        hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-            IHubRequestManager.approveDeposits,
-            (poolId, shareClassId, assetId, depositEpochId, amount, d18(1))
-        ));
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IHubRequestManager.approveDeposits, (poolId, shareClassId, assetId, depositEpochId, amount, d18(1))
+            )
+        );
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.hubRequestManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-            IHubRequestManager.issueShares,
-            (poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS)
-        ));
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IHubRequestManager.issueShares,
+                (poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS)
+            )
+        );
     }
 
     function _processAsyncDepositClaim(
@@ -900,10 +909,14 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-                    IHubRequestManager.revokeShares,
-                    (poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS)
-                ));
+                hub.hub.callRequestManager(
+                    poolId,
+                    assetId.centrifugeId(),
+                    abi.encodeCall(
+                        IHubRequestManager.revokeShares,
+                        (poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS)
+                    )
+                );
                 nowRevokeEpoch = hub.hubRequestManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -926,10 +939,14 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-                    IHubRequestManager.issueShares,
-                    (poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS)
-                ));
+                hub.hub.callRequestManager(
+                    poolId,
+                    assetId.centrifugeId(),
+                    abi.encodeCall(
+                        IHubRequestManager.issueShares,
+                        (poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS)
+                    )
+                );
                 nowIssueEpoch = hub.hubRequestManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -960,17 +977,24 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 redeemEpochId = hub.hubRequestManager.nowRedeemEpoch(shareClassId, assetId);
-        hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-            IHubRequestManager.approveRedeems,
-            (poolId, shareClassId, assetId, redeemEpochId, shares, d18(1))
-        ));
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IHubRequestManager.approveRedeems, (poolId, shareClassId, assetId, redeemEpochId, shares, d18(1))
+            )
+        );
 
         uint32 revokeEpochId = hub.hubRequestManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.callRequestManager(poolId, assetId.centrifugeId(), abi.encodeCall(
-            IHubRequestManager.revokeShares,
-            (poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS)
-        ));
+        hub.hub.callRequestManager(
+            poolId,
+            assetId.centrifugeId(),
+            abi.encodeCall(
+                IHubRequestManager.revokeShares,
+                (poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS)
+            )
+        );
     }
 
     function _processAsyncRedeemClaim(

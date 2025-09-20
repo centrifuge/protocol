@@ -109,14 +109,29 @@ contract TestCases is BaseTest {
         cv.requestDeposit(poolId, scId, USDC_C2, INVESTOR, INVESTOR_AMOUNT);
 
         vm.startPrank(FM);
-        hub.callRequestManager(poolId, CHAIN_CV, abi.encodeCall(
-            IHubRequestManager.approveDeposits,
-            (poolId, scId, USDC_C2, hubRequestManager.nowDepositEpoch(scId, USDC_C2), APPROVED_INVESTOR_AMOUNT, d18(1, 1))
-        ));
-        hub.callRequestManager(poolId, CHAIN_CV, abi.encodeCall(
-            IHubRequestManager.issueShares,
-            (poolId, scId, USDC_C2, hubRequestManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS)
-        ));
+        hub.callRequestManager(
+            poolId,
+            CHAIN_CV,
+            abi.encodeCall(
+                IHubRequestManager.approveDeposits,
+                (
+                    poolId,
+                    scId,
+                    USDC_C2,
+                    hubRequestManager.nowDepositEpoch(scId, USDC_C2),
+                    APPROVED_INVESTOR_AMOUNT,
+                    d18(1, 1)
+                )
+            )
+        );
+        hub.callRequestManager(
+            poolId,
+            CHAIN_CV,
+            abi.encodeCall(
+                IHubRequestManager.issueShares,
+                (poolId, scId, USDC_C2, hubRequestManager.nowIssueEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS)
+            )
+        );
 
         // Queue cancellation request which is fulfilled when claiming
         cv.cancelDepositRequest(poolId, scId, USDC_C2, INVESTOR);
@@ -175,14 +190,29 @@ contract TestCases is BaseTest {
         );
 
         vm.startPrank(FM);
-        hub.callRequestManager(poolId, CHAIN_CV, abi.encodeCall(
-            IHubRequestManager.approveRedeems,
-            (poolId, scId, USDC_C2, hubRequestManager.nowRedeemEpoch(scId, USDC_C2), APPROVED_SHARE_AMOUNT, d18(1, 1))
-        ));
-        hub.callRequestManager(poolId, CHAIN_CV, abi.encodeCall(
-            IHubRequestManager.revokeShares,
-            (poolId, scId, USDC_C2, hubRequestManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS)
-        ));
+        hub.callRequestManager(
+            poolId,
+            CHAIN_CV,
+            abi.encodeCall(
+                IHubRequestManager.approveRedeems,
+                (
+                    poolId,
+                    scId,
+                    USDC_C2,
+                    hubRequestManager.nowRedeemEpoch(scId, USDC_C2),
+                    APPROVED_SHARE_AMOUNT,
+                    d18(1, 1)
+                )
+            )
+        );
+        hub.callRequestManager(
+            poolId,
+            CHAIN_CV,
+            abi.encodeCall(
+                IHubRequestManager.revokeShares,
+                (poolId, scId, USDC_C2, hubRequestManager.nowRevokeEpoch(scId, USDC_C2), NAV_PER_SHARE, SHARE_HOOK_GAS)
+            )
+        );
 
         // Queue cancellation request which is fulfilled when claiming
         cv.cancelRedeemRequest(poolId, scId, USDC_C2, INVESTOR);
