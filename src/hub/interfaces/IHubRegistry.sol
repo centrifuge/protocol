@@ -13,6 +13,7 @@ interface IHubRegistry is IERC6909Decimals {
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
+    event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, address manager);
 
     error NonExistingPool(PoolId id);
     error AssetAlreadyRegistered();
@@ -30,6 +31,9 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice allow/disallow an address as a manager for the pool
     function updateManager(PoolId poolId, address newManager, bool canManage) external;
+
+    /// @notice TODO
+    function setHubRequestManager(PoolId poolId, uint16 centrifuge, address manager) external;
 
     /// @notice sets metadata for this pool
     function setMetadata(PoolId poolId, bytes calldata metadata) external;

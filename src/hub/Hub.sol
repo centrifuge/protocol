@@ -280,10 +280,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setRequestManager(PoolId poolId, uint16 centrifugeId, bytes32 manager) external returns (uint256 cost) {
+    function setRequestManager(PoolId poolId, uint16 centrifugeId, address hubManager, bytes32 spokeManager)
+        external
+        returns (uint256 cost)
+    {
         _isManager(poolId);
 
-        return sender.sendSetRequestManager(centrifugeId, poolId, manager);
+        hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
+        return sender.sendSetRequestManager(centrifugeId, poolId, spokeManager);
     }
 
     /// @inheritdoc IHub
@@ -307,137 +311,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function approveDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint32 nowDepositEpochId,
-        uint128 approvedAssetAmount
-    ) external returns (uint256 cost, uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
-        _isManager(poolId);
-        D18 pricePoolPerAsset = hubHelpers.pricePoolPerAsset(poolId, scId, depositAssetId);
-        (pendingAssetAmount, approvedPoolAmount) = shareClassManager.approveDeposits(
-            poolId, scId, depositAssetId, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
-        );
-
-        cost = sender.sendRequestCallback(
-            poolId,
-            scId,
-            depositAssetId,
-            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize(),
-            0
-        );
-    }
-
-    /// @inheritdoc IHub
-    function approveRedeems(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRedeemEpochId,
-        uint128 approvedShareAmount
-    ) external returns (uint128 pendingShareAmount) {
-        _isManager(poolId);
-
-        D18 price = hubHelpers.pricePoolPerAsset(poolId, scId, payoutAssetId);
-        (pendingShareAmount) =
-            shareClassManager.approveRedeems(poolId, scId, payoutAssetId, nowRedeemEpochId, approvedShareAmount, price);
-    }
-
-    /// @inheritdoc IHub
-    function issueShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint32 nowIssueEpochId,
-        D18 navPoolPerShare,
-        uint128 extraGasLimit
-    )
-        external
-        returns (uint256 cost, uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount)
-    {
-        _isManager(poolId);
-
-        (issuedShareAmount, depositAssetAmount, depositPoolAmount) =
-            shareClassManager.issueShares(poolId, scId, depositAssetId, nowIssueEpochId, navPoolPerShare);
-
-        cost = sender.sendRequestCallback(
-            poolId,
-            scId,
-            depositAssetId,
-            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize(),
-            extraGasLimit
-        );
-    }
-
-    /// @inheritdoc IHub
-    function revokeShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRevokeEpochId,
-        D18 navPoolPerShare,
-        uint128 extraGasLimit
-    )
-        external
-        returns (uint256 cost, uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount)
-    {
-        _isManager(poolId);
-
-        (revokedShareAmount, payoutAssetAmount, payoutPoolAmount) =
-            shareClassManager.revokeShares(poolId, scId, payoutAssetId, nowRevokeEpochId, navPoolPerShare);
-
-        cost = sender.sendRequestCallback(
-            poolId,
-            scId,
-            payoutAssetId,
-            RequestCallbackMessageLib.RevokedShares(payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw())
-                .serialize(),
-            extraGasLimit
-        );
-    }
-
-    /// @inheritdoc IHub
-    function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
+    function callRequestManager(PoolId poolId, uint16 centrifugeId, bytes calldata data)
         external
         returns (uint256 cost)
     {
         _isManager(poolId);
-
-        uint128 cancelledAssetAmount =
-            shareClassManager.forceCancelDepositRequest(poolId, scId, investor, depositAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledAssetAmount > 0) {
-            return sender.sendRequestCallback(
-                poolId,
-                scId,
-                depositAssetId,
-                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize(),
-                0
-            );
-        }
-    }
-
-    /// @inheritdoc IHub
-    function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
-        external
-        returns (uint256 cost)
-    {
-        _isManager(poolId);
-
-        uint128 cancelledShareAmount = shareClassManager.forceCancelRedeemRequest(poolId, scId, investor, payoutAssetId);
-
-        // Cancellation might have been queued such that it will be executed in the future during claiming
-        if (cancelledShareAmount > 0) {
-            return sender.sendRequestCallback(
-                poolId,
-                scId,
-                payoutAssetId,
-                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize(),
-                0
-            );
-        }
+        return hubRegistry.hubRequestManager(poolId, centrifugeId).call(data);
     }
 
     /// @inheritdoc IHub
@@ -654,7 +533,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external {
         _auth();
 
-        hubHelpers.request(poolId, scId, assetId, payload);
+        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
+        require(address(manager) != address(0), InvalidRequestManager());
+
+        manager.request(poolId, scId, assetId, payload);
+    }
+
+    /// @inheritdoc IHubGatewayHandler
+    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload)
+        external
+        returns (uint256 cost)
+    {
+        address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
+        require(manager != address(0), InvalidRequestManager());
+        require(msg.sender == manager, NotAuthorized());
+
+        return sender.sendRequestCallback(poolId, scId, assetId, payload);
     }
 
     /// @inheritdoc IHubGatewayHandler

@@ -81,6 +81,9 @@ interface IHub {
     /// @notice Dispatched when an invalid combination of account IDs is passed.
     error InvalidAccountCombination();
 
+    /// @notice TODO
+    error InvalidRequestManager();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);

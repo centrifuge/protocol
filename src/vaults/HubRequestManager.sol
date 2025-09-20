@@ -22,6 +22,7 @@ import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
+import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
@@ -37,6 +38,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     IHubRegistry public immutable hubRegistry;
 
     address public hub;
+    IHubMessageSender public sender;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -78,6 +80,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = data;
+        else if (what == "sender") sender = IHubMessageSender(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -93,37 +96,35 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         if (kind == uint8(RequestMessageType.DepositRequest)) {
             RequestMessageLib.DepositRequest memory m = payload.deserializeDepositRequest();
-            this.requestDeposit(poolId, scId, m.amount, m.investor, assetId);
+            requestDeposit(poolId, scId, m.amount, m.investor, assetId);
         } else if (kind == uint8(RequestMessageType.RedeemRequest)) {
             RequestMessageLib.RedeemRequest memory m = payload.deserializeRedeemRequest();
-            this.requestRedeem(poolId, scId, m.amount, m.investor, assetId);
+            requestRedeem(poolId, scId, m.amount, m.investor, assetId);
         } else if (kind == uint8(RequestMessageType.CancelDepositRequest)) {
             RequestMessageLib.CancelDepositRequest memory m = payload.deserializeCancelDepositRequest();
-            uint128 cancelledAssetAmount = this.cancelDepositRequest(poolId, scId, m.investor, assetId);
+            uint128 cancelledAssetAmount = cancelDepositRequest(poolId, scId, m.investor, assetId);
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledAssetAmount > 0) {
-                _requestCallback(
+                hub.requestCallback(
                     poolId,
                     scId,
                     assetId,
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    ),
-                    0
+                    )
                 );
             }
         } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
             RequestMessageLib.CancelRedeemRequest memory m = payload.deserializeCancelRedeemRequest();
-            uint128 cancelledShareAmount = this.cancelRedeemRequest(poolId, scId, m.investor, assetId);
+            uint128 cancelledShareAmount = cancelRedeemRequest(poolId, scId, m.investor, assetId);
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledShareAmount > 0) {
-                _requestCallback(
+                hub.requestCallback(
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
-                    0
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize()
                 );
             }
         } else {
@@ -133,7 +134,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     /// @inheritdoc IHubRequestManager
     function requestDeposit(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId depositAssetId)
-        external
+        public
         auth
     {
         // NOTE: Vaults ensure amount > 0
@@ -142,7 +143,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     /// @inheritdoc IHubRequestManager
     function cancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
-        external
+        public
         auth
         returns (uint128 cancelledAssetAmount)
     {
@@ -154,7 +155,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     /// @inheritdoc IHubRequestManager
     function requestRedeem(PoolId poolId, ShareClassId scId_, uint128 amount, bytes32 investor, AssetId payoutAssetId)
-        external
+        public
         auth
     {
         // NOTE: Vaults ensure amount > 0
@@ -163,7 +164,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
     /// @inheritdoc IHubRequestManager
     function cancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
-        external
+        public
         auth
         returns (uint128 cancelledShareAmount)
     {
@@ -185,18 +186,18 @@ contract HubRequestManager is Auth, IHubRequestManager {
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
         D18 pricePoolPerAsset
-    ) external auth returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount) {
+    ) external auth returns (uint256 cost) {
         require(
             nowDepositEpochId == nowDepositEpoch(scId_, depositAssetId),
             EpochNotInSequence(nowDepositEpochId, nowDepositEpoch(scId_, depositAssetId))
         );
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
-        pendingAssetAmount = pendingDeposit[scId_][depositAssetId];
+        uint128 pendingAssetAmount = pendingDeposit[scId_][depositAssetId];
         require(approvedAssetAmount <= pendingAssetAmount, InsufficientPending());
         require(approvedAssetAmount > 0, ZeroApprovalAmount());
 
-        approvedPoolAmount = PricingLib.convertWithPrice(
+        uint128 approvedPoolAmount = PricingLib.convertWithPrice(
             approvedAssetAmount, hubRegistry.decimals(depositAssetId), hubRegistry.decimals(poolId), pricePoolPerAsset
         );
 
@@ -221,6 +222,14 @@ contract HubRequestManager is Auth, IHubRequestManager {
             approvedAssetAmount,
             pendingAssetAmount
         );
+
+        return hub.requestCallback(
+            poolId,
+            scId_,
+            depositAssetId,
+            RequestCallbackMessageLib.ApprovedDeposits(approvedAssetAmount, pricePoolPerAsset.raw()).serialize(),
+            0
+        );
     }
 
     /// @inheritdoc IHubRequestManager
@@ -231,14 +240,14 @@ contract HubRequestManager is Auth, IHubRequestManager {
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external auth returns (uint128 pendingShareAmount) {
+    ) external auth {
         require(
             nowRedeemEpochId == nowRedeemEpoch(scId_, payoutAssetId),
             EpochNotInSequence(nowRedeemEpochId, nowRedeemEpoch(scId_, payoutAssetId))
         );
 
         // Limit in case approved > pending due to race condition of FM approval and async incoming requests
-        pendingShareAmount = pendingRedeem[scId_][payoutAssetId];
+        uint128 pendingShareAmount = pendingRedeem[scId_][payoutAssetId];
         require(approvedShareAmount <= pendingShareAmount, InsufficientPending());
         require(approvedShareAmount > 0, ZeroApprovalAmount());
 
@@ -261,8 +270,9 @@ contract HubRequestManager is Auth, IHubRequestManager {
         ShareClassId scId_,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare
-    ) external auth returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount) {
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
+    ) external auth {
         require(nowIssueEpochId <= epochId[scId_][depositAssetId].deposit, EpochNotFound());
         require(
             nowIssueEpochId == nowIssueEpoch(scId_, depositAssetId),
@@ -272,7 +282,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         EpochInvestAmounts storage epochAmounts = epochInvestAmounts[scId_][depositAssetId][nowIssueEpochId];
         epochAmounts.navPoolPerShare = navPoolPerShare;
 
-        issuedShareAmount = navPoolPerShare.isNotZero()
+        uint128 issuedShareAmount = navPoolPerShare.isNotZero()
             ? PricingLib.assetToShareAmount(
                 epochAmounts.approvedAssetAmount,
                 hubRegistry.decimals(depositAssetId),
@@ -286,8 +296,8 @@ contract HubRequestManager is Auth, IHubRequestManager {
         epochAmounts.issuedAt = block.timestamp.toUint64();
         epochId[scId_][depositAssetId].issue = nowIssueEpochId;
 
-        depositAssetAmount = epochAmounts.approvedAssetAmount;
-        depositPoolAmount = epochAmounts.approvedPoolAmount;
+        uint128 depositAssetAmount = epochAmounts.approvedAssetAmount;
+        uint128 depositPoolAmount = epochAmounts.approvedPoolAmount;
 
         emit IssueShares(
             poolId,
@@ -300,6 +310,14 @@ contract HubRequestManager is Auth, IHubRequestManager {
                 : d18(0),
             issuedShareAmount
         );
+
+        return hub.requestCallback(
+            poolId,
+            scId_,
+            depositAssetId,
+            RequestCallbackMessageLib.IssuedShares(issuedShareAmount, navPoolPerShare.raw()).serialize(),
+            extraGasLimit
+        );
     }
 
     /// @inheritdoc IHubRequestManager
@@ -308,8 +326,9 @@ contract HubRequestManager is Auth, IHubRequestManager {
         ShareClassId scId_,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare
-    ) external auth returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount) {
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
+    ) external auth returns (uint256 cost) {
         require(nowRevokeEpochId <= epochId[scId_][payoutAssetId].redeem, EpochNotFound());
         require(
             nowRevokeEpochId == nowRevokeEpoch(scId_, payoutAssetId),
@@ -320,9 +339,9 @@ contract HubRequestManager is Auth, IHubRequestManager {
         epochAmounts.navPoolPerShare = navPoolPerShare;
 
         // NOTE: shares and pool currency have the same decimals - no conversion needed!
-        payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
+        uint128 payoutPoolAmount = navPoolPerShare.mulUint128(epochAmounts.approvedShareAmount, MathLib.Rounding.Down);
 
-        payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
+        uint128 payoutAssetAmount = epochAmounts.pricePoolPerAsset.isNotZero()
             ? PricingLib.shareToAssetAmount(
                 epochAmounts.approvedShareAmount,
                 hubRegistry.decimals(poolId),
@@ -332,7 +351,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
                 MathLib.Rounding.Down
             )
             : 0;
-        revokedShareAmount = epochAmounts.approvedShareAmount;
+        uint128 revokedShareAmount = epochAmounts.approvedShareAmount;
 
         epochAmounts.payoutAssetAmount = payoutAssetAmount;
         epochAmounts.revokedAt = block.timestamp.toUint64();
@@ -351,32 +370,63 @@ contract HubRequestManager is Auth, IHubRequestManager {
             payoutAssetAmount,
             payoutPoolAmount
         );
+
+        return sender.sendRequestCallback(
+            poolId,
+            scId_,
+            payoutAssetId,
+            RequestCallbackMessageLib.RevokedShares(payoutAssetAmount, revokedShareAmount, navPoolPerShare.raw())
+                .serialize(),
+            extraGasLimit
+        );
     }
 
     /// @inheritdoc IHubRequestManager
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId depositAssetId)
         external
         auth
-        returns (uint128 cancelledAssetAmount)
+        returns (uint256 cost)
     {
         require(allowForceDepositCancel[scId_][depositAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = depositRequest[scId_][depositAssetId][investor].pending;
+        uint128 cancelledAssetAmount =
+            _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
 
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, depositAssetId, RequestType.Deposit);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledAssetAmount > 0) {
+            return hub.requestCallback(
+                poolId,
+                scId_,
+                depositAssetId,
+                RequestCallbackMessageLib.FulfilledDepositRequest(investor, 0, 0, cancelledAssetAmount).serialize(),
+                0
+            );
+        }
     }
 
     /// @inheritdoc IHubRequestManager
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId_, bytes32 investor, AssetId payoutAssetId)
         external
         auth
-        returns (uint128 cancelledShareAmount)
+        returns (uint256 cost)
     {
         require(allowForceRedeemCancel[scId_][payoutAssetId][investor], CancellationInitializationRequired());
 
         uint128 cancellingAmount = redeemRequest[scId_][payoutAssetId][investor].pending;
+        uint128 cancelledShareAmount =
+            _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
 
-        return _updatePending(poolId, scId_, cancellingAmount, false, investor, payoutAssetId, RequestType.Redeem);
+        // Cancellation might have been queued such that it will be executed in the future during claiming
+        if (cancelledShareAmount > 0) {
+            hub.requestCallback(
+                poolId,
+                scId_,
+                payoutAssetId,
+                RequestCallbackMessageLib.FulfilledRedeemRequest(investor, 0, 0, cancelledShareAmount).serialize(),
+                0
+            );
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -802,19 +852,5 @@ contract HubRequestManager is Auth, IHubRequestManager {
     ///         3. User's last update is not behind the current epoch (userOrder.lastUpdate >= currentEpoch)
     function _canMutatePending(UserOrder memory userOrder, uint32 currentEpoch) internal pure returns (bool) {
         return currentEpoch <= 1 || userOrder.pending == 0 || userOrder.lastUpdate >= currentEpoch;
-    }
-
-    /// @dev Internal helper to call back to Hub for request callback messages
-    function _requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload, uint128 gasLimit)
-        internal
-    {
-        require(hub != address(0), "Hub not set");
-        // Call the Hub's requestCallback method
-        (bool success,) = hub.call(
-            abi.encodeWithSignature(
-                "requestCallback(uint256,uint256,uint256,bytes,uint128)", poolId, scId, assetId, payload, gasLimit
-            )
-        );
-        require(success, "Hub callback failed");
     }
 }
