@@ -234,7 +234,7 @@ interface IHubRequestManager {
         uint32 nowDepositEpochId,
         uint128 approvedAssetAmount,
         D18 pricePoolPerAsset
-    ) external returns (uint128 pendingAssetAmount, uint128 approvedPoolAmount);
+    ) external returns (uint256 cost);
 
     function approveRedeems(
         PoolId poolId,
@@ -243,31 +243,33 @@ interface IHubRequestManager {
         uint32 nowRedeemEpochId,
         uint128 approvedShareAmount,
         D18 pricePoolPerAsset
-    ) external returns (uint128 pendingShareAmount);
+    ) external;
 
     function issueShares(
         PoolId poolId,
         ShareClassId scId,
         AssetId depositAssetId,
         uint32 nowIssueEpochId,
-        D18 navPoolPerShare
-    ) external returns (uint128 issuedShareAmount, uint128 depositAssetAmount, uint128 depositPoolAmount);
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
+    ) external returns (uint256 cost);
 
     function revokeShares(
         PoolId poolId,
         ShareClassId scId,
         AssetId payoutAssetId,
         uint32 nowRevokeEpochId,
-        D18 navPoolPerShare
-    ) external returns (uint128 revokedShareAmount, uint128 payoutAssetAmount, uint128 payoutPoolAmount);
+        D18 navPoolPerShare,
+        uint128 extraGasLimit
+    ) external returns (uint256 cost);
 
     function forceCancelDepositRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId depositAssetId)
         external
-        returns (uint128 cancelledAssetAmount);
+        returns (uint256 cost);
 
     function forceCancelRedeemRequest(PoolId poolId, ShareClassId scId, bytes32 investor, AssetId payoutAssetId)
         external
-        returns (uint128 cancelledShareAmount);
+        returns (uint256 cost);
 
     //----------------------------------------------------------------------------------------------
     // Claiming methods

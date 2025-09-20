@@ -56,6 +56,9 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice returns whether the account is a manager
     function manager(PoolId poolId, address who) external view returns (bool);
 
+    /// @notice returns the hub request manager for a pool and centrifuge ID
+    function hubRequestManager(PoolId poolId, uint16 centrifugeId) external view returns (address);
+
     /// @notice compute a pool ID given an ID postfix
     function poolId(uint16 centrifugeId, uint48 postfix) external view returns (PoolId poolId);
 

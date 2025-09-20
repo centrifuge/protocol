@@ -24,39 +24,25 @@ contract MockRequestManager is IHubRequestManager {
         return 0;
     }
 
-    function approveDeposits(PoolId, ShareClassId, AssetId, uint32, uint128, D18)
-        external
-        override
-        returns (uint128, uint128)
-    {
-        return (0, 0);
-    }
-
-    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external override returns (uint128) {
+    function approveDeposits(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external override returns (uint256) {
         return 0;
     }
 
-    function issueShares(PoolId, ShareClassId, AssetId, uint32, D18)
-        external
-        override
-        returns (uint128, uint128, uint128)
-    {
-        return (0, 0, 0);
-    }
+    function approveRedeems(PoolId, ShareClassId, AssetId, uint32, uint128, D18) external override {}
 
-    function revokeShares(PoolId, ShareClassId, AssetId, uint32, D18)
-        external
-        override
-        returns (uint128, uint128, uint128)
-    {
-        return (0, 0, 0);
-    }
-
-    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint128) {
+    function issueShares(PoolId, ShareClassId, AssetId, uint32, D18, uint128) external override returns (uint256) {
         return 0;
     }
 
-    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint128) {
+    function revokeShares(PoolId, ShareClassId, AssetId, uint32, D18, uint128) external override returns (uint256) {
+        return 0;
+    }
+
+    function forceCancelDepositRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint256) {
+        return 0;
+    }
+
+    function forceCancelRedeemRequest(PoolId, ShareClassId, bytes32, AssetId) external override returns (uint256) {
         return 0;
     }
 

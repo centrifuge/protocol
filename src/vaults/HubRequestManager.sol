@@ -23,6 +23,7 @@ import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
+import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 
@@ -106,12 +107,13 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledAssetAmount > 0) {
-                hub.requestCallback(
+                IHubGatewayHandler(hub).requestCallback(
                     poolId,
                     scId,
                     assetId,
                     RequestCallbackMessageLib.FulfilledDepositRequest(m.investor, 0, 0, cancelledAssetAmount).serialize(
-                    )
+                    ),
+                    0
                 );
             }
         } else if (kind == uint8(RequestMessageType.CancelRedeemRequest)) {
@@ -120,11 +122,12 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
             // Cancellation might have been queued such that it will be executed in the future during claiming
             if (cancelledShareAmount > 0) {
-                hub.requestCallback(
+                IHubGatewayHandler(hub).requestCallback(
                     poolId,
                     scId,
                     assetId,
-                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize()
+                    RequestCallbackMessageLib.FulfilledRedeemRequest(m.investor, 0, 0, cancelledShareAmount).serialize(),
+                    0
                 );
             }
         } else {
@@ -223,7 +226,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             pendingAssetAmount
         );
 
-        return hub.requestCallback(
+        return IHubGatewayHandler(hub).requestCallback(
             poolId,
             scId_,
             depositAssetId,
@@ -272,7 +275,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
         uint32 nowIssueEpochId,
         D18 navPoolPerShare,
         uint128 extraGasLimit
-    ) external auth {
+    ) external auth returns (uint256 cost) {
         require(nowIssueEpochId <= epochId[scId_][depositAssetId].deposit, EpochNotFound());
         require(
             nowIssueEpochId == nowIssueEpoch(scId_, depositAssetId),
@@ -311,7 +314,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             issuedShareAmount
         );
 
-        return hub.requestCallback(
+        return IHubGatewayHandler(hub).requestCallback(
             poolId,
             scId_,
             depositAssetId,
@@ -395,7 +398,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledAssetAmount > 0) {
-            return hub.requestCallback(
+            return IHubGatewayHandler(hub).requestCallback(
                 poolId,
                 scId_,
                 depositAssetId,
@@ -419,7 +422,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
 
         // Cancellation might have been queued such that it will be executed in the future during claiming
         if (cancelledShareAmount > 0) {
-            hub.requestCallback(
+            IHubGatewayHandler(hub).requestCallback(
                 poolId,
                 scId_,
                 payoutAssetId,

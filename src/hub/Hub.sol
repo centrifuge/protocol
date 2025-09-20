@@ -7,9 +7,10 @@ import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHub, VaultUpdateKind} from "./interfaces/IHub.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
+import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
-import {D18} from "../misc/types/D18.sol";
+import {D18, d18} from "../misc/types/D18.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {Multicall, IMulticall} from "../misc/Multicall.sol";
@@ -316,7 +317,12 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         returns (uint256 cost)
     {
         _isManager(poolId);
-        return hubRegistry.hubRequestManager(poolId, centrifugeId).call(data);
+        (bool success, bytes memory returnData) = hubRegistry.hubRequestManager(poolId, centrifugeId).call(data);
+        require(success, "HubRequestManager call failed");
+        if (returnData.length >= 32) {
+            return abi.decode(returnData, (uint256));
+        }
+        return 0;
     }
 
     /// @inheritdoc IHub
@@ -536,19 +542,22 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(address(manager) != address(0), InvalidRequestManager());
 
-        manager.request(poolId, scId, assetId, payload);
+        IHubRequestManager(manager).request(poolId, scId, assetId, payload);
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload)
-        external
-        returns (uint256 cost)
-    {
+    function requestCallback(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes calldata payload,
+        uint128 extraGasLimit
+    ) external returns (uint256 cost) {
         address manager = hubRegistry.hubRequestManager(poolId, assetId.centrifugeId());
         require(manager != address(0), InvalidRequestManager());
         require(msg.sender == manager, NotAuthorized());
 
-        return sender.sendRequestCallback(poolId, scId, assetId, payload);
+        return sender.sendRequestCallback(poolId, scId, assetId, payload, extraGasLimit);
     }
 
     /// @inheritdoc IHubGatewayHandler
