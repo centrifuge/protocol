@@ -81,6 +81,7 @@ abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
 
     function setUp() public virtual {
         hubRequestManager = new HubRequestManager(IHubRegistry(hubRegistryMock), address(this));
+        hubRequestManager.file("hub", address(this)); // Set the hub address
 
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);
