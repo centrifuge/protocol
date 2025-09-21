@@ -626,7 +626,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     function _auth() internal auth {}
 
     /// @dev Ensure the sender is a pool admin
-    function _isManager(PoolId poolId) internal {
+    function _isManager(PoolId poolId) internal view {
         require(hubRegistry.manager(poolId, msg.sender), IHub.NotManager());
     }
 }
