@@ -6,8 +6,8 @@ import {IAccounting} from "./interfaces/IAccounting.sol";
 import {IHubHelpers} from "./interfaces/IHubHelpers.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
-import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
+import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";

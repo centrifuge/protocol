@@ -34,6 +34,7 @@ import {Holdings} from "../../src/hub/Holdings.sol";
 import {Accounting} from "../../src/hub/Accounting.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
+import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {Spoke} from "../../src/spoke/Spoke.sol";
 import {IVault} from "../../src/spoke/interfaces/IVault.sol";
@@ -48,7 +49,6 @@ import {IAsyncVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {HubRequestManager} from "../../src/vaults/HubRequestManager.sol";
 import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
 import {IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
-import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 

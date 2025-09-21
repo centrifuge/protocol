@@ -10,13 +10,11 @@ import {PoolId} from "../../../src/common/types/PoolId.sol";
 import {AssetId} from "../../../src/common/types/AssetId.sol";
 import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
+import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
+
+import {MockHubMessageSender} from "../../hub/integration/mocks/MockHubMessageSender.sol";
 
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
-import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
-import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
-import {IHubMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
-import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
-import {MockHubMessageSender} from "../../hub/integration/mocks/MockHubMessageSender.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -25,6 +23,8 @@ import {
     QueuedOrder,
     RequestType
 } from "../../../src/hub/interfaces/IHubRequestManager.sol";
+
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 
 import "forge-std/Test.sol";
 
