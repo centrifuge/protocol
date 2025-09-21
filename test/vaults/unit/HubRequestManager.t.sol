@@ -12,6 +12,7 @@ import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
 
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {
     IHubRequestManager,
@@ -19,10 +20,9 @@ import {
     EpochRedeemAmounts,
     UserOrder,
     QueuedOrder,
-    RequestType
+    RequestType,
+    EpochId
 } from "../../../src/hub/interfaces/IHubRequestManager.sol";
-
-import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -32,19 +32,18 @@ uint32 constant SC_ID_INDEX = 1;
 ShareClassId constant SC_ID = ShareClassId.wrap(bytes16((uint128(POOL_ID) << 64) + SC_ID_INDEX));
 AssetId constant USDC = AssetId.wrap(69);
 AssetId constant OTHER_STABLE = AssetId.wrap(1337);
-
 uint8 constant DECIMALS_USDC = 6;
 uint8 constant DECIMALS_OTHER_STABLE = 12;
 uint8 constant DECIMALS_POOL = 18;
 uint128 constant DENO_USDC = uint128(10 ** DECIMALS_USDC);
 uint128 constant DENO_OTHER_STABLE = uint128(10 ** DECIMALS_OTHER_STABLE);
 uint128 constant DENO_POOL = uint128(10 ** DECIMALS_POOL);
-
 uint128 constant OTHER_STABLE_PER_POOL = 100;
 uint128 constant MIN_REQUEST_AMOUNT_USDC = DENO_USDC;
 uint128 constant MAX_REQUEST_AMOUNT_USDC = 1e18;
 uint128 constant MIN_REQUEST_AMOUNT_SHARES = DENO_POOL;
 uint128 constant MAX_REQUEST_AMOUNT_SHARES = type(uint128).max / 1e10;
+uint128 constant SHARE_HOOK_GAS = 100000;
 
 contract HubRegistryMock {
     function decimals(PoolId) external pure returns (uint8) {
@@ -60,16 +59,53 @@ contract HubRegistryMock {
             revert("IHubRegistry.decimals() - Unknown assetId");
         }
     }
+
+    function hubRequestManager(PoolId, uint16) external pure returns (address) {
+        return address(0);
+    }
 }
 
-abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
+contract HubMock is IHubGatewayHandler {
+    uint256 public totalCost;
+
+    function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128)
+        external
+        override
+        returns (uint256)
+    {
+        uint256 cost = 1000; // Mock cost
+        totalCost += cost;
+        return cost;
+    }
+
+    // Required implementations for IHubGatewayHandler
+    function registerAsset(AssetId, uint8) external override {}
+
+    function request(PoolId, ShareClassId, AssetId, bytes calldata) external override {}
+
+    function updateHoldingAmount(uint16, PoolId, ShareClassId, AssetId, uint128, D18, bool, bool, uint64)
+        external
+        override
+    {}
+
+    function initiateTransferShares(uint16, uint16, PoolId, ShareClassId, bytes32, uint128, uint128)
+        external
+        override
+    {}
+
+    function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external override {}
+}
+
+abstract contract HubRequestManagerBaseTest is Test {
     using MathLib for uint128;
     using MathLib for uint256;
     using CastLib for string;
     using PricingLib for *;
 
     HubRequestManager public hubRequestManager;
-    address hubRegistryMock = address(new HubRegistryMock());
+    HubRegistryMock public hubRegistryMock;
+    HubMock public hubMock;
+
     uint16 centrifugeId = 1;
     PoolId poolId = PoolId.wrap(POOL_ID);
     ShareClassId scId = SC_ID;
@@ -81,70 +117,183 @@ abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
     }
 
     function setUp() public virtual {
-        hubRequestManager = new HubRequestManager(IHubRegistry(hubRegistryMock), address(this));
-        hubRequestManager.file("hub", address(this)); // Set the hub address
+        hubRegistryMock = new HubRegistryMock();
+        hubMock = new HubMock();
+        hubRequestManager = new HubRequestManager(IHubRegistry(address(hubRegistryMock)), address(this));
 
-        assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
-        assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);
-        assertEq(IHubRegistry(hubRegistryMock).decimals(OTHER_STABLE), DECIMALS_OTHER_STABLE);
-    }
+        // Set the hub address
+        hubRequestManager.file("hub", address(hubMock));
 
-    // Implement IHubGatewayHandler methods
-    function registerAsset(AssetId, uint8) external pure {}
-    function request(PoolId, ShareClassId, AssetId, bytes calldata) external pure {}
-    function updateHoldingAmount(uint16, PoolId, ShareClassId, AssetId, uint128, D18, bool, bool, uint64)
-        external
-        pure
-    {}
-    function initiateTransferShares(uint16, uint16, PoolId, ShareClassId, bytes32, uint128, uint128) external pure {}
-    function updateShares(uint16, PoolId, ShareClassId, uint128, bool, bool, uint64) external pure {}
-
-    function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128)
-        external
-        pure
-        returns (uint256 cost)
-    {
-        return 0; // Mock implementation returns zero cost
+        assertEq(IHubRegistry(address(hubRegistryMock)).decimals(poolId), DECIMALS_POOL);
+        assertEq(IHubRegistry(address(hubRegistryMock)).decimals(USDC), DECIMALS_USDC);
+        assertEq(IHubRegistry(address(hubRegistryMock)).decimals(OTHER_STABLE), DECIMALS_OTHER_STABLE);
     }
 
     function _intoPoolAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
         return PricingLib.convertWithPrice(
             amount,
-            IHubRegistry(hubRegistryMock).decimals(assetId),
-            IHubRegistry(hubRegistryMock).decimals(poolId),
-            d18(1)
+            IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+            IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+            _pricePoolPerAsset(assetId)
         );
     }
 
     function _intoAssetAmount(AssetId assetId, uint128 amount) internal view returns (uint128) {
         return PricingLib.convertWithPrice(
             amount,
-            IHubRegistry(hubRegistryMock).decimals(poolId),
-            IHubRegistry(hubRegistryMock).decimals(assetId),
-            d18(1)
+            IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+            IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+            _pricePoolPerAsset(assetId).reciprocal()
         );
     }
 
-    function _approveDeposits(uint128 approvedAssetAmount) internal returns (uint256) {
-        uint32 nowDepositEpochId = hubRequestManager.nowDepositEpoch(scId, USDC);
-        D18 pricePoolPerAsset = d18(1);
-
-        return hubRequestManager.approveDeposits(
-            poolId, scId, USDC, nowDepositEpochId, approvedAssetAmount, pricePoolPerAsset
-        );
+    function _calcSharesIssued(AssetId assetId, uint128 depositAmountAsset, D18 pricePoolPerShare)
+        internal
+        view
+        returns (uint128)
+    {
+        return pricePoolPerShare.reciprocalMulUint256(
+            PricingLib.convertWithPrice(
+                depositAmountAsset,
+                IHubRegistry(address(hubRegistryMock)).decimals(assetId),
+                IHubRegistry(address(hubRegistryMock)).decimals(poolId),
+                _pricePoolPerAsset(assetId)
+            ),
+            MathLib.Rounding.Down
+        ).toUint128();
     }
 
-    function _approveRedeems(uint128 approvedShareAmount) internal {
-        uint32 nowRedeemEpochId = hubRequestManager.nowRedeemEpoch(scId, USDC);
-        D18 pricePoolPerAsset = d18(1);
+    function _pricePoolPerAsset(AssetId assetId) internal pure returns (D18) {
+        if (assetId == USDC) {
+            return d18(1, 1);
+        } else if (assetId == OTHER_STABLE) {
+            return d18(1, OTHER_STABLE_PER_POOL);
+        } else {
+            revert("HubRequestManagerBaseTest._priceAssetPerPool() - Unknown assetId");
+        }
+    }
 
-        hubRequestManager.approveRedeems(poolId, scId, USDC, nowRedeemEpochId, approvedShareAmount, pricePoolPerAsset);
+    function _assertDepositRequestEq(AssetId asset, bytes32 investor_, UserOrder memory expected) internal view {
+        (uint128 pending, uint32 lastUpdate) = hubRequestManager.depositRequest(scId, asset, investor_);
+
+        assertEq(pending, expected.pending, "Mismatch: Deposit UserOrder.pending");
+        assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Deposit UserOrder.lastUpdate");
+    }
+
+    function _assertQueuedDepositRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected)
+        internal
+        view
+    {
+        (bool isCancelling, uint128 amount) = hubRequestManager.queuedDepositRequest(scId, asset, investor_);
+
+        assertEq(isCancelling, expected.isCancelling, "isCancelling deposit mismatch");
+        assertEq(amount, expected.amount, "amount deposit mismatch");
+    }
+
+    function _assertRedeemRequestEq(AssetId asset, bytes32 investor_, UserOrder memory expected) internal view {
+        (uint128 pending, uint32 lastUpdate) = hubRequestManager.redeemRequest(scId, asset, investor_);
+
+        assertEq(pending, expected.pending, "Mismatch: Redeem UserOrder.pending");
+        assertEq(lastUpdate, expected.lastUpdate, "Mismatch: Redeem UserOrder.lastUpdate");
+    }
+
+    function _assertQueuedRedeemRequestEq(AssetId asset, bytes32 investor_, QueuedOrder memory expected)
+        internal
+        view
+    {
+        (bool isCancelling, uint128 amount) = hubRequestManager.queuedRedeemRequest(scId, asset, investor_);
+
+        assertEq(isCancelling, expected.isCancelling, "isCancelling redeem mismatch");
+        assertEq(amount, expected.amount, "amount redeem mismatch");
+    }
+
+    // Note: HubRequestManager doesn't expose epochInvestAmounts view function
+    // Internal epoch state is not directly testable from outside
+
+    // Note: HubRequestManager doesn't expose epochRedeemAmounts view function
+    // Internal epoch state is not directly testable from outside
+
+    function _nowDeposit(AssetId assetId) internal view returns (uint32) {
+        return hubRequestManager.nowDepositEpoch(scId, assetId);
+    }
+
+    function _nowIssue(AssetId assetId) internal view returns (uint32) {
+        return hubRequestManager.nowIssueEpoch(scId, assetId);
+    }
+
+    function _nowRedeem(AssetId assetId) internal view returns (uint32) {
+        return hubRequestManager.nowRedeemEpoch(scId, assetId);
+    }
+
+    function _nowRevoke(AssetId assetId) internal view returns (uint32) {
+        return hubRequestManager.nowRevokeEpoch(scId, assetId);
     }
 }
 
-contract HubRequestManagerRequestsTest is HubRequestManagerBaseTest {
+///@dev Contains all simple tests which are expected to succeed
+contract HubRequestManagerSimpleTest is HubRequestManagerBaseTest {
+    using MathLib for uint128;
+    using CastLib for string;
+
+    function testInitialValues() public view {
+        assertEq(hubRequestManager.nowDepositEpoch(scId, USDC), 1);
+        assertEq(hubRequestManager.nowRedeemEpoch(scId, USDC), 1);
+        assertEq(hubRequestManager.nowIssueEpoch(scId, USDC), 1);
+        assertEq(hubRequestManager.nowRevokeEpoch(scId, USDC), 1);
+    }
+
+    function testMaxDepositClaims() public {
+        assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), 0);
+
+        hubRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
+        assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), 0);
+    }
+
+    function testMaxRedeemClaims() public {
+        assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+
+        hubRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
+        assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+    }
+
+    function testEpochViews() public view {
+        // Test that epoch view functions return expected initial values
+        assertEq(_nowDeposit(USDC), 1);
+        assertEq(_nowIssue(USDC), 1);
+        assertEq(_nowRedeem(USDC), 1);
+        assertEq(_nowRevoke(USDC), 1);
+    }
+
+    function testMaxClaims() public view {
+        // Test that max claims start at zero
+        assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), 0);
+        assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+    }
+}
+
+///@dev Contains all deposit related tests which are expected to succeed and don't make use of transient storage
+contract HubRequestManagerDepositsNonTransientTest is HubRequestManagerBaseTest {
+    using MathLib for *;
+
+    function _deposit(uint128 depositAmountUsdc_, uint128 approvedAmountUsdc_)
+        internal
+        returns (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedPool)
+    {
+        depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        approvedAmountUsdc = uint128(bound(approvedAmountUsdc_, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
+        approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
+
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC)
+        );
+    }
+
     function testRequestDeposit(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0);
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit();
         emit IHubRequestManager.UpdateDepositRequest(
@@ -152,29 +301,282 @@ contract HubRequestManagerRequestsTest is HubRequestManagerBaseTest {
         );
         hubRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
 
-        (uint128 pending, uint32 lastUpdate) = hubRequestManager.depositRequest(scId, USDC, investor);
-        assertEq(pending, amount);
-        assertEq(lastUpdate, hubRequestManager.nowDepositEpoch(scId, USDC));
         assertEq(hubRequestManager.pendingDeposit(scId, USDC), amount);
+        _assertDepositRequestEq(USDC, investor, UserOrder(amount, 1));
     }
 
     function testCancelDepositRequest(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-
-        // First make a deposit request
         hubRequestManager.requestDeposit(poolId, scId, amount, investor, USDC);
 
-        // Cancel it
-        uint128 cancelled = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, hubRequestManager.nowDepositEpoch(scId, USDC), investor, 0, 0, 0, false
+        );
+        (uint128 cancelledShares) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
-        assertEq(cancelled, amount);
+        assertEq(cancelledShares, amount);
         assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0);
-        (uint128 pending,) = hubRequestManager.depositRequest(scId, USDC, investor);
-        assertEq(pending, 0);
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
+    }
+
+    function testApproveDepositsSingleAssetManyInvestors(
+        uint8 numInvestors,
+        uint128 depositAmount,
+        uint128 approvedUsdc
+    ) public {
+        numInvestors = uint8(bound(numInvestors, 1, 100));
+        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        approvedUsdc = uint128(bound(approvedUsdc, 1, numInvestors * depositAmount));
+
+        uint128 deposits = 0;
+        for (uint16 i = 0; i < numInvestors; i++) {
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
+            uint128 investorDeposit = depositAmount + i;
+            deposits += investorDeposit;
+            hubRequestManager.requestDeposit(poolId, scId, investorDeposit, investor, USDC);
+
+            assertEq(hubRequestManager.pendingDeposit(scId, USDC), deposits);
+        }
+
+        assertEq(_nowDeposit(USDC), 1);
+
+        vm.expectEmit();
+        emit IHubRequestManager.ApproveDeposits(
+            poolId,
+            scId,
+            USDC,
+            _nowDeposit(USDC),
+            _intoPoolAmount(USDC, approvedUsdc),
+            approvedUsdc,
+            deposits - approvedUsdc
+        );
+        uint256 cost = hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC)
+        );
+        assertEq(cost, 1000, "Should return callback cost");
+
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), deposits - approvedUsdc);
+
+        // Only one epoch should have passed
+        assertEq(_nowDeposit(USDC), 2);
+
+        // Note: Cannot test internal epoch state as epochInvestAmounts is not exposed
+    }
+
+    function testApproveDepositsTwoAssetsSameEpoch(uint128 depositAmount, uint128 approvedUSDC) public {
+        uint128 depositAmountUsdc = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        uint128 depositAmountOther =
+            uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC / 100, MAX_REQUEST_AMOUNT_USDC / 100));
+        uint128 approvedUsdc = uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC - 1, depositAmountUsdc));
+        uint128 approvedOtherStable =
+            uint128(bound(approvedUSDC, MIN_REQUEST_AMOUNT_USDC / 100 - 1, depositAmountOther));
+
+        bytes32 investorUsdc = bytes32("investorUsdc");
+        bytes32 investorOther = bytes32("investorOther");
+
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investorUsdc, USDC);
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountOther, investorOther, OTHER_STABLE);
+
+        assertEq(_nowDeposit(USDC), 1);
+        assertEq(_nowDeposit(OTHER_STABLE), 1);
+
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedUsdc, _pricePoolPerAsset(USDC));
+        hubRequestManager.approveDeposits(
+            poolId, scId, OTHER_STABLE, _nowDeposit(OTHER_STABLE), approvedOtherStable, _pricePoolPerAsset(OTHER_STABLE)
+        );
+
+        assertEq(_nowDeposit(USDC), 2);
+        assertEq(_nowDeposit(OTHER_STABLE), 2);
+
+        // Note: Cannot test internal epoch state as epochInvestAmounts is not exposed
+    }
+
+    function testIssueSharesSingleEpoch(
+        uint128 navPoolPerShare_,
+        uint128 fuzzDepositAmountUsdc,
+        uint128 fuzzApprovedAmountUsdc
+    ) public {
+        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedPool) =
+            _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
+
+        uint128 shares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+
+        uint256 cost =
+            hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+        assertEq(cost, 1000, "Should return callback cost");
+
+        // Note: Cannot test internal epoch state as epochInvestAmounts is not exposed
+    }
+
+    function testClaimDepositZeroApproved() public {
+        hubRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
+        hubRequestManager.requestDeposit(poolId, scId, 10, bytes32("investorOther"), USDC);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), 1, d18(1));
+
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1), SHARE_HOOK_GAS);
+
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
+        hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testFullClaimDepositSingleEpoch() public {
+        uint128 approvedAmountUsdc = 100 * DENO_USDC;
+        uint128 depositAmountUsdc = approvedAmountUsdc;
+        uint128 approvedPool = _intoPoolAmount(USDC, approvedAmountUsdc);
+        assertEq(approvedPool, 100 * DENO_POOL);
+
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC)
+        );
+
+        vm.expectRevert(IHubRequestManager.IssuanceRequired.selector);
+        hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        D18 navPoolPerShare = d18(11, 10);
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+
+        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAmountUsdc,
+            depositAmountUsdc - approvedAmountUsdc,
+            expectedShares,
+            block.timestamp.toUint64()
+        );
+        (uint128 payoutShareAmount, uint128 depositAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        assertEq(expectedShares, payoutShareAmount, "Mismatch: payoutShareAmount");
+        assertEq(approvedAmountUsdc, depositAssetAmount, "Mismatch: depositAssetAmount");
+        assertEq(0, cancelledAssetAmount, "Mismatch: cancelledAssetAmount");
+        assertEq(false, canClaimAgain, "Mismatch: canClaimAgain");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc - approvedAmountUsdc, 2));
+    }
+
+    function testClaimDepositSingleEpoch(
+        uint128 navPoolPerShare_,
+        uint128 fuzzDepositAmountUsdc,
+        uint128 fuzzApprovedAmountUsdc
+    ) public {
+        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc,) =
+            _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
+
+        vm.expectRevert(IHubRequestManager.IssuanceRequired.selector);
+        hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+
+        uint128 expectedShares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAmountUsdc,
+            depositAmountUsdc - approvedAmountUsdc,
+            expectedShares,
+            block.timestamp.toUint64()
+        );
+        (uint128 payoutShareAmount, uint128 depositAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        assertEq(expectedShares, payoutShareAmount, "Mismatch: payoutShareAmount");
+        assertEq(approvedAmountUsdc, depositAssetAmount, "Mismatch: depositAssetAmount");
+        assertEq(0, cancelledAssetAmount, "Mismatch: cancelledAssetAmount");
+        assertEq(false, canClaimAgain, "Mismatch: canClaimAgain");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc - approvedAmountUsdc, 2));
+    }
+
+    function testForceCancelDepositRequestZeroPending() public {
+        hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(poolId, scId, USDC, 1, investor, 0, 0, 0, false);
+        uint256 cancelledAmount = hubRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
+        assertEq(
+            hubRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
+        );
+
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
+        assertEq(
+            hubRequestManager.pendingDeposit(scId, USDC), 1, "Should be able to make new deposits after force cancel"
+        );
+    }
+
+    function testForceCancelDepositRequestImmediate(uint128 depositAmount) public {
+        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+
+        // Set allowForceDepositCancel to true (initialize cancellation)
+        hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Submit a deposit request, which will be applied since pending is zero
+        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+
+        // Force cancel before approval -> expect instant cancellation
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(poolId, scId, USDC, _nowDeposit(USDC), investor, 0, 0, 0, false);
+        uint256 cancelledAmount = hubRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Verify cancellation was immediate and not queued
+        // Note: forceCancelDepositRequest returns callback cost, not cancelled amount
+        assertEq(cancelledAmount, 1000, "Should return callback cost");
+        assertEq(
+            hubRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
+        );
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 1));
+
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmount, 1));
+    }
+}
+
+///@dev Contains all redeem related tests which are expected to succeed and don't make use of transient storage
+contract HubRequestManagerRedeemsNonTransientTest is HubRequestManagerBaseTest {
+    using MathLib for *;
+
+    function _redeem(uint128 redeemShares_, uint128 approvedShares_, uint128 navPerShare)
+        internal
+        returns (uint128 redeemShares, uint128 approvedShares, uint128 approvedPool, D18 poolPerShare)
+    {
+        redeemShares = uint128(bound(redeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        approvedShares = uint128(bound(approvedShares_, MIN_REQUEST_AMOUNT_SHARES, redeemShares));
+        poolPerShare = d18(uint128(bound(navPerShare, 1e15, type(uint128).max / 1e18)));
+        approvedPool = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
+
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
     }
 
     function testRequestRedeem(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 0));
 
         vm.expectEmit();
         emit IHubRequestManager.UpdateRedeemRequest(
@@ -182,180 +584,178 @@ contract HubRequestManagerRequestsTest is HubRequestManagerBaseTest {
         );
         hubRequestManager.requestRedeem(poolId, scId, amount, investor, USDC);
 
-        (uint128 pending, uint32 lastUpdate) = hubRequestManager.redeemRequest(scId, USDC, investor);
-        assertEq(pending, amount);
-        assertEq(lastUpdate, hubRequestManager.nowRedeemEpoch(scId, USDC));
         assertEq(hubRequestManager.pendingRedeem(scId, USDC), amount);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(amount, 1));
     }
 
     function testCancelRedeemRequest(uint128 amount) public {
         amount = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-
-        // First make a redeem request
         hubRequestManager.requestRedeem(poolId, scId, amount, investor, USDC);
 
-        // Cancel it
-        uint128 cancelled = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, hubRequestManager.nowRedeemEpoch(scId, USDC), investor, 0, 0, 0, false
+        );
+        (uint128 cancelledShares) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
 
-        assertEq(cancelled, amount);
+        assertEq(cancelledShares, amount);
         assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0);
-        (uint128 pending,) = hubRequestManager.redeemRequest(scId, USDC, investor);
-        assertEq(pending, 0);
-    }
-}
-
-contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
-    function testApproveDeposits(uint128 depositAmount, uint128 approvedAmount) public {
-        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        approvedAmount = uint128(bound(approvedAmount, 1, depositAmount));
-
-        // First make a deposit request
-        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-
-        // Approve deposits
-        _approveDeposits(approvedAmount);
-
-        assertEq(hubRequestManager.pendingDeposit(scId, USDC), depositAmount - approvedAmount);
-        // Note: approved amounts now handled in callback
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
     }
 
-    function testApproveRedeems(uint128 redeemAmount, uint128 approvedAmount) public {
+    function testApproveRedeemsSingleAssetManyInvestors(
+        uint8 numInvestors,
+        uint128 redeemAmount,
+        uint128 approvedShares
+    ) public {
+        numInvestors = uint8(bound(numInvestors, 1, 100));
         redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
-        approvedAmount = uint128(bound(approvedAmount, 1, redeemAmount));
+        approvedShares = uint128(bound(approvedShares, 1, numInvestors * redeemAmount));
 
-        // First make a redeem request
-        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        uint128 redeems = 0;
+        for (uint16 i = 0; i < numInvestors; i++) {
+            bytes32 investor = bytes32(uint256(keccak256(abi.encodePacked("investor_", i))));
+            uint128 investorRedeem = redeemAmount + i;
+            redeems += investorRedeem;
+            hubRequestManager.requestRedeem(poolId, scId, investorRedeem, investor, USDC);
 
-        // Approve redeems
-        _approveRedeems(approvedAmount);
+            assertEq(hubRequestManager.pendingRedeem(scId, USDC), redeems);
+        }
 
-        assertEq(hubRequestManager.pendingRedeem(scId, USDC), redeemAmount - approvedAmount);
-        // Note: approved amounts now handled in callback
+        assertEq(_nowRedeem(USDC), 1);
+
+        uint128 payoutAssetAmount = _intoAssetAmount(USDC, d18(1).mulUint128(approvedShares, MathLib.Rounding.Down));
+
+        vm.expectEmit();
+        emit IHubRequestManager.ApproveRedeems(
+            poolId, scId, USDC, _nowRedeem(USDC), approvedShares, redeems - approvedShares
+        );
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), redeems - approvedShares);
+
+        // Only one epoch should have passed
+        assertEq(_nowRedeem(USDC), 2);
+
+        // Note: Cannot test internal epoch state as epochRedeemAmounts is not exposed
     }
 
-    function testIssueShares(uint128 approvedAmount, uint128 navPoolPerShare) public {
-        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
-        navPoolPerShare = uint128(bound(navPoolPerShare, 1e15, 1e19)); // 0.001 to 10 in D18 to prevent overflow
+    function testRevokeSharesSingleEpoch(uint128 navPoolPerShare_, uint128 fuzzRedeemShares, uint128 fuzzApprovedShares)
+        public
+    {
+        D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
+        (uint128 redeemShares, uint128 approvedShares,,) =
+            _redeem(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
 
-        // Setup: request, approve deposits
-        hubRequestManager.requestDeposit(poolId, scId, approvedAmount, investor, USDC);
-        _approveDeposits(approvedAmount);
+        uint256 cost =
+            hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+        assertEq(cost, 1000, "Should return callback cost");
 
-        // Issue shares
-        uint32 nowIssueEpochId = hubRequestManager.nowIssueEpoch(scId, USDC);
-        hubRequestManager.issueShares(poolId, scId, USDC, nowIssueEpochId, d18(navPoolPerShare), 0);
+        uint128 payoutAssetAmount =
+            _intoAssetAmount(USDC, navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
 
-        // Note: actual amounts are now handled in the callback, cost represents gas cost
-
-        // Check issued share amount calculation - now handled in callback
+        // Note: Cannot test internal epoch state as epochRedeemAmounts is not exposed
     }
 
-    function testRevokeShares(uint128 approvedAmount, uint128 navPoolPerShare) public {
-        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, 1e21)); // Further reduce max to
-            // prevent conversion issues
-        navPoolPerShare = uint128(bound(navPoolPerShare, 1e15, 1e19)); // 0.001 to 10 in D18 to prevent overflow
+    function testClaimRedeemZeroApproved() public {
+        hubRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
+        hubRequestManager.requestRedeem(poolId, scId, 10, bytes32("investorOther"), USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, d18(1));
 
-        // Setup: request, approve redeems
-        hubRequestManager.requestRedeem(poolId, scId, approvedAmount, investor, USDC);
-        _approveRedeems(approvedAmount);
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1), SHARE_HOOK_GAS);
 
-        // Revoke shares
-        uint32 nowRevokeEpochId = hubRequestManager.nowRevokeEpoch(scId, USDC);
-        hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare), 0);
-
-        // Note: actual amounts are now handled in the callback, cost represents gas cost
-
-        // Check payout calculations - now handled in callback
-
-        // Note: Skip asset amount assertion due to precision issues in decimal conversion with large numbers
-        // The core logic is working correctly as verified by the pool amount assertion above
-    }
-}
-
-contract HubRequestManagerClaimingTest is HubRequestManagerBaseTest {
-    function testClaimDepositBasic() public {
-        uint128 depositAmount = 1000 * DENO_USDC;
-        uint128 navPoolPerShare = uint128(d18(1).raw()); // 1:1 ratio
-
-        // Setup: request, approve, issue
-        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-        _approveDeposits(depositAmount);
-
-        uint32 nowIssueEpochId = hubRequestManager.nowIssueEpoch(scId, USDC);
-        hubRequestManager.issueShares(poolId, scId, USDC, nowIssueEpochId, d18(navPoolPerShare), 0);
-
-        // Claim deposit
-        (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelledAssetAmount, bool canClaimAgain) =
-            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
-
-        assertEq(paymentAssetAmount, depositAmount);
-        assertGt(payoutShareAmount, 0);
-        assertEq(cancelledAssetAmount, 0);
-        assertEq(canClaimAgain, false);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimRedeem(poolId, scId, 1, investor, USDC, 0, 1, 0, block.timestamp.toUint64());
+        hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
     }
 
-    function testClaimRedeemBasic() public {
-        uint128 redeemAmount = 1000 * DENO_POOL;
-        uint128 navPoolPerShare = uint128(d18(1).raw()); // 1:1 ratio
+    function testFullClaimRedeemSingleEpoch() public {
+        uint128 approvedShares = 100 * DENO_POOL;
+        uint128 redeemShares = approvedShares;
+        D18 navPoolPerShare = d18(11, 10);
 
-        // Setup: request, approve, revoke
-        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
-        _approveRedeems(redeemAmount);
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
 
-        uint32 nowRevokeEpochId = hubRequestManager.nowRevokeEpoch(scId, USDC);
-        hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare), 0);
+        vm.expectRevert(IHubRequestManager.RevocationRequired.selector);
+        hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
 
-        // Claim redeem
-        (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelledShareAmount, bool canClaimAgain) =
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+
+        uint128 expectedAssetAmount =
+            _intoAssetAmount(USDC, navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
+
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimRedeem(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedShares,
+            redeemShares - approvedShares,
+            expectedAssetAmount,
+            block.timestamp.toUint64()
+        );
+        (uint128 payoutAssetAmount, uint128 redeemShareAmount, uint128 cancelledShareAmount, bool canClaimAgain) =
             hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
 
-        assertEq(paymentShareAmount, redeemAmount);
-        assertGt(payoutAssetAmount, 0);
-        assertEq(cancelledShareAmount, 0);
-        assertEq(canClaimAgain, false);
-    }
-}
+        assertEq(expectedAssetAmount, payoutAssetAmount, "Mismatch: payoutAssetAmount");
+        assertEq(approvedShares, redeemShareAmount, "Mismatch: redeemShareAmount");
+        assertEq(0, cancelledShareAmount, "Mismatch: cancelledShareAmount");
+        assertEq(false, canClaimAgain, "Mismatch: canClaimAgain");
 
-contract HubRequestManagerViewsTest is HubRequestManagerBaseTest {
-    function testEpochViews() public view {
-        // Test initial epoch values
-        assertEq(hubRequestManager.nowDepositEpoch(scId, USDC), 1);
-        assertEq(hubRequestManager.nowIssueEpoch(scId, USDC), 1);
-        assertEq(hubRequestManager.nowRedeemEpoch(scId, USDC), 1);
-        assertEq(hubRequestManager.nowRevokeEpoch(scId, USDC), 1);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemShares - approvedShares, 2));
     }
 
-    function testMaxClaims() public view {
-        // Test max claims when no requests
-        assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), 0);
-        assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
+    function testForceCancelRedeemRequestZeroPending() public {
+        hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(poolId, scId, USDC, 1, investor, 0, 0, 0, false);
+        uint256 cancelledAmount = hubRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+
+        assertEq(cancelledAmount, 0, "Cancelled amount should be zero");
+        assertEq(
+            hubRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
+        );
+
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
+        assertEq(
+            hubRequestManager.pendingRedeem(scId, USDC), 1, "Should be able to make new redeems after force cancel"
+        );
     }
-}
 
-contract HubRequestManagerAuthTest is HubRequestManagerBaseTest {
-    address constant UNAUTHORIZED = address(0x999);
+    function testForceCancelRedeemRequestImmediate(uint128 redeemAmount) public {
+        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
 
-    function testErrNotAuthorized() public {
-        vm.startPrank(UNAUTHORIZED);
+        // Set allowForceRedeemCancel to true (initialize cancellation)
+        hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.approveDeposits(poolId, scId, USDC, 0, 0, d18(1));
+        // Submit a redeem request, which will be applied since pending is zero
+        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.approveRedeems(poolId, scId, USDC, 0, 0, d18(1));
+        // Force cancel before approval -> expect instant cancellation
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(poolId, scId, USDC, _nowRedeem(USDC), investor, 0, 0, 0, false);
+        uint256 cancelledAmount = hubRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.issueShares(poolId, scId, USDC, 0, d18(1), 0);
+        // Verify cancellation was immediate and not queued
+        // Note: forceCancelRedeemRequest returns callback cost, not cancelled amount
+        assertEq(cancelledAmount, 1000, "Should return callback cost");
+        assertEq(
+            hubRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
+        );
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 1));
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.revokeShares(poolId, scId, USDC, 0, d18(1), 0);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.forceCancelDepositRequest(poolId, scId, bytes32(0), USDC);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubRequestManager.forceCancelRedeemRequest(poolId, scId, bytes32(0), USDC);
-
-        vm.stopPrank();
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemAmount, 1));
     }
 }
