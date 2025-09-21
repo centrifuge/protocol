@@ -65,12 +65,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         tokenFactory = tokenFactory_;
     }
 
-    modifier payTransaction() {
-        gateway.startTransactionPayment{value: msg.value}(msg.sender);
-        _;
-        gateway.endTransactionPayment();
-    }
-
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
@@ -97,7 +91,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         bytes32 receiver,
         uint128 amount,
         uint128 remoteExtraGasLimit
-    ) external payable payTransaction protected {
+    ) external payable protected {
         IShareToken share = IShareToken(shareToken(poolId, scId));
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(
@@ -109,14 +103,17 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         share.burn(address(this), amount);
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, msg.sender, receiver, amount);
-        sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
+
+        gateway.depositSubsidy{value: msg.value}(poolId);
+        uint256 cost =
+            sender.sendInitiateTransferShares(centrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit);
+        require(msg.value >= cost, NotEnoughGas());
     }
 
     /// @inheritdoc ISpoke
     function registerAsset(uint16 centrifugeId, address asset, uint256 tokenId)
         external
         payable
-        payTransaction
         protected
         returns (AssetId assetId)
     {
@@ -149,16 +146,22 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
         }
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
-        sender.sendRegisterAsset(centrifugeId, assetId, decimals);
+
+        gateway.depositSubsidy{value: msg.value}(PoolId.wrap(0));
+        uint256 cost = sender.sendRegisterAsset(centrifugeId, assetId, decimals);
+        require(msg.value >= cost, NotEnoughGas());
     }
 
     /// @inheritdoc ISpoke
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external {
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload)
+        external
+        returns (uint256 cost)
+    {
         IRequestManager manager = requestManager[poolId];
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequest(poolId, scId, assetId, payload);
+        return sender.sendRequest(poolId, scId, assetId, payload);
     }
 
     //----------------------------------------------------------------------------------------------

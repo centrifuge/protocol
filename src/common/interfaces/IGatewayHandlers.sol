@@ -24,7 +24,7 @@ interface IHubGatewayHandler {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  payload The request payload to be processed
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external payable;
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
     /// @notice Update a holding by request from Vaults.
     function updateHoldingAmount(
