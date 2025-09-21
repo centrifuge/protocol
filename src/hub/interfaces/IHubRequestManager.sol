@@ -314,4 +314,32 @@ interface IHubRequestManager {
         external
         view
         returns (uint32);
+
+    //----------------------------------------------------------------------------------------------
+    // Epoch data access
+    //----------------------------------------------------------------------------------------------
+
+    function epochInvestAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+        external
+        view
+        returns (
+            uint128 pendingAssetAmount,
+            uint128 approvedAssetAmount,
+            uint128 approvedPoolAmount,
+            D18 pricePoolPerAsset,
+            D18 navPoolPerShare,
+            uint64 issuedAt
+        );
+
+    function epochRedeemAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+        external
+        view
+        returns (
+            uint128 approvedShareAmount,
+            uint128 pendingShareAmount,
+            D18 pricePoolPerAsset,
+            D18 navPoolPerShare,
+            uint128 payoutAssetAmount,
+            uint64 revokedAt
+        );
 }

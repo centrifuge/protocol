@@ -168,4 +168,38 @@ contract MockHubRequestManager is IHubRequestManager {
     function maxRedeemClaims(ShareClassId, bytes32, AssetId) external pure override returns (uint32) {
         return MOCK_EPOCH;
     }
+
+    function epochInvestAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+        external
+        view
+        override
+        returns (
+            uint128 pendingAssetAmount,
+            uint128 approvedAssetAmount,
+            uint128 approvedPoolAmount,
+            D18 pricePoolPerAsset,
+            D18 navPoolPerShare,
+            uint64 issuedAt
+        )
+    {
+        // Mock implementation
+        return (0, 0, 0, D18.wrap(0), D18.wrap(0), 0);
+    }
+
+    function epochRedeemAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+        external
+        view
+        override
+        returns (
+            uint128 approvedShareAmount,
+            uint128 pendingShareAmount,
+            D18 pricePoolPerAsset,
+            D18 navPoolPerShare,
+            uint128 payoutAssetAmount,
+            uint64 revokedAt
+        )
+    {
+        // Mock implementation
+        return (0, 0, D18.wrap(0), D18.wrap(0), 0, 0);
+    }
 }
