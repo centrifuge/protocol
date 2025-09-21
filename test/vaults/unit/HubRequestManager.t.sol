@@ -216,7 +216,7 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
         hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
 
         // Approve deposits
-        uint256 cost = _approveDeposits(approvedAmount);
+        _approveDeposits(approvedAmount);
 
         assertEq(hubRequestManager.pendingDeposit(scId, USDC), depositAmount - approvedAmount);
         // Note: approved amounts now handled in callback
@@ -246,7 +246,7 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
 
         // Issue shares
         uint32 nowIssueEpochId = hubRequestManager.nowIssueEpoch(scId, USDC);
-        uint256 cost = hubRequestManager.issueShares(poolId, scId, USDC, nowIssueEpochId, d18(navPoolPerShare), 0);
+        hubRequestManager.issueShares(poolId, scId, USDC, nowIssueEpochId, d18(navPoolPerShare), 0);
 
         // Note: actual amounts are now handled in the callback, cost represents gas cost
 
@@ -264,7 +264,7 @@ contract HubRequestManagerEpochsTest is HubRequestManagerBaseTest {
 
         // Revoke shares
         uint32 nowRevokeEpochId = hubRequestManager.nowRevokeEpoch(scId, USDC);
-        uint256 cost = hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare), 0);
+        hubRequestManager.revokeShares(poolId, scId, USDC, nowRevokeEpochId, d18(navPoolPerShare), 0);
 
         // Note: actual amounts are now handled in the callback, cost represents gas cost
 
@@ -320,7 +320,7 @@ contract HubRequestManagerClaimingTest is HubRequestManagerBaseTest {
 }
 
 contract HubRequestManagerViewsTest is HubRequestManagerBaseTest {
-    function testEpochViews() public {
+    function testEpochViews() public view {
         // Test initial epoch values
         assertEq(hubRequestManager.nowDepositEpoch(scId, USDC), 1);
         assertEq(hubRequestManager.nowIssueEpoch(scId, USDC), 1);
@@ -328,7 +328,7 @@ contract HubRequestManagerViewsTest is HubRequestManagerBaseTest {
         assertEq(hubRequestManager.nowRevokeEpoch(scId, USDC), 1);
     }
 
-    function testMaxClaims() public {
+    function testMaxClaims() public view {
         // Test max claims when no requests
         assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), 0);
         assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), 0);
