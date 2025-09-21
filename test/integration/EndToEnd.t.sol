@@ -32,6 +32,7 @@ import {VaultUpdateKind, MessageType, MessageLib} from "../../src/common/librari
 import {Hub} from "../../src/hub/Hub.sol";
 import {Holdings} from "../../src/hub/Holdings.sol";
 import {Accounting} from "../../src/hub/Accounting.sol";
+import {HubHelpers} from "../../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../src/hub/ShareClassManager.sol";
 import {IHubRequestManager} from "../../src/hub/interfaces/IHubRequestManager.sol";
@@ -101,6 +102,7 @@ contract EndToEndDeployment is Test {
         Holdings holdings;
         ShareClassManager shareClassManager;
         Hub hub;
+        HubHelpers hubHelpers;
         HubRequestManager hubRequestManager;
         // Others
         IdentityValuation identityValuation;
@@ -217,6 +219,7 @@ contract EndToEndDeployment is Test {
             holdings: deployA.holdings(),
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
+            hubHelpers: deployA.hubHelpers(),
             hubRequestManager: deployA.hubRequestManager(),
             identityValuation: deployA.identityValuation(),
             oracleValuation: deployA.oracleValuation(),
@@ -666,11 +669,13 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.hubRequestManager.nowDepositEpoch(shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.hub.callRequestManager(
             poolId,
             assetId.centrifugeId(),
             abi.encodeCall(
-                IHubRequestManager.approveDeposits, (poolId, shareClassId, assetId, depositEpochId, amount, d18(1))
+                IHubRequestManager.approveDeposits,
+                (poolId, shareClassId, assetId, depositEpochId, amount, pricePoolPerAsset)
             )
         );
 
@@ -977,11 +982,13 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 redeemEpochId = hub.hubRequestManager.nowRedeemEpoch(shareClassId, assetId);
+        D18 pricePoolPerAsset = hub.hubHelpers.pricePoolPerAsset(poolId, shareClassId, assetId);
         hub.hub.callRequestManager(
             poolId,
             assetId.centrifugeId(),
             abi.encodeCall(
-                IHubRequestManager.approveRedeems, (poolId, shareClassId, assetId, redeemEpochId, shares, d18(1))
+                IHubRequestManager.approveRedeems,
+                (poolId, shareClassId, assetId, redeemEpochId, shares, pricePoolPerAsset)
             )
         );
 

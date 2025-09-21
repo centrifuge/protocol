@@ -22,6 +22,7 @@ import {RequestCallbackMessageLib} from "../../../src/common/libraries/RequestCa
 import {Hub} from "../../../src/hub/Hub.sol";
 import {Holdings} from "../../../src/hub/Holdings.sol";
 import {Accounting} from "../../../src/hub/Accounting.sol";
+import {HubHelpers} from "../../../src/hub/HubHelpers.sol";
 import {HubRegistry} from "../../../src/hub/HubRegistry.sol";
 import {ShareClassManager} from "../../../src/hub/ShareClassManager.sol";
 
@@ -391,6 +392,7 @@ contract ForkTestSyncInvestments is ForkTestBase, VMLabeling {
             holdings: Holdings(IntegrationConstants.HOLDINGS),
             shareClassManager: ShareClassManager(IntegrationConstants.SHARE_CLASS_MANAGER),
             hub: Hub(IntegrationConstants.HUB),
+            hubHelpers: HubHelpers(IntegrationConstants.HUB_HELPERS),
             hubRequestManager: HubRequestManager(address(0)), // TODO: add this once deployed
             identityValuation: IdentityValuation(IntegrationConstants.IDENTITY_VALUATION),
             oracleValuation: OracleValuation(address(0)), // TODO: add this once deployed
