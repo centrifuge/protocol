@@ -180,9 +180,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId paymentPoolId = processor.messagePoolIdPayment(batch);
         uint256 cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
 
-        if (cost > subsidy[paymentPoolId].value) {
-            _requestPoolFunding(paymentPoolId);
-        }
+        if (cost > subsidy[paymentPoolId].value) _requestPoolFunding(paymentPoolId);
 
         if (cost <= subsidy[paymentPoolId].value) {
             subsidy[paymentPoolId].value -= cost.toUint96();

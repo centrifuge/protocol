@@ -231,6 +231,8 @@ contract EndToEndDeployment is Test {
         POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
         SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
 
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
+
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
     }
@@ -291,6 +293,8 @@ contract EndToEndDeployment is Test {
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
+
+        s_.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -409,13 +413,6 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
-    function _depositSubsidy(CHub memory hub, PoolId poolId) internal {
-        vm.startPrank(ANY);
-        vm.deal(ANY, 1 ether);
-        hub.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(poolId);
-        vm.stopPrank();
-    }
-
     function _createPool() internal {
         vm.startPrank(address(h.guardian.safe()));
         h.guardian.createPool(POOL_A, FM, USD_ID);
@@ -425,7 +422,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         _createPoolAccounts(h, POOL_A, FM);
-        _depositSubsidy(h, POOL_A);
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _configurePoolCrossChain(
@@ -495,8 +492,6 @@ contract EndToEndFlows is EndToEndUtils {
     function _configureBasePoolWithCustomAdapters() internal {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
-
-        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
 
         // Wire pool adapters
         poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);
@@ -1132,9 +1127,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        vm.startPrank(ANY);
-        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
-
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
         h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
@@ -1152,11 +1144,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint256 VALUE = 123;
 
         _setSpoke(sameChain);
-
-        vm.startPrank(ANY);
-        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
-
-        s.gateway.depositSubsidy{value: VALUE}(GLOBAL_POOL);
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
@@ -1212,21 +1199,21 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(ANY);
         s.gateway.depositSubsidy{value: h.gasService.updateShares() * 2}(POOL_A);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + h.gasService.updateShares() * 2);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares());
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + h.gasService.updateShares());
 
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
-        assertEq(address(s.gateway).balance, 0);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
 
         // This message is fully paid with refunded amount
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, 0);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
@@ -1434,8 +1421,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     function testAdaptersWithRecovery() public {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
-
-        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
 
         // Wire pool adapters
         poolAdapterAToB = new LocalAdapter(h.centrifugeId, h.multiAdapter, FM);

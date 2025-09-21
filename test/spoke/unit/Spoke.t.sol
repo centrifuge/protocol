@@ -308,6 +308,35 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         spoke.crosschainTransferShares{value: GAS}(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0);
     }
 
+    function testErrNotEnoughGas() public {
+        _utilAddPoolAndShareClass(NO_HOOK);
+
+        _mockCrossTransferShare(ANY, true);
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                sender.sendInitiateTransferShares.selector,
+                REMOTE_CENTRIFUGE_ID,
+                POOL_A,
+                SC_1,
+                RECEIVER.toBytes32(),
+                AMOUNT,
+                0
+            ),
+            abi.encode(GAS)
+        );
+
+        vm.mockCall(
+            address(gateway), GAS - 1, abi.encodeWithSelector(gateway.depositSubsidy.selector, POOL_A), abi.encode()
+        );
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.NotEnoughGas.selector);
+        spoke.crosschainTransferShares{value: GAS - 1}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 0
+        );
+    }
+
     function testCrossChainTransfer() public {
         _utilAddPoolAndShareClass(NO_HOOK);
 
@@ -383,6 +412,22 @@ contract SpokeTestRegisterAsset is SpokeTest {
         vm.prank(ANY);
         vm.expectRevert(ISpoke.TooManyDecimals.selector);
         spoke.registerAsset{value: GAS}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1);
+    }
+
+    function testErrNotEnoughGas() public {
+        _mockERC20(DECIMALS);
+        _mockSendRegisterAsset(ASSET_ID_20);
+
+        vm.mockCall(
+            address(gateway),
+            GAS - 1,
+            abi.encodeWithSelector(gateway.depositSubsidy.selector, PoolId.wrap(0)),
+            abi.encode()
+        );
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.NotEnoughGas.selector);
+        spoke.registerAsset{value: GAS - 1}(REMOTE_CENTRIFUGE_ID, erc20, 0);
     }
 
     function testRegisterAssetERC20() public {
