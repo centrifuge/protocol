@@ -124,8 +124,8 @@ contract Guardian is IGuardian {
     }
 
     /// @inheritdoc IGuardian
-    function setGatewayManager(address manager) external onlySafe {
-        gateway.setManager(PoolId.wrap(0), manager);
+    function updateGatewayManager(address who, bool canManage) external onlySafe {
+        gateway.updateManager(PoolId.wrap(0), who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------

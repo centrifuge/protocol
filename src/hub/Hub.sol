@@ -633,10 +633,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost) {
+    function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost)
+    {
         _isManager(poolId);
 
-        return sender.sendSetGatewayManager(centrifugeId, poolId, manager);
+        return sender.sendUpdateGatewayManager(centrifugeId, poolId, who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------

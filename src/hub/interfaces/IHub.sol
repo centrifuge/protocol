@@ -385,9 +385,12 @@ interface IHub {
         uint8 recoveryIndex
     ) external returns (uint256 cost);
 
-    /// @notice Set a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
+    /// @notice Update a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
     /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param poolId pool associated to this configuration.
-    /// @param manager address used as manager.
-    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
+    /// @param who address used as manager.
+    /// @param canManage if enabled as manager
+    function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost);
 }

@@ -583,16 +583,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
+    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
         auth
         returns (uint256 cost)
     {
         if (centrifugeId == localCentrifugeId) {
-            gateway.setManager(poolId, manager.toAddress());
+            gateway.updateManager(poolId, who.toAddress(), canManage);
         } else {
             return gateway.send(
-                centrifugeId, MessageLib.SetGatewayManager({poolId: poolId.raw(), manager: manager}).serialize()
+                centrifugeId,
+                MessageLib.UpdateGatewayManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize()
             );
         }
     }
