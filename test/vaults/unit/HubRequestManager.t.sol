@@ -12,8 +12,6 @@ import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
 
-import {MockHubMessageSender} from "../../hub/integration/mocks/MockHubMessageSender.sol";
-
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {
     IHubRequestManager,
@@ -85,7 +83,6 @@ abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
     function setUp() public virtual {
         hubRequestManager = new HubRequestManager(IHubRegistry(hubRegistryMock), address(this));
         hubRequestManager.file("hub", address(this)); // Set the hub address
-        hubRequestManager.file("sender", address(new MockHubMessageSender())); // Set the mock sender
 
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);

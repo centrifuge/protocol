@@ -37,7 +37,6 @@ contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatch
 
         // File methods
         report.hubRequestManager.file("hub", address(report.hub.hub));
-        report.hubRequestManager.file("sender", address(report.hub.common.messageDispatcher));
     }
 
     function revokeFull(FullReport memory report) public onlyDeployer {

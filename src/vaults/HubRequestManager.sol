@@ -39,7 +39,6 @@ contract HubRequestManager is Auth, IHubRequestManager {
     IHubRegistry public immutable hubRegistry;
 
     address public hub;
-    IHubMessageSender public sender;
 
     // Epochs
     mapping(ShareClassId scId => mapping(AssetId assetId => EpochId)) public epochId;
@@ -81,7 +80,6 @@ contract HubRequestManager is Auth, IHubRequestManager {
     /// Accepts a `bytes32` representation of 'hub'
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = data;
-        else if (what == "sender") sender = IHubMessageSender(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -371,7 +369,7 @@ contract HubRequestManager is Auth, IHubRequestManager {
             payoutPoolAmount
         );
 
-        return sender.sendRequestCallback(
+        return IHubGatewayHandler(hub).requestCallback(
             poolId,
             scId_,
             payoutAssetId,
