@@ -69,9 +69,6 @@ contract BaseTest is HubDeployer, Test {
 
         valuation = new MockValuation(hubRegistry);
 
-        // Deploy mock hub request manager for testing
-        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager()));
-
         vm.stopPrank();
     }
 
@@ -88,6 +85,7 @@ contract BaseTest is HubDeployer, Test {
         labelAddresses("");
         deployHub(input, batcher);
         _mockStuff(batcher);
+        hubRequestManager = IHubRequestManager(address(new MockHubRequestManager(address(hub))));
         removeHubDeployerAccess(batcher);
 
         // Initialize accounts

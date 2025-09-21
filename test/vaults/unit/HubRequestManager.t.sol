@@ -14,6 +14,9 @@ import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
+import {IHubMessageSender} from "../../../src/common/interfaces/IGatewaySenders.sol";
+import {VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
+import {MockHubMessageSender} from "../../hub/integration/mocks/MockHubMessageSender.sol";
 import {
     IHubRequestManager,
     EpochInvestAmounts,
@@ -82,6 +85,7 @@ abstract contract HubRequestManagerBaseTest is Test, IHubGatewayHandler {
     function setUp() public virtual {
         hubRequestManager = new HubRequestManager(IHubRegistry(hubRegistryMock), address(this));
         hubRequestManager.file("hub", address(this)); // Set the hub address
+        hubRequestManager.file("sender", address(new MockHubMessageSender())); // Set the mock sender
 
         assertEq(IHubRegistry(hubRegistryMock).decimals(poolId), DECIMALS_POOL);
         assertEq(IHubRegistry(hubRegistryMock).decimals(USDC), DECIMALS_USDC);

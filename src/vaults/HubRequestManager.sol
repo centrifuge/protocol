@@ -13,8 +13,8 @@ import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
 import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
-import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
+import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
 
 import {IHubRegistry} from "../hub/interfaces/IHubRegistry.sol";
 import {

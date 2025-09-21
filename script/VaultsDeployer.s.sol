@@ -68,6 +68,9 @@ contract VaultsActionBatcher is SpokeActionBatcher {
         report.syncManager.file("spoke", address(report.spoke.spoke));
         report.syncManager.file("balanceSheet", address(report.spoke.balanceSheet));
 
+        // TODO
+        // report.hubRequestManager.file("sender", address(report.common.messageDispatcher));
+
         // Endorse methods
         report.spoke.common.root.endorse(address(report.asyncRequestManager));
         report.spoke.common.root.endorse(address(report.globalEscrow));
