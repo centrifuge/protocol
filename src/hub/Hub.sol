@@ -117,6 +117,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @inheritdoc IHub
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost)
     {
         _protected();
@@ -124,8 +125,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
+        gateway.depositSubsidy{value: msg.value}(poolId);
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            return sender.sendRequestCallback(
+            cost = sender.sendRequestCallback(
                 poolId,
                 scId,
                 assetId,
@@ -135,11 +137,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 0
             );
         }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     /// @inheritdoc IHub
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost)
     {
         _protected();
@@ -147,8 +153,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
+        gateway.depositSubsidy{value: msg.value}(poolId);
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            return sender.sendRequestCallback(
+            cost = sender.sendRequestCallback(
                 poolId,
                 scId,
                 assetId,
@@ -158,6 +165,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 0
             );
         }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     //----------------------------------------------------------------------------------------------

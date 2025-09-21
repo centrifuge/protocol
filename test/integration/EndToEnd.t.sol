@@ -676,7 +676,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit(
+        hub.hub.notifyDeposit{value: GAS}(
             poolId,
             shareClassId,
             assetId,
@@ -959,7 +959,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem(
+        hub.hub.notifyRedeem{value: GAS}(
             poolId,
             shareClassId,
             assetId,
