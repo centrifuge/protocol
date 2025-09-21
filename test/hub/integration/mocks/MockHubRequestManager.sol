@@ -169,9 +169,9 @@ contract MockHubRequestManager is IHubRequestManager {
         return MOCK_EPOCH;
     }
 
-    function epochInvestAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+    function epochInvestAmounts(ShareClassId, AssetId, uint32)
         external
-        view
+        pure
         override
         returns (
             uint128 pendingAssetAmount,
@@ -186,9 +186,9 @@ contract MockHubRequestManager is IHubRequestManager {
         return (0, 0, 0, D18.wrap(0), D18.wrap(0), 0);
     }
 
-    function epochRedeemAmounts(ShareClassId scId, AssetId assetId, uint32 epochId)
+    function epochRedeemAmounts(ShareClassId, AssetId, uint32)
         external
-        view
+        pure
         override
         returns (
             uint128 approvedShareAmount,
