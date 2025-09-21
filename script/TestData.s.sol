@@ -27,6 +27,7 @@ import {UpdateContractMessageLib} from "../src/spoke/libraries/UpdateContractMes
 import {SyncManager} from "../src/vaults/SyncManager.sol";
 import {SyncDepositVault} from "../src/vaults/SyncDepositVault.sol";
 import {IAsyncVault} from "../src/vaults/interfaces/IAsyncVault.sol";
+import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
 import {AsyncRequestManager} from "../src/vaults/AsyncRequestManager.sol";
 import {AsyncVaultFactory} from "../src/vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultFactory.sol";
@@ -68,6 +69,7 @@ contract TestData is FullDeployer {
         balanceSheet = BalanceSheet(vm.parseJsonAddress(config, "$.contracts.balanceSheet"));
         hubRegistry = HubRegistry(vm.parseJsonAddress(config, "$.contracts.hubRegistry"));
         asyncRequestManager = AsyncRequestManager(vm.parseJsonAddress(config, "$.contracts.asyncRequestManager"));
+        hubRequestManager = HubRequestManager(vm.parseJsonAddress(config, "$.contracts.hubRequestManager"));
         syncManager = SyncManager(vm.parseJsonAddress(config, "$.contracts.syncManager"));
         guardian = Guardian(vm.parseJsonAddress(config, "$.contracts.guardian"));
 

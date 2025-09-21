@@ -11,7 +11,6 @@ import {PoolId} from "../common/types/PoolId.sol";
 import {AssetId} from "../common/types/AssetId.sol";
 import {PricingLib} from "../common/libraries/PricingLib.sol";
 import {ShareClassId} from "../common/types/ShareClassId.sol";
-import {IHubMessageSender} from "../common/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../common/interfaces/IGatewayHandlers.sol";
 import {RequestCallbackMessageLib} from "../common/libraries/RequestCallbackMessageLib.sol";
 import {RequestMessageLib, RequestType as RequestMessageType} from "../common/libraries/RequestMessageLib.sol";
