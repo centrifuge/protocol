@@ -34,7 +34,6 @@ contract HubHelpers is Auth, IHubHelpers {
     IShareClassManager public immutable shareClassManager;
 
     IHub public hub;
-    IHubRequestManager public hubRequestManager;
 
     constructor(
         IHoldings holdings_,
@@ -54,7 +53,6 @@ contract HubHelpers is Auth, IHubHelpers {
     /// @inheritdoc IHubHelpers
     function file(bytes32 what, address data) external auth {
         if (what == "hub") hub = IHub(data);
-        else if (what == "hubRequestManager") hubRequestManager = IHubRequestManager(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);

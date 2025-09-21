@@ -52,10 +52,10 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         _postDeployExtendedSpoke(batcher);
         _postDeployAdapters(batcher);
 
-        // Set up cross-references between Hub and HubRequestManager
+        // TODO: should be re-organized
         if (address(hubRequestManager) != address(0)) {
             hubRequestManager.file("hub", address(hub));
-            hubHelpers.file("hubRequestManager", address(hubRequestManager));
+            hubRequestManager.file("sender", address(messageDispatcher));
         }
     }
 
