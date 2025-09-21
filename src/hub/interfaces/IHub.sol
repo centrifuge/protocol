@@ -84,6 +84,9 @@ interface IHub {
     /// @notice TODO
     error InvalidRequestManager();
 
+    /// @notice TODO
+    error RequestManagerCallFailed();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -324,6 +327,7 @@ interface IHub {
     function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
 
     /// @notice Calls the request manager for a specific pool and centrifuge chain
+    /// @dev This is included in the Hub contract in order to be included in multicalls with other Hub methods.
     /// @param poolId The pool ID
     /// @param centrifugeId The centrifuge chain ID
     /// @param data The encoded function call data

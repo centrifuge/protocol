@@ -318,7 +318,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     {
         _isManager(poolId);
         (bool success, bytes memory returnData) = hubRegistry.hubRequestManager(poolId, centrifugeId).call(data);
-        require(success, "HubRequestManager call failed");
+        require(success, RequestManagerCallFailed());
         if (returnData.length >= 32) {
             return abi.decode(returnData, (uint256));
         }
