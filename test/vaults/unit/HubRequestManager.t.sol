@@ -874,8 +874,8 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
         emit IHubRequestManager.UpdateDepositRequest(
             poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, queuedAmount, true
         );
-        (uint256 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
-        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+        (uint128 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Expect revert due to queued cancellation
         vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
@@ -932,8 +932,8 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
         emit IHubRequestManager.UpdateDepositRequest(
             poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, 0, true
         );
-        (uint256 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
-        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+        (uint128 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Issue shares + claim -> expect cancel fulfillment
         hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS);
@@ -985,7 +985,7 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
         uint256 forceCancelAmount = hubRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
 
         // Verify post force cancel cleanup pre claiming
-        assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
+        assertEq(forceCancelAmount, 0, "Cancellation was queued (returns 0 when queued, callback only when immediate)");
         assertEq(
             hubRequestManager.allowForceDepositCancel(scId, USDC, investor),
             true,
@@ -1095,8 +1095,8 @@ contract HubRequestManagerQueuedRedeemsTest is HubRequestManagerBaseTest {
         emit IHubRequestManager.UpdateRedeemRequest(
             poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, queuedAmount, true
         );
-        (uint256 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
-        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+        (uint128 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Expect revert due to queued cancellation
         vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
@@ -1151,8 +1151,8 @@ contract HubRequestManagerQueuedRedeemsTest is HubRequestManagerBaseTest {
         emit IHubRequestManager.UpdateRedeemRequest(
             poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, 0, true
         );
-        (uint256 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
-        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+        (uint128 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 0, "Cancellation queued (returns cancelled amount, 0 when queued)");
 
         // Revoke shares + claim -> expect cancel fulfillment
         hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
@@ -1201,7 +1201,7 @@ contract HubRequestManagerQueuedRedeemsTest is HubRequestManagerBaseTest {
         uint256 forceCancelAmount = hubRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
 
         // Verify post force cancel cleanup pre claiming
-        assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
+        assertEq(forceCancelAmount, 0, "Cancellation was queued (returns 0 when queued, callback only when immediate)");
         assertEq(
             hubRequestManager.allowForceRedeemCancel(scId, USDC, investor),
             true,
