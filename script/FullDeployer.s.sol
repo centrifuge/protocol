@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {HubReport} from "./HubDeployer.s.sol";
 import {CommonInput} from "./CommonDeployer.s.sol";
 import {ExtendedHubDeployer, ExtendedHubActionBatcher} from "./ExtendedHubDeployer.s.sol";
 import {ExtendedSpokeDeployer, ExtendedSpokeActionBatcher} from "./ExtendedSpokeDeployer.s.sol";
@@ -15,15 +16,43 @@ import {
 
 import {ISafe} from "../src/common/interfaces/IGuardian.sol";
 
+import {HubRequestManager} from "../src/vaults/HubRequestManager.sol";
+
 import "forge-std/Script.sol";
 
-contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {}
+struct FullReport {
+    HubReport hub;
+    HubRequestManager hubRequestManager;
+}
+
+contract FullActionBatcher is ExtendedHubActionBatcher, ExtendedSpokeActionBatcher, AdaptersActionBatcher {
+    function engageFull(FullReport memory report) public onlyDeployer {
+        // TODO: should be re-organized
+
+        // Rely Root
+        report.hubRequestManager.rely(address(report.hub.common.root));
+
+        // Rely others
+        report.hubRequestManager.rely(address(report.hub.hub));
+
+        // File methods
+        report.hubRequestManager.file("hub", address(report.hub.hub));
+        report.hubRequestManager.file("sender", address(report.hub.common.messageDispatcher));
+    }
+
+    function revokeFull(FullReport memory report) public onlyDeployer {
+        // TODO: should be re-organized
+        report.hubRequestManager.deny(address(this));
+    }
+}
 
 /**
  * @title FullDeployer
  * @notice Deploys the complete Centrifuge protocol stack (hub + spoke + adapters + base integrations)
  */
 contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDeployer {
+    HubRequestManager public hubRequestManager;
+
     function deployFull(CommonInput memory commonInput, AdaptersInput memory adaptersInput, FullActionBatcher batcher)
         public
     {
@@ -37,32 +66,37 @@ contract FullDeployer is ExtendedHubDeployer, ExtendedSpokeDeployer, AdaptersDep
         FullActionBatcher batcher
     ) internal {
         _preDeployExtendedHub(commonInput, batcher);
-        _preDeployExtendedSpokeWithHub(commonInput, batcher);
+        _preDeployExtendedSpoke(commonInput, batcher);
         _preDeployAdapters(commonInput, adaptersInput, batcher);
+
+        hubRequestManager = HubRequestManager(
+            create3(
+                generateSalt("hubRequestManager"),
+                abi.encodePacked(type(HubRequestManager).creationCode, abi.encode(hubRegistry, batcher))
+            )
+        );
+
+        batcher.engageFull(_fullReport());
+
+        register("hubRequestManager", address(hubRequestManager));
     }
 
-    function _preDeployExtendedSpokeWithHub(CommonInput memory input, FullActionBatcher batcher) internal {
-        _preDeployVaults(input, address(hubRegistry), batcher);
-        _preDeployHooks(input, batcher);
-        _preDeployManagers(input, batcher);
+    function _fullReport() internal view returns (FullReport memory) {
+        return FullReport(_hubReport(), hubRequestManager);
     }
 
     function _postDeployFull(FullActionBatcher batcher) internal {
         _postDeployExtendedHub(batcher);
         _postDeployExtendedSpoke(batcher);
         _postDeployAdapters(batcher);
-
-        // TODO: should be re-organized
-        if (address(hubRequestManager) != address(0)) {
-            hubRequestManager.file("hub", address(hub));
-            hubRequestManager.file("sender", address(messageDispatcher));
-        }
     }
 
     function removeFullDeployerAccess(FullActionBatcher batcher) public {
         removeExtendedHubDeployerAccess(batcher);
         removeExtendedSpokeDeployerAccess(batcher);
         removeAdaptersDeployerAccess(batcher);
+
+        batcher.revokeFull(_fullReport());
     }
 
     function run() public virtual {
