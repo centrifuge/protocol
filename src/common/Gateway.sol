@@ -69,11 +69,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         _;
     }
 
-    modifier onlyManager(PoolId poolId) {
-        require(manager[poolId][msg.sender], NotAuthorized());
-        _;
-    }
-
     modifier onlyAuthOrManager(PoolId poolId) {
         require(wards[msg.sender] == 1 || manager[poolId][msg.sender], NotAuthorized());
         _;
@@ -309,7 +304,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     }
 
     /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyManager(poolId) {
+    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
         isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
         emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
