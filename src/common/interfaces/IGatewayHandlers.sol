@@ -48,7 +48,7 @@ interface IHubGatewayHandler {
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
-    ) external;
+    ) external returns (uint256 cost);
 
     /// @notice Updates the total issuance of shares by request from vaults.
     function updateShares(

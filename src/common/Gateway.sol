@@ -270,6 +270,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function withdrawSubsidy(PoolId poolId, address to, uint256 amount) external onlyAuthOrManager(poolId) {
+        if (amount > subsidy[poolId].value) _requestPoolFunding(poolId);
+
         subsidy[poolId].value -= amount.toUint96();
 
         (bool success,) = payable(to).call{value: amount}(new bytes(0));

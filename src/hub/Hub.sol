@@ -711,11 +711,11 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
-    ) external {
+    ) external returns (uint256 cost) {
         _auth();
 
         emit ForwardTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
-        sender.sendExecuteTransferShares(
+        return sender.sendExecuteTransferShares(
             originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
         );
     }
