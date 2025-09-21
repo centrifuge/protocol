@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
-import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
@@ -12,7 +11,6 @@ import {PricingLib} from "../../../src/common/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/common/types/ShareClassId.sol";
 import {IHubGatewayHandler} from "../../../src/common/interfaces/IGatewayHandlers.sol";
 
-import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 import {IHubRegistry} from "../../../src/hub/interfaces/IHubRegistry.sol";
 import {
     IHubRequestManager,
@@ -23,6 +21,8 @@ import {
     RequestType,
     EpochId
 } from "../../../src/hub/interfaces/IHubRequestManager.sol";
+
+import {HubRequestManager} from "../../../src/vaults/HubRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -807,7 +807,9 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
         hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
         _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc, epochId));
         assertEq(hubRequestManager.pendingDeposit(scId, USDC), depositAmountUsdc);
-        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC));
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC)
+        );
         epochId = 2;
 
         // Expect queued increment due to approval
@@ -860,7 +862,9 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
 
         // Initial deposit request
         hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC)
+        );
 
         // Expect queued increment due to approval
         epochId = 2;
@@ -918,7 +922,9 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
 
         // Initial deposit request
         hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
-        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC)
+        );
         epochId = 2;
 
         // Expect queued increment due to approval
@@ -967,7 +973,9 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
 
         // Submit a deposit request, which will be applied since pending is zero
         hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
-        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC));
+        hubRequestManager.approveDeposits(
+            poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC)
+        );
         hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1, 1), SHARE_HOOK_GAS);
 
         vm.expectEmit();
@@ -979,7 +987,9 @@ contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
         // Verify post force cancel cleanup pre claiming
         assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
         assertEq(
-            hubRequestManager.allowForceDepositCancel(scId, USDC, investor), true, "Cancellation flag should not be reset"
+            hubRequestManager.allowForceDepositCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
         );
 
         // Claim to trigger cancellation
@@ -1192,7 +1202,11 @@ contract HubRequestManagerQueuedRedeemsTest is HubRequestManagerBaseTest {
 
         // Verify post force cancel cleanup pre claiming
         assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
-        assertEq(hubRequestManager.allowForceRedeemCancel(scId, USDC, investor), true, "Cancellation flag should not be reset");
+        assertEq(
+            hubRequestManager.allowForceRedeemCancel(scId, USDC, investor),
+            true,
+            "Cancellation flag should not be reset"
+        );
 
         // Claim to trigger cancellation
         (uint128 redeemPayout, uint128 redeemPayment, uint128 cancelledRedeem, bool canClaimAgain) =
@@ -1343,7 +1357,9 @@ contract HubRequestManagerMultiEpochTest is HubRequestManagerBaseTest {
 
         // Approve a few epochs without payout
         for (uint256 i = 0; i < skippedEpochs; i++) {
-            hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+            hubRequestManager.approveRedeems(
+                poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC)
+            );
             hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS);
         }
 
@@ -1416,7 +1432,8 @@ contract HubRequestManagerMultiEpochTest is HubRequestManagerBaseTest {
                 poolId, scId, USDC, _nowRedeem(USDC), epochApprovedShares, _pricePoolPerAsset(USDC)
             );
 
-            uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolPerShare.mulUint128(epochApprovedShares, MathLib.Rounding.Down));
+            uint128 revokedAssetAmount =
+                _intoAssetAmount(USDC, poolPerShare.mulUint128(epochApprovedShares, MathLib.Rounding.Down));
             hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
             totalAssets += revokedAssetAmount;
         }
