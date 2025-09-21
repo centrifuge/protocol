@@ -67,7 +67,7 @@ contract HubRegistryMock {
 
 contract HubMock is IHubGatewayHandler {
     uint256 public totalCost;
-hub
+
     function requestCallback(PoolId, ShareClassId, AssetId, bytes calldata, uint128)
         external
         override
@@ -438,10 +438,7 @@ contract HubRequestManagerDepositsNonTransientTest is HubRequestManagerBaseTest 
         uint128 fuzzApprovedAmountUsdc
     ) public {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
-        (uint128 depositAmountUsdc, uint128 approvedAmountUsdc, uint128 approvedPool) =
-            _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
-
-        uint128 shares = _calcSharesIssued(USDC, approvedAmountUsdc, navPoolPerShare);
+        _deposit(fuzzDepositAmountUsdc, fuzzApprovedAmountUsdc);
 
         uint256 cost =
             hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
@@ -664,8 +661,6 @@ contract HubRequestManagerRedeemsNonTransientTest is HubRequestManagerBaseTest {
 
         assertEq(_nowRedeem(USDC), 1);
 
-        uint128 payoutAssetAmount = _intoAssetAmount(USDC, d18(1).mulUint128(approvedShares, MathLib.Rounding.Down));
-
         vm.expectEmit();
         emit IHubRequestManager.ApproveRedeems(
             poolId, scId, USDC, _nowRedeem(USDC), approvedShares, redeems - approvedShares
@@ -684,15 +679,11 @@ contract HubRequestManagerRedeemsNonTransientTest is HubRequestManagerBaseTest {
         public
     {
         D18 navPoolPerShare = d18(uint128(bound(navPoolPerShare_, 1e14, type(uint128).max / 1e18)));
-        (uint128 redeemShares, uint128 approvedShares,,) =
-            _redeem(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
+        _redeem(fuzzRedeemShares, fuzzApprovedShares, navPoolPerShare.raw());
 
         uint256 cost =
             hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS);
         assertEq(cost, 1000, "Should return callback cost");
-
-        uint128 payoutAssetAmount =
-            _intoAssetAmount(USDC, navPoolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down));
 
         // Note: Epoch state is tracked internally and tested through other assertions
     }
@@ -797,5 +788,655 @@ contract HubRequestManagerRedeemsNonTransientTest is HubRequestManagerBaseTest {
         // Verify the investor can make new requests after force cancellation
         hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
         _assertRedeemRequestEq(USDC, investor, UserOrder(redeemAmount, 1));
+    }
+}
+
+///@dev Contains all deposit tests dealing with queued requests and complex epoch management
+contract HubRequestManagerQueuedDepositsTest is HubRequestManagerBaseTest {
+    using MathLib for *;
+
+    function testQueuedDepositWithoutCancellation(uint128 depositAmountUsdc) public {
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC / 3));
+        uint32 epochId = 1;
+        D18 poolPerShare = d18(1, 1);
+        uint128 claimedShares = _calcSharesIssued(USDC, depositAmountUsdc, poolPerShare);
+        uint128 queuedAmount = 0;
+
+        // Initial deposit request
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmountUsdc, epochId));
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), depositAmountUsdc);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, _pricePoolPerAsset(USDC));
+        epochId = 2;
+
+        // Expect queued increment due to approval
+        queuedAmount += depositAmountUsdc;
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, 0, queuedAmount, false
+        );
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0);
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+
+        // Expect queued increment due to approval
+        queuedAmount += depositAmountUsdc;
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, 0, queuedAmount, false
+        );
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+
+        // Issue shares + claim -> expect queued to move to pending
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(
+            poolId, scId, 1, investor, USDC, depositAmountUsdc, 0, claimedShares, block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, queuedAmount, queuedAmount, 0, false
+        );
+        hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(queuedAmount, epochId));
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), queuedAmount);
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testQueuedDepositWithNonEmptyQueuedCancellation(uint128 depositAmountUsdc) public {
+        vm.assume(depositAmountUsdc % 2 == 0);
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedAssetAmount = depositAmountUsdc / 4;
+        uint128 pendingAssetAmount = depositAmountUsdc - approvedAssetAmount;
+        uint128 issuedShares = _calcSharesIssued(USDC, approvedAssetAmount, poolPerShare);
+        uint128 queuedAmount = 0;
+        uint32 epochId = 1;
+
+        // Initial deposit request
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
+
+        // Expect queued increment due to approval
+        epochId = 2;
+        queuedAmount += depositAmountUsdc;
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, queuedAmount, true
+        );
+        (uint256 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+
+        // Expect revert due to queued cancellation
+        vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
+        hubRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
+        vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
+        hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Issue shares + claim -> expect cancel fulfillment
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAssetAmount,
+            pendingAssetAmount,
+            issuedShares,
+            block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateDepositRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+        assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
+        assertEq(claimedAssetAmount, approvedAssetAmount, "Claimed asset amount mismatch");
+        assertEq(cancelledTotal, pendingAssetAmount + queuedAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testQueuedDepositWithEmptyQueuedCancellation(uint128 depositAmountUsdc) public {
+        vm.assume(depositAmountUsdc % 2 == 0);
+        depositAmountUsdc = uint128(bound(depositAmountUsdc, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedAssetAmount = depositAmountUsdc / 4;
+        uint128 pendingAssetAmount = depositAmountUsdc - approvedAssetAmount;
+        uint128 issuedShares = _calcSharesIssued(USDC, approvedAssetAmount, poolPerShare);
+        uint32 epochId = 1;
+
+        // Initial deposit request
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAssetAmount, _pricePoolPerAsset(USDC));
+        epochId = 2;
+
+        // Expect queued increment due to approval
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, epochId, investor, depositAmountUsdc, pendingAssetAmount, 0, true
+        );
+        (uint256 cancelledPending) = hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+
+        // Issue shares + claim -> expect cancel fulfillment
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimDeposit(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedAssetAmount,
+            pendingAssetAmount,
+            issuedShares,
+            block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateDepositRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedShareAmount, uint128 claimedAssetAmount, uint128 cancelledTotal, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+        assertEq(claimedShareAmount, issuedShares, "Claimed share amount mismatch");
+        assertEq(claimedAssetAmount, approvedAssetAmount, "Claimed asset amount mismatch");
+        assertEq(cancelledTotal, pendingAssetAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochId));
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit mismatch");
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testForceCancelDepositRequestQueued(uint128 depositAmount, uint128 approvedAmount) public {
+        depositAmount = uint128(bound(depositAmount, MIN_REQUEST_AMOUNT_USDC + 1, MAX_REQUEST_AMOUNT_USDC));
+        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_USDC, depositAmount - 1));
+        uint128 queuedCancelAmount = depositAmount - approvedAmount;
+
+        // Set allowForceDepositCancel to true
+        hubRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Submit a deposit request, which will be applied since pending is zero
+        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), approvedAmount, _pricePoolPerAsset(USDC));
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), d18(1, 1), SHARE_HOOK_GAS);
+
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateDepositRequest(
+            poolId, scId, USDC, _nowDeposit(USDC), investor, depositAmount, queuedCancelAmount, 0, true
+        );
+        uint256 forceCancelAmount = hubRequestManager.forceCancelDepositRequest(poolId, scId, investor, USDC);
+
+        // Verify post force cancel cleanup pre claiming
+        assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
+        assertEq(
+            hubRequestManager.allowForceDepositCancel(scId, USDC, investor), true, "Cancellation flag should not be reset"
+        );
+
+        // Claim to trigger cancellation
+        (uint128 depositPayout, uint128 depositPayment, uint128 cancelledDeposit, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+        assertNotEq(depositPayout, 0, "Deposit payout mismatch");
+        assertEq(depositPayment, approvedAmount, "Deposit payment mismatch");
+        assertEq(cancelledDeposit, queuedCancelAmount, "Cancelled deposit mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        // Verify post claiming cleanup
+        assertEq(hubRequestManager.pendingDeposit(scId, USDC), 0, "Pending deposit should be zero after force cancel");
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
+
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestDeposit(poolId, scId, depositAmount, investor, USDC);
+        _assertDepositRequestEq(USDC, investor, UserOrder(depositAmount, 2));
+    }
+}
+
+///@dev Contains all redeem tests dealing with queued requests and complex epoch management
+contract HubRequestManagerQueuedRedeemsTest is HubRequestManagerBaseTest {
+    using MathLib for *;
+
+    function testQueuedRedeemWithoutCancellation(uint128 redeemShares) public {
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 3));
+        D18 poolPerShare = d18(1, 1);
+        uint128 poolAmount = poolPerShare.mulUint128(redeemShares, MathLib.Rounding.Down);
+        uint128 claimedAssetAmount = _intoAssetAmount(USDC, poolAmount);
+        uint128 approvedShares = redeemShares;
+        uint128 pendingShareAmount = 0;
+        uint128 queuedAmount = 0;
+        uint32 epochId = 1;
+
+        // Initial redeem request
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemShares, epochId));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), redeemShares);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, _pricePoolPerAsset(USDC));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0);
+        epochId = 2;
+
+        // Expect queued increment due to approval
+        queuedAmount += redeemShares;
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, approvedShares, pendingShareAmount, queuedAmount, false
+        );
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(queuedAmount, epochId - 1));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0);
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+
+        // Expect queued increment due to approval
+        queuedAmount += redeemShares;
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, 0, queuedAmount, false
+        );
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, queuedAmount));
+
+        // Revoke shares + claim -> expect queued to move to pending
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
+        pendingShareAmount = queuedAmount;
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimRedeem(
+            poolId, scId, 1, investor, USDC, redeemShares, 0, claimedAssetAmount, block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, pendingShareAmount, pendingShareAmount, 0, false
+        );
+        hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+
+        _assertRedeemRequestEq(USDC, investor, UserOrder(pendingShareAmount, epochId));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), pendingShareAmount, "pending redeem mismatch");
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+        _assertQueuedDepositRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testQueuedRedeemWithNonEmptyQueuedCancellation(uint128 redeemShares) public {
+        vm.assume(redeemShares % 2 == 0);
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedShares = redeemShares / 4;
+        uint128 pendingShareAmount = redeemShares - approvedShares;
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
+        uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
+        uint128 queuedAmount = 0;
+        uint32 epochId = 1;
+
+        // Initial redeem request
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+        epochId = 2;
+
+        // Expect queued increment due to approval
+        queuedAmount += redeemShares;
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, queuedAmount, true
+        );
+        (uint256 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+
+        // Expect revert due to queued cancellation
+        vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
+        hubRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
+        vm.expectRevert(abi.encodeWithSelector(IHubRequestManager.CancellationQueued.selector));
+        hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Revoke shares + claim -> expect cancel fulfillment
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimRedeem(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedShares,
+            pendingShareAmount,
+            revokedAssetAmount,
+            block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateRedeemRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal, bool canClaimAgain) =
+            hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+        assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed asset amount mismatch");
+        assertEq(claimedShareAmount, approvedShares, "Claimed share amount mismatch");
+        assertEq(cancelledTotal, pendingShareAmount + queuedAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testQueuedRedeemWithEmptyQueuedCancellation(uint128 redeemShares) public {
+        vm.assume(redeemShares % 2 == 0);
+        redeemShares = uint128(bound(redeemShares, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES / 2));
+        D18 poolPerShare = d18(1, 1);
+        uint128 approvedShares = redeemShares / 4;
+        uint128 pendingShareAmount = redeemShares - approvedShares;
+        uint128 poolAmount = poolPerShare.mulUint128(approvedShares, MathLib.Rounding.Down);
+        uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolAmount);
+        uint32 epochId = 1;
+
+        // Initial redeem request
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+        epochId = 2;
+
+        // Expect queued increment due to approval
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, epochId, investor, redeemShares, pendingShareAmount, 0, true
+        );
+        (uint256 cancelledPending) = hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+        assertEq(cancelledPending, 1000, "Cancellation queued (returns callback cost)");
+
+        // Revoke shares + claim -> expect cancel fulfillment
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
+        vm.expectEmit();
+        emit IHubRequestManager.ClaimRedeem(
+            poolId,
+            scId,
+            1,
+            investor,
+            USDC,
+            approvedShares,
+            pendingShareAmount,
+            revokedAssetAmount,
+            block.timestamp.toUint64()
+        );
+        emit IHubRequestManager.UpdateRedeemRequest(poolId, scId, USDC, epochId, investor, 0, 0, 0, false);
+        (uint128 claimedAssetAmount, uint128 claimedShareAmount, uint128 cancelledTotal, bool canClaimAgain) =
+            hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+        assertEq(claimedAssetAmount, revokedAssetAmount, "Claimed asset amount mismatch");
+        assertEq(claimedShareAmount, approvedShares, "Claimed share amount mismatch");
+        assertEq(cancelledTotal, pendingShareAmount, "Cancelled amount mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochId));
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem mismatch");
+        _assertQueuedRedeemRequestEq(USDC, investor, QueuedOrder(false, 0));
+    }
+
+    function testForceCancelRedeemRequestQueued(uint128 redeemAmount, uint128 approvedAmount) public {
+        redeemAmount = uint128(bound(redeemAmount, MIN_REQUEST_AMOUNT_SHARES + 1, MAX_REQUEST_AMOUNT_SHARES));
+        approvedAmount = uint128(bound(approvedAmount, MIN_REQUEST_AMOUNT_SHARES, redeemAmount - 1));
+        uint128 queuedCancelAmount = redeemAmount - approvedAmount;
+
+        // Set allowForceRedeemCancel to true
+        hubRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Submit a redeem request, which will be applied since pending is zero
+        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedAmount, _pricePoolPerAsset(USDC));
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), d18(1, 1), SHARE_HOOK_GAS);
+
+        vm.expectEmit();
+        emit IHubRequestManager.UpdateRedeemRequest(
+            poolId, scId, USDC, _nowRedeem(USDC), investor, redeemAmount, queuedCancelAmount, 0, true
+        );
+        uint256 forceCancelAmount = hubRequestManager.forceCancelRedeemRequest(poolId, scId, investor, USDC);
+
+        // Verify post force cancel cleanup pre claiming
+        assertEq(forceCancelAmount, 1000, "Cancellation was queued (returns callback cost)");
+        assertEq(hubRequestManager.allowForceRedeemCancel(scId, USDC, investor), true, "Cancellation flag should not be reset");
+
+        // Claim to trigger cancellation
+        (uint128 redeemPayout, uint128 redeemPayment, uint128 cancelledRedeem, bool canClaimAgain) =
+            hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+        assertNotEq(redeemPayout, 0, "Redeem payout mismatch");
+        assertEq(redeemPayment, approvedAmount, "Redeem payment mismatch");
+        assertEq(cancelledRedeem, queuedCancelAmount, "Cancelled redeem mismatch");
+        assertEq(canClaimAgain, false, "Can claim again mismatch");
+
+        // Verify post claiming cleanup
+        assertEq(hubRequestManager.pendingRedeem(scId, USDC), 0, "Pending redeem should be zero after force cancel");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2));
+
+        // Verify the investor can make new requests after force cancellation
+        hubRequestManager.requestRedeem(poolId, scId, redeemAmount, investor, USDC);
+        _assertRedeemRequestEq(USDC, investor, UserOrder(redeemAmount, 2));
+    }
+}
+
+///@dev Contains tests for skip claim behavior and multi-epoch claims
+contract HubRequestManagerMultiEpochTest is HubRequestManagerBaseTest {
+    using MathLib for *;
+
+    function testClaimDepositSkippedEpochsNoPayout(uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
+
+        D18 navPoolPerShare = d18(1e18);
+        uint128 approvedAmountUsdc = 1;
+        uint32 lastUpdate = _nowDeposit(USDC);
+
+        // Other investor should eat up the single approved asset amount
+        hubRequestManager.requestDeposit(poolId, scId, 1, investor, USDC);
+        hubRequestManager.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve a few epochs without payout
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            hubRequestManager.approveDeposits(
+                poolId, scId, USDC, _nowDeposit(USDC), approvedAmountUsdc, _pricePoolPerAsset(USDC)
+            );
+            hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+        }
+
+        // Claim all epochs without expected payout due to low deposit amount
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            vm.expectEmit();
+            emit IHubRequestManager.ClaimDeposit(
+                poolId, scId, lastUpdate, investor, USDC, 0, 1, 0, block.timestamp.toUint64()
+            );
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+            assertEq(payout, 0, "Mismatch: payout");
+            assertEq(payment, 0, "Mismatch: payment");
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(canClaimAgain, i < skippedEpochs - 1, "Mismatch: canClaimAgain");
+            lastUpdate += 1;
+            _assertDepositRequestEq(USDC, investor, UserOrder(1, lastUpdate));
+        }
+    }
+
+    function testClaimDepositSkippedEpochsNothingRemaining(uint128 depositAmountUsdc_, uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
+
+        D18 nonZeroPrice = d18(1e18);
+        uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+
+        // Approve one epoch with full payout and a few subsequent ones without payout
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+        hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), depositAmountUsdc, nonZeroPrice);
+        hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS);
+
+        // Request deposit with another investors to enable approvals after first epoch
+        hubRequestManager.requestDeposit(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve more epochs which should all be skipped when investor claims first epoch
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            hubRequestManager.approveDeposits(poolId, scId, USDC, _nowDeposit(USDC), 1, nonZeroPrice);
+            hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), nonZeroPrice, SHARE_HOOK_GAS);
+        }
+
+        // Expect only single claim to be required
+        (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+            hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+        assertNotEq(payout, 0, "Mismatch: payout");
+        assertEq(payment, depositAmountUsdc, "Mismatch: payment");
+        assertEq(cancelled, 0, "Mismatch: cancelled");
+        assertEq(canClaimAgain, false, "Mismatch: canClaimAgain - all claimed");
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, 2 + uint32(skippedEpochs)));
+
+        vm.expectRevert(IHubRequestManager.NoOrderFound.selector);
+        hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+    }
+
+    function testClaimDepositManyEpochs(uint128 navPoolPerShare_, uint128 depositAmountUsdc_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e10, type(uint128).max / 1e18)));
+        epochs = uint8(bound(epochs, 3, 50));
+        uint128 depositAmountUsdc = uint128(bound(depositAmountUsdc_, MIN_REQUEST_AMOUNT_USDC, MAX_REQUEST_AMOUNT_USDC));
+        vm.assume(depositAmountUsdc % epochs == 0);
+
+        uint128 epochApprovedAmountUsdc = depositAmountUsdc / epochs;
+        uint128 totalShares = 0;
+        uint128 totalPayment = 0;
+        uint128 totalPayout = 0;
+
+        hubRequestManager.requestDeposit(poolId, scId, depositAmountUsdc, investor, USDC);
+
+        // Approve + issue shares for each epoch
+        for (uint256 i = 0; i < epochs; i++) {
+            hubRequestManager.approveDeposits(
+                poolId, scId, USDC, _nowDeposit(USDC), epochApprovedAmountUsdc, _pricePoolPerAsset(USDC)
+            );
+
+            uint128 issuedShares = _calcSharesIssued(USDC, epochApprovedAmountUsdc, poolPerShare);
+            hubRequestManager.issueShares(poolId, scId, USDC, _nowIssue(USDC), poolPerShare, SHARE_HOOK_GAS);
+            totalShares += issuedShares;
+        }
+
+        assertEq(hubRequestManager.maxDepositClaims(scId, investor, USDC), epochs);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                hubRequestManager.claimDeposit(poolId, scId, investor, USDC);
+
+            totalPayout += payout;
+            totalPayment += payment;
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(payment, epochApprovedAmountUsdc, "Mismatch: payment");
+            assertEq(canClaimAgain, i < epochs - 1, "Mismatch: canClaimAgain - all claimed");
+        }
+
+        assertEq(totalPayment, depositAmountUsdc, "Mismatch: Total payment");
+        assertEq(totalPayout, totalShares, "Mismatch: Total payout");
+
+        _assertDepositRequestEq(USDC, investor, UserOrder(0, epochs + 1));
+    }
+
+    function testClaimRedeemSkippedEpochsNoPayout(uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
+
+        D18 navPoolPerShare = d18(1e18);
+        uint128 approvedShares = 1;
+        uint32 lastUpdate = _nowRedeem(USDC);
+
+        // Other investor should eat up the single approved asset amount
+        hubRequestManager.requestRedeem(poolId, scId, 1, investor, USDC);
+        hubRequestManager.requestRedeem(poolId, scId, MAX_REQUEST_AMOUNT_SHARES, bytes32("bigPockets"), USDC);
+
+        // Approve a few epochs without payout
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), approvedShares, _pricePoolPerAsset(USDC));
+            hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), navPoolPerShare, SHARE_HOOK_GAS);
+        }
+
+        // Claim all epochs without expected payout due to low redeem amount
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            vm.expectEmit();
+            emit IHubRequestManager.ClaimRedeem(
+                poolId, scId, lastUpdate, investor, USDC, 0, 1, 0, block.timestamp.toUint64()
+            );
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+
+            assertEq(payout, 0, "Mismatch: payout");
+            assertEq(payment, 0, "Mismatch: payment");
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(canClaimAgain, i < skippedEpochs - 1, "Mismatch: canClaimAgain");
+            lastUpdate += 1;
+            _assertRedeemRequestEq(USDC, investor, UserOrder(1, lastUpdate));
+        }
+    }
+
+    function testClaimRedeemSkippedEpochsNothingRemaining(uint128 amount, uint8 skippedEpochs) public {
+        vm.assume(skippedEpochs > 0);
+
+        D18 nonZeroPrice = d18(1e18);
+        uint128 redeemShares = uint128(bound(amount, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+
+        // Other investor should eat up the single approved asset amount
+        hubRequestManager.requestRedeem(poolId, scId, redeemShares, investor, USDC);
+        hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), redeemShares, nonZeroPrice);
+        hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS);
+
+        // Request redeem with another investors to enable approvals after first epoch
+        hubRequestManager.requestRedeem(poolId, scId, MAX_REQUEST_AMOUNT_USDC, bytes32("bigPockets"), USDC);
+
+        // Approve more epochs which should all be skipped when investor claims first epoch
+        for (uint256 i = 0; i < skippedEpochs; i++) {
+            hubRequestManager.approveRedeems(poolId, scId, USDC, _nowRedeem(USDC), 1, nonZeroPrice);
+            hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), nonZeroPrice, SHARE_HOOK_GAS);
+        }
+
+        // Expect only single claim to be required
+        (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+            hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+
+        assertNotEq(payout, 0, "Mismatch: payout");
+        assertEq(payment, redeemShares, "Mismatch: payment");
+        assertEq(cancelled, 0, "Mismatch: cancelled");
+        assertEq(canClaimAgain, false, "Mismatch: canClaimAgain");
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2 + uint32(skippedEpochs)));
+    }
+
+    function testClaimRedeemManyEpochs(uint128 navPoolPerShare_, uint128 totalRedeemShares_, uint8 epochs) public {
+        D18 poolPerShare = d18(uint128(bound(navPoolPerShare_, 1e15, type(uint128).max / 1e18)));
+        epochs = uint8(bound(epochs, 3, 50));
+        uint128 totalRedeemShares =
+            uint128(bound(totalRedeemShares_, MIN_REQUEST_AMOUNT_SHARES, MAX_REQUEST_AMOUNT_SHARES));
+        vm.assume(totalRedeemShares % epochs == 0);
+
+        uint128 epochApprovedShares = totalRedeemShares / epochs;
+        uint128 totalAssets = 0;
+        uint128 totalPayment = 0;
+        uint128 totalPayout = 0;
+
+        hubRequestManager.requestRedeem(poolId, scId, totalRedeemShares, investor, USDC);
+
+        // Approve + revoke shares for each epoch
+        for (uint256 i = 0; i < epochs; i++) {
+            hubRequestManager.approveRedeems(
+                poolId, scId, USDC, _nowRedeem(USDC), epochApprovedShares, _pricePoolPerAsset(USDC)
+            );
+
+            uint128 revokedAssetAmount = _intoAssetAmount(USDC, poolPerShare.mulUint128(epochApprovedShares, MathLib.Rounding.Down));
+            hubRequestManager.revokeShares(poolId, scId, USDC, _nowRevoke(USDC), poolPerShare, SHARE_HOOK_GAS);
+            totalAssets += revokedAssetAmount;
+        }
+
+        assertEq(hubRequestManager.maxRedeemClaims(scId, investor, USDC), epochs);
+
+        for (uint256 i = 0; i < epochs; i++) {
+            (uint128 payout, uint128 payment, uint128 cancelled, bool canClaimAgain) =
+                hubRequestManager.claimRedeem(poolId, scId, investor, USDC);
+
+            totalPayout += payout;
+            totalPayment += payment;
+            assertEq(cancelled, 0, "Mismatch: cancelled");
+            assertEq(payment, epochApprovedShares, "Mismatch: payment");
+            assertEq(canClaimAgain, i < epochs - 1, "Mismatch: canClaimAgain - all claimed");
+        }
+
+        assertEq(totalPayment, totalRedeemShares, "Mismatch: Total payment");
+        assertEq(totalPayout, totalAssets, "Mismatch: Total payout");
+
+        _assertRedeemRequestEq(USDC, investor, UserOrder(0, epochs + 1));
     }
 }
