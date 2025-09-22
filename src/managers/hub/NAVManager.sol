@@ -226,13 +226,11 @@ contract NAVManager is INAVManager, Auth {
 
     /// @inheritdoc INAVManager
     function assetAccount(AssetId assetId) public pure returns (AccountId) {
-        // return holdings.accountId(poolId, scId, assetId, uint8(AccountType.Asset));
         return withAssetId(assetId, uint16(AccountType.Asset));
     }
 
     /// @inheritdoc INAVManager
     function expenseAccount(AssetId assetId) public pure returns (AccountId) {
-        // return holdings.accountId(poolId, scId, assetId, uint8(AccountType.Expense));
         return withAssetId(assetId, uint16(AccountType.Expense));
     }
 
