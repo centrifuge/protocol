@@ -7,7 +7,6 @@ import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
-import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
@@ -360,7 +359,7 @@ contract EndToEndUtils is EndToEndDeployment {
     }
 }
 
-/// Base investment flows that can be shared between EndToEnd and Fork tests
+/// Base investment flows that can be shared between EndToEnd tests
 contract EndToEndFlows is EndToEndUtils {
     using CastLib for *;
     using UpdateContractMessageLib for *;
@@ -547,16 +546,13 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         address investor,
         uint128 amount,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion,
-        address existingVault
+        bool nonZeroPrices
     ) internal {
         // Configure prices
         _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
 
-        // Deploy or get existing vault (with fallback for fork tests)
-        IAsyncVault vault =
-            _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager, existingVault);
+        // Deploy or get existing vault
+        IAsyncVault vault = _ensureAsyncVaultExists(hub, spoke, poolId, shareClassId, assetId, poolManager);
 
         // Execute deposit request
         _executeAsyncDepositRequest(vault, investor, amount);
@@ -568,9 +564,7 @@ contract EndToEndFlows is EndToEndUtils {
         _processAsyncDepositApproval(hub, poolId, shareClassId, assetId, poolManager, amount);
 
         // Claim shares
-        _processAsyncDepositClaim(
-            hub, spoke, poolId, shareClassId, assetId, investor, vault, amount, skipPreciseAssertion
-        );
+        _processAsyncDepositClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, amount);
     }
 
     function _configurePricesForFlow(
@@ -613,22 +607,14 @@ contract EndToEndFlows is EndToEndUtils {
         PoolId poolId,
         ShareClassId shareClassId,
         AssetId assetId,
-        address poolManager,
-        address fallbackVault
+        address poolManager
     ) internal returns (IAsyncVault vault) {
         vm.startPrank(poolManager);
 
-        // Check if vault already exists (for fork tests)
+        // Check if vault already exists
         vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
         if (address(vault) == address(0)) {
-            // If we have a fallback vault (for fork tests), use it
-            if (fallbackVault != address(0)) {
-                vault = IAsyncVault(fallbackVault);
-                vm.stopPrank();
-                return vault;
-            }
-
-            // Otherwise try to create new vault
+            // Create new vault
             hub.hub.updateVault(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
@@ -671,8 +657,7 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address investor,
         IAsyncVault vault,
-        uint128 amount,
-        bool skipPreciseAssertion
+        uint128 amount
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
@@ -684,35 +669,18 @@ contract EndToEndFlows is EndToEndUtils {
             hub.shareClassManager.maxDepositClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
-        // Store initial share balance for fork tests
-        uint256 initialShares;
-        if (skipPreciseAssertion) {
-            initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
-        }
-
         vm.startPrank(investor);
         vault.mint(vault.maxMint(investor), investor);
 
         // CHECKS
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify shares increased
-            assertTrue(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
-                "Investor should have received shares"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor),
-                assetToShare(amount),
-                "expected shares"
-            );
-        }
+        assertEq(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor), assetToShare(amount), "expected shares"
+        );
     }
 
     function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _configurePool(sameChain);
-        _asyncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices, false, address(0));
+        _asyncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -728,8 +696,7 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         address investor,
         uint128 amount,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion
+        bool nonZeroPrices
     ) internal {
         // Configure prices
         if (nonZeroPrices) {
@@ -757,7 +724,7 @@ contract EndToEndFlows is EndToEndUtils {
         }
 
         _configureSyncDepositVault(hub, spoke, poolId, shareClassId, assetId, poolManager);
-        _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount, skipPreciseAssertion);
+        _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount);
     }
 
     function _configureSyncDepositVault(
@@ -769,7 +736,7 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        // Check if vault already exists (for fork tests)
+        // Check if vault already exists (for live tests)
         address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
             hub.hub.updateVault(
@@ -793,40 +760,22 @@ contract EndToEndFlows is EndToEndUtils {
         ShareClassId shareClassId,
         AssetId assetId,
         address investor,
-        uint128 amount,
-        bool skipPreciseAssertion
+        uint128 amount
     ) internal {
         IBaseVault vault = IBaseVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
-
-        // Store initial share balance for fork tests
-        uint256 initialShares;
-        if (skipPreciseAssertion) {
-            initialShares = spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor);
-        }
 
         vm.startPrank(investor);
         spoke.usdc.approve(address(vault), amount);
         vault.deposit(amount, investor);
 
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify shares increased
-            assertTrue(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor) > initialShares,
-                "Investor should have received shares"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(
-                spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor),
-                assetToShare(amount),
-                "expected shares"
-            );
-        }
+        assertEq(
+            spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor), assetToShare(amount), "expected shares"
+        );
     }
 
     function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
         _configurePool(sameChain);
-        _syncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices, false);
+        _syncDepositFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, USDC_AMOUNT_1, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -841,19 +790,15 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address poolManager,
         address investor,
-        bool nonZeroPrices,
-        bool skipPreciseAssertion,
-        address existingVault
+        bool nonZeroPrices
     ) internal {
         // Configure prices using unified helper
         _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
 
         _configureAsyncRedeemRestriction(hub, spoke, poolId, shareClassId, investor, poolManager);
 
-        // Resolve vault - use existing if provided, otherwise get from manager
-        IAsyncRedeemVault vault = existingVault != address(0)
-            ? IAsyncRedeemVault(existingVault)
-            : IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
+        // Get vault from manager
+        IAsyncRedeemVault vault = IAsyncRedeemVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
 
         vm.startPrank(investor);
         uint128 shares = uint128(spoke.spoke.shareToken(poolId, shareClassId).balanceOf(investor));
@@ -864,9 +809,7 @@ contract EndToEndFlows is EndToEndUtils {
         _ensureRedeemEpochsAligned(hub, poolId, shareClassId, assetId, poolManager);
 
         _processAsyncRedeemApproval(hub, poolId, shareClassId, assetId, shares, poolManager);
-        _processAsyncRedeemClaim(
-            hub, spoke, poolId, shareClassId, assetId, investor, vault, shares, skipPreciseAssertion
-        );
+        _processAsyncRedeemClaim(hub, spoke, poolId, shareClassId, assetId, investor, vault, shares);
     }
 
     function _ensureRedeemEpochsAligned(
@@ -954,8 +897,7 @@ contract EndToEndFlows is EndToEndUtils {
         AssetId assetId,
         address investor,
         IAsyncRedeemVault vault,
-        uint128 shares,
-        bool skipPreciseAssertion
+        uint128 shares
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
@@ -967,30 +909,15 @@ contract EndToEndFlows is EndToEndUtils {
             hub.shareClassManager.maxRedeemClaims(shareClassId, investor.toBytes32(), assetId)
         );
 
-        // Store initial asset balance for fork tests
-        uint256 initialAssets;
-        if (skipPreciseAssertion) {
-            initialAssets = IERC20(vault.asset()).balanceOf(investor);
-        }
-
         vm.startPrank(investor);
         vault.withdraw(vault.maxWithdraw(investor), investor, investor);
 
-        if (skipPreciseAssertion) {
-            // For fork tests: just verify assets increased
-            assertTrue(
-                IERC20(vault.asset()).balanceOf(investor) > initialAssets,
-                "Investor should have received assets from redemption"
-            );
-        } else {
-            // For regular tests: check exact amount
-            assertEq(spoke.usdc.balanceOf(investor), shareToAsset(shares), "expected assets");
-        }
+        assertEq(spoke.usdc.balanceOf(investor), shareToAsset(shares), "expected assets");
     }
 
     function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
         (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices, false, address(0));
+        _asyncRedeemFlow(h, s, POOL_A, SC_1, s.usdcId, FM, INVESTOR_A, nonZeroPrices);
     }
 
     //----------------------------------------------------------------------------------------------
