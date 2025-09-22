@@ -5,5 +5,5 @@ pragma solidity >=0.5.0;
 interface IMessageSender {
     /// @notice Handling outgoing messages.
     /// @param centrifugeId Destination chain
-    function send(uint16 centrifugeId, bytes calldata message) external;
+    function send(uint16 centrifugeId, bytes calldata message) external returns (uint256 cost);
 }

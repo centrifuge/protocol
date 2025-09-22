@@ -49,7 +49,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         vm.label(address(valuation), "mockValuation");
 
         // Subsidizing guardian actions
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
     }
 }
 
@@ -98,7 +98,7 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32("salt"));
 
         vm.prank(FUNDED);
-        gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)

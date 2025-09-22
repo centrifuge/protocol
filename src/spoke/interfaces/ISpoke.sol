@@ -128,6 +128,7 @@ interface ISpoke {
     error InvalidVault();
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
+    error NotEnoughGas();
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist
@@ -199,7 +200,9 @@ interface ISpoke {
     /// @param  scId The share class id
     /// @param  assetId The asset id
     /// @param  payload The request payload to be processed
-    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external;
+    function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload)
+        external
+        returns (uint256 cost);
 
     /// @notice Deploys a new vault
     ///

@@ -153,6 +153,8 @@ contract EndToEndDeployment is Test {
     AccountId constant LOSS_ACCOUNT = IntegrationConstants.LOSS_ACCOUNT;
     AccountId constant GAIN_ACCOUNT = IntegrationConstants.GAIN_ACCOUNT;
 
+    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
+
     AssetId USD_ID;
     PoolId POOL_A;
     ShareClassId SC_1;
@@ -222,6 +224,8 @@ contract EndToEndDeployment is Test {
         POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
         SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
 
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
+
         vm.label(address(adapterAToB), "AdapterAToB");
         vm.label(address(adapterBToA), "AdapterBToA");
     }
@@ -282,6 +286,8 @@ contract EndToEndDeployment is Test {
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
         s_.usdc.file("symbol", "USDC");
+
+        s_.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(GLOBAL_POOL);
     }
 
     function _setSpoke(bool sameChain) internal {
@@ -400,13 +406,6 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
-    function _subsidizePool(CHub memory hub, PoolId poolId) internal {
-        vm.startPrank(ANY);
-        vm.deal(ANY, 1 ether);
-        hub.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(poolId);
-        vm.stopPrank();
-    }
-
     function _createPool() internal {
         vm.startPrank(address(h.guardian.safe()));
         h.guardian.createPool(POOL_A, FM, USD_ID);
@@ -416,7 +415,7 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.addShareClass(POOL_A, "Tokenized MMF", "MMF", bytes32("salt"));
 
         _createPoolAccounts(h, POOL_A, FM);
-        _subsidizePool(h, POOL_A);
+        h.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
     }
 
     function _configurePoolCrossChain(
@@ -431,8 +430,8 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         vm.deal(poolManager, 1 ether);
 
-        hub.hub.notifyPool{value: GAS}(poolId, spoke.centrifugeId);
-        hub.hub.notifyShareClass{value: GAS}(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
+        hub.hub.notifyPool(poolId, spoke.centrifugeId);
+        hub.hub.notifyShareClass(poolId, shareClassId, spoke.centrifugeId, hookAddress.toBytes32());
 
         hub.hub.initializeHolding(
             poolId,
@@ -444,16 +443,12 @@ contract EndToEndFlows is EndToEndUtils {
             GAIN_ACCOUNT,
             LOSS_ACCOUNT
         );
-        hub.hub.setRequestManager{value: GAS}(
-            poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32()
-        );
-        hub.hub.updateBalanceSheetManager{value: GAS}(
+        hub.hub.setRequestManager(poolId, spoke.centrifugeId, address(spoke.asyncRequestManager).toBytes32());
+        hub.hub.updateBalanceSheetManager(
             spoke.centrifugeId, poolId, address(spoke.asyncRequestManager).toBytes32(), true
         );
-        hub.hub.updateBalanceSheetManager{value: GAS}(
-            spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true
-        );
-        hub.hub.updateBalanceSheetManager{value: GAS}(spoke.centrifugeId, poolId, BSM.toBytes32(), true);
+        hub.hub.updateBalanceSheetManager(spoke.centrifugeId, poolId, address(spoke.syncManager).toBytes32(), true);
+        hub.hub.updateBalanceSheetManager(spoke.centrifugeId, poolId, BSM.toBytes32(), true);
 
         vm.stopPrank();
     }
@@ -476,7 +471,7 @@ contract EndToEndFlows is EndToEndUtils {
         // We also subsidize the hub
         if (s.centrifugeId != h.centrifugeId) {
             vm.startPrank(ANY);
-            s_.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+            s_.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
         }
     }
 
@@ -503,9 +498,9 @@ contract EndToEndFlows is EndToEndUtils {
         remoteAdapters[0] = address(poolAdapterBToA).toBytes32();
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
+        h.hub.setAdapters(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
         h.hub.setGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
-        h.hub.setGatewayManager{value: GAS}(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
+        h.hub.setGatewayManager(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
     }
 
     //----------------------------------------------------------------------------------------------
@@ -528,8 +523,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(poolManager);
         hub.hub.updateSharePrice(poolId, shareClassId, sharePrice);
-        hub.hub.notifySharePrice{value: GAS}(poolId, shareClassId, spoke.centrifugeId);
-        hub.hub.notifyAssetPrice{value: GAS}(poolId, shareClassId, assetId);
+        hub.hub.notifySharePrice(poolId, shareClassId, spoke.centrifugeId);
+        hub.hub.notifyAssetPrice(poolId, shareClassId, assetId);
 
         currentAssetPrice = assetPrice;
         currentSharePrice = sharePrice;
@@ -634,7 +629,7 @@ contract EndToEndFlows is EndToEndUtils {
             }
 
             // Otherwise try to create new vault
-            hub.hub.updateVault{value: GAS}(
+            hub.hub.updateVault(
                 poolId, shareClassId, assetId, spoke.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
             vault = IAsyncVault(_getAsyncVault(spoke, poolId, shareClassId, assetId));
@@ -660,12 +655,12 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(poolManager);
         uint32 depositEpochId = hub.shareClassManager.nowDepositEpoch(shareClassId, assetId);
-        hub.hub.approveDeposits{value: GAS}(poolId, shareClassId, assetId, depositEpochId, amount);
+        hub.hub.approveDeposits(poolId, shareClassId, assetId, depositEpochId, amount);
 
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
+        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -681,7 +676,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit{value: GAS}(
+        hub.hub.notifyDeposit(
             poolId,
             shareClassId,
             assetId,
@@ -777,11 +772,11 @@ contract EndToEndFlows is EndToEndUtils {
         // Check if vault already exists (for fork tests)
         address existingVault = _getAsyncVault(spoke, poolId, shareClassId, assetId);
         if (existingVault == address(0)) {
-            hub.hub.updateVault{value: GAS}(
+            hub.hub.updateVault(
                 poolId, shareClassId, assetId, spoke.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
             );
         }
-        hub.hub.updateContract{value: GAS}(
+        hub.hub.updateContract(
             poolId,
             shareClassId,
             spoke.centrifugeId,
@@ -890,7 +885,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, HOOK_GAS);
+                hub.hub.revokeShares(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, HOOK_GAS);
                 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -913,7 +908,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.issueShares{value: GAS}(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, HOOK_GAS);
+                hub.hub.issueShares(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, HOOK_GAS);
                 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -929,7 +924,7 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager
     ) internal {
         vm.startPrank(poolManager);
-        hub.hub.updateRestriction{value: GAS}(
+        hub.hub.updateRestriction(
             poolId, shareClassId, spoke.centrifugeId, _updateRestrictionMemberMsg(investor), EXTRA_GAS
         );
     }
@@ -948,7 +943,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares{value: GAS}(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
+        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(
@@ -964,7 +959,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem{value: GAS}(
+        hub.hub.notifyRedeem(
             poolId,
             shareClassId,
             assetId,
@@ -1011,9 +1006,7 @@ contract EndToEndFlows is EndToEndUtils {
             : _configurePrices(IntegrationConstants.zeroPrice(), IntegrationConstants.zeroPrice());
 
         vm.startPrank(FM);
-        h.hub.updateRestriction{value: GAS}(
-            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS
-        );
+        h.hub.updateRestriction(POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS);
 
         IAsyncRedeemVault vault =
             IAsyncRedeemVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
@@ -1081,9 +1074,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         _setSpoke(sameChain);
 
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.scheduleUpgrade(s.centrifugeId, NEW_WARD);
         h.guardian.cancelUpgrade(s.centrifugeId, NEW_WARD);
@@ -1101,11 +1091,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint256 VALUE = 123;
 
         _setSpoke(sameChain);
-
-        vm.startPrank(ANY);
-        h.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(PoolId.wrap(0));
-
-        s.gateway.subsidizePool{value: VALUE}(PoolId.wrap(0));
 
         vm.startPrank(address(SAFE_ADMIN_A));
         h.guardian.recoverTokens(s.centrifugeId, address(s.gateway), ETH_ADDRESS, 0, RECEIVER, VALUE);
@@ -1132,9 +1117,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
 
-        h.hub.updateShareClassMetadata{value: GAS}(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
-        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId);
-        h.hub.updateShareHook{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
+        h.hub.updateShareClassMetadata(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
+        h.hub.notifyShareMetadata(POOL_A, SC_1, s.centrifugeId);
+        h.hub.updateShareHook(POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32());
 
         assertEq(s.spoke.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
         assertEq(s.spoke.shareToken(POOL_A, SC_1).symbol(), "MMF2");
@@ -1147,11 +1132,11 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _createPool();
 
         vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
-        h.hub.notifyShareClass{value: GAS}(POOL_A, SC_1, s.centrifugeId, address(0).toBytes32());
-        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        h.hub.notifyPool(POOL_A, s.centrifugeId);
+        h.hub.notifyShareClass(POOL_A, SC_1, s.centrifugeId, address(0).toBytes32());
+        h.hub.updateBalanceSheetManager(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
         h.hub.updateSharePrice(POOL_A, SC_1, IntegrationConstants.zeroPrice());
-        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, s.centrifugeId);
+        h.hub.notifySharePrice(POOL_A, SC_1, s.centrifugeId);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
         // Each message will return half of the gas wasted
@@ -1159,23 +1144,23 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         // We just subsidize for two message
         vm.startPrank(ANY);
-        s.gateway.subsidizePool{value: h.gasService.updateShares() * 2}(POOL_A);
+        s.gateway.depositSubsidy{value: h.gasService.updateShares() * 2}(POOL_A);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, 0);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares() * 2);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + h.gasService.updateShares() * 2);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, h.gasService.updateShares());
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY + h.gasService.updateShares());
 
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares());
-        assertEq(address(s.gateway).balance, 0);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
 
         // This message is fully paid with refunded amount
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
         assertEq(address(s.balanceSheet.escrow(POOL_A)).balance, h.gasService.updateShares() / 2);
-        assertEq(address(s.gateway).balance, 0);
+        assertEq(address(s.gateway).balance, DEFAULT_SUBSIDY);
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 3, "3 UpdateShares messages received");
     }
@@ -1186,8 +1171,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.startPrank(FM);
 
-        h.hub.setMaxAssetPriceAge{value: GAS}(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
-        h.hub.setMaxSharePriceAge{value: GAS}(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
+        h.hub.setMaxAssetPriceAge(POOL_A, SC_1, s.usdcId, uint64(block.timestamp));
+        h.hub.setMaxSharePriceAge(s.centrifugeId, POOL_A, SC_1, uint64(block.timestamp));
 
         (,, uint64 validUntil) = s.spoke.markersPricePoolPerAsset(POOL_A, SC_1, s.usdcId);
         assertEq(validUntil, uint64(block.timestamp));
@@ -1229,17 +1214,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _configurePool(sameChain);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
-        );
+        h.hub.updateVault(POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS);
 
         address vault = address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
 
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
+        h.hub.updateVault(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS);
 
         assertEq(s.spoke.isLinked(IVault(vault)), false);
 
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
+        h.hub.updateVault(POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS);
 
         assertEq(s.spoke.isLinked(IVault(vault)), true);
     }
@@ -1262,9 +1245,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             : _configurePrices(IntegrationConstants.zeroPrice(), IntegrationConstants.zeroPrice());
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS
-        );
+        h.hub.updateVault(POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS);
 
         IAsyncVault vault = IAsyncVault(address(s.spoke.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
@@ -1323,17 +1304,17 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _configureBasePoolWithCustomAdapters();
 
         vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.notifyPool(POOL_A, s.centrifugeId);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
 
         // Hub -> Spoke message went through the pool adapter
         assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
 
-        h.hub.updateBalanceSheetManager{value: GAS}(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
+        h.hub.updateBalanceSheetManager(s.centrifugeId, POOL_A, BSM.toBytes32(), true);
 
         vm.startPrank(ANY);
-        s.gateway.subsidizePool{value: DEFAULT_SUBSIDY}(POOL_A);
+        s.gateway.depositSubsidy{value: DEFAULT_SUBSIDY}(POOL_A);
 
         vm.startPrank(BSM);
         s.balanceSheet.submitQueuedShares(POOL_A, SC_1, EXTRA_GAS);
@@ -1342,33 +1323,6 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(uint8(poolAdapterBToA.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));
 
         assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 1); // Message received and processed
-    }
-
-    /// forge-config: default.isolate = true
-    function testAdaptersPerPoolWithCorrectRepayment() public {
-        _configureBasePoolWithCustomAdapters();
-
-        uint256 initialPoolGas = h.gateway.subsidizedValue(POOL_A);
-
-        vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, true);
-
-        vm.startPrank(FM);
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
-
-        vm.startPrank(GATEWAY_MANAGER);
-        h.gateway.blockOutgoing(s.centrifugeId, POOL_A, false);
-
-        bytes memory message = MessageLib.NotifyPool({poolId: POOL_A.raw()}).serialize();
-        (uint128 gasLimit,,) = h.gateway.underpaid(s.centrifugeId, keccak256(message));
-        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas + gasLimit); // Was refunded
-
-        vm.startPrank(ANY);
-        h.gateway.repay(s.centrifugeId, message);
-
-        assertEq(uint8(poolAdapterAToB.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
-        assertEq(h.gateway.subsidizedValue(POOL_A), initialPoolGas); // Subsidized funds remains the same
-        assertEq(s.spoke.pool(POOL_A), block.timestamp); // Message received and processed
     }
 
     /// forge-config: default.isolate = true
@@ -1388,7 +1342,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         }
 
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
+        h.hub.setAdapters(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
     }
 
     /// forge-config: default.isolate = true
@@ -1407,7 +1361,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         vm.expectRevert(ILocalCentrifugeId.CannotBeSentLocally.selector);
         vm.startPrank(FM);
-        h.hub.setAdapters{value: GAS}(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
+        h.hub.setAdapters(h.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
     }
 
     /// forge-config: default.isolate = true
@@ -1434,10 +1388,10 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         uint8 threshold = 2;
         uint8 recoveryIndex = 1;
-        h.hub.setAdapters{value: GAS}(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, threshold, recoveryIndex);
+        h.hub.setAdapters(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, threshold, recoveryIndex);
 
         // Only local adapter will send the message, recovery adapter will skip it.
-        h.hub.notifyPool{value: GAS}(POOL_A, s.centrifugeId);
+        h.hub.notifyPool(POOL_A, s.centrifugeId);
 
         assertEq(s.spoke.pool(POOL_A), 0); // 1 of 2 received, not processed yet
 
