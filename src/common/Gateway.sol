@@ -150,11 +150,9 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(message.length > 0, EmptyMessage());
 
         PoolId poolId = processor.messagePoolId(message);
-
         emit PrepareMessage(centrifugeId, poolId, message);
 
         uint128 gasLimit = gasService.messageGasLimit(centrifugeId, message) + extraGasLimit;
-
         if (isBatching) {
             bytes32 batchSlot = _outboundBatchSlot(centrifugeId, poolId);
             bytes memory previousMessage = TransientBytesLib.get(batchSlot);
