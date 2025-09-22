@@ -11,7 +11,6 @@ import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
-import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
@@ -336,14 +335,6 @@ contract EndToEndUtils is EndToEndDeployment {
         assertEq(accountIsPositive, isPositive);
     }
 
-    function isShareToken(address token) internal view returns (bool) {
-        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
-            return supported;
-        } catch {
-            return false;
-        }
-    }
-
     function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
         internal
         view
@@ -582,29 +573,16 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         bool nonZeroPrices
     ) internal {
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
+        _baseConfigurePrices(
+            hub,
+            spoke,
+            poolId,
+            shareClassId,
+            assetId,
+            poolManager,
+            nonZeroPrices ? IntegrationConstants.assetPrice() : IntegrationConstants.zeroPrice(),
+            nonZeroPrices ? IntegrationConstants.sharePrice() : IntegrationConstants.zeroPrice()
+        );
     }
 
     function _ensureAsyncVaultExists(
@@ -731,31 +709,7 @@ contract EndToEndFlows is EndToEndUtils {
         bool nonZeroPrices,
         bool skipPreciseAssertion
     ) internal {
-        // Configure prices
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
-
+        _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
         _configureSyncDepositVault(hub, spoke, poolId, shareClassId, assetId, poolManager);
         _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount, skipPreciseAssertion);
     }
