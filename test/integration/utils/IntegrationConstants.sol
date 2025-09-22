@@ -32,7 +32,7 @@ library IntegrationConstants {
     uint128 constant GAS = MAX_MESSAGE_COST;
     uint256 constant DEFAULT_SUBSIDY = 0.1 ether;
     uint256 constant INTEGRATION_DEFAULT_SUBSIDY = 1 ether;
-    uint128 constant SHARE_HOOK_GAS = 0 ether;
+    uint128 constant HOOK_GAS = 0 ether;
     uint128 constant EXTRA_GAS = 0;
 
     // ======== Protocol Addresses ========

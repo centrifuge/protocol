@@ -5,6 +5,7 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
+import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/common/types/PoolId.sol";
@@ -101,17 +102,22 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         _testConfigurePool(direction);
 
+        vm.startPrank(FM);
+        h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1));
+        h.hub.notifySharePrice(POOL_A, SC_1, sB.centrifugeId);
+
         // B: Mint shares
-        vm.startPrank(address(sB.root));
+        vm.startPrank(BSM);
         IShareToken shareTokenB = IShareToken(sB.spoke.shareToken(POOL_A, SC_1));
-        shareTokenB.mint(INVESTOR_A, amount);
+        sB.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, amount);
+        sB.balanceSheet.submitQueuedShares(POOL_A, SC_1, 0);
         vm.stopPrank();
         assertEq(shareTokenB.balanceOf(INVESTOR_A), amount, "Investor should have minted shares on chain B");
 
         // B: Initiate transfer of shares
         vm.expectEmit();
         emit ISpoke.InitiateTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A, INVESTOR_A.toBytes32(), amount);
-        emit IHub.ForwardTransferShares(sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
+        emit IHub.ForwardTransferShares(sB.centrifugeId, sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount);
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {
@@ -124,9 +130,12 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         vm.prank(INVESTOR_A);
         sB.spoke.crosschainTransferShares{value: GAS}(
-            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, SHARE_HOOK_GAS
+            sC.centrifugeId, POOL_A, SC_1, INVESTOR_A.toBytes32(), amount, HOOK_GAS, HOOK_GAS
         );
         assertEq(shareTokenB.balanceOf(INVESTOR_A), 0, "Shares should be burned on chain B");
+        assertEq(
+            h.snapshotHook.transfers(POOL_A, SC_1, sB.centrifugeId, sC.centrifugeId), amount, "Snapshot hook not called"
+        );
 
         // C: Transfer expected to be pending on A due to message being unpaid
         IShareToken shareTokenC = IShareToken(sC.spoke.shareToken(POOL_A, SC_1));

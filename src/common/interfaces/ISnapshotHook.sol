@@ -17,4 +17,13 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 interface ISnapshotHook {
     /// @notice Callback when there is a sync snapshot.
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external;
+
+    /// @notice Callback when there is a cross-chain transfer leading to issuance updates
+    function onTransfer(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 sharesTransferred
+    ) external;
 }

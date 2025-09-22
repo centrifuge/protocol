@@ -174,6 +174,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         bytes32 receiver,
         uint128 amount,
+        uint128 extraGasLimit,
         uint128 remoteExtraGasLimit
     ) external returns (uint256 cost);
 
