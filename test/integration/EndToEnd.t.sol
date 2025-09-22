@@ -11,7 +11,6 @@ import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {ETH_ADDRESS} from "../../src/misc/interfaces/IRecoverable.sol";
-import {IERC7575Share, IERC165} from "../../src/misc/interfaces/IERC7575.sol";
 
 import {Root} from "../../src/common/Root.sol";
 import {Gateway} from "../../src/common/Gateway.sol";
@@ -136,7 +135,7 @@ contract EndToEndDeployment is Test {
     uint16 constant CENTRIFUGE_ID_B = IntegrationConstants.CENTRIFUGE_ID_B;
     uint128 constant GAS = IntegrationConstants.GAS;
     uint256 constant DEFAULT_SUBSIDY = IntegrationConstants.DEFAULT_SUBSIDY;
-    uint128 constant SHARE_HOOK_GAS = IntegrationConstants.SHARE_HOOK_GAS;
+    uint128 constant HOOK_GAS = IntegrationConstants.HOOK_GAS;
 
     address immutable ERC20_DEPLOYER = address(this);
     address immutable FM = makeAddr("FM");
@@ -334,14 +333,6 @@ contract EndToEndUtils is EndToEndDeployment {
         (bool accountIsPositive, uint128 accountValue) = h.accounting.accountValue(POOL_A, accountId);
         assertEq(accountValue, value);
         assertEq(accountIsPositive, isPositive);
-    }
-
-    function isShareToken(address token) internal view returns (bool) {
-        try IERC165(token).supportsInterface(type(IERC7575Share).interfaceId) returns (bool supported) {
-            return supported;
-        } catch {
-            return false;
-        }
     }
 
     function _getAsyncVault(CSpoke memory spoke, PoolId poolId, ShareClassId shareClassId, AssetId assetId)
@@ -582,29 +573,16 @@ contract EndToEndFlows is EndToEndUtils {
         address poolManager,
         bool nonZeroPrices
     ) internal {
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
+        _baseConfigurePrices(
+            hub,
+            spoke,
+            poolId,
+            shareClassId,
+            assetId,
+            poolManager,
+            nonZeroPrices ? IntegrationConstants.assetPrice() : IntegrationConstants.zeroPrice(),
+            nonZeroPrices ? IntegrationConstants.sharePrice() : IntegrationConstants.zeroPrice()
+        );
     }
 
     function _ensureAsyncVaultExists(
@@ -660,7 +638,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(poolManager);
         uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -731,31 +709,7 @@ contract EndToEndFlows is EndToEndUtils {
         bool nonZeroPrices,
         bool skipPreciseAssertion
     ) internal {
-        // Configure prices
-        if (nonZeroPrices) {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.assetPrice(),
-                IntegrationConstants.sharePrice()
-            );
-        } else {
-            _baseConfigurePrices(
-                hub,
-                spoke,
-                poolId,
-                shareClassId,
-                assetId,
-                poolManager,
-                IntegrationConstants.zeroPrice(),
-                IntegrationConstants.zeroPrice()
-            );
-        }
-
+        _configurePricesForFlow(hub, spoke, poolId, shareClassId, assetId, poolManager, nonZeroPrices);
         _configureSyncDepositVault(hub, spoke, poolId, shareClassId, assetId, poolManager);
         _processSyncDeposit(hub, spoke, poolId, shareClassId, assetId, investor, amount, skipPreciseAssertion);
     }
@@ -885,7 +839,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.revokeShares(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, SHARE_HOOK_GAS);
+                hub.hub.revokeShares(poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, HOOK_GAS);
                 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -908,7 +862,7 @@ contract EndToEndFlows is EndToEndUtils {
             vm.startPrank(poolManager);
             while (nowIssueEpoch < nowDepositEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-                hub.hub.issueShares(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, SHARE_HOOK_GAS);
+                hub.hub.issueShares(poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, HOOK_GAS);
                 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
             }
             vm.stopPrank();
@@ -943,7 +897,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, SHARE_HOOK_GAS);
+        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(

@@ -724,7 +724,14 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     ) external returns (uint256 cost) {
         _auth();
 
-        emit ForwardTransferShares(targetCentrifugeId, poolId, scId, receiver, amount);
+        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
+        shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
+
+        ISnapshotHook hook = holdings.snapshotHook(poolId);
+        if (address(hook) != address(0)) hook.onTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
+
+        emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
+
         return sender.sendExecuteTransferShares(
             originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
         );
