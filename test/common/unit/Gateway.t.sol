@@ -232,19 +232,19 @@ contract GatewayTestFile is GatewayTest {
     }
 }
 
-contract GatewayTestSetManager is GatewayTest {
+contract GatewayTestUpdateManager is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
     }
 
-    function testSetManager() public {
+    function testUpdateManager() public {
         vm.expectEmit();
-        emit IGateway.SetManager(POOL_A, MANAGER);
-        gateway.setManager(POOL_A, MANAGER);
+        emit IGateway.UpdateManager(POOL_A, MANAGER, true);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
-        assertEq(gateway.manager(POOL_A), MANAGER);
+        assertEq(gateway.manager(POOL_A, MANAGER), true);
     }
 }
 
@@ -458,13 +458,14 @@ contract GatewayTestSubsidizePool is GatewayTest {
 
 contract GatewayTestWithdrawSubsidizedPool is GatewayTest {
     function testErrManagerNotAllowed() public {
-        vm.expectRevert(IGateway.ManagerNotAllowed.selector);
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.withdrawSubsidy(POOL_A, MANAGER, 100);
     }
 
     function testErrCannotWithdraw() public {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
         vm.deal(ANY, 100);
         vm.prank(ANY);
@@ -477,7 +478,7 @@ contract GatewayTestWithdrawSubsidizedPool is GatewayTest {
 
     function testWithdrawSubsidizedPool() public {
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
         vm.deal(ANY, 100);
         vm.prank(ANY);
@@ -542,7 +543,7 @@ contract GatewayTestSend is GatewayTest {
 
     function testErrOutgoingBlocked() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
         vm.prank(MANAGER);
         gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
@@ -850,7 +851,7 @@ contract GatewayTestRepay is GatewayTest {
     function testErrOutgoingBlocked() public {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
         gateway.setRefundAddress(POOL_A, POOL_REFUND);
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
         vm.prank(MANAGER);
         gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
@@ -979,12 +980,12 @@ contract GatewayTestAddUnpaidMessage is GatewayTest {
 contract GatewayTestBlockOutgoing is GatewayTest {
     function testErrManagerNotAllowed() public {
         vm.prank(ANY);
-        vm.expectRevert(IGateway.ManagerNotAllowed.selector);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
     }
 
     function testBlockOutgoing() public {
-        gateway.setManager(POOL_A, MANAGER);
+        gateway.updateManager(POOL_A, MANAGER, true);
 
         vm.prank(MANAGER);
         vm.expectEmit();

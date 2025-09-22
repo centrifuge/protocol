@@ -118,7 +118,9 @@ contract TestCases is BaseTest {
 
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.notifyDeposit(poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2));
+        hub.notifyDeposit{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxDepositClaims(scId, INVESTOR, USDC_C2)
+        );
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());
@@ -182,7 +184,9 @@ contract TestCases is BaseTest {
 
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.notifyRedeem(poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2));
+        hub.notifyRedeem{value: GAS}(
+            poolId, scId, USDC_C2, INVESTOR, shareClassManager.maxRedeemClaims(scId, INVESTOR, USDC_C2)
+        );
 
         MessageLib.RequestCallback memory m0 = MessageLib.deserializeRequestCallback(cv.popMessage());
         assertEq(m0.poolId, poolId.raw());

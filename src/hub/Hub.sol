@@ -117,6 +117,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     /// @inheritdoc IHub
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost)
     {
         _protected();
@@ -124,8 +125,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 cancelledAssetAmount) =
             hubHelpers.notifyDeposit(poolId, scId, assetId, investor, maxClaims);
 
+        gateway.depositSubsidy{value: msg.value}(poolId);
         if (totalPaymentAssetAmount > 0 || cancelledAssetAmount > 0) {
-            return sender.sendRequestCallback(
+            cost = sender.sendRequestCallback(
                 poolId,
                 scId,
                 assetId,
@@ -135,11 +137,15 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 0
             );
         }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     /// @inheritdoc IHub
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost)
     {
         _protected();
@@ -147,8 +153,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 cancelledShareAmount) =
             hubHelpers.notifyRedeem(poolId, scId, assetId, investor, maxClaims);
 
+        gateway.depositSubsidy{value: msg.value}(poolId);
         if (totalPaymentShareAmount > 0 || cancelledShareAmount > 0) {
-            return sender.sendRequestCallback(
+            cost = sender.sendRequestCallback(
                 poolId,
                 scId,
                 assetId,
@@ -158,6 +165,9 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
                 0
             );
         }
+
+        require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -633,10 +643,13 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
     }
 
     /// @inheritdoc IHub
-    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost) {
+    function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost)
+    {
         _isManager(poolId);
 
-        return sender.sendSetGatewayManager(centrifugeId, poolId, manager);
+        return sender.sendUpdateGatewayManager(centrifugeId, poolId, who, canManage);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -708,7 +721,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit
-    ) external {
+    ) external returns (uint256 cost) {
         _auth();
 
         shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
@@ -719,7 +732,7 @@ contract Hub is Multicall, Auth, Recoverable, IHub, IHubGatewayHandler, IHubGuar
 
         emit ForwardTransferShares(originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount);
 
-        sender.sendExecuteTransferShares(
+        return sender.sendExecuteTransferShares(
             originCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, extraGasLimit
         );
     }

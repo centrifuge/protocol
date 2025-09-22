@@ -26,6 +26,7 @@ interface IGasService {
     function cancelUpgrade() external view returns (uint128);
     function recoverTokens() external view returns (uint128);
     function registerAsset() external view returns (uint128);
+    function setPoolAdapters() external view returns (uint128);
     function request() external view returns (uint128);
     function notifyPool() external view returns (uint128);
     function notifyShareClass() external view returns (uint128);
@@ -47,4 +48,5 @@ interface IGasService {
     function updateShares() external view returns (uint128);
     function maxAssetPriceAge() external view returns (uint128);
     function maxSharePriceAge() external view returns (uint128);
+    function updateGatewayManager() external view returns (uint128);
 }

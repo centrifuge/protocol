@@ -104,7 +104,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
         Adapter memory adapter = _adapterDetails[centrifugeId][poolId][adapter_];
 
         // If adapters not configured per pool, then assume it's received by a global adapters
-        if (adapter.id == 0) adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
+        if (adapter.id == 0 && adapters[centrifugeId][poolId].length == 0) {
+            adapter = _adapterDetails[centrifugeId][PoolId.wrap(0)][adapter_];
+        }
 
         require(adapter.id != 0, InvalidAdapter());
 

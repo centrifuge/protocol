@@ -40,6 +40,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
     using BytesLib for bytes;
     using MathLib for uint256;
 
+    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
     uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
 
@@ -110,6 +111,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
             centrifugeId, poolId, scId, receiver, amount, extraGasLimit, remoteExtraGasLimit
         );
         require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(poolId, msg.sender, msg.value - cost);
     }
 
     /// @inheritdoc ISpoke
@@ -161,9 +163,10 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke, ISpokeGateway
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
 
-        gateway.depositSubsidy{value: msg.value}(PoolId.wrap(0));
+        gateway.depositSubsidy{value: msg.value}(GLOBAL_POOL);
         uint256 cost = sender.sendRegisterAsset(centrifugeId, assetId, decimals);
         require(msg.value >= cost, NotEnoughGas());
+        if (msg.value > cost) gateway.withdrawSubsidy(GLOBAL_POOL, msg.sender, msg.value - cost);
     }
 
     /// @inheritdoc ISpoke

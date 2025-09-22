@@ -72,6 +72,10 @@ contract BaseTest is ExtendedSpokeDeployer, Test, ExtendedSpokeActionBatcher {
     uint8 public defaultDecimals = 8;
     bytes16 public defaultShareClassId = bytes16(bytes("1"));
 
+    receive() external payable {
+        // For repayments used in setRegisterAssets and crosschainTransferShares
+    }
+
     function setUp() public virtual {
         // deploy core contracts
         CommonInput memory input = CommonInput({

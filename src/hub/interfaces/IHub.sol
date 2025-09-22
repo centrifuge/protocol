@@ -86,6 +86,9 @@ interface IHub {
     /// @notice Dispatched when an invalid combination of account IDs is passed.
     error InvalidAccountCombination();
 
+    /// @notice Dispatched when there is not enough gas for payment methods
+    error NotEnoughGas();
+
     function gateway() external view returns (IGateway);
     function holdings() external view returns (IHoldings);
     function accounting() external view returns (IAccounting);
@@ -102,11 +105,13 @@ interface IHub {
     /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
     function notifyDeposit(PoolId poolId, ShareClassId scId, AssetId depositAssetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost);
 
     /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
     function notifyRedeem(PoolId poolId, ShareClassId scId, AssetId payoutAssetId, bytes32 investor, uint32 maxClaims)
         external
+        payable
         returns (uint256 cost);
 
     /// @notice Notify to a CV instance that a new pool is available
@@ -390,9 +395,12 @@ interface IHub {
         uint8 recoveryIndex
     ) external returns (uint256 cost);
 
-    /// @notice Set a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
+    /// @notice Update a gateway manager for a pool. The manager can modify gateway-related things in the remote chain.
     /// @param centrifugeId chain where to perform the gateway configuration.
     /// @param poolId pool associated to this configuration.
-    /// @param manager address used as manager.
-    function setGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager) external returns (uint256 cost);
+    /// @param who address used as manager.
+    /// @param canManage if enabled as manager
+    function updateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
+        external
+        returns (uint256 cost);
 }

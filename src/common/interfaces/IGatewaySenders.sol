@@ -153,7 +153,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external returns (uint256 cost);
 
     /// @notice Creates and send the message
-    function sendSetGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 manager)
+    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage)
         external
         returns (uint256 cost);
 }

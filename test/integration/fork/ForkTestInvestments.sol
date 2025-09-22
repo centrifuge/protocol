@@ -149,7 +149,7 @@ contract ForkTestInvestmentFlows is ForkTestBase, VMLabeling {
             while (nowIssueEpoch < nowDepositEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
                 hub.hub.issueShares(
-                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, IntegrationConstants.SHARE_HOOK_GAS
+                    poolId, shareClassId, assetId, nowIssueEpoch, sharePrice, IntegrationConstants.HOOK_GAS
                 );
                 nowIssueEpoch = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
             }
@@ -171,9 +171,7 @@ contract ForkTestInvestmentFlows is ForkTestBase, VMLabeling {
 
         uint32 issueEpochId = hub.shareClassManager.nowIssueEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.issueShares(
-            poolId, shareClassId, assetId, issueEpochId, sharePrice, IntegrationConstants.SHARE_HOOK_GAS
-        );
+        hub.hub.issueShares(poolId, shareClassId, assetId, issueEpochId, sharePrice, IntegrationConstants.HOOK_GAS);
     }
 
     function _processAsyncDepositClaim(
@@ -282,7 +280,7 @@ contract ForkTestInvestmentFlows is ForkTestBase, VMLabeling {
             while (nowRevokeEpoch < nowRedeemEpoch) {
                 (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
                 hub.hub.revokeShares(
-                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, IntegrationConstants.SHARE_HOOK_GAS
+                    poolId, shareClassId, assetId, nowRevokeEpoch, sharePrice, IntegrationConstants.HOOK_GAS
                 );
                 nowRevokeEpoch = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
             }
@@ -318,9 +316,7 @@ contract ForkTestInvestmentFlows is ForkTestBase, VMLabeling {
 
         uint32 revokeEpochId = hub.shareClassManager.nowRevokeEpoch(shareClassId, assetId);
         (, D18 sharePrice) = hub.shareClassManager.metrics(shareClassId);
-        hub.hub.revokeShares(
-            poolId, shareClassId, assetId, revokeEpochId, sharePrice, IntegrationConstants.SHARE_HOOK_GAS
-        );
+        hub.hub.revokeShares(poolId, shareClassId, assetId, revokeEpochId, sharePrice, IntegrationConstants.HOOK_GAS);
     }
 
     function _processAsyncRedeemClaim(

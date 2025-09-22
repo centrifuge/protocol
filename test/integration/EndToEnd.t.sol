@@ -234,7 +234,7 @@ contract EndToEndDeployment is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         deploy.guardian().setAdapters(remoteCentrifugeId, adapters, uint8(adapters.length), uint8(adapters.length));
-        deploy.guardian().setGatewayManager(GATEWAY_MANAGER);
+        deploy.guardian().updateGatewayManager(GATEWAY_MANAGER, true);
         vm.stopPrank();
     }
 
@@ -490,8 +490,8 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setAdapters(s.centrifugeId, POOL_A, localAdapters, remoteAdapters, 1, 1);
-        h.hub.setGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
-        h.hub.setGatewayManager(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32());
+        h.hub.updateGatewayManager(h.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true);
+        h.hub.updateGatewayManager(s.centrifugeId, POOL_A, GATEWAY_MANAGER.toBytes32(), true);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -654,7 +654,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyDeposit(
+        hub.hub.notifyDeposit{value: GAS}(
             poolId,
             shareClassId,
             assetId,
@@ -913,7 +913,7 @@ contract EndToEndFlows is EndToEndUtils {
     ) internal {
         vm.startPrank(ANY);
         vm.deal(ANY, GAS);
-        hub.hub.notifyRedeem(
+        hub.hub.notifyRedeem{value: GAS}(
             poolId,
             shareClassId,
             assetId,
