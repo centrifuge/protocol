@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import "forge-std/Test.sol";
-
 import {PoolId} from "../../../src/common/types/PoolId.sol";
-
-import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
 import {IMessageHandler} from "../../../src/common/interfaces/IMessageHandler.sol";
-import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
 import {IMessageProcessor} from "../../../src/common/interfaces/IMessageProcessor.sol";
+import {IMessageProperties} from "../../../src/common/interfaces/IMessageProperties.sol";
+import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/common/libraries/MessageLib.sol";
+
+import "forge-std/Test.sol";
 
 string constant FILE_PATH = "snapshots/MessageGasLimits.json";
 

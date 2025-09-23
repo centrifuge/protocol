@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {VMLabeling} from "./utils/VMLabeling.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
+import {MessageBenchmarker} from "./utils/MessageBenchmarker.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
@@ -64,8 +65,6 @@ import {FullDeployer, FullActionBatcher, CommonInput} from "../../script/FullDep
 import "forge-std/Test.sol";
 
 import {RecoveryAdapter} from "../../src/adapters/RecoveryAdapter.sol";
-
-import {MessageBenchmarker} from "./utils/MessageBenchmarker.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
